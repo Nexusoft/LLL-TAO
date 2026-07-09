@@ -230,6 +230,25 @@ namespace TAO::Ledger
             m_entries.clear();
         }
 
+
+        /** Evict a single entry keyed by hashDynamicGenesis, if present.
+         *  Used to force the next CreateBlock() call for this (channel, reward)
+         *  pair down the "block not cached" path -- i.e. a genuine fresh
+         *  producer/merkle rebuild rather than a reuse of the existing cached
+         *  producer, which by design does not vary with nExtraNonce. **/
+        void Invalidate(const uint256_t& hashDynamicGenesis)
+        {
+            std::unique_lock<std::shared_mutex> lock(m_mutex);
+            for(auto it = m_entries.begin(); it != m_entries.end(); ++it)
+            {
+                if(*it && (*it)->hashDynamicGenesis == hashDynamicGenesis)
+                {
+                    m_entries.erase(it);
+                    return;
+                }
+            }
+        }
+
         /* Standard singleflight/request-coalescing pattern: one owner builds,
          * all same-key waiters join and reuse the published result.
          *
@@ -422,6 +441,15 @@ namespace TAO::Ledger
             pszReason ? debug::safe_printstr(" reason=", pszReason) : std::string();
 
         debug::log(0, FUNCTION, "cleared PRIME/HASH mining template caches", strReason);
+    }
+
+
+    void InvalidateMiningTemplateCacheEntry(const uint32_t nChannel, const uint256_t& hashDynamicGenesis)
+    {
+        if(nChannel < 1 || nChannel > 2)
+            return;
+
+        tBlockCache[nChannel].Invalidate(hashDynamicGenesis);
     }
 
 #ifdef UNIT_TESTS

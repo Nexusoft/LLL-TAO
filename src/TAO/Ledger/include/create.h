@@ -205,6 +205,22 @@ namespace TAO
         void ClearMiningTemplateCaches(const char* pszReason = nullptr);
 
 
+        /** InvalidateMiningTemplateCacheEntry
+         *
+         *  Evicts a single cached mining template keyed by (nChannel, hashDynamicGenesis),
+         *  if present. Unlike ClearMiningTemplateCaches(), this does not disturb other
+         *  miners' cached templates on the same channel. Used to force the next
+         *  CreateBlock() call for this (channel, reward) pair to rebuild a fresh
+         *  producer/merkle root, since a plain cache-hit reuse ignores nExtraNonce
+         *  by design (see CachedMiningTemplateRequiresProducerFinalization).
+         *
+         *  @param[in] nChannel The mining channel (1=Prime, 2=Hash). No-op otherwise.
+         *  @param[in] hashDynamicGenesis The reward address whose cached entry to evict.
+         *
+         **/
+        void InvalidateMiningTemplateCacheEntry(const uint32_t nChannel, const uint256_t& hashDynamicGenesis);
+
+
         /** CreateStakeBlock
          *
          *  Create a new Proof of Stake (channel 0) block object from the chain.
