@@ -3552,7 +3552,7 @@ namespace LLP
             else
                 debug::log(2, FUNCTION, "[EXTRA_NONCE] Tip stable → reusing nonce=", m_nCachedExtraNonce);
         }
-        uint32_t extraNonce = m_nCachedExtraNonce;
+        uint64_t extraNonce = m_nCachedExtraNonce;
 
         /* Use simplified utility function.
          * For the prime channel, loop until the proof hash satisfies the prime-mod
@@ -3600,7 +3600,7 @@ namespace LLP
 
             if(is_prime_mod(nBitMask, pBlock)) {
                 /* Cache the prime-mod-satisfying nonce for this tip. */
-                extraNonce = static_cast<uint32_t>(nActualExtraNonce);
+                extraNonce = nActualExtraNonce;
                 m_nCachedExtraNonce = extraNonce;
                 debug::log(3, FUNCTION, "Block created after ", nAttempts, " attempt(s)");
                 break;

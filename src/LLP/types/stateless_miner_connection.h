@@ -236,7 +236,7 @@ namespace LLP
          *  CreateProducer() is skipped (~99% reduction in steady-state key ops).
          *
          *  Protected by TEMPLATE_CREATE_MUTEX (serializes new_block() calls). **/
-        uint32_t   m_nCachedExtraNonce{0};
+        uint64_t   m_nCachedExtraNonce{0};
         uint1024_t m_hashLastExtraNonceTip;
         TAO::API::CredentialCache m_miningCredentialCache;
 

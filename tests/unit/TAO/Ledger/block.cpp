@@ -192,6 +192,7 @@ TEST_CASE( "Prime Calculation - Nonce Endianness (PR #128)", "[ledger][prime][en
 TEST_CASE( "Prime template ProofHash validity gate", "[ledger][prime][template]")
 {
     const uint32_t nDefaultMask = 0x80000000;
+    const uint32_t nMaxTestCandidates = 100000;
 
     SECTION("Non-Prime templates bypass the Prime ProofHash gate")
     {
@@ -208,7 +209,7 @@ TEST_CASE( "Prime template ProofHash validity gate", "[ledger][prime][template]"
         block.nBits = 1;
 
         bool fFound = false;
-        for(uint32_t nCandidate = 0; nCandidate < 100000 && !fFound; ++nCandidate)
+        for(uint32_t nCandidate = 0; nCandidate < nMaxTestCandidates && !fFound; ++nCandidate)
         {
             block.hashMerkleRoot = nCandidate;
             uint1024_t hashProof = block.ProofHash();
@@ -226,7 +227,7 @@ TEST_CASE( "Prime template ProofHash validity gate", "[ledger][prime][template]"
         block.nBits = 1;
 
         bool fFound = false;
-        for(uint32_t nCandidate = 0; nCandidate < 100000 && !fFound; ++nCandidate)
+        for(uint32_t nCandidate = 0; nCandidate < nMaxTestCandidates && !fFound; ++nCandidate)
         {
             block.hashMerkleRoot = nCandidate;
             uint1024_t hashProof = block.ProofHash();

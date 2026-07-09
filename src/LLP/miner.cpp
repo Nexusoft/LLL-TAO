@@ -2379,7 +2379,7 @@ namespace LLP
          * Same-tip GET_BLOCK calls reuse the cached extra-nonce so
          * CachedMiningTemplateRequiresProducerFinalization() returns false and the
          * expensive CreateProducer() sigchain key operation is skipped. */
-        uint32_t extraNonce;
+        uint64_t extraNonce;
         {
             LOCK(MUTEX);
             const uint1024_t hashCurrentTip = TAO::Ledger::ChainState::hashBestChain.load();
@@ -2422,7 +2422,7 @@ namespace LLP
             {
                 /* Cache the prime-mod-satisfying nonce for this tip. */
                 LOCK(MUTEX);
-                extraNonce = static_cast<uint32_t>(nActualExtraNonce);
+                extraNonce = nActualExtraNonce;
                 m_nCachedExtraNonce = extraNonce;
                 break;
             }

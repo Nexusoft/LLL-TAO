@@ -43,6 +43,7 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 #include <chrono>
+#include <memory>
 #include <sstream>
 
 /* Global TAO namespace. */
@@ -302,10 +303,12 @@ namespace TAO::Ledger
             const uint32_t nPrimeBitMask = PrimeTemplateProofHashBitMask();
             const uint32_t nMaxPrimeAttempts = PrimeTemplateMaxGenerationAttempts();
             uint64_t nAttemptExtraNonce = nExtraNonce;
+            std::unique_ptr<TritiumBlock> pBlock(new TritiumBlock());
+
+            static constexpr uint32_t MAX_TIP_RACE_RETRIES = 5;
 
             for(uint32_t nPrimeAttempt = 1; nPrimeAttempt <= nMaxPrimeAttempts; ++nPrimeAttempt)
             {
-                TritiumBlock* pBlock = new TritiumBlock();
                 const auto tCreateStart = std::chrono::steady_clock::now();
 
                 // CreateBlock() handles wallet signing per consensus requirements
@@ -329,7 +332,6 @@ namespace TAO::Ledger
                  * livelock the miner out of ever publishing a fresh template.
                  * Retry immediately against the now-current tip instead, bounded
                  * so a persistently unstable tip still surfaces as a failure. */
-                static constexpr uint32_t MAX_TIP_RACE_RETRIES = 5;
                 bool success = false;
                 for(uint32_t nTipRaceAttempt = 0; nTipRaceAttempt <= MAX_TIP_RACE_RETRIES; ++nTipRaceAttempt)
                 {
@@ -377,7 +379,6 @@ namespace TAO::Ledger
 
                 if(!success)
                 {
-                    delete pBlock;
                     debug::error(FUNCTION, "CreateBlock failed");
                     return nullptr;
                 }
@@ -390,7 +391,6 @@ namespace TAO::Ledger
                 if(pBlock->hashMerkleRoot == 0)
                 {
                     debug::error(FUNCTION, "CreateBlock() produced invalid merkle root");
-                    delete pBlock;
                     return nullptr;
                 }
 
@@ -405,7 +405,7 @@ namespace TAO::Ledger
                     debug::log(2, FUNCTION, "  Note: PoW validation deferred until miner submits nonce");
                     debug::log(2, FUNCTION, "  Reward address: ", hashRewardAddress.SubString());
 
-                    return pBlock;
+                    return pBlock.release();
                 }
 
                 debug::log(1, FUNCTION, "[PRIME_TEMPLATE_RETRY] rejected template"
@@ -414,7 +414,6 @@ namespace TAO::Ledger
                            " extra_nonce=", nAttemptExtraNonce,
                            " proof=", pBlock->ProofHash().SubString(),
                            " reward=", hashRewardAddress.SubString());
-                delete pBlock;
                 ++nAttemptExtraNonce;
             }
 
