@@ -6,7 +6,7 @@
 
 ## Issue title
 
-Investigate universal short cooldown for stake block bursts to reduce orphan/stale-tip stalls
+Investigate 3-5 second cooldown for stake block bursts to reduce orphan/stale-tip stalls
 
 ## Problem statement
 
