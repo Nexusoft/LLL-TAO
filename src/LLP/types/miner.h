@@ -1059,18 +1059,6 @@ namespace LLP
         bool is_locked();
 
 
-        /** is_prime_mod
-         *
-         *  Helper function used for prime channel modification rule in loop.
-         *  Returns true if the condition is satisfied, false otherwise.
-         *
-         *  @param[in] nBitMask The bitMask for the highest order bits of a block hash to check for to satisfy rule.
-         *  @param[in] pBlock The block to check.
-         *
-         **/
-        bool is_prime_mod(uint32_t nBitMask, TAO::Ledger::Block *pBlock);
-
-
         /** handle_get_block_stateless
          *
          *  Stateless handler for GET_BLOCK - creates a block template and sends BLOCK_DATA.
