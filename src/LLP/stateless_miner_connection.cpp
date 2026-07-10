@@ -3531,8 +3531,6 @@ namespace LLP
             }
         }
 
-        /* Prime channel optimization */
-        const uint32_t nBitMask = TAO::Ledger::PrimeTemplateProofHashBitMask();
         TAO::Ledger::TritiumBlock* pBlock = nullptr;
 
         /* [Bug 2] Only increment the global nBlockIterator when the chain tip changes.
@@ -3560,9 +3558,13 @@ namespace LLP
             return nullptr;
         }
 
-        /* CreateBlockForStatelessMining() owns Prime ProofHash validity retries
-         * and refuses to return invalid Prime work. Keep this lane-level check as
-         * a defensive assertion before caching/sending the template. */
+        /* CreateBlockForStatelessMining() returns a structurally-complete,
+         * wallet-signed template. Real Prime PoW validity (chain length,
+         * fractional difficulty) can only be computed after the miner has
+         * searched a nonce and is enforced at submission time via
+         * TritiumBlock::Check(fForceProof) -> GetPrimeBits(fVerify); no
+         * additional pre-nonce gate is applied here (see stateless_block_utility.cpp
+         * for why a prior ProofHash() bit-range gate was removed). */
         LogNbTiming("nb_pre_createblock", hashReward.SubString());
         uint64_t nActualExtraNonce = extraNonce;
         pBlock = TAO::Ledger::CreateBlockForStatelessMining(
@@ -3584,15 +3586,6 @@ namespace LLP
             debug::log(3, FUNCTION, "[ASYNC_PUSH] discarded build: tip moved during construction",
                        " (expected=", hashExpectedTip.SubString(),
                        " current=", pBlock->hashPrevBlock.SubString(), ")");
-            delete pBlock;
-            return nullptr;
-        }
-
-        if(!is_prime_mod(nBitMask, pBlock))
-        {
-            debug::error(FUNCTION,
-                         "CreateBlockForStatelessMining returned invalid Prime template reason=",
-                         TAO::Ledger::PrimeTemplateProofHashInvalidReason(*pBlock, nBitMask));
             delete pBlock;
             return nullptr;
         }
@@ -4031,16 +4024,6 @@ namespace LLP
 
         /* If we get here, the block is null or doesn't exist. */
         return debug::error(FUNCTION, "null block");
-    }
-
-
-    /** Helper function used for prime channel modification rule in loop */
-    bool StatelessMinerConnection::is_prime_mod(uint32_t nBitMask, TAO::Ledger::Block *pBlock)
-    {
-        if(pBlock == nullptr)
-            return false;
-
-        return TAO::Ledger::PrimeTemplateProofHashValid(*pBlock, nBitMask);
     }
 
 

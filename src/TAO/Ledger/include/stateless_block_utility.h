@@ -195,37 +195,19 @@ namespace TAO
             uint64_t* pnActualExtraNonce = nullptr);
 
 
-        /** PrimeTemplateProofHashBitMask
-         *
-         *  Returns the configured high-bit mask for Prime template ProofHash
-         *  pre-screening.
-         *
-         **/
-        uint32_t PrimeTemplateProofHashBitMask();
-
-
-        /** PrimeTemplateProofHashValid
-         *
-         *  Shared node-side validity gate for Prime mining templates. Non-Prime
-         *  channels and pre-v5 blocks are always valid for this specific gate.
-         *
-         *  @param[in] block The block template to validate
-         *  @param[in] nBitMask The configured high-bit mask
-         *
-         *  @return true if this template may be served for mining
-         *
-         **/
-        bool PrimeTemplateProofHashValid(const TAO::Ledger::Block& block, const uint32_t nBitMask);
-
-
-        /** PrimeTemplateProofHashInvalidReason
-         *
-         *  Returns a concise diagnostic for a failed PrimeTemplateProofHashValid
-         *  check.
-         *
-         **/
-        std::string PrimeTemplateProofHashInvalidReason(const TAO::Ledger::Block& block, const uint32_t nBitMask);
-
+        /* [Removed] PrimeTemplateProofHashBitMask()/PrimeTemplateProofHashValid()/
+         * PrimeTemplateProofHashInvalidReason() used to pre-screen Prime mining
+         * templates by the high bit(s) of ProofHash() before serving them to a
+         * miner. That premise was invalid: ProofHash() (SK1024 over
+         * nVersion..nBits) is fixed before any nonce search happens and does not
+         * include nNonce, so its high bits have no bearing on whether a miner
+         * can find a valid prime chain from GetPrime() = ProofHash() + nNonce.
+         * The gate rejected an essentially random ~50% of templates by default
+         * (and ~99% under the removed -primemod flag), causing a "no valid
+         * template" livelock. See stateless_block_utility.cpp for the full
+         * explanation. Submission-time validation (TritiumBlock::Check() ->
+         * GetPrimeBits()) already enforces real prime validity; do not
+         * reintroduce a pre-nonce ProofHash() bit-range filter here. */
 
 
         /** ValidateMinedBlock
