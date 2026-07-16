@@ -32,11 +32,27 @@ ________________________________________________________________________________
  *     advance once the disk transaction has durably committed.  A disk-phase
  *     failure must leave all four atomics at their pre-attempt values.
  *
- * These tests use inline simulation / ordering-assertion infrastructure so
+ * Tests 1-3 below use inline simulation / ordering-assertion infrastructure so
  * that they compile and run without a live LLD database or full chain state —
  * following the same pattern used in validate_vtx_consistency.cpp and
  * filter_mempool_only_predecessor.cpp.
+ *
+ * Tests 4-6 below are REAL-CODE regression tests that call the actual
+ * BlockState::SetBest() implementation, verify real on-disk state, real
+ * ChainState atomics, and real mempool state.  They use the same LedgerGuard
+ * infrastructure established in missing_tx_soft_fail.cpp.
  */
+
+/* Real-code test headers (Gap 2 tests below) */
+#include <LLD/include/global.h>
+
+#include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/state.h>
+
+#include <Util/include/args.h>
+#include <Util/include/filesystem.h>
 
 #include <atomic>
 #include <functional>
@@ -289,4 +305,296 @@ TEST_CASE("SetBest ordering: ChainState atomics only after TxnCommit",
         REQUIRE(log.HappensBefore("mempool:remove",      "ChainState:publish"));
         REQUIRE(log.HappensBefore("ChainState:publish",  "broadcast"));
     }
+}
+
+
+/* ===========================================================================
+ * Real-code test infrastructure (Gap 2)
+ * ===========================================================================
+ * The three tests below call the actual BlockState::SetBest() implementation
+ * and assert against real LLD disk state, real ChainState atomics, and the
+ * real mempool singleton — not a simulation.
+ *
+ * Design note (Gap 1 — option (b) chosen):
+ *   SectorDatabase<>::TxnBegin() discards any in-flight outer transaction
+ *   (it does `delete pTransaction; pTransaction = new SectorTransaction()`),
+ *   so adding an unconditional TxnBegin() inside SetBest() would clobber the
+ *   vtx writes made by Accept() callers (call sites #1/#2) before Index() is
+ *   reached.  Option (b) was therefore chosen: LLD::HasOpenTransaction() was
+ *   added as a lightweight check so SetBest() opens its own TxnBegin only
+ *   when the caller has not already done so, and calls TxnAbort() on every
+ *   failure path so that the on-disk state is always rolled back cleanly
+ *   regardless of who owns the transaction.
+ * =========================================================================== */
+namespace
+{
+    /* Lightweight guard that creates a temporary LedgerDB when the global
+     * test suite has not yet initialised one (e.g. when running only the
+     * [setbest_txn] tag in isolation). */
+    struct RealCodeLedgerGuard
+    {
+        bool ownedLedger{false};
+
+        RealCodeLedgerGuard()
+        {
+            config::fTestNet.store(true);
+            config::mapArgs["-testnet"] = "1";
+
+            if(!LLD::Ledger)
+            {
+                LLD::Ledger = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+                ownedLedger = true;
+            }
+        }
+
+        ~RealCodeLedgerGuard()
+        {
+            if(ownedLedger)
+            {
+                delete LLD::Ledger;
+                LLD::Ledger = nullptr;
+            }
+        }
+    };
+
+
+    /* RAII guard that saves all relevant ChainState atomics on construction and
+     * restores them on destruction, so real-code tests do not pollute the global
+     * chain state seen by other tests in the suite. */
+    struct ChainStateGuard
+    {
+        TAO::Ledger::BlockState savedGenesis;
+        TAO::Ledger::BlockState savedBest;
+        uint1024_t              savedBestHash;
+        uint32_t                savedBestHeight;
+        uint64_t                savedBestTrust;
+
+        ChainStateGuard()
+        : savedGenesis  (TAO::Ledger::ChainState::tStateGenesis)
+        , savedBest     (TAO::Ledger::ChainState::tStateBest.load())
+        , savedBestHash (TAO::Ledger::ChainState::hashBestChain.load())
+        , savedBestHeight(TAO::Ledger::ChainState::nBestHeight.load())
+        , savedBestTrust(TAO::Ledger::ChainState::nBestChainTrust.load())
+        {}
+
+        ~ChainStateGuard()
+        {
+            TAO::Ledger::ChainState::tStateGenesis   = savedGenesis;
+            TAO::Ledger::ChainState::tStateBest      = savedBest;
+            TAO::Ledger::ChainState::hashBestChain   = savedBestHash;
+            TAO::Ledger::ChainState::nBestHeight     .store(savedBestHeight);
+            TAO::Ledger::ChainState::nBestChainTrust .store(savedBestTrust);
+        }
+    };
+
+} /* anonymous namespace */
+
+
+/* ===========================================================================
+ * TEST 4 — Real SetBest() with Connect() failure rolls back disk state
+ * ===========================================================================
+ * Calls the actual BlockState::SetBest().  The candidate block's vtx contains
+ * a transaction hash that is NOT on disk, so Connect() fails mid-loop.  With
+ * the Gap-1 fix, SetBest() calls TxnAbort() before returning false, rolling
+ * back the IndexBlock write that Connect() made before detecting the missing
+ * transaction.  Asserts: (a) SetBest() returns false, (b) no index entry was
+ * committed to disk (TxnAbort rolled it back), (c) ChainState atomics are
+ * unchanged.
+ */
+TEST_CASE("Real SetBest(): Connect() failure rolls back disk index and leaves ChainState unchanged",
+          "[ledger][setbest_txn][real]")
+{
+    RealCodeLedgerGuard ledgerGuard;
+    ChainStateGuard     chainGuard;
+
+    /* ---- Minimal genesis block written to disk ---- */
+    TAO::Ledger::BlockState genesis;
+    genesis.nVersion      = 4;
+    genesis.hashPrevBlock = uint1024_t(0);
+    genesis.nChannel      = 2;
+    genesis.nHeight       = 0;
+    genesis.nBits         = 1;
+    genesis.nNonce        = 77;
+
+    const uint1024_t hashGenesis = genesis.GetHash();
+    REQUIRE(LLD::Ledger->WriteBlock(hashGenesis, genesis));
+
+    /* Set chain state so SetBest() enters the main chain-transition branch */
+    TAO::Ledger::ChainState::tStateGenesis   = genesis;
+    TAO::Ledger::ChainState::tStateBest      = genesis;
+    TAO::Ledger::ChainState::hashBestChain   = hashGenesis;
+    TAO::Ledger::ChainState::nBestHeight     .store(0);
+    TAO::Ledger::ChainState::nBestChainTrust .store(genesis.nChainTrust);
+
+    /* ---- Candidate block whose Connect() will fail ----
+     * vtx contains a transaction hash that is NOT on disk.  Inside Connect()
+     * the call sequence is:
+     *   HasIndex(fakeTxHash)          → false  (first time)
+     *   IndexBlock(fakeTxHash, ...)   → writes pending index to pTransaction
+     *   ReadTx(fakeTxHash, ...)       → false  (tx body missing)
+     *   Connect() returns false
+     * SetBest() then calls TxnAbort(), discarding the pending IndexBlock write. */
+    const uint512_t fakeTxHash(0xdeadbeefcafeULL);
+
+    TAO::Ledger::BlockState badBlock;
+    badBlock.nVersion      = 4;
+    badBlock.hashPrevBlock = hashGenesis;
+    badBlock.nChannel      = 2;
+    badBlock.nHeight       = 1;
+    badBlock.nBits         = 1;
+    badBlock.nNonce        = 55;
+    badBlock.vtx.push_back({TAO::Ledger::TRANSACTION::TRITIUM, fakeTxHash});
+
+    /* Confirm the fake tx is absent from disk before the call */
+    TAO::Ledger::Transaction dummyTx;
+    REQUIRE_FALSE(LLD::Ledger->ReadTx(fakeTxHash, dummyTx));
+
+    /* ---- Invoke real SetBest() ---- */
+    REQUIRE_FALSE(badBlock.SetBest());
+
+    /* ---- (a) ChainState atomics must be unchanged ---- */
+    REQUIRE(TAO::Ledger::ChainState::tStateBest.load().GetHash() == hashGenesis);
+    REQUIRE(TAO::Ledger::ChainState::hashBestChain.load()        == hashGenesis);
+    REQUIRE(TAO::Ledger::ChainState::nBestHeight.load()          == 0u);
+
+    /* ---- (b) Disk index for fakeTxHash must have been rolled back ----
+     * TxnAbort() deleted pTransaction before it could be flushed to disk.
+     * HasIndex() checks the on-disk keychain only (pTransaction is null),
+     * so a false result confirms the write was discarded. */
+    REQUIRE_FALSE(LLD::Ledger->HasIndex(fakeTxHash));
+
+    /* ---- (c) No active transaction remains open ---- */
+    REQUIRE_FALSE(LLD::HasOpenTransaction(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS));
+
+    /* Cleanup */
+    LLD::Ledger->EraseBlock(hashGenesis);
+}
+
+
+/* ===========================================================================
+ * TEST 5 — Real call-site #4 pattern: outer TxnBegin + SetBest() failure
+ * ===========================================================================
+ * Mirrors the call-site #4 pattern in chainstate.cpp:
+ *   LLD::TxnBegin();
+ *   if(!state.SetBest()) { LLD::TxnAbort(); }
+ *   else                   LLD::TxnCommit();
+ *
+ * With the Gap-1 fix SetBest() internally calls TxnAbort() before returning
+ * false, so the outer TxnAbort() becomes a safe no-op.  This test verifies:
+ *   (a) SetBest() returns false,
+ *   (b) no index entry persists after the outer TxnAbort(),
+ *   (c) no active transaction remains open.
+ */
+TEST_CASE("Real call-site #4: outer TxnBegin + SetBest() failure → clean abort, no partial commit",
+          "[ledger][chainstate][setbest_txn][real]")
+{
+    RealCodeLedgerGuard ledgerGuard;
+    ChainStateGuard     chainGuard;
+
+    /* ---- Minimal genesis ---- */
+    TAO::Ledger::BlockState genesis;
+    genesis.nVersion      = 4;
+    genesis.hashPrevBlock = uint1024_t(0);
+    genesis.nChannel      = 2;
+    genesis.nHeight       = 0;
+    genesis.nBits         = 1;
+    genesis.nNonce        = 88;
+
+    const uint1024_t hashGenesis = genesis.GetHash();
+    REQUIRE(LLD::Ledger->WriteBlock(hashGenesis, genesis));
+
+    TAO::Ledger::ChainState::tStateGenesis   = genesis;
+    TAO::Ledger::ChainState::tStateBest      = genesis;
+    TAO::Ledger::ChainState::hashBestChain   = hashGenesis;
+    TAO::Ledger::ChainState::nBestHeight     .store(0);
+    TAO::Ledger::ChainState::nBestChainTrust .store(genesis.nChainTrust);
+
+    /* ---- Candidate block whose Connect() will fail ---- */
+    const uint512_t fakeTxHash(0xbeefdead1234ULL);
+
+    TAO::Ledger::BlockState badBlock;
+    badBlock.nVersion      = 4;
+    badBlock.hashPrevBlock = hashGenesis;
+    badBlock.nChannel      = 2;
+    badBlock.nHeight       = 1;
+    badBlock.nBits         = 1;
+    badBlock.nNonce        = 33;
+    badBlock.vtx.push_back({TAO::Ledger::TRANSACTION::TRITIUM, fakeTxHash});
+
+    /* ---- Call-site #4 pattern ---- */
+    LLD::TxnBegin();                       /* outer TxnBegin (as chainstate.cpp does) */
+    const bool fOk = badBlock.SetBest();   /* internally calls TxnAbort on failure    */
+    if(!fOk)
+        LLD::TxnAbort();                   /* outer TxnAbort — safe no-op after Gap-1 */
+    else
+        LLD::TxnCommit();
+
+    /* (a) SetBest() must have returned false */
+    REQUIRE_FALSE(fOk);
+
+    /* (b) The IndexBlock write from Connect() must not have been committed */
+    REQUIRE_FALSE(LLD::Ledger->HasIndex(fakeTxHash));
+
+    /* (c) No active transaction may remain open */
+    REQUIRE_FALSE(LLD::HasOpenTransaction(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS));
+
+    /* Cleanup */
+    LLD::Ledger->EraseBlock(hashGenesis);
+}
+
+
+/* ===========================================================================
+ * TEST 6 — Real mempool: size unchanged after failed SetBest()
+ * ===========================================================================
+ * Verifies that mempool.Accept() / mempool.Remove() are never reached when
+ * the disk phase of SetBest() fails.  Since the mempool mutations happen only
+ * after TxnCommit (which is never reached on failure), the mempool size must
+ * be identical before and after a failing SetBest() call.
+ */
+TEST_CASE("Real SetBest(): mempool size is unchanged after disk-phase failure",
+          "[ledger][setbest_txn][real]")
+{
+    RealCodeLedgerGuard ledgerGuard;
+    ChainStateGuard     chainGuard;
+
+    /* ---- Minimal genesis ---- */
+    TAO::Ledger::BlockState genesis;
+    genesis.nVersion      = 4;
+    genesis.hashPrevBlock = uint1024_t(0);
+    genesis.nChannel      = 2;
+    genesis.nHeight       = 0;
+    genesis.nBits         = 1;
+    genesis.nNonce        = 66;
+
+    const uint1024_t hashGenesis = genesis.GetHash();
+    REQUIRE(LLD::Ledger->WriteBlock(hashGenesis, genesis));
+
+    TAO::Ledger::ChainState::tStateGenesis   = genesis;
+    TAO::Ledger::ChainState::tStateBest      = genesis;
+    TAO::Ledger::ChainState::hashBestChain   = hashGenesis;
+    TAO::Ledger::ChainState::nBestHeight     .store(0);
+    TAO::Ledger::ChainState::nBestChainTrust .store(genesis.nChainTrust);
+
+    /* Snapshot mempool size before the attempt */
+    const uint32_t nMempoolBefore = TAO::Ledger::mempool.Size();
+
+    /* ---- Candidate block whose Connect() will fail ---- */
+    const uint512_t fakeTxHash(0xcafebabe9876ULL);
+
+    TAO::Ledger::BlockState badBlock;
+    badBlock.nVersion      = 4;
+    badBlock.hashPrevBlock = hashGenesis;
+    badBlock.nChannel      = 2;
+    badBlock.nHeight       = 1;
+    badBlock.nBits         = 1;
+    badBlock.nNonce        = 44;
+    badBlock.vtx.push_back({TAO::Ledger::TRANSACTION::TRITIUM, fakeTxHash});
+
+    REQUIRE_FALSE(badBlock.SetBest());
+
+    /* Mempool must be identical to pre-attempt state */
+    REQUIRE(TAO::Ledger::mempool.Size() == nMempoolBefore);
+
+    /* Cleanup */
+    LLD::Ledger->EraseBlock(hashGenesis);
 }

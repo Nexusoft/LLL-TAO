@@ -629,6 +629,16 @@ namespace LLD
     }
 
 
+    /*  Check if a physical database transaction is currently open. */
+    template<class KeychainType, class CacheType>
+    bool SectorDatabase<KeychainType, CacheType>::HasTransaction()
+    {
+        LOCK(TRANSACTION_MUTEX);
+
+        return (pTransaction != nullptr);
+    }
+
+
     /*  Start a database transaction. */
     template<class KeychainType, class CacheType>
     void SectorDatabase<KeychainType, CacheType>::TxnBegin()

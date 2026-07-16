@@ -93,6 +93,16 @@ namespace LLD
     void TxnRecovery();
 
 
+    /** HasOpenTransaction
+     *
+     *  Check if a physical database transaction is currently open on any
+     *  instance that would be touched by TxnBegin(nFlags, nInstances).
+     *  Returns false for memory-only flag modes (MEMPOOL, MINER, SANITIZE).
+     *
+     */
+    bool HasOpenTransaction(const uint8_t nFlags = 0, const uint16_t nInstances = INSTANCES::CONSENSUS);
+
+
     /** Txn Begin
      *
      *  Global handler for all LLD instances.

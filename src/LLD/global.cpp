@@ -277,6 +277,30 @@ namespace LLD
 
 
     /* Global handler for all LLD instances. */
+    bool HasOpenTransaction(const uint8_t nFlags, const uint16_t nInstances)
+    {
+        /* Memory-only flag modes do not use physical SectorDatabase transactions. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER || nFlags == TAO::Ledger::FLAGS::SANITIZE)
+            return false;
+
+        /* Check each database instance that would be opened by TxnBegin(nFlags, nInstances).
+         * Any single instance having pTransaction != nullptr means a transaction is open. */
+        if(Ledger   && (nInstances & INSTANCES::LEDGER)   && Ledger->HasTransaction())
+            return true;
+        if(Contract && (nInstances & INSTANCES::CONTRACT) && Contract->HasTransaction())
+            return true;
+        if(Register && (nInstances & INSTANCES::REGISTER) && Register->HasTransaction())
+            return true;
+        if(Trust    && (nInstances & INSTANCES::TRUST)    && Trust->HasTransaction())
+            return true;
+        if(Legacy   && (nInstances & INSTANCES::LEGACY)   && Legacy->HasTransaction())
+            return true;
+
+        return false;
+    }
+
+
+    /* Global handler for all LLD instances. */
     void TxnBegin(const uint8_t nFlags, const uint16_t nInstances)
     {
         /* Start the contract DB transaction. */
