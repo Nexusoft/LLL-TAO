@@ -1,0 +1,56 @@
+Block primitive values
+Prime Calculation - Nonce Endianness (PR #128)
+Channel Height Tracking Tests
+Block Template Creation - Unified Height Integration
+CreateTransaction hashLast tracks mempool winner
+CreateTransaction hashLast uses ledger when no mempool
+CreateTransaction mempool does not override higher-sequence sessions tx
+CreateTransaction produces zero hashLast for genesis transaction
+CreateTransaction Fix 1: mempool genesis accepted when txPrev unset
+CreateTransaction Fix 2: disk always checked even when mempool present
+Stake: mempool genesis (seq=0) is accepted when txPrev unset
+Stake: disk override when mempool stale (Fix 2 — no else if)
+Stake: mempool wins over sessions and disk with higher seq
+Stake: disk-only fallback for restart scenario
+Stake: genesis path when no prior tx exists
+Stake: hashLast and txPrev always from same source
+Stake: sessions wins when it has highest sequence
+Stake: autocreate bootstrap — mempool genesis only
+Stake: same sequence in mempool and disk — mempool wins
+ValidateVtxSigchainConsistency: mempool-only predecessor passes with MEMPOOL
+flag
+ValidateVtxSigchainConsistency: disk predecessor accepted by both modes
+ValidateVtxSigchainConsistency: genuinely stale vtx rejected by both modes
+ValidateVtxSigchainConsistency: in-flight mapLast tracks same-genesis chain
+ValidateVtxSigchainConsistency: in-flight mapLast catches stale second vtx
+ValidateVtxSigchainConsistency: IsFirst tx skips sequence check
+ValidateVtxSigchainConsistency: cross-genesis entries are independent
+ValidateVtxSigchainConsistency: missing genesis in ReadLast skips entry
+AcceptMinedBlock post-validation guard rejects stale tip-race submissions
+Shared SUBMIT_BLOCK staleness helper reports hashPrevBlock mismatch
+Missing transactions yield a soft INCOMPLETE, never a REJECT
+Missing-transaction retry counter clears on successful ACCEPT
+mapLastMissing is bounded at MAX_MISSING_MAP_ENTRIES
+Orphan-drain missing tx sets hashMissing to orphan's own hash
+Persisted orphan is removed while draining
+Block orphan pool retains siblings and suppresses exact duplicates
+Block orphan pool FIFO eviction keeps indexes consistent
+Orphan drain handles trees, invalid subtrees, and incomplete siblings
+Disk-known block is not requeued as an orphan
+Unified fork scoring is shared by candidate activation
+Prime Tests
+Force-proof: fVerify=true rejects non-prime cluster the sync fast-path
+accepted
+Transaction::operator>
+Transaction::operator<
+Signature Chain Generation
+Trust Score Tests
+Stake Metrics Tests
+Coinstake Reward Tests
+Threshold Tests
+Mining template cache singleflight coalesces same reward
+Mining template cache singleflight owner abandonment unblocks waiters
+Mining template cache singleflight timeout fallback
+Mining template cache singleflight timeout retry may become new owner
+Mining template cache singleflight isolates different rewards
+53 matching test cases
