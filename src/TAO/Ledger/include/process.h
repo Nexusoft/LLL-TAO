@@ -20,11 +20,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/block.h>
 
 #include <map>
-#include <list>
 #include <mutex>
 #include <memory>
-#include <set>
-#include <vector>
 
 namespace LLP { class TritiumNode; }
 
@@ -53,38 +50,8 @@ namespace TAO
         }
 
 
-        /** Maximum number of block orphans retained globally. **/
-        static const uint64_t MAX_BLOCK_ORPHANS = 10000;
-
-
-        /** OrphanPool
-         *
-         *  Bounded block-orphan graph indexed by both the orphan's own hash and
-         *  its parent hash. Callers serialize access with PROCESSING_MUTEX.
-         *
-         **/
-        class OrphanPool
-        {
-            std::map<uint1024_t, std::unique_ptr<TAO::Ledger::Block>> mapByHash;
-            std::map<uint1024_t, std::set<uint1024_t>> mapByParent;
-            std::list<uint1024_t> listInsertionOrder;
-            std::map<uint1024_t, std::list<uint1024_t>::iterator> mapInsertion;
-
-        public:
-            bool Insert(const TAO::Ledger::Block& block, uint1024_t* pHashEvicted = nullptr);
-            bool Contains(const uint1024_t& hashBlock) const;
-            const TAO::Ledger::Block* Get(const uint1024_t& hashBlock) const;
-            std::vector<uint1024_t> Children(const uint1024_t& hashParent) const;
-            bool Remove(const uint1024_t& hashBlock);
-            uint64_t RemoveSubtree(const uint1024_t& hashRoot);
-            void Clear();
-            uint64_t Size() const;
-            bool Empty() const;
-        };
-
-
-        /** Static instantiation of the block orphan pool. **/
-        extern OrphanPool mapOrphans;
+        /** Static instantiation of orphan blocks in queue to process. **/
+        extern std::map<uint1024_t, std::unique_ptr<TAO::Ledger::Block>> mapOrphans;
 
 
         /** Track the times we have requested missing transactions for a block so
@@ -226,26 +193,15 @@ namespace TAO
 
         /** AttemptPeerBestChainRecovery
          *
-         *  Recovery for cases where peers advertise a different known best hash.
-         *  The advertised height is diagnostic only; activation requires a
-         *  complete, fully checked, strictly heavier candidate branch.
+         *  Bounded ancestry-based recovery for cases where peers advertise a
+         *  different known best hash.  If the advertised branch is better than
+         *  our current best and the disconnect depth is within the auto-recovery
+         *  cap, forces the normal SetBest() path.
          *
          **/
         bool AttemptPeerBestChainRecovery(const uint1024_t& hashPeerBest,
                                           uint32_t nPeerHeight,
                                           const char* pszSource = nullptr);
-
-
-        /** ActivateCandidateBestChain
-         *
-         *  Validates a complete, strictly heavier candidate path and activates
-         *  it through SetBest(). The transactional form is used by peer recovery;
-         *  normal block acceptance already owns a ledger transaction.
-         *
-         **/
-        bool ActivateCandidateBestChain(const TAO::Ledger::BlockState& stateCandidate,
-                                        const char* pszSource,
-                                        bool fTransaction);
 
     }
 }

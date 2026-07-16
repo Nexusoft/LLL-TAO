@@ -2907,7 +2907,7 @@ namespace LLP
                         LOCK(TAO::Ledger::PROCESSING_MUTEX);
 
                         /* Clear the memory to prevent DoS attacks. */
-                        TAO::Ledger::mapOrphans.Clear();
+                        TAO::Ledger::mapOrphans.clear();
                     }
 
                     /* Switch to another available node. */

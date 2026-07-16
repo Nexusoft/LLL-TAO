@@ -763,21 +763,84 @@ namespace TAO
                 /* Check if our conflict chain needs to be evicted. */
                 if(vtx[0].hashPrevTx != hashLastDisk)
                 {
+                    /* [Option B - EXPERIMENTAL] Count consecutive reconciliation
+                     * cycles where this genesis's conflict didn't resolve against
+                     * disk. A transient reorg/mempool race clears on its own
+                     * within a handful of cycles; a structurally diverged
+                     * sigchain will keep failing here indefinitely (this is the
+                     * "stuck loop" scenario), so once the miss count crosses the
+                     * threshold we attempt a bounded, computed automatic
+                     * rollback instead of leaving the conflict stranded forever
+                     * or requiring a manual -revertblocks restart. */
                     const uint256_t& hashGenesis = rTransaction.first;
-                    const ForkDivergenceInfo tInfo =
-                        ComputeForkDivergence(hashGenesis, vtx[0].hashPrevTx);
-                    if(tInfo.fAncestorFound && tInfo.fAncestorOnMainChain)
+                    uint32_t nMisses = ++mapGenesisConflictMisses[hashGenesis];
+
+                    if(nMisses >= GENESIS_CONFLICT_RECOVERY_THRESHOLD)
                     {
-                        debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW,
-                            "FORK CONFLICT DIAGNOSTIC:", ANSI_COLOR_RESET,
-                            " genesis=", hashGenesis.SubString(),
-                            " divergence_depth=", tInfo.nDepth,
-                            " ancestor=", tInfo.hashAncestorBlock.SubString(),
-                            " action=none (mempool cannot change best chain)");
+                        if(config::GetBoolArg("-autoforkrecovery", false))
+                        {
+                            AttemptForkRecovery(hashGenesis, vtx[0].hashPrevTx);
+
+                            /* Reset the miss counter regardless of outcome: either the
+                             * rollback succeeded (so we should start counting fresh
+                             * against the new tip) or it was refused/failed (in which
+                             * case the cooldown below prevents us from retrying every
+                             * single cycle). */
+                            mapGenesisConflictMisses.erase(hashGenesis);
+                        }
+                        else
+                        {
+                            /* [B2] -autoforkrecovery has been explicitly disabled by
+                             * the operator (and is disabled by default), so no rollback
+                             * will be attempted automatically. Rather than silently
+                             * leaving the operator to notice a stuck ORPHAN/CONFLICT
+                             * loop and guess a -revertblocks depth, surface a clear,
+                             * actionable warning -- including the exact computed
+                             * divergence depth, reusing the same read-only lookup
+                             * AttemptForkRecovery() would use -- on the same cooldown
+                             * cadence a real attempt would use, so this doesn't spam
+                             * the log every Check() cycle. */
+                            const uint64_t nNow = runtime::timestamp();
+                            const auto itWarned = mapLastForkRecoveryAttempt.find(hashGenesis);
+                            if(itWarned == mapLastForkRecoveryAttempt.end()
+                            || (nNow - itWarned->second) >= GENESIS_CONFLICT_RECOVERY_COOLDOWN_SECONDS)
+                            {
+                                mapLastForkRecoveryAttempt[hashGenesis] = nNow;
+
+                                const ForkDivergenceInfo tInfo = ComputeForkDivergence(hashGenesis, vtx[0].hashPrevTx);
+                                if(tInfo.fAncestorFound && tInfo.fAncestorOnMainChain)
+                                {
+                                    const std::string strAdvice = tInfo.fExceedsCap
+                                        ? debug::safe_printstr("This exceeds MAX_AUTO_FORK_RECOVERY_DEPTH=",
+                                            MAX_AUTO_FORK_RECOVERY_DEPTH, "; manual -revertblocks=", tInfo.nDepth,
+                                            " review required.")
+                                        : debug::safe_printstr("Enable -autoforkrecovery to have this resolved",
+                                            " automatically, or manually run with -revertblocks=", tInfo.nDepth, ".");
+
+                                    const std::string strSummary = debug::safe_printstr(
+                                        "genesis ", hashGenesis.SubString(), " has not resolved against disk for ",
+                                        nMisses, " consecutive Check() cycles. Computed divergence depth is ",
+                                        tInfo.nDepth, " blocks (ancestor ", tInfo.hashAncestorBlock.SubString(),
+                                        " at height ", tInfo.nAncestorHeight, "). ", strAdvice);
+
+                                    debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "STUCK FORK CONFLICT:",
+                                        ANSI_COLOR_RESET, " ", strSummary);
+                                }
+                                else
+                                {
+                                    const std::string strReason = tInfo.strError.empty()
+                                        ? std::string(".")
+                                        : debug::safe_printstr(": ", tInfo.strError);
+
+                                    debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "STUCK FORK CONFLICT:",
+                                        ANSI_COLOR_RESET, " genesis ", hashGenesis.SubString(),
+                                        " has not resolved against disk for ", nMisses,
+                                        " consecutive Check() cycles, but the divergence depth could not be computed",
+                                        strReason);
+                                }
+                            }
+                        }
                     }
-                    else
-                        debug::warning(FUNCTION, "fork conflict diagnostic unavailable for genesis=",
-                            hashGenesis.SubString(), " reason=", tInfo.strError);
 
                     /* Loop through our transactions and remove them. */
                     for(const auto& tx : vtx)
@@ -796,6 +859,10 @@ namespace TAO
                  * re-connected, and moved back into mapLedger. */
                 else
                 {
+                    /* The genesis's conflict resolved against disk this cycle
+                     * (or never triggered), so drop any stale miss counter. */
+                    mapGenesisConflictMisses.erase(rTransaction.first);
+
                     /* Loop through our transactions in sequence order. */
                     for(const auto& tx : vtx)
                     {
@@ -816,8 +883,13 @@ namespace TAO
         }
 
 
-        /* Read-only computation of how far the best chain has diverged from a
-         * genesis's on-disk expected predecessor transaction. */
+        /* [C1] Read-only computation of how far the best chain has diverged
+         * from a genesis's on-disk expected predecessor transaction. No side
+         * effects: does not touch cooldown/miss-counter state and performs no
+         * rollback. Shared by AttemptForkRecovery() (which adds the
+         * cooldown/threshold/rollback side effects on top) and by diagnostic
+         * callers (e.g. the checkforkrecovery RPC, or the B2 warning log)
+         * that only want to know the answer without acting on it. */
         ForkDivergenceInfo Mempool::ComputeForkDivergence(const uint256_t& hashGenesis, const uint512_t& hashPrevTx)
         {
             ForkDivergenceInfo tInfo;
@@ -872,6 +944,7 @@ namespace TAO
             }
 
             tInfo.nDepth = tInfo.nBestHeight - tInfo.nAncestorHeight;
+            tInfo.fExceedsCap = (tInfo.nDepth > MAX_AUTO_FORK_RECOVERY_DEPTH);
 
             return tInfo;
         }
@@ -903,6 +976,125 @@ namespace TAO
 
             return ComputeForkDivergence(hashGenesis, vtx[0].hashPrevTx);
         }
+
+
+        /* [Option B - EXPERIMENTAL] Attempt an automatic, bounded rollback of the
+         * best chain to resolve a sigchain conflict that Check()'s normal disk
+         * reconciliation pass cannot resolve on its own. Opt-in via
+         * -autoforkrecovery (disabled by default). */
+        bool Mempool::AttemptForkRecovery(const uint256_t& hashGenesis, const uint512_t& hashPrevTx)
+        {
+            /* [B4] Enforce a cooldown regardless of outcome (including refused
+             * or failed attempts, not just successful rollbacks) so a sigchain
+             * that keeps conflicting can't re-trigger a rollback attempt on
+             * almost every Check() cycle. This is intentionally set up-front
+             * rather than only after a successful SetBest(), so that a refused
+             * attempt (e.g. ancestor not yet found on disk) also backs off for
+             * the same cooldown window instead of retrying immediately once the
+             * miss counter crosses the threshold again. */
+            const uint64_t nNow = runtime::timestamp();
+            const auto itCooldown = mapLastForkRecoveryAttempt.find(hashGenesis);
+            if(itCooldown != mapLastForkRecoveryAttempt.end()
+            && (nNow - itCooldown->second) < GENESIS_CONFLICT_RECOVERY_COOLDOWN_SECONDS)
+                return false;
+
+            mapLastForkRecoveryAttempt[hashGenesis] = nNow;
+
+            /* [C1] Reuse the shared, side-effect-free divergence computation
+             * rather than duplicating the ancestor lookup here. */
+            const ForkDivergenceInfo tInfo = ComputeForkDivergence(hashGenesis, hashPrevTx);
+
+            /* If disk has already caught up with what the conflicting
+             * transaction expects, the conflict resolved on its own between the
+             * threshold being reached and this call running; nothing to do.
+             * Checked first since ComputeForkDivergence() returns early in this
+             * case without attempting the ancestor lookup below. */
+            if(tInfo.fResolved)
+            {
+                debug::log(0, FUNCTION, "genesis ", hashGenesis.SubString(),
+                    " conflict already resolved against disk; skipping rollback");
+
+                return false;
+            }
+
+            /* The ancestor lookup itself failed (no committed last tx on disk,
+             * or the conflicting predecessor isn't found on disk at all) --
+             * refuse rather than guessing a rollback target. */
+            if(!tInfo.fAncestorFound)
+                return debug::error(FUNCTION, "genesis ", hashGenesis.SubString(), " ", tInfo.strError,
+                    "; cannot compute rollback target");
+
+            /* Refuse to roll back to a block that isn't part of our current
+             * best chain (e.g. a stale reference from an already-orphaned
+             * branch); there is nothing meaningful to recover to in that case. */
+            if(!tInfo.fAncestorOnMainChain)
+            {
+                debug::warning(FUNCTION, "genesis ", hashGenesis.SubString(), " ", tInfo.strError, "; refusing rollback");
+
+                return false;
+            }
+
+            if(tInfo.nDepth == 0)
+            {
+                debug::log(0, FUNCTION, "genesis ", hashGenesis.SubString(), " ancestor already best; nothing to roll back");
+
+                return false;
+            }
+
+            /* [A3] Bound the rollback depth as a hard safety limit: even a
+             * correctly computed ancestor is refused if it is deeper than we
+             * consider reasonable for an automatic, unattended recovery.
+             * Surface the exact computed depth prominently so an operator
+             * reading the log can pass an informed -revertblocks=N instead of
+             * guessing, rather than only learning the cap was hit. */
+            if(tInfo.fExceedsCap)
+            {
+                const std::string strSummary = debug::safe_printstr(
+                    "genesis ", hashGenesis.SubString(), " computed divergence depth is ", tInfo.nDepth,
+                    " blocks (ancestor ", tInfo.hashAncestorBlock.SubString(), " at height ", tInfo.nAncestorHeight,
+                    "), which exceeds MAX_AUTO_FORK_RECOVERY_DEPTH=", MAX_AUTO_FORK_RECOVERY_DEPTH,
+                    "; refusing automatic rollback. Manual review recommended: -revertblocks=", tInfo.nDepth);
+
+                debug::error(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "FORK RECOVERY DEPTH EXCEEDED:", ANSI_COLOR_RESET,
+                    " ", strSummary);
+
+                return false;
+            }
+
+            /* Locate the block that committed our own conflicting last
+             * transaction, purely for logging / diagnostic context. */
+            TAO::Ledger::BlockState stateOurs;
+            const bool fFoundOurs = LLD::Ledger->ReadBlock(tInfo.hashOurLast, stateOurs);
+
+            /* Reuse the ancestor block state cached by ComputeForkDivergence()
+             * rather than re-reading it from disk. */
+            TAO::Ledger::BlockState stateAncestor = tInfo.stateAncestor;
+
+            /* Perform the bounded rollback, reusing the same tested SetBest()
+             * reorg machinery -revertblocks / -forkblocks already rely on
+             * (disconnect/connect, mempool resurrection, checkpoint handling)
+             * rather than duplicating any of that logic here. */
+            debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "AUTOMATIC FORK RECOVERY:", ANSI_COLOR_RESET,
+                " genesis ", hashGenesis.SubString(), " rolling back ", tInfo.nDepth, " blocks from height ", tInfo.nBestHeight,
+                " to height ", tInfo.nAncestorHeight, " (", tInfo.hashAncestorBlock.SubString(), ")",
+                fFoundOurs
+                    ? debug::safe_printstr(" our conflicting tx was committed at height ", stateOurs.nHeight)
+                    : std::string(" (our conflicting tx height unknown)"));
+
+            LLD::TxnBegin();
+            if(!stateAncestor.SetBest())
+            {
+                LLD::TxnAbort();
+
+                return debug::error(FUNCTION, "failed to roll back to ancestor ", stateAncestor.GetHash().SubString());
+            }
+            LLD::TxnCommit();
+
+            debug::warning(FUNCTION, "AUTOMATIC FORK RECOVERY complete for genesis ", hashGenesis.SubString());
+
+            return true;
+        }
+
 
         /* List transactions in memory pool. */
         bool Mempool::List(std::vector<uint512_t> &vHashes, uint32_t nCount, bool fLegacy)
