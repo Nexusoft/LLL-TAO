@@ -113,8 +113,11 @@ namespace LLD
      *
      *  Global handler for all LLD instances.
      *
+     *  @return true if every selected per-DB commit succeeded, false if any failed.
+     *          All selected instances are attempted regardless of individual failures.
+     *
      */
-    void TxnCommit(const uint8_t nFlags = 0, const uint16_t nInstances = INSTANCES::CONSENSUS);
+    bool TxnCommit(const uint8_t nFlags = 0, const uint16_t nInstances = INSTANCES::CONSENSUS);
 }
 
 #endif

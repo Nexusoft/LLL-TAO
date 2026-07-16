@@ -485,7 +485,10 @@ namespace TAO
             }
 
             if(fTransaction)
-                LLD::TxnCommit(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
+            {
+                if(!LLD::TxnCommit(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS))
+                    return debug::error(FUNCTION, "disk transaction commit failed for candidate activation");
+            }
 
             debug::log(0, FUNCTION, "activated validated candidate source=",
                 (pszSource ? pszSource : "ledger"),

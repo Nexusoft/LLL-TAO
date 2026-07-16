@@ -1101,7 +1101,8 @@ namespace TAO
                  * TxnCommit therefore atomically commits those vtx writes together with the full
                  * disconnect/connect transition.  The caller's subsequent TxnCommit call is a
                  * harmless no-op (pTransaction is null once committed). */
-                LLD::TxnCommit(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
+                if(!LLD::TxnCommit(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS))
+                    return debug::error(FUNCTION, "disk transaction commit failed; aborting chain transition");
 
                 /* -- POST-COMMIT: mempool mutations (safe now that disk is durable) -- */
 
