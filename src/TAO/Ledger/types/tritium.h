@@ -180,6 +180,17 @@ namespace TAO
             bool Check(bool fForceProof = false) const override;
 
 
+            /** CheckStored
+             *
+             *  Check a tritium block reconstructed from persisted block state.
+             *  Unlike Check(), this permits the block itself to exist and resolves
+             *  referenced transactions from the block database rather than the
+             *  transient mempool.
+             *
+             **/
+            bool CheckStored(bool fForceProof = false) const;
+
+
             /** Accept
              *
              *  Accept a tritium block with chain state parameters.
@@ -236,6 +247,11 @@ namespace TAO
              **/
             std::string ToString() const override;
 
+
+        private:
+
+            /** Shared implementation for incoming and persisted validation. **/
+            bool CheckInternal(bool fForceProof, bool fStored) const;
 
         };
     }

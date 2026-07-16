@@ -325,8 +325,22 @@ namespace TAO
         /* Checks if a block is valid if not connected to chain. */
         bool TritiumBlock::Check(bool fForceProof) const
         {
+            return CheckInternal(fForceProof, false);
+        }
+
+
+        /* Checks a block reconstructed from persisted block state. */
+        bool TritiumBlock::CheckStored(bool fForceProof) const
+        {
+            return CheckInternal(fForceProof, true);
+        }
+
+
+        /* Shared validation for incoming and persisted blocks. */
+        bool TritiumBlock::CheckInternal(bool fForceProof, bool fStored) const
+        {
             /* Read ledger DB for duplicate block. */
-            if(LLD::Ledger->HasBlock(GetHash()))
+            if(!fStored && LLD::Ledger->HasBlock(GetHash()))
                 return false;
 
             /* Check the Size limits of the Current Block. */
@@ -503,7 +517,8 @@ namespace TAO
 
                     /* Check the memory pool. */
                     Legacy::Transaction tx;
-                    if(!LLD::Legacy->ReadTx(vtx[i].second, tx, fHasConflict, FLAGS::MEMPOOL))
+                    if(!LLD::Legacy->ReadTx(vtx[i].second, tx, fHasConflict,
+                        fStored ? FLAGS::BLOCK : FLAGS::MEMPOOL))
                     {
                         vMissing.push_back(vtx[i]);
                         continue;
@@ -538,7 +553,8 @@ namespace TAO
 
                     /* Check the memory pool. */
                     TAO::Ledger::Transaction tx;
-                    if(!LLD::Ledger->ReadTx(vtx[i].second, tx, fHasConflict, FLAGS::MEMPOOL))
+                    if(!LLD::Ledger->ReadTx(vtx[i].second, tx, fHasConflict,
+                        fStored ? FLAGS::BLOCK : FLAGS::MEMPOOL))
                     {
                         vMissing.push_back(vtx[i]);
                         continue;

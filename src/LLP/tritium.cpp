@@ -2494,22 +2494,6 @@ namespace LLP
                             /* Keep track of current checkpoint. */
                             ssPacket >> hashBestChain;
 
-                            /* Check if is sync node. */
-                            if(TAO::Ledger::nSyncSession.load() != 0
-                            && nCurrentSession == TAO::Ledger::nSyncSession.load()
-                            && LLD::Ledger->HasBlock(hashBestChain))
-                            {
-                                /* Set state to synchronized. */
-                                fSynchronized.store(true);
-                                TAO::Ledger::nSyncSession.store(0);
-
-                                /* Unsubcribe from last. */
-                                Unsubscribe(SUBSCRIPTION::LASTINDEX);
-
-                                /* Log that sync is complete. */
-                                debug::log(0, NODE, "ACTION::NOTIFY: Synchronization COMPLETE at ", hashBestChain.SubString());
-                            }
-
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::NOTIFY: BESTCHAIN ", hashBestChain.SubString());
 
@@ -2522,16 +2506,26 @@ namespace LLP
                             if(hashBestChain != 0
                             && hashBestChain != TAO::Ledger::ChainState::hashBestChain.load())
                             {
-                                if(LLD::Ledger->HasBlock(hashBestChain))
+                                const bool fKnownBest = LLD::Ledger->HasBlock(hashBestChain);
+                                bool fRecovered = false;
+                                if(fKnownBest)
                                 {
-                                    TAO::Ledger::AttemptPeerBestChainRecovery(
+                                    fRecovered = TAO::Ledger::AttemptPeerBestChainRecovery(
                                         hashBestChain, nCurrentHeight, NODE.c_str());
                                 }
-                                else if(nCurrentHeight >= TAO::Ledger::ChainState::nBestHeight.load())
+
+                                /* A known hash is not sufficient for synchronization:
+                                 * it may be a stored side branch that failed activation.
+                                 * Keep requesting the advertised branch until recovery
+                                 * succeeds and the local best-chain pointer matches. */
+                                if(!fRecovered
+                                && !TAO::Ledger::IsBestChainSynchronized(hashBestChain)
+                                && nCurrentHeight >= TAO::Ledger::ChainState::nBestHeight.load())
                                 {
                                     debug::log(1, NODE,
-                                        "ACTION::NOTIFY: BESTCHAIN differs and is unknown; requesting branch ",
+                                        "ACTION::NOTIFY: BESTCHAIN differs; requesting branch ",
                                         hashBestChain.SubString(),
+                                        " known=", (fKnownBest ? "yes" : "no"),
                                         " peer_height=", nCurrentHeight,
                                         " local_height=", TAO::Ledger::ChainState::nBestHeight.load());
 
@@ -2542,6 +2536,24 @@ namespace LLP
                                         uint1024_t(hashBestChain)
                                     );
                                 }
+                            }
+
+                            /* A sync peer is complete only when its advertised best
+                             * hash is the active local best, not merely present on
+                             * disk as a side-branch block. */
+                            if(TAO::Ledger::nSyncSession.load() != 0
+                            && nCurrentSession == TAO::Ledger::nSyncSession.load()
+                            && TAO::Ledger::IsBestChainSynchronized(hashBestChain))
+                            {
+                                /* Set state to synchronized. */
+                                fSynchronized.store(true);
+                                TAO::Ledger::nSyncSession.store(0);
+
+                                /* Unsubcribe from last. */
+                                Unsubscribe(SUBSCRIPTION::LASTINDEX);
+
+                                /* Log that sync is complete. */
+                                debug::log(0, NODE, "ACTION::NOTIFY: Synchronization COMPLETE at ", hashBestChain.SubString());
                             }
 
                             break;

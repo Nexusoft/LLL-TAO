@@ -320,7 +320,7 @@ namespace TAO
                     FLAGS::BLOCK))
                     return false;
 
-                return block.Check(true) && block.vMissing.empty()
+                return block.CheckStored(true) && block.vMissing.empty()
                     && !block.fConflicted;
             }
         }
@@ -546,6 +546,13 @@ namespace TAO
                 " templates=flushed");
 
             return true;
+        }
+
+
+        bool IsBestChainSynchronized(const uint1024_t& hashPeerBest)
+        {
+            return hashPeerBest != 0
+                && hashPeerBest == ChainState::hashBestChain.load();
         }
 
 

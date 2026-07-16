@@ -236,6 +236,15 @@ namespace TAO
                                           const char* pszSource = nullptr);
 
 
+        /** IsBestChainSynchronized
+         *
+         *  Returns true only when the advertised peer best is the active local
+         *  best-chain hash. Merely having the block on disk is insufficient.
+         *
+         **/
+        bool IsBestChainSynchronized(const uint1024_t& hashPeerBest);
+
+
         /** ActivateCandidateBestChain
          *
          *  Validates a complete, strictly heavier candidate path and activates

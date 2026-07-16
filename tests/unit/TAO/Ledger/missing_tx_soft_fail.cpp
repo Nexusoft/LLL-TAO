@@ -18,10 +18,15 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/types/tritium.h>
+
+#include <TAO/Operation/include/enum.h>
 
 #include <Util/include/args.h>
 #include <Util/include/filesystem.h>
+#include <Util/include/runtime.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -679,4 +684,93 @@ TEST_CASE("Unified fork scoring is shared by candidate activation", "[ledger][fo
     candidate.nChainTrust = 101;
     best.nChainTrust = 100;
     REQUIRE(candidate.IsHeavierThan(best));
+}
+
+
+TEST_CASE("Persisted block validation bypasses only incoming duplicate rejection",
+    "[ledger][process][stored_validation]")
+{
+    LedgerGuard env;
+
+    const bool fHybridBefore = config::fHybrid.load();
+    config::fHybrid.store(true);
+
+    TAO::Ledger::TritiumBlock block;
+    block.nVersion = TAO::Ledger::CurrentBlockVersion();
+    block.nChannel = 3;
+    block.nHeight = 2;
+    block.nNonce = 0x647;
+    block.nTime = runtime::unifiedtimestamp();
+
+    block.producer.nVersion = TAO::Ledger::CurrentTransactionVersion();
+    block.producer.hashGenesis = uint256_t(
+        "0xb7a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41");
+    block.producer.hashPrevTx = uint512_t(1);
+    block.producer.hashNext = uint512_t(2);
+    block.producer.nSequence = 1;
+    block.producer.nTimestamp = block.nTime;
+    block.producer.nKeyType = TAO::Ledger::SIGNATURE::BRAINPOOL;
+    block.producer[0] << uint8_t(TAO::Operation::OP::AUTHORIZE);
+
+    const uint512_t hashSecret(3);
+    REQUIRE(block.producer.Sign(hashSecret));
+
+    const uint512_t hashProducer = block.producer.GetHash();
+    block.hashMerkleRoot = block.BuildMerkleTree({hashProducer});
+
+    LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
+    const std::vector<uint8_t> vSecret = hashSecret.GetBytes();
+    REQUIRE(key.SetSecret(LLC::CSecret(vSecret.begin(), vSecret.end()), true));
+    REQUIRE(block.GenerateSignature(key));
+
+    TAO::Ledger::BlockState state(block);
+    REQUIRE(LLD::Ledger->WriteBlock(block.GetHash(), state));
+
+    REQUIRE_FALSE(block.Check());
+    REQUIRE(block.CheckStored());
+
+    LLD::Ledger->EraseBlock(block.GetHash());
+    config::fHybrid.store(fHybridBefore);
+}
+
+
+TEST_CASE("Failed candidate activation preserves the active best chain",
+    "[ledger][process][fork_choice]")
+{
+    LedgerGuard env;
+
+    const TAO::Ledger::BlockState stateBestBefore =
+        TAO::Ledger::ChainState::tStateBest.load();
+    const uint1024_t hashBestBefore =
+        TAO::Ledger::ChainState::hashBestChain.load();
+
+    TAO::Ledger::BlockState candidate = stateBestBefore;
+    candidate.nVersion = 7;
+    candidate.nNonce += 1;
+    candidate.nHeight += 1;
+    candidate.nChannelWeight[0] += 1;
+    candidate.vtx.clear();
+
+    REQUIRE_FALSE(TAO::Ledger::ActivateCandidateBestChain(
+        candidate, "unit test invalid candidate", true));
+    REQUIRE(TAO::Ledger::ChainState::hashBestChain.load() == hashBestBefore);
+    REQUIRE(TAO::Ledger::ChainState::tStateBest.load() == stateBestBefore);
+}
+
+
+TEST_CASE("Synchronization requires the advertised hash to be active",
+    "[ledger][process][sync]")
+{
+    const uint1024_t hashActive(0x646);
+    const uint1024_t hashStoredSideBranch(0x647);
+    const uint1024_t hashBestBefore =
+        TAO::Ledger::ChainState::hashBestChain.load();
+
+    TAO::Ledger::ChainState::hashBestChain.store(hashActive);
+
+    REQUIRE(TAO::Ledger::IsBestChainSynchronized(hashActive));
+    REQUIRE_FALSE(TAO::Ledger::IsBestChainSynchronized(hashStoredSideBranch));
+    REQUIRE_FALSE(TAO::Ledger::IsBestChainSynchronized(uint1024_t(0)));
+
+    TAO::Ledger::ChainState::hashBestChain.store(hashBestBefore);
 }
