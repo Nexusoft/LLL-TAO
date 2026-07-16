@@ -760,59 +760,75 @@ namespace TAO
             if(!LLD::Ledger->WriteBlock(GetHash(), *this))
                 return debug::error(FUNCTION, "block state failed to write");
 
-            /* Signal to set the best chain through the shared fork-choice and
-             * candidate-validation path. */
-            if(IsHeavierThan(ChainState::tStateBest.load()))
+            /* Signal to set the best chain. */
+            if(nVersion >= 7 && !IsHybrid())
             {
+                /* Set the chain trust. */
+                uint8_t nEquals  = 0;
+                uint8_t nGreater = 0;
+
+                /* Check to best state. */
+                for(uint32_t n = 0; n < 3; ++n)
+                {
+                    /* Check each weight. */
+                    if(nChannelWeight[n] == ChainState::tStateBest.load().nChannelWeight[n])
+                        ++nEquals;
+
+                    /* Check each weight. */
+                    if(nChannelWeight[n] > ChainState::tStateBest.load().nChannelWeight[n])
+                        ++nGreater;
+                }
+
+                /* Check for better height if it is a battle between two channels. */
+                if(nHeight > ChainState::nBestHeight.load() + 1 && (nEquals == 1 && nGreater == 1))
+                    ++nGreater;
+
+                /* Log the weights. */
+                debug::log(2, FUNCTION, "WEIGHTS [", uint32_t(nGreater), "]",
+                    " Prime ", nChannelWeight[1].Get64(),
+                    " Hash ",  nChannelWeight[2].Get64(),
+                    " Stake ", nChannelWeight[0].Get64());
+
+                /* Check for conflicted blocks. */
                 if(fConflicted)
                 {
                     debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "CONFLICTED BLOCK: ", ANSI_COLOR_RESET, GetHash().SubString());
+
                     return true;
                 }
 
-                if(!ActivateCandidateBestChain(*this, "block acceptance", false))
+                /* Handle single channel having higher weight. */
+                else if((nEquals == 2 && nGreater == 1) || nGreater > 1)
                 {
-                    ChainState::fChainReorg.store(false);
-                    return debug::error(FUNCTION, "failed to activate best chain");
+                    /* Set the best chain. */
+                    if(!SetBest())
+                    {
+                        /* If we fail at all here, we want to reset our reorg head. */
+                        ChainState::fChainReorg.store(false);
+
+                        return debug::error(FUNCTION, "failed to set best chain");
+                    }
                 }
+            }
+            else if(nChainTrust > ChainState::nBestChainTrust.load())
+            {
+                /* Check for conflicted blocks. */
+                if(fConflicted)
+                {
+                    debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "CONFLICTED BLOCK: ", ANSI_COLOR_RESET, GetHash().SubString());
+
+                    return true;
+                }
+
+                /* Attempt to set the best chain. */
+                if(!SetBest())
+                    return debug::error(FUNCTION, "failed to set best chain");
             }
 
             /* Debug output. */
             debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "ACCEPTED");
 
             return true;
-        }
-
-
-        bool BlockState::IsHeavierThan(const BlockState& state) const
-        {
-            if(GetHash() == state.GetHash())
-                return false;
-
-            if(nVersion >= 7 && !IsHybrid())
-            {
-                uint8_t nEquals = 0;
-                uint8_t nGreater = 0;
-                for(uint32_t n = 0; n < 3; ++n)
-                {
-                    if(nChannelWeight[n] == state.nChannelWeight[n])
-                        ++nEquals;
-                    if(nChannelWeight[n] > state.nChannelWeight[n])
-                        ++nGreater;
-                }
-
-                if(nHeight > state.nHeight + 1 && nEquals == 1 && nGreater == 1)
-                    ++nGreater;
-
-                debug::log(2, FUNCTION, "WEIGHTS [", uint32_t(nGreater), "]",
-                    " Prime ", nChannelWeight[1].Get64(),
-                    " Hash ", nChannelWeight[2].Get64(),
-                    " Stake ", nChannelWeight[0].Get64());
-
-                return ((nEquals == 2 && nGreater == 1) || nGreater > 1);
-            }
-
-            return nChainTrust > state.nChainTrust;
         }
 
 
