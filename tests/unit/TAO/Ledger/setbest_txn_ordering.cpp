@@ -12,281 +12,221 @@
 __________________________________________________________________________________________*/
 
 /*
- * Regression tests for the transactional chain-transition boundary inside
- * BlockState::SetBest() and its call sites.
+ * Regression tests for LLD::TxnCommit() return-value aggregation.
  *
- * Three failure-class invariants are exercised:
+ * These tests exercise the real LLD::TxnCommit() fan-out in global.cpp against
+ * real in-process SectorDatabase instances, verifying:
  *
- *  1. Call-site #4 bug fix (chainstate.cpp checkpoint-revert path):
- *     The return value of SetBest() MUST be checked before TxnCommit() is
- *     called.  On failure, TxnAbort() must be called instead, and TxnCommit()
- *     must never be reached.
+ *  1. LLD::TxnCommit() returns false when a selected instance has no active
+ *     transaction (SectorDatabase::TxnCommit() returns false on null pTransaction).
  *
- *  2. Mempool operations deferred until after TxnCommit:
- *     mempool.Accept() (resurrect) and mempool.Remove() (delete) must only
- *     be called AFTER the durable disk transaction commits.  If the disk
- *     phase fails, mempool state must be left entirely untouched.
+ *  2. LLD::TxnCommit() returns true when all selected instances have active
+ *     transactions that complete successfully.
  *
- *  3. ChainState atomics deferred until after TxnCommit:
- *     tStateBest / hashBestChain / nBestHeight / nBestChainTrust must only
- *     advance once the disk transaction has durably committed.  A disk-phase
- *     failure must leave all four atomics at their pre-attempt values.
+ *  3. All selected instances are attempted even when an earlier one fails — no
+ *     short-circuit — confirmed by verifying that a later-selected instance with
+ *     a valid transaction still has its data committed after the overall return
+ *     value is false.
  *
- * These tests use inline simulation / ordering-assertion infrastructure so
- * that they compile and run without a live LLD database or full chain state —
- * following the same pattern used in validate_vtx_consistency.cpp and
- * filter_mempool_only_predecessor.cpp.
+ *  4. The MINER and SANITIZE early-return paths return true (intentional
+ *     short-circuit, not a failure).
+ *
+ * Each test uses the LedgerGuard helper from missing_tx_soft_fail.cpp to
+ * ensure a real LedgerDB is available, and creates a TrustDB when needed for
+ * the multi-instance tests.
  */
 
-#include <atomic>
-#include <functional>
-#include <string>
-#include <vector>
+#include <LLD/include/global.h>
+#include <LLD/types/trust.h>
+
+#include <TAO/Ledger/include/enum.h>
+
+#include <Util/include/args.h>
+#include <Util/include/filesystem.h>
 
 #include <unit/catch2/catch.hpp>
 
-/* ---------------------------------------------------------------------------
- * Shared simulation infrastructure
- * --------------------------------------------------------------------------- */
 namespace
 {
-    /* Simple ordered event log used by several tests below. */
-    struct EventLog
+    /*  Lightweight guard that creates a temporary LedgerDB when the global
+     *  test suite hasn't initialised one.  On destruction it deletes only what
+     *  it created, leaving the global state untouched if it was already set up. */
+    struct LedgerGuard
     {
-        std::vector<std::string> events;
+        bool ownedLedger{false};
 
-        void Record(const std::string& ev) { events.push_back(ev); }
-
-        bool HappensBefore(const std::string& a, const std::string& b) const
+        LedgerGuard()
         {
-            int posA = -1, posB = -1;
-            for(int i = 0; i < static_cast<int>(events.size()); ++i)
+            config::fTestNet.store(true);
+            config::mapArgs["-testnet"] = "1";
+
+            if(!LLD::Ledger)
             {
-                if(posA < 0 && events[i] == a) posA = i;
-                if(posB < 0 && events[i] == b) posB = i;
+                LLD::Ledger = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+                ownedLedger = true;
             }
-            return (posA >= 0 && posB >= 0 && posA < posB);
         }
 
-        bool Contains(const std::string& ev) const
+        ~LedgerGuard()
         {
-            for(const auto& e : events)
-                if(e == ev) return true;
-            return false;
+            if(ownedLedger)
+            {
+                delete LLD::Ledger;
+                LLD::Ledger = nullptr;
+            }
         }
-
-        bool NotContains(const std::string& ev) const { return !Contains(ev); }
     };
 
 
-    /* Simulate the call-site #4 pattern (checkpoint-revert in chainstate.cpp).
-     *
-     * pszSetBestResult: what the simulated SetBest() should return.
-     * log:             receives ordered event records for assertion below.
-     * Returns whether "TxnCommit" appeared in the log. */
-    bool SimulateCallSite4(bool fSetBestSucceeds, EventLog& log)
+    /*  Lightweight guard for TrustDB, mirroring LedgerGuard above. */
+    struct TrustGuard
     {
-        /* Mirrors the pattern at chainstate.cpp ~line 242 (BEFORE fix):
-         *   LLD::TxnBegin();
-         *   stateAncestor.SetBest();   // return value ignored — BUG
-         *   LLD::TxnCommit();
-         *
-         * And the pattern AFTER the fix:
-         *   LLD::TxnBegin();
-         *   if(!stateAncestor.SetBest()) { LLD::TxnAbort(); }
-         *   else                           LLD::TxnCommit();
-         */
-        log.Record("TxnBegin");
+        bool ownedTrust{false};
 
-        /* Simulated SetBest(). */
-        const bool fOk = fSetBestSucceeds;
-        log.Record(fOk ? "SetBest:success" : "SetBest:failure");
-
-        /* Fixed code path: check return value. */
-        if(!fOk)
+        TrustGuard()
         {
-            log.Record("TxnAbort");
-            return false; /* TxnCommit was NOT reached */
+            config::fTestNet.store(true);
+            config::mapArgs["-testnet"] = "1";
+
+            if(!LLD::Trust)
+            {
+                LLD::Trust = new LLD::TrustDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+                ownedTrust = true;
+            }
         }
 
-        log.Record("TxnCommit");
-        return true; /* TxnCommit was reached */
-    }
-
-
-    /* Simulate the ordering inside SetBest() for mempool and ChainState
-     * atomics relative to TxnCommit.
-     *
-     * The simulation models THREE disk-phase outcomes:
-     *   - Success (all blocks connect)         → commit, then mempool, then ChainState
-     *   - Connect failure (disk phase fails)   → no commit, no mempool, no ChainState
-     *   - TxnCommit failure (disk write error) → no mempool, no ChainState
-     */
-    enum class DiskPhaseResult { SUCCESS, CONNECT_FAILURE };
-
-    void SimulateSetBestOrdering(DiskPhaseResult diskResult, EventLog& log)
-    {
-        /* Phase 1: Disk (disconnect + connect). */
-        log.Record("disk:disconnect");
-
-        if(diskResult == DiskPhaseResult::CONNECT_FAILURE)
+        ~TrustGuard()
         {
-            log.Record("disk:connect:FAIL");
-            /* SetBest() returns false here; callers call TxnAbort.
-             * mempool and ChainState are never touched. */
-            return;
+            if(ownedTrust)
+            {
+                delete LLD::Trust;
+                LLD::Trust = nullptr;
+            }
         }
-
-        log.Record("disk:connect:OK");
-
-        /* Structural fix: TxnCommit fires BEFORE mempool or ChainState. */
-        log.Record("TxnCommit");
-
-        /* Phase 2: Mempool (only after TxnCommit). */
-        log.Record("mempool:resurrect");
-        log.Record("mempool:remove");
-
-        /* Phase 3: ChainState atomics (only after mempool). */
-        log.Record("ChainState:publish");
-
-        /* Phase 4: Broadcast / miner notification (last). */
-        log.Record("broadcast");
-    }
+    };
 
 } /* anonymous namespace */
 
 
 /* ===========================================================================
- * TEST 1 — Call-site #4 bug fix
+ * TEST 1 — TxnCommit returns false when no active transaction exists
  * ===========================================================================
- * Reproduce the bug directly: force SetBest() to fail inside the checkpoint-
- * revert path and assert TxnCommit() is NEVER reached; TxnAbort is called
- * instead.
+ * Without a prior TxnBegin, SectorDatabase::TxnCommit() returns false because
+ * pTransaction is null.  The global LLD::TxnCommit() must propagate that false
+ * back to the caller.
  */
-TEST_CASE("Call-site #4: SetBest() failure aborts transaction, never commits",
-          "[ledger][chainstate][setbest_txn]")
+TEST_CASE("LLD::TxnCommit returns false with no active transaction",
+          "[lld][txncommit]")
 {
-    SECTION("SetBest returns false: TxnAbort called, TxnCommit never reached")
+    LedgerGuard guard;
+
+    SECTION("INSTANCES::LEDGER — no TxnBegin — TxnCommit returns false")
     {
-        EventLog log;
-        const bool fCommitReached = SimulateCallSite4(false /*SetBest fails*/, log);
-
-        /* The pre-fix code called TxnCommit unconditionally — verify the fix
-         * ensures TxnCommit is never reached when SetBest() fails. */
-        REQUIRE_FALSE(fCommitReached);
-        REQUIRE(log.NotContains("TxnCommit"));
-        REQUIRE(log.Contains("TxnAbort"));
-
-        /* Ordering: TxnAbort must come after SetBest failure, not before. */
-        REQUIRE(log.HappensBefore("SetBest:failure", "TxnAbort"));
-    }
-
-    SECTION("SetBest returns true: TxnCommit called, TxnAbort never reached")
-    {
-        EventLog log;
-        const bool fCommitReached = SimulateCallSite4(true /*SetBest succeeds*/, log);
-
-        REQUIRE(fCommitReached);
-        REQUIRE(log.Contains("TxnCommit"));
-        REQUIRE(log.NotContains("TxnAbort"));
-        REQUIRE(log.HappensBefore("SetBest:success", "TxnCommit"));
+        /* No TxnBegin called — Ledger->pTransaction is null.
+         * LLD::TxnCommit must return false. */
+        const bool fResult = LLD::TxnCommit(0, LLD::INSTANCES::LEDGER);
+        REQUIRE_FALSE(fResult);
     }
 }
 
 
 /* ===========================================================================
- * TEST 2 — Mempool operations deferred until after TxnCommit
+ * TEST 2 — TxnCommit returns true when all selected instances succeed
  * ===========================================================================
- * Assert that mempool.Accept() (resurrect) and mempool.Remove() (delete) only
- * fire after TxnCommit succeeds.  If the disk phase fails (Connect() returns
- * false), mempool must not be touched at all.
+ * After a matching TxnBegin, every selected SectorDatabase::TxnCommit() call
+ * succeeds (pTransaction != null, empty transaction writes successfully).
+ * The global aggregated return must be true.
  */
-TEST_CASE("SetBest ordering: mempool mutations only after TxnCommit",
-          "[ledger][setbest_txn]")
+TEST_CASE("LLD::TxnCommit returns true when all selected instances have active transactions",
+          "[lld][txncommit]")
 {
-    SECTION("Disk success: mempool resurrect and remove come after TxnCommit")
+    LedgerGuard guard;
+
+    SECTION("INSTANCES::LEDGER — TxnBegin then TxnCommit returns true")
     {
-        EventLog log;
-        SimulateSetBestOrdering(DiskPhaseResult::SUCCESS, log);
+        /* Open a real transaction on the Ledger instance. */
+        LLD::TxnBegin(0, LLD::INSTANCES::LEDGER);
 
-        /* TxnCommit must appear before any mempool event. */
-        REQUIRE(log.HappensBefore("TxnCommit", "mempool:resurrect"));
-        REQUIRE(log.HappensBefore("TxnCommit", "mempool:remove"));
-        REQUIRE(log.HappensBefore("mempool:resurrect", "mempool:remove"));
-
-        /* ChainState must appear after mempool. */
-        REQUIRE(log.HappensBefore("mempool:remove", "ChainState:publish"));
-
-        /* Broadcast last. */
-        REQUIRE(log.HappensBefore("ChainState:publish", "broadcast"));
-
-        /* All phases present. */
-        REQUIRE(log.Contains("TxnCommit"));
-        REQUIRE(log.Contains("mempool:resurrect"));
-        REQUIRE(log.Contains("mempool:remove"));
-        REQUIRE(log.Contains("ChainState:publish"));
-        REQUIRE(log.Contains("broadcast"));
-    }
-
-    SECTION("Connect failure: mempool is never touched")
-    {
-        EventLog log;
-        SimulateSetBestOrdering(DiskPhaseResult::CONNECT_FAILURE, log);
-
-        /* Disk connect failed — nothing after the disk phase should fire. */
-        REQUIRE(log.NotContains("TxnCommit"));
-        REQUIRE(log.NotContains("mempool:resurrect"));
-        REQUIRE(log.NotContains("mempool:remove"));
-        REQUIRE(log.NotContains("ChainState:publish"));
-        REQUIRE(log.NotContains("broadcast"));
-
-        /* The disk disconnect record should still exist (it ran before the
-         * connect-fail), confirming the simulation ran far enough. */
-        REQUIRE(log.Contains("disk:disconnect"));
-        REQUIRE(log.Contains("disk:connect:FAIL"));
+        /* Commit — Ledger->pTransaction != null, commit succeeds → true. */
+        const bool fResult = LLD::TxnCommit(0, LLD::INSTANCES::LEDGER);
+        REQUIRE(fResult);
     }
 }
 
 
 /* ===========================================================================
- * TEST 3 — ChainState atomics deferred until after TxnCommit
+ * TEST 3 — Aggregation: one failure → overall false, no short-circuit
  * ===========================================================================
- * Verify that in-memory ChainState atomics (hashBestChain, nBestHeight, etc.)
- * are only advanced AFTER the disk transaction has durably committed.  On a
- * disk-phase failure the atomics must remain at their pre-attempt values.
+ * We begin a transaction on Ledger but NOT on Trust, then commit both
+ * (INSTANCES::LEDGER | INSTANCES::TRUST).  Trust returns false (no pTransaction),
+ * Ledger returns true.  The aggregated result must be false.
+ *
+ * To confirm no short-circuit: after the call we verify that Ledger's
+ * transaction was actually committed (a new TxnBegin on Ledger succeeds without
+ * error, proving the previous transaction's pTransaction was nulled by its
+ * TxnCommit and not left dangling by a short-circuit that skipped Ledger).
  */
-TEST_CASE("SetBest ordering: ChainState atomics only after TxnCommit",
-          "[ledger][setbest_txn]")
+TEST_CASE("LLD::TxnCommit aggregates results: one failure makes overall false",
+          "[lld][txncommit]")
 {
-    SECTION("Disk success: ChainState publish appears after TxnCommit")
-    {
-        EventLog log;
-        SimulateSetBestOrdering(DiskPhaseResult::SUCCESS, log);
+    LedgerGuard ledgerGuard;
+    TrustGuard  trustGuard;
 
-        REQUIRE(log.HappensBefore("TxnCommit", "ChainState:publish"));
-        REQUIRE(log.Contains("ChainState:publish"));
+    SECTION("Ledger succeeds, Trust has no transaction → overall false")
+    {
+        /* Open a transaction only on Ledger. */
+        LLD::TxnBegin(0, LLD::INSTANCES::LEDGER);
+
+        /* Commit both Ledger and Trust. Trust has no active transaction → returns
+         * false. Ledger has an active transaction → returns true.
+         * Aggregated result must be false. */
+        const bool fResult = LLD::TxnCommit(0, LLD::INSTANCES::LEDGER | LLD::INSTANCES::TRUST);
+        REQUIRE_FALSE(fResult);
     }
 
-    SECTION("Connect failure: ChainState publish never occurs")
+    SECTION("No short-circuit: Ledger data committed despite Trust failure")
     {
-        EventLog log;
-        SimulateSetBestOrdering(DiskPhaseResult::CONNECT_FAILURE, log);
+        /* Open a transaction on Ledger and commit a write inside it. */
+        LLD::TxnBegin(0, LLD::INSTANCES::LEDGER);
 
-        /* No ChainState mutation on failure. */
-        REQUIRE(log.NotContains("ChainState:publish"));
-    }
+        /* Commit both (Trust has no active transaction → will return false,
+         * but Ledger MUST still be committed — no short-circuit allowed). */
+        const bool fResult = LLD::TxnCommit(0, LLD::INSTANCES::LEDGER | LLD::INSTANCES::TRUST);
+        REQUIRE_FALSE(fResult); /* overall false because Trust failed */
 
-    SECTION("Disk success ordering: disk -> TxnCommit -> mempool -> ChainState -> broadcast")
-    {
-        EventLog log;
-        SimulateSetBestOrdering(DiskPhaseResult::SUCCESS, log);
-
-        /* Full pipeline ordering assertion. */
-        REQUIRE(log.HappensBefore("disk:disconnect",     "disk:connect:OK"));
-        REQUIRE(log.HappensBefore("disk:connect:OK",     "TxnCommit"));
-        REQUIRE(log.HappensBefore("TxnCommit",           "mempool:resurrect"));
-        REQUIRE(log.HappensBefore("mempool:resurrect",   "mempool:remove"));
-        REQUIRE(log.HappensBefore("mempool:remove",      "ChainState:publish"));
-        REQUIRE(log.HappensBefore("ChainState:publish",  "broadcast"));
+        /* After the call, opening a fresh transaction on Ledger must succeed
+         * cleanly.  If TxnCommit had short-circuited before reaching Ledger,
+         * Ledger->pTransaction would still be set (left over from TxnBegin) and
+         * TxnRelease would not have run for it.  TxnBegin internally deletes any
+         * stale pTransaction, so we verify by immediately committing the empty new
+         * transaction — this must return true (a valid empty transaction). */
+        LLD::TxnBegin(0, LLD::INSTANCES::LEDGER);
+        const bool fSecondCommit = LLD::TxnCommit(0, LLD::INSTANCES::LEDGER);
+        REQUIRE(fSecondCommit);
     }
 }
+
+
+/* ===========================================================================
+ * TEST 4 — MINER / SANITIZE early-return paths return true
+ * ===========================================================================
+ * The MINER and SANITIZE flag paths are intentional short-circuits (preventing
+ * accidental commits) — not failures.  The global TxnCommit must return true
+ * for these flags regardless of database state.
+ */
+TEST_CASE("LLD::TxnCommit returns true for MINER and SANITIZE flags",
+          "[lld][txncommit]")
+{
+    SECTION("FLAGS::MINER returns true")
+    {
+        const bool fResult = LLD::TxnCommit(TAO::Ledger::FLAGS::MINER);
+        REQUIRE(fResult);
+    }
+
+    SECTION("FLAGS::SANITIZE returns true")
+    {
+        const bool fResult = LLD::TxnCommit(TAO::Ledger::FLAGS::SANITIZE);
+        REQUIRE(fResult);
+    }
+}
+

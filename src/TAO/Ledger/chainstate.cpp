@@ -249,8 +249,8 @@ namespace TAO
                                 debug::error(FUNCTION, "failed to revert to hardcoded ancestor checkpoint");
                                 LLD::TxnAbort();
                             }
-                            else
-                                LLD::TxnCommit();
+                            else if(!LLD::TxnCommit())
+                                debug::error(FUNCTION, "disk commit failed after reverting to hardcoded ancestor checkpoint");
 
                             break;
                         }
@@ -290,7 +290,8 @@ namespace TAO
                 {
                     /* Debug Output. */
                     debug::log(0, FUNCTION, "-revertblocks=XXX requested removal of ", nRevertBlocks, " blocks");
-                    LLD::TxnCommit();
+                    if(!LLD::TxnCommit())
+                        debug::error(FUNCTION, "disk commit failed after -revertblocks rewind");
                 }
             }
 
