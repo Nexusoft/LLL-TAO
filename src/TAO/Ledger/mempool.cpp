@@ -93,7 +93,7 @@ namespace TAO
             RECURSIVE(MUTEX);
 
             /* Check the mempool. */
-            if(mapLedger.count(hashThis))
+            if(mapLedger.count(hashTx))
                 return false;
 
             /* Add to the map. */
@@ -370,7 +370,7 @@ namespace TAO
                 debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashThis.SubString());
 
                 /* Check if this is already in our mempool. */
-                if(mapLedger.count(hashTx))
+                if(mapLedger.count(hashThis))
                 {
                     /* Erase the transaction. */
                     mapOrphans.erase(hashTx);
