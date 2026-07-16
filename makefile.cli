@@ -433,6 +433,7 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_Ledger_sigchain.o \
 		   build/Tests_TAO_Ledger_stake.o \
 		   build/Tests_TAO_Ledger_mining_template_cache_tests.o \
+		   build/Tests_TAO_Ledger_setbest_txn_ordering.o \
 		   build/Tests_TAO_Register_objects.o \
 		   build/Tests_TAO_Register_rollback.o \
 		   build/Tests_TAO_Register_testvm.o \

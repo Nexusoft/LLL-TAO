@@ -240,8 +240,17 @@ namespace TAO
 
                             /* Set the best to older block. */
                             LLD::TxnBegin();
-                            stateAncestor.SetBest();
-                            LLD::TxnCommit();
+
+                            /* Bug fix (call site #4): check return value before committing.
+                             * A failed SetBest() must abort the transaction to avoid committing
+                             * partial / inconsistent disk writes. */
+                            if(!stateAncestor.SetBest())
+                            {
+                                debug::error(FUNCTION, "failed to revert to hardcoded ancestor checkpoint");
+                                LLD::TxnAbort();
+                            }
+                            else
+                                LLD::TxnCommit();
 
                             break;
                         }
