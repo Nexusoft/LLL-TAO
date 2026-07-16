@@ -996,67 +996,6 @@ namespace TAO
                         vResurrect.insert(vResurrect.end(), state.vtx.rbegin(), state.vtx.rend());
                 }
 
-                /* Track sigchains whose head resurrect transaction has already conflicted in this
-                 * batch. Mempool::Accept() rejects any transaction whose hashPrevTx is itself
-                 * conflicted, so once a genesis conflicts every remaining descendant of that
-                 * sigchain in vResurrect is guaranteed to conflict as well. Skipping them here
-                 * avoids hundreds of pointless mutex-holding disk reads and ERROR log spam during
-                 * a reorg. */
-                std::unordered_set<uint256_t> setConflictedGenesis;
-
-                /* Iterate forward through our transactions to resurrect in ascending order. */
-                for(auto proof = vResurrect.rbegin(); proof != vResurrect.rend(); ++proof)
-                {
-                    /* Check for tritium transctions. */
-                    if(proof->first == TRANSACTION::TRITIUM)
-                    {
-                        /* Make sure the transaction is on disk. */
-                        TAO::Ledger::Transaction tx;
-                        if(!LLD::Ledger->ReadTx(proof->second, tx))
-                            return debug::error(FUNCTION, "transaction not on disk");
-
-                        /* Check for producer transaction. */
-                        if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
-                            continue;
-
-                        /* Skip descendants of a sigchain that has already conflicted in this
-                         * resurrect batch, since they are guaranteed to conflict too. */
-                        if(setConflictedGenesis.count(tx.hashGenesis))
-                            continue;
-
-                        /* Add back into memory pool. Mempool::Accept() inserts rejected
-                         * transactions into mapConflicts (checked by Has()) only when they
-                         * conflict on hashPrevTx or a duplicate genesis-id; orphaned or otherwise
-                         * invalid transactions are tracked elsewhere and are not conflicts, so
-                         * Has() returning true here specifically identifies a real conflict. Track
-                         * the genesis so we can short-circuit its remaining descendants above. */
-                        if(!mempool.Accept(tx) && mempool.Has(tx.GetHash()))
-                            setConflictedGenesis.insert(tx.hashGenesis);
-
-                        /* Print transaction on verbose 3. */
-                        if(config::nVerbose >= 3)
-                            tx.print();
-                    }
-                    else if(proof->first == TRANSACTION::LEGACY)
-                    {
-                        /* Make sure the transaction is on disk. */
-                        Legacy::Transaction tx;
-                        if(!LLD::Legacy->ReadTx(proof->second, tx))
-                            return debug::error(FUNCTION, "transaction not on disk");
-
-                        /* Check for producer transaction. */
-                        if(tx.IsCoinBase() || tx.IsCoinStake())
-                            continue;
-
-                        /* Add back into memory pool. */
-                        mempool.Accept(tx);
-
-                        /* Print transaction on verbose 3. */
-                        if(config::nVerbose >= 3)
-                            tx.print();
-                    }
-                }
-
                 /* Keep track of mempool transactions to delete. */
                 std::vector<std::pair<uint8_t, uint512_t>> vDelete;
 
@@ -1119,10 +1058,6 @@ namespace TAO
                     vDelete.insert(vDelete.end(), state->vtx.begin(), state->vtx.end());
                 }
 
-                /* Iterate forward through our transactions to remove in ascending order. */
-                for(auto proof = vDelete.begin(); proof != vDelete.end(); ++proof)
-                    mempool.Remove(proof->second);
-
                 /* Calculate the total transactions connected. Each connected block contributes
                  * exactly one producer transaction plus its regular transactions to vDelete, and
                  * vConnect.size() is the number of connected blocks, so subtracting removes the
@@ -1132,11 +1067,10 @@ namespace TAO
                     (vDelete.size() - vConnect.size());
 
                 /* [B1] Emit a prominent, easily greppable tripwire warning if the reorg critical
-                 * section above (disconnect + resurrect + connect, all held under the caller's
-                 * PROCESSING_MUTEX with no yield point) took longer than -reorgwarnms or processed
-                 * more than -reorgwarntx transactions. This doesn't prevent the stall, but ensures
-                 * such incidents are diagnosable instead of silently blocking all other block and
-                 * mining processing for an unbounded amount of time. Uses nTotalConnected (non-producer
+                 * section above (disconnect + connect, all held under the caller's PROCESSING_MUTEX
+                 * with no yield point) took longer than -reorgwarnms or processed more than
+                 * -reorgwarntx transactions. Mempool mutations are deferred to after TxnCommit
+                 * and are not included in the timer window. Uses nTotalConnected (non-producer
                  * transactions connected) rather than vDelete.size() directly to avoid conflating
                  * producer transactions with the transaction-volume metric. Reorgs are rare events,
                  * so the -reorgwarnms/-reorgwarntx config lookups are not cached; this keeps the
@@ -1156,6 +1090,95 @@ namespace TAO
                             " block(s) (", nReorgTotalTx, " transactions); other block/mining processing",
                             " was blocked for the duration");
                 }
+
+                /* All disk writes (disconnect + connect) are complete. Commit the transaction
+                 * durably before touching mempool or in-memory ChainState atomics.  This is the
+                 * transactional boundary: everything above is rollback-safe; everything below is
+                 * in-memory-only and runs only after the durable commit succeeds.
+                 *
+                 * Callers (#1/#2: legacy.cpp/tritium.cpp Accept()) opened a TxnBegin() that also
+                 * covered writing block transactions to disk before Index() was called.  This
+                 * TxnCommit therefore atomically commits those vtx writes together with the full
+                 * disconnect/connect transition.  The caller's subsequent TxnCommit call is a
+                 * harmless no-op (pTransaction is null once committed). */
+                LLD::TxnCommit(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
+
+                /* -- POST-COMMIT: mempool mutations (safe now that disk is durable) -- */
+
+                /* Track sigchains whose head resurrect transaction has already conflicted in this
+                 * batch. Mempool::Accept() rejects any transaction whose hashPrevTx is itself
+                 * conflicted, so once a genesis conflicts every remaining descendant of that
+                 * sigchain in vResurrect is guaranteed to conflict as well. Skipping them here
+                 * avoids hundreds of pointless mutex-holding disk reads and ERROR log spam during
+                 * a reorg. */
+                std::unordered_set<uint256_t> setConflictedGenesis;
+
+                /* Iterate forward through our transactions to resurrect in ascending order.
+                 * Disk is committed at this point; do not return false on ReadTx errors because
+                 * the chain transition has already been durably committed.  Log and continue. */
+                for(auto proof = vResurrect.rbegin(); proof != vResurrect.rend(); ++proof)
+                {
+                    /* Check for tritium transctions. */
+                    if(proof->first == TRANSACTION::TRITIUM)
+                    {
+                        /* Make sure the transaction is on disk. */
+                        TAO::Ledger::Transaction tx;
+                        if(!LLD::Ledger->ReadTx(proof->second, tx))
+                        {
+                            debug::error(FUNCTION, "resurrect: transaction not on disk (post-commit): ",
+                                proof->second.SubString());
+                            continue;
+                        }
+
+                        /* Check for producer transaction. */
+                        if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
+                            continue;
+
+                        /* Skip descendants of a sigchain that has already conflicted in this
+                         * resurrect batch, since they are guaranteed to conflict too. */
+                        if(setConflictedGenesis.count(tx.hashGenesis))
+                            continue;
+
+                        /* Add back into memory pool. Mempool::Accept() inserts rejected
+                         * transactions into mapConflicts (checked by Has()) only when they
+                         * conflict on hashPrevTx or a duplicate genesis-id; orphaned or otherwise
+                         * invalid transactions are tracked elsewhere and are not conflicts, so
+                         * Has() returning true here specifically identifies a real conflict. Track
+                         * the genesis so we can short-circuit its remaining descendants above. */
+                        if(!mempool.Accept(tx) && mempool.Has(tx.GetHash()))
+                            setConflictedGenesis.insert(tx.hashGenesis);
+
+                        /* Print transaction on verbose 3. */
+                        if(config::nVerbose >= 3)
+                            tx.print();
+                    }
+                    else if(proof->first == TRANSACTION::LEGACY)
+                    {
+                        /* Make sure the transaction is on disk. */
+                        Legacy::Transaction tx;
+                        if(!LLD::Legacy->ReadTx(proof->second, tx))
+                        {
+                            debug::error(FUNCTION, "resurrect: legacy transaction not on disk (post-commit): ",
+                                proof->second.SubString());
+                            continue;
+                        }
+
+                        /* Check for producer transaction. */
+                        if(tx.IsCoinBase() || tx.IsCoinStake())
+                            continue;
+
+                        /* Add back into memory pool. */
+                        mempool.Accept(tx);
+
+                        /* Print transaction on verbose 3. */
+                        if(config::nVerbose >= 3)
+                            tx.print();
+                    }
+                }
+
+                /* Iterate forward through our transactions to remove in ascending order. */
+                for(auto proof = vDelete.begin(); proof != vDelete.end(); ++proof)
+                    mempool.Remove(proof->second);
 
                 /* Debug output about the best chain. */
                 uint64_t nElapsed      = (GetBlockTime() - ChainState::tStateBest.load().GetBlockTime());
