@@ -735,7 +735,11 @@ namespace TAO
 
                     /* Check if this is a duplicate block. */
                     if(LLD::Ledger->HasBlock(pOrphan->GetHash()))
+                    {
+                        mapOrphans.erase(hash);
+                        hash = hashPrev;
                         continue;
+                    }
 
                     /* Debug output. */
                     debug::log(0, FUNCTION, "processing ORPHAN prev=", hashPrev.SubString(), " size=", mapOrphans.size());
