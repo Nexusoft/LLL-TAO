@@ -565,7 +565,7 @@ TEST_CASE("Accept() Case A: outer TxnBegin + SetBest() commits internally, HasOp
     RealCodeLedgerGuard ledgerGuard;
     ChainStateGuard     chainGuard;
 
-    /* ---- Minimal genesis (nNonce distinct from Tests 5/6/7 to avoid hash collisions) ---- */
+    /* ---- Minimal genesis (nNonce distinct from earlier tests in this file to avoid hash collisions) ---- */
     TAO::Ledger::BlockState genesis;
     genesis.nVersion      = 4;
     genesis.hashPrevBlock = uint1024_t(0);
@@ -573,6 +573,7 @@ TEST_CASE("Accept() Case A: outer TxnBegin + SetBest() commits internally, HasOp
     genesis.nHeight       = 0;
     genesis.nBits         = 1;
     genesis.nNonce        = 1001;
+    genesis.nChainTrust   = 0; /* explicitly 0 so the heavier-than relationship is clear */
 
     const uint1024_t hashGenesis = genesis.GetHash();
     REQUIRE(LLD::Ledger->WriteBlock(hashGenesis, genesis));
@@ -591,7 +592,7 @@ TEST_CASE("Accept() Case A: outer TxnBegin + SetBest() commits internally, HasOp
     candidate.nHeight       = 1;
     candidate.nBits         = 1;
     candidate.nNonce        = 1002;
-    candidate.nChainTrust   = 1; /* heavier than genesis for IsHeavierThan checks */
+    candidate.nChainTrust   = 1; /* heavier than genesis (nChainTrust 1 > 0) for IsHeavierThan */
 
     const uint1024_t hashCandidate = candidate.GetHash();
 
@@ -609,9 +610,9 @@ TEST_CASE("Accept() Case A: outer TxnBegin + SetBest() commits internally, HasOp
     REQUIRE_FALSE(LLD::HasOpenTransaction(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS));
 
     /* ---- (c) A subsequent TxnCommit() returns false (no active transaction).
-     * Before the hotfix this false was misinterpreted as a failure in Accept(),
+     * Before the fix this false was misinterpreted as a failure in Accept(),
      * causing every best-chain block acceptance to return false.
-     * After the hotfix the HasOpenTransaction() guard prevents this call entirely. ---- */
+     * After the fix the HasOpenTransaction() guard prevents this call entirely. ---- */
     const bool fRedundantCommit = LLD::TxnCommit();
     REQUIRE_FALSE(fRedundantCommit); /* expected: no transaction was open; NOT an error */
 
