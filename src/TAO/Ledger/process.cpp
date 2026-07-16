@@ -21,12 +21,14 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/locator.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/tritium.h>
 
 #include <Legacy/types/legacy.h>
 
 #include <Util/include/runtime.h>
 
 #include <vector>
+#include <queue>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -35,8 +37,127 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-        /* Static instantiation of orphan blocks in queue to process. */
-        std::map<uint1024_t, std::unique_ptr<TAO::Ledger::Block>> mapOrphans;
+        /* Static instantiation of block orphan graph. */
+        OrphanPool mapOrphans;
+
+
+        bool OrphanPool::Insert(const TAO::Ledger::Block& block, uint1024_t* pHashEvicted)
+        {
+            const uint1024_t hashBlock = block.GetHash();
+            if(mapByHash.count(hashBlock))
+                return false;
+
+            if(pHashEvicted)
+                *pHashEvicted = 0;
+
+            if(mapByHash.size() >= MAX_BLOCK_ORPHANS)
+            {
+                const uint1024_t hashEvicted = listInsertionOrder.front();
+                Remove(hashEvicted);
+                if(pHashEvicted)
+                    *pHashEvicted = hashEvicted;
+            }
+
+            mapByHash[hashBlock] = std::unique_ptr<TAO::Ledger::Block>(block.Clone());
+            mapByParent[block.hashPrevBlock].insert(hashBlock);
+            listInsertionOrder.push_back(hashBlock);
+            mapInsertion[hashBlock] = std::prev(listInsertionOrder.end());
+            return true;
+        }
+
+
+        bool OrphanPool::Contains(const uint1024_t& hashBlock) const
+        {
+            return mapByHash.count(hashBlock) != 0;
+        }
+
+
+        const TAO::Ledger::Block* OrphanPool::Get(const uint1024_t& hashBlock) const
+        {
+            const auto it = mapByHash.find(hashBlock);
+            return it == mapByHash.end() ? nullptr : it->second.get();
+        }
+
+
+        std::vector<uint1024_t> OrphanPool::Children(const uint1024_t& hashParent) const
+        {
+            const auto it = mapByParent.find(hashParent);
+            if(it == mapByParent.end())
+                return {};
+
+            return std::vector<uint1024_t>(it->second.begin(), it->second.end());
+        }
+
+
+        bool OrphanPool::Remove(const uint1024_t& hashBlock)
+        {
+            const auto it = mapByHash.find(hashBlock);
+            if(it == mapByHash.end())
+                return false;
+
+            const uint1024_t hashParent = it->second->hashPrevBlock;
+            const auto itParent = mapByParent.find(hashParent);
+            if(itParent != mapByParent.end())
+            {
+                itParent->second.erase(hashBlock);
+                if(itParent->second.empty())
+                    mapByParent.erase(itParent);
+            }
+
+            const auto itInsertion = mapInsertion.find(hashBlock);
+            if(itInsertion != mapInsertion.end())
+            {
+                listInsertionOrder.erase(itInsertion->second);
+                mapInsertion.erase(itInsertion);
+            }
+
+            mapByHash.erase(it);
+            return true;
+        }
+
+
+        uint64_t OrphanPool::RemoveSubtree(const uint1024_t& hashRoot)
+        {
+            uint64_t nRemoved = 0;
+            std::queue<uint1024_t> queueHashes;
+            queueHashes.push(hashRoot);
+
+            while(!queueHashes.empty())
+            {
+                const uint1024_t hash = queueHashes.front();
+                queueHashes.pop();
+
+                const std::vector<uint1024_t> vChildren = Children(hash);
+                for(const auto& hashChild : vChildren)
+                    queueHashes.push(hashChild);
+
+                if(Remove(hash))
+                    ++nRemoved;
+            }
+
+            return nRemoved;
+        }
+
+
+        void OrphanPool::Clear()
+        {
+            mapByHash.clear();
+            mapByParent.clear();
+            listInsertionOrder.clear();
+            mapInsertion.clear();
+        }
+
+
+        uint64_t OrphanPool::Size() const
+        {
+            return mapByHash.size();
+        }
+
+
+        bool OrphanPool::Empty() const
+        {
+            return mapByHash.empty();
+        }
 
 
         /* Track the times we have requested missing transactions for a block so
@@ -94,60 +215,12 @@ namespace TAO
             static const uint64_t MAX_LOCAL_MINED_BLOCK_RECORDS = 256;
 
 
-            /** Maximum number of peer-best recovery cooldown entries tracked. */
-            static const uint64_t MAX_PEER_BEST_RECOVERY_RECORDS = 256;
-
-
-            /** Peer-best recovery cooldown; mirrors autofork recovery's tested bound. */
-            static const uint64_t PEER_BEST_RECOVERY_COOLDOWN_SECONDS =
-                GENESIS_CONFLICT_RECOVERY_COOLDOWN_SECONDS;
-
-
-            /** Last automatic peer-best recovery attempt by advertised best hash. */
-            std::map<uint1024_t, uint64_t> mapLastPeerBestRecoveryAttempt;
-
-
             /** Locally accepted mined blocks keyed by block hash. */
             std::map<uint1024_t, LocalMinedBlockRecord> mapLocalMinedBlocks;
 
 
             /** Mutex protecting local mined/recovery maps. */
             std::mutex LOCAL_MINED_MUTEX;
-
-
-            bool BetterThanCurrentBest(const TAO::Ledger::BlockState& statePeer,
-                                       const TAO::Ledger::BlockState& stateBest)
-            {
-                if(statePeer.GetHash() == stateBest.GetHash())
-                    return false;
-
-                static const uint32_t MIN_TRITIUM_WEIGHT_VERSION = 7;
-                if(statePeer.nVersion >= MIN_TRITIUM_WEIGHT_VERSION && !statePeer.IsHybrid())
-                {
-                    uint8_t nEquals  = 0;
-                    uint8_t nGreater = 0;
-
-                    for(uint32_t n = 0; n < 3; ++n)
-                    {
-                        if(statePeer.nChannelWeight[n] == stateBest.nChannelWeight[n])
-                            ++nEquals;
-
-                        if(statePeer.nChannelWeight[n] > stateBest.nChannelWeight[n])
-                            ++nGreater;
-                    }
-
-                    /* Mirrors BlockState::Accept(): in a two-channel battle,
-                     * a branch that is more than one unified height ahead gets
-                     * one extra "greater" vote so the heavier branch can win. */
-                    if(statePeer.nHeight > stateBest.nHeight + 1
-                    && (nEquals == 1 && nGreater == 1))
-                        ++nGreater;
-
-                    return ((nEquals == 2 && nGreater == 1) || nGreater > 1);
-                }
-
-                return statePeer.nChainTrust > stateBest.nChainTrust;
-            }
 
 
             void EvictOldestLocalMinedBlock()
@@ -163,23 +236,6 @@ namespace TAO
                 }
 
                 mapLocalMinedBlocks.erase(itOldest);
-            }
-
-
-            void EvictOldestPeerBestCooldown()
-            {
-                if(mapLastPeerBestRecoveryAttempt.empty())
-                    return;
-
-                auto itOldest = mapLastPeerBestRecoveryAttempt.begin();
-                for(auto it = mapLastPeerBestRecoveryAttempt.begin();
-                    it != mapLastPeerBestRecoveryAttempt.end(); ++it)
-                {
-                    if(it->second < itOldest->second)
-                        itOldest = it;
-                }
-
-                mapLastPeerBestRecoveryAttempt.erase(itOldest);
             }
 
 
@@ -245,6 +301,27 @@ namespace TAO
                 }
 
                 return stateDescendant.GetHash() == stateAncestor.GetHash();
+            }
+
+
+            bool ValidateStoredState(const TAO::Ledger::BlockState& state)
+            {
+                if(state.nVersion < 7 || state.vtx.empty()
+                || state.vtx.back().first != TRANSACTION::TRITIUM)
+                    return false;
+
+                TAO::Ledger::TritiumBlock block;
+                static_cast<TAO::Ledger::Block&>(block) =
+                    static_cast<const TAO::Ledger::Block&>(state);
+                block.nTime = state.nTime;
+                block.vtx.assign(state.vtx.begin(), std::prev(state.vtx.end()));
+
+                if(!LLD::Ledger->ReadTx(state.vtx.back().second, block.producer,
+                    FLAGS::BLOCK))
+                    return false;
+
+                return block.Check(true) && block.vMissing.empty()
+                    && !block.fConflicted;
             }
         }
 
@@ -358,6 +435,67 @@ namespace TAO
         }
 
 
+        bool ActivateCandidateBestChain(const TAO::Ledger::BlockState& stateCandidate,
+                                        const char* pszSource,
+                                        bool fTransaction)
+        {
+            const TAO::Ledger::BlockState stateBest = ChainState::tStateBest.load();
+            if(!stateCandidate.IsHeavierThan(stateBest) || stateCandidate.fConflicted)
+                return false;
+
+            TAO::Ledger::BlockState stateAncestor;
+            uint32_t nConnectDepth = 0;
+            uint32_t nDisconnectDepth = 0;
+            if(!FindCommonAncestor(stateCandidate, stateBest, stateAncestor,
+                nConnectDepth, nDisconnectDepth))
+                return false;
+
+            /* Preflight the complete connecting ancestry before any state change. */
+            TAO::Ledger::BlockState stateCursor = stateCandidate;
+            uint32_t nValidated = 0;
+            while(stateCursor != stateAncestor)
+            {
+                if(stateCursor.fConflicted || !ValidateStoredState(stateCursor))
+                    return debug::error(FUNCTION, "candidate preflight failed for ",
+                        stateCursor.GetHash().SubString());
+
+                const TAO::Ledger::BlockState statePrev = stateCursor.Prev();
+                if(!statePrev || stateCursor.hashPrevBlock != statePrev.GetHash()
+                || stateCursor.nHeight != statePrev.nHeight + 1)
+                    return debug::error(FUNCTION, "candidate ancestry is inconsistent at ",
+                        stateCursor.GetHash().SubString());
+
+                stateCursor = statePrev;
+                ++nValidated;
+            }
+
+            if(nValidated != nConnectDepth)
+                return debug::error(FUNCTION, "candidate ancestry depth mismatch");
+
+            if(fTransaction)
+                LLD::TxnBegin(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
+
+            TAO::Ledger::BlockState stateActivation = stateCandidate;
+            if(!stateActivation.SetBest())
+            {
+                if(fTransaction)
+                    LLD::TxnAbort(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
+                ChainState::fChainReorg.store(false);
+                return false;
+            }
+
+            if(fTransaction)
+                LLD::TxnCommit(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
+
+            debug::log(0, FUNCTION, "activated validated candidate source=",
+                (pszSource ? pszSource : "ledger"),
+                " hash=", stateCandidate.GetHash().SubString(),
+                " connect=", nConnectDepth,
+                " disconnect=", nDisconnectDepth);
+            return true;
+        }
+
+
         bool AttemptPeerBestChainRecovery(const uint1024_t& hashPeerBest,
                                           uint32_t nPeerHeight,
                                           const char* pszSource)
@@ -378,7 +516,7 @@ namespace TAO
             if(hashPeerBest == stateBest.GetHash())
                 return false;
 
-            if(!BetterThanCurrentBest(statePeer, stateBest))
+            if(!statePeer.IsHeavierThan(stateBest))
                 return false;
 
             TAO::Ledger::BlockState stateAncestor;
@@ -386,29 +524,6 @@ namespace TAO
             uint32_t nDisconnectDepth = 0;
             if(!FindCommonAncestor(statePeer, stateBest, stateAncestor, nConnectDepth, nDisconnectDepth))
                 return false;
-
-            if(nDisconnectDepth > MAX_AUTO_FORK_RECOVERY_DEPTH)
-            {
-                debug::warning(FUNCTION,
-                    "peer best recovery refused: disconnect depth ", nDisconnectDepth,
-                    " exceeds cap ", MAX_AUTO_FORK_RECOVERY_DEPTH,
-                    " peer_best=", hashPeerBest.SubString(),
-                    " current_best=", stateBest.GetHash().SubString());
-                return false;
-            }
-
-            const uint64_t nNow = runtime::timestamp();
-            {
-                std::lock_guard<std::mutex> lock(LOCAL_MINED_MUTEX);
-                const auto itCooldown = mapLastPeerBestRecoveryAttempt.find(hashPeerBest);
-                if(itCooldown != mapLastPeerBestRecoveryAttempt.end()
-                && (nNow - itCooldown->second) < PEER_BEST_RECOVERY_COOLDOWN_SECONDS)
-                    return false;
-
-                if(mapLastPeerBestRecoveryAttempt.size() >= MAX_PEER_BEST_RECOVERY_RECORDS)
-                    EvictOldestPeerBestCooldown();
-                mapLastPeerBestRecoveryAttempt[hashPeerBest] = nNow;
-            }
 
             debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "=== PEER_BEST_RECOVERY ===", ANSI_COLOR_RESET,
                 " source=", (pszSource ? pszSource : "peer"),
@@ -420,10 +535,10 @@ namespace TAO
                 " ancestor=", stateAncestor.GetHash().SubString(),
                 " disconnect=", nDisconnectDepth,
                 " connect=", nConnectDepth,
-                " action=SetBest");
+                " action=validated-activation");
 
-            if(!statePeer.SetBest())
-                return debug::error(FUNCTION, "peer best recovery failed to set best chain");
+            if(!ActivateCandidateBestChain(statePeer, pszSource, true))
+                return debug::error(FUNCTION, "peer best recovery candidate validation failed");
 
             debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "=== PEER_BEST_RECOVERED ===", ANSI_COLOR_RESET,
                 " best=", ChainState::hashBestChain.load().SubString(),
@@ -451,35 +566,45 @@ namespace TAO
             /* We want to catch any exceptions that were thrown during processing and set REJECTED if exceptions are thrown. */
             try
             {
+                /* Duplicate suppression is keyed by the block's own hash and must
+                 * happen before parent availability is considered. */
+                if(LLD::Ledger->HasBlock(hashBlock))
+                {
+                    nStatus |= PROCESS::DUPLICATE;
+                    mapOrphans.Remove(hashBlock);
+                    return;
+                }
+
+                if(mapOrphans.Contains(hashBlock))
+                {
+                    nStatus |= PROCESS::ORPHAN;
+                    return;
+                }
+
                 /* Check for orphan. */
                 if(!LLD::Ledger->HasBlock(block.hashPrevBlock))
                 {
                     /* Set the status message. */
                     nStatus |= PROCESS::ORPHAN;
 
-                    /* Skip if already in orphan queue. */
-                    if(!mapOrphans.count(block.hashPrevBlock))
+                    /* Check the checkpoint height. */
+                    if(!config::fTestNet.load() && block.nHeight < TAO::Ledger::ChainState::nCheckpointHeight)
                     {
-                        /* Check the checkpoint height. */
-                        if(!config::fTestNet.load() && block.nHeight < TAO::Ledger::ChainState::nCheckpointHeight)
-                        {
-                            /* Set the status. */
-                            nStatus |= PROCESS::IGNORED;
-
-                            return;
-                        }
-
-                        /* Insert into orphans map. */
-                        mapOrphans.insert
-                        (
-                            std::make_pair(block.hashPrevBlock,
-                            std::unique_ptr<TAO::Ledger::Block>(block.Clone()))
-                        );
-
-                        /* Debug output. */
-                        if(!ChainState::Synchronizing())
-                            debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.SubString());
+                        nStatus |= PROCESS::IGNORED;
+                        return;
                     }
+
+                    uint1024_t hashEvicted = 0;
+                    mapOrphans.Insert(block, &hashEvicted);
+
+                    if(hashEvicted != 0)
+                        debug::warning(FUNCTION, "orphan pool evicted oldest hash=",
+                            hashEvicted.SubString(), " size=", mapOrphans.Size());
+
+                    if(!ChainState::Synchronizing())
+                        debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight,
+                            " prev=", block.hashPrevBlock.SubString(),
+                            " size=", mapOrphans.Size());
 
                     /* Check if we have an active node. */
                     if(pnode)
@@ -532,15 +657,8 @@ namespace TAO
                     return;
                 }
 
-                /* Check if this is a duplicate block. */
-                if(LLD::Ledger->HasBlock(block.GetHash()))
-                {
-                    nStatus |= PROCESS::DUPLICATE;
-                    return;
-                }
-
                 /* Check if the block is valid. Skip when already validated by ValidateMinedBlock(). */
-                if(!fSkipCheck && !block.Check())
+                if(!fSkipCheck && !block.Check(true))
                 {
                     /* [Option C] Negative/retry cache for Check()-rejected blocks.
                      * Count consecutive rejections for this exact block hash. */
@@ -578,7 +696,7 @@ namespace TAO
 
                         mempool.Check();
 
-                        if(block.Check())
+                        if(block.Check(true))
                         {
                             fRecovered = true;
                             debug::log(0, FUNCTION, "block ", hashBlock.SubString(),
@@ -723,89 +841,98 @@ namespace TAO
                     nProcessedBlocks      = ChainState::nBestHeight.load();
                 }
 
-                /* Process orphan if found. */
-                uint1024_t hash = block.GetHash();
-                while(mapOrphans.count(hash))
+                /* Drain the orphan graph breadth-first. */
+                std::queue<uint1024_t> queueParents;
+                queueParents.push(hashBlock);
+
+                bool fRecordedIncomplete = false;
+                uint64_t nDrained = 0;
+                while(!queueParents.empty())
                 {
-                    /* Grab local copy of the pointer. */
-                    const std::unique_ptr<TAO::Ledger::Block>& pOrphan = mapOrphans.at(hash);
+                    const uint1024_t hashParent = queueParents.front();
+                    queueParents.pop();
 
-                    /* Get the orphan's own hash for draining its descendants. */
-                    const uint1024_t hashOrphan = pOrphan->GetHash();
-
-                    /* Check if this is a duplicate block. */
-                    if(LLD::Ledger->HasBlock(hashOrphan))
+                    const std::vector<uint1024_t> vChildren = mapOrphans.Children(hashParent);
+                    for(const auto& hashOrphan : vChildren)
                     {
-                        mapOrphans.erase(hash);
-                        hash = hashOrphan;
-                        continue;
-                    }
+                        const TAO::Ledger::Block* pOrphan = mapOrphans.Get(hashOrphan);
+                        if(!pOrphan)
+                            continue;
 
-                    /* Debug output. */
-                    debug::log(0, FUNCTION, "processing ORPHAN hash=", hashOrphan.SubString(), " size=", mapOrphans.size());
-
-                    /* Check if the block is valid. */
-                    if(!pOrphan->Check())
-                        return;
-
-                    /* Check for missing transactions for ORPHAN. A missing tx is
-                     * a temporary incomplete condition, not a validation failure. */
-                    if(pOrphan->vMissing.size() != 0)
-                    {
-                        /* Incomplete blocks can pass through orphan checks. */
-                        nStatus |= PROCESS::INCOMPLETE;
-
-                        /* Add the missing transactions to this current block. */
-                        block.vMissing.insert(block.vMissing.end(), pOrphan->vMissing.begin(), pOrphan->vMissing.end());
-
-                        /* Set hashMissing to the orphan's own hash so the LLP
-                         * layer re-requests the correct block (not the map key). */
-                        block.hashMissing = hashOrphan;
-
-                        /* Track retries so a permanently unresolvable orphan tx
-                         * can't wedge the node forever. */
-                        if(mapLastMissing.count(hashOrphan))
+                        if(LLD::Ledger->HasBlock(hashOrphan))
                         {
-                            mapLastMissing[hashOrphan]++;
+                            mapOrphans.Remove(hashOrphan);
+                            queueParents.push(hashOrphan);
+                            ++nDrained;
+                            continue;
+                        }
 
-                            if(mapLastMissing[hashOrphan] > LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
+                        debug::log(0, FUNCTION, "processing ORPHAN hash=",
+                            hashOrphan.SubString(), " size=", mapOrphans.Size());
+
+                        if(!pOrphan->Check(true))
+                        {
+                            const uint64_t nPruned = mapOrphans.RemoveSubtree(hashOrphan);
+                            mapLastMissing.erase(hashOrphan);
+                            debug::warning(FUNCTION, "removed invalid orphan subtree root=",
+                                hashOrphan.SubString(), " count=", nPruned);
+                            continue;
+                        }
+
+                        /* Retain incomplete children while processing independent
+                         * siblings. Expose the first miss in deterministic order. */
+                        if(!pOrphan->vMissing.empty())
+                        {
+                            nStatus |= PROCESS::INCOMPLETE;
+                            if(!fRecordedIncomplete)
                             {
-                                block.vMissing.clear();
-                                block.hashMissing = 0;
+                                block.vMissing.insert(block.vMissing.end(),
+                                    pOrphan->vMissing.begin(), pOrphan->vMissing.end());
+                                block.hashMissing = hashOrphan;
+                                fRecordedIncomplete = true;
+
+                                if(mapLastMissing.count(hashOrphan))
+                                    ++mapLastMissing[hashOrphan];
+                                else
+                                {
+                                    if(mapLastMissing.size() >= MAX_MISSING_MAP_ENTRIES)
+                                        mapLastMissing.clear();
+                                    mapLastMissing[hashOrphan] = 1;
+                                }
+
+                                if(mapLastMissing[hashOrphan] >
+                                    LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
+                                {
+                                    block.vMissing.clear();
+                                    block.hashMissing = 0;
+                                }
+                                else
+                                    debug::notice(FUNCTION, "orphan missing ",
+                                        pOrphan->vMissing.size(), " transactions");
                             }
-                            else
-                                debug::notice(FUNCTION, "orphan missing ", pOrphan->vMissing.size(), " transactions");
+                            continue;
                         }
-                        else
+
+                        if(!pOrphan->Accept())
                         {
-                            /* Same intentional clear-all DoS guard as the main path. */
-                            if(mapLastMissing.size() >= MAX_MISSING_MAP_ENTRIES)
-                                mapLastMissing.clear();
-                            mapLastMissing[hashOrphan] = 1;
+                            const uint64_t nPruned = mapOrphans.RemoveSubtree(hashOrphan);
+                            mapLastMissing.erase(hashOrphan);
+                            debug::warning(FUNCTION, "removed rejected orphan subtree root=",
+                                hashOrphan.SubString(), " count=", nPruned);
+                            continue;
                         }
 
-                        return;
-                    }
-
-                    /* Accept each orphan. */
-                    else if(!pOrphan->Accept())
-                        return;
-
-                    /* Orphan accepted — clear any missing-transaction retry counter. */
-                    if(mapLastMissing.count(hashOrphan))
                         mapLastMissing.erase(hashOrphan);
-
-                    /* [C2] Orphan resolved — clear its request throttle entry so a
-                     * future, unrelated orphan chain starting at this same hash
-                     * (unlikely, but cheap to guard) isn't throttled by stale
-                     * bookkeeping. */
-                    if(mapLastOrphanRequest.count(hash))
-                        mapLastOrphanRequest.erase(hash);
-
-                    /* Erase orphans from map. */
-                    mapOrphans.erase(hash);
-                    hash = hashOrphan;
+                        mapLastOrphanRequest.erase(hashParent);
+                        mapOrphans.Remove(hashOrphan);
+                        queueParents.push(hashOrphan);
+                        ++nDrained;
+                    }
                 }
+
+                if(nDrained > 0)
+                    debug::log(0, FUNCTION, "drained ", nDrained,
+                        " orphan block(s), remaining=", mapOrphans.Size());
             }
             catch(const std::exception& e)
             {

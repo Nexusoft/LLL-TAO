@@ -25,6 +25,8 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
+#include <algorithm>
+
 
 namespace
 {
@@ -124,6 +126,26 @@ namespace
         bool Accept() const override
         {
             return true;
+        }
+    };
+
+
+    class RejectBlock final : public TAO::Ledger::Block
+    {
+    public:
+        RejectBlock* Clone() const override
+        {
+            return new RejectBlock(*this);
+        }
+
+        bool Check(bool /*fForceProof*/ = false) const override
+        {
+            return false;
+        }
+
+        bool Accept() const override
+        {
+            return false;
         }
     };
 }
@@ -228,7 +250,7 @@ TEST_CASE("Missing-transaction retry counter clears on successful ACCEPT", "[led
     REQUIRE_FALSE(LLD::Ledger->HasBlock(hashMissing));
 
     TAO::Ledger::mapLastMissing.clear();
-    TAO::Ledger::mapOrphans.clear();
+    TAO::Ledger::mapOrphans.Clear();
 
     /* Drive a few INCOMPLETE results to build up the counter. */
     for(uint32_t i = 0; i < 3; ++i)
@@ -332,7 +354,7 @@ TEST_CASE("Orphan-drain missing tx sets hashMissing to orphan's own hash", "[led
 {
     LedgerGuard env;
 
-    TAO::Ledger::mapOrphans.clear();
+    TAO::Ledger::mapOrphans.Clear();
     TAO::Ledger::mapLastMissing.clear();
 
     /* Write a prev block so the accepted parent block doesn't take the orphan
@@ -371,9 +393,7 @@ TEST_CASE("Orphan-drain missing tx sets hashMissing to orphan's own hash", "[led
     const uint1024_t hashOrphan = orphanBlock.GetHash();
 
     /* Seed mapOrphans: keyed by the orphan's parent hash (= hashParent). */
-    TAO::Ledger::mapOrphans.insert(
-        std::make_pair(hashParent,
-        std::unique_ptr<TAO::Ledger::Block>(orphanBlock.Clone())));
+    REQUIRE(TAO::Ledger::mapOrphans.Insert(orphanBlock));
 
     /* Process the parent block: it is accepted, then the orphan-drain kicks in
      * and finds the orphan has missing transactions. */
@@ -393,7 +413,7 @@ TEST_CASE("Orphan-drain missing tx sets hashMissing to orphan's own hash", "[led
     REQUIRE(TAO::Ledger::mapLastMissing[hashOrphan] == 1);
 
     /* Clean up. */
-    TAO::Ledger::mapOrphans.clear();
+    TAO::Ledger::mapOrphans.Clear();
     TAO::Ledger::mapLastMissing.clear();
     LLD::Ledger->EraseBlock(hashPrevOrphan);
 }
@@ -403,7 +423,7 @@ TEST_CASE("Persisted orphan is removed while draining", "[ledger][process]")
 {
     LedgerGuard env;
 
-    TAO::Ledger::mapOrphans.clear();
+    TAO::Ledger::mapOrphans.Clear();
 
     const uint1024_t hashPrev(0xABCD5700ULL);
 
@@ -442,17 +462,221 @@ TEST_CASE("Persisted orphan is removed while draining", "[ledger][process]")
     stateOrphan.nBits         = orphanBlock.nBits;
     REQUIRE(LLD::Ledger->WriteBlock(hashOrphan, stateOrphan));
 
-    TAO::Ledger::mapOrphans.insert(
-        std::make_pair(hashParent,
-        std::unique_ptr<TAO::Ledger::Block>(orphanBlock.Clone())));
+    REQUIRE(TAO::Ledger::mapOrphans.Insert(orphanBlock));
 
     uint8_t nStatus = 0;
     TAO::Ledger::Process(parentBlock, nStatus);
 
     REQUIRE((nStatus & TAO::Ledger::PROCESS::ACCEPTED) != 0);
-    REQUIRE(TAO::Ledger::mapOrphans.empty());
+    REQUIRE(TAO::Ledger::mapOrphans.Empty());
     REQUIRE(LLD::Ledger->HasBlock(hashOrphan));
 
     LLD::Ledger->EraseBlock(hashOrphan);
     LLD::Ledger->EraseBlock(hashPrev);
+}
+
+
+TEST_CASE("Block orphan pool retains siblings and suppresses exact duplicates", "[ledger][process][orphan_pool]")
+{
+    TAO::Ledger::OrphanPool pool;
+    const uint1024_t hashParent(0x9911);
+
+    PassBlock first;
+    first.nVersion = 4;
+    first.hashPrevBlock = hashParent;
+    first.nNonce = 1;
+    first.hashMerkleRoot = uint512_t(1);
+
+    PassBlock second = first;
+    second.nNonce = 2;
+    second.hashMerkleRoot = uint512_t(2);
+
+    REQUIRE(pool.Insert(first));
+    REQUIRE(pool.Insert(second));
+    REQUIRE_FALSE(pool.Insert(first));
+    REQUIRE(pool.Size() == 2);
+
+    const std::vector<uint1024_t> vChildren = pool.Children(hashParent);
+    REQUIRE(vChildren.size() == 2);
+    REQUIRE(std::is_sorted(vChildren.begin(), vChildren.end()));
+}
+
+
+TEST_CASE("Block orphan pool FIFO eviction keeps indexes consistent", "[ledger][process][orphan_pool]")
+{
+    TAO::Ledger::OrphanPool pool;
+    const uint1024_t hashParent(0x9922);
+    uint1024_t hashFirst = 0;
+
+    for(uint64_t i = 1; i <= TAO::Ledger::MAX_BLOCK_ORPHANS; ++i)
+    {
+        PassBlock block;
+        block.nVersion = 4;
+        block.hashPrevBlock = hashParent;
+        block.nNonce = i;
+        block.hashMerkleRoot = uint512_t(i);
+        if(i == 1)
+            hashFirst = block.GetHash();
+        REQUIRE(pool.Insert(block));
+    }
+
+    PassBlock overflow;
+    overflow.nVersion = 4;
+    overflow.hashPrevBlock = hashParent;
+    overflow.nNonce = TAO::Ledger::MAX_BLOCK_ORPHANS + 1;
+    overflow.hashMerkleRoot = uint512_t(TAO::Ledger::MAX_BLOCK_ORPHANS + 1);
+
+    uint1024_t hashEvicted = 0;
+    REQUIRE(pool.Insert(overflow, &hashEvicted));
+    REQUIRE(hashEvicted == hashFirst);
+    REQUIRE_FALSE(pool.Contains(hashFirst));
+    REQUIRE(pool.Size() == TAO::Ledger::MAX_BLOCK_ORPHANS);
+    REQUIRE(pool.Children(hashParent).size() == TAO::Ledger::MAX_BLOCK_ORPHANS);
+}
+
+
+TEST_CASE("Orphan drain handles trees, invalid subtrees, and incomplete siblings", "[ledger][process][orphan_pool]")
+{
+    LedgerGuard env;
+    TAO::Ledger::mapOrphans.Clear();
+    TAO::Ledger::mapLastMissing.clear();
+
+    const uint1024_t hashPrev(0x9933);
+    TAO::Ledger::BlockState statePrev;
+    statePrev.nVersion = 4;
+    statePrev.nHeight = 70;
+    REQUIRE(LLD::Ledger->WriteBlock(hashPrev, statePrev));
+
+    PassBlock parent;
+    parent.nVersion = 4;
+    parent.hashPrevBlock = hashPrev;
+    parent.nHeight = 71;
+    parent.nNonce = 10;
+    const uint1024_t hashParent = parent.GetHash();
+
+    MissingBlock incomplete;
+    incomplete.nVersion = 4;
+    incomplete.hashPrevBlock = hashParent;
+    incomplete.nHeight = 72;
+    incomplete.nNonce = 11;
+    const uint1024_t hashIncomplete = incomplete.GetHash();
+
+    PassBlock sibling;
+    sibling.nVersion = 4;
+    sibling.hashPrevBlock = hashParent;
+    sibling.nHeight = 72;
+    sibling.nNonce = 12;
+    const uint1024_t hashSibling = sibling.GetHash();
+
+    PassBlock grandchild;
+    grandchild.nVersion = 4;
+    grandchild.hashPrevBlock = hashSibling;
+    grandchild.nHeight = 73;
+    grandchild.nNonce = 13;
+    const uint1024_t hashGrandchild = grandchild.GetHash();
+
+    RejectBlock invalid;
+    invalid.nVersion = 4;
+    invalid.hashPrevBlock = hashParent;
+    invalid.nHeight = 72;
+    invalid.nNonce = 14;
+    const uint1024_t hashInvalid = invalid.GetHash();
+
+    PassBlock invalidDescendant;
+    invalidDescendant.nVersion = 4;
+    invalidDescendant.hashPrevBlock = hashInvalid;
+    invalidDescendant.nHeight = 73;
+    invalidDescendant.nNonce = 15;
+    const uint1024_t hashInvalidDescendant = invalidDescendant.GetHash();
+
+    REQUIRE(TAO::Ledger::mapOrphans.Insert(incomplete));
+    REQUIRE(TAO::Ledger::mapOrphans.Insert(sibling));
+    REQUIRE(TAO::Ledger::mapOrphans.Insert(grandchild));
+    REQUIRE(TAO::Ledger::mapOrphans.Insert(invalid));
+    REQUIRE(TAO::Ledger::mapOrphans.Insert(invalidDescendant));
+
+    uint8_t nStatus = 0;
+    TAO::Ledger::Process(parent, nStatus);
+
+    REQUIRE((nStatus & TAO::Ledger::PROCESS::ACCEPTED) != 0);
+    REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
+    REQUIRE(TAO::Ledger::mapOrphans.Contains(hashIncomplete));
+    REQUIRE_FALSE(TAO::Ledger::mapOrphans.Contains(hashSibling));
+    REQUIRE_FALSE(TAO::Ledger::mapOrphans.Contains(hashGrandchild));
+    REQUIRE_FALSE(TAO::Ledger::mapOrphans.Contains(hashInvalid));
+    REQUIRE_FALSE(TAO::Ledger::mapOrphans.Contains(hashInvalidDescendant));
+
+    TAO::Ledger::mapOrphans.Clear();
+    TAO::Ledger::mapLastMissing.clear();
+    LLD::Ledger->EraseBlock(hashPrev);
+}
+
+
+TEST_CASE("Disk-known block is not requeued as an orphan", "[ledger][process][orphan_pool]")
+{
+    LedgerGuard env;
+    TAO::Ledger::mapOrphans.Clear();
+
+    PassBlock block;
+    block.nVersion = 4;
+    block.hashPrevBlock = uint1024_t(0x9944);
+    block.nHeight = 80;
+    block.nNonce = 20;
+    const uint1024_t hashBlock = block.GetHash();
+
+    TAO::Ledger::BlockState state;
+    state.nVersion = block.nVersion;
+    state.hashPrevBlock = block.hashPrevBlock;
+    state.nHeight = block.nHeight;
+    state.nNonce = block.nNonce;
+    REQUIRE(LLD::Ledger->WriteBlock(hashBlock, state));
+
+    uint8_t nStatus = 0;
+    TAO::Ledger::Process(block, nStatus);
+    REQUIRE((nStatus & TAO::Ledger::PROCESS::DUPLICATE) != 0);
+    REQUIRE(TAO::Ledger::mapOrphans.Empty());
+
+    LLD::Ledger->EraseBlock(hashBlock);
+}
+
+
+TEST_CASE("Unified fork scoring is shared by candidate activation", "[ledger][fork_choice]")
+{
+    TAO::Ledger::BlockState best;
+    best.nVersion = 7;
+    best.nChannel = 2;
+    best.nHeight = 100;
+    best.nNonce = 1;
+    best.nChannelWeight[0] = 10;
+    best.nChannelWeight[1] = 10;
+    best.nChannelWeight[2] = 10;
+
+    TAO::Ledger::BlockState candidate = best;
+    candidate.nNonce = 2;
+    candidate.nChannelWeight[0] = 11;
+    candidate.nChannelWeight[1] = 11;
+    candidate.nChannelWeight[2] = 9;
+    REQUIRE(candidate.IsHeavierThan(best));
+
+    candidate = best;
+    candidate.nNonce = 3;
+    candidate.nChannelWeight[0] = 11;
+    REQUIRE(candidate.IsHeavierThan(best));
+
+    candidate = best;
+    candidate.nNonce = 4;
+    candidate.nHeight = 102;
+    candidate.nChannelWeight[0] = 11;
+    candidate.nChannelWeight[1] = 9;
+    REQUIRE(candidate.IsHeavierThan(best));
+
+    candidate = best;
+    candidate.nNonce = 5;
+    REQUIRE_FALSE(candidate.IsHeavierThan(best));
+
+    candidate.nVersion = 6;
+    best.nVersion = 6;
+    candidate.nChainTrust = 101;
+    best.nChainTrust = 100;
+    REQUIRE(candidate.IsHeavierThan(best));
 }
