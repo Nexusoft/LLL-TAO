@@ -804,8 +804,15 @@ namespace TAO
                 return false;
             }
 
-            /* Commit the transaction to database. */
-            if(!LLD::TxnCommit())
+            /* Commit the transaction to database.
+             * Case A (block became new best chain): SetBest() committed the
+             * transaction internally via Index() → ActivateCandidateBestChain().
+             * HasOpenTransaction() returns false — skip the outer commit to avoid
+             * treating the expected no-op return value of false as a real error.
+             * Case B (block accepted but did not become best chain): the outer
+             * transaction is still open and must be committed here; a false return
+             * from TxnCommit() is a genuine failure signal in this path. */
+            if(LLD::HasOpenTransaction() && !LLD::TxnCommit())
                 return debug::error(FUNCTION, "disk transaction commit failed for block acceptance");
 
             /* Check for best chain. */

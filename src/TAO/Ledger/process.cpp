@@ -484,7 +484,12 @@ namespace TAO
                 return false;
             }
 
-            if(fTransaction)
+            /* SetBest() commits the outer transaction internally when it succeeds.
+             * When fTransaction=true we opened TxnBegin before calling SetBest(),
+             * so the outer transaction was consumed by SetBest()'s internal TxnCommit.
+             * Guard with HasOpenTransaction() so that a now-closed transaction is not
+             * misreported as a commit failure. */
+            if(fTransaction && LLD::HasOpenTransaction())
             {
                 if(!LLD::TxnCommit(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS))
                     return debug::error(FUNCTION, "disk transaction commit failed for candidate activation");

@@ -249,7 +249,10 @@ namespace TAO
                                 debug::error(FUNCTION, "failed to revert to hardcoded ancestor checkpoint");
                                 LLD::TxnAbort();
                             }
-                            else if(!LLD::TxnCommit())
+                            /* SetBest() commits the transaction internally when it succeeds.
+                             * Guard with HasOpenTransaction() so that the now-closed outer
+                             * transaction is not misreported as a commit failure. */
+                            else if(LLD::HasOpenTransaction() && !LLD::TxnCommit())
                                 debug::error(FUNCTION, "disk commit failed after reverting to hardcoded ancestor checkpoint");
 
                             break;
@@ -290,7 +293,10 @@ namespace TAO
                 {
                     /* Debug Output. */
                     debug::log(0, FUNCTION, "-revertblocks=XXX requested removal of ", nRevertBlocks, " blocks");
-                    if(!LLD::TxnCommit())
+                    /* SetBest() commits the transaction internally when it succeeds.
+                     * Guard with HasOpenTransaction() so that the now-closed outer
+                     * transaction is not misreported as a commit failure. */
+                    if(LLD::HasOpenTransaction() && !LLD::TxnCommit())
                         debug::error(FUNCTION, "disk commit failed after -revertblocks rewind");
                 }
             }

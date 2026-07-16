@@ -536,3 +536,127 @@ TEST_CASE("Real SetBest(): mempool size is unchanged after disk-phase failure",
     /* Cleanup */
     LLD::Ledger->EraseBlock(hashGenesis);
 }
+
+
+/* ===========================================================================
+ * TEST 8 — Case A regression: outer TxnBegin + SetBest() success →
+ *           HasOpenTransaction() false, spurious TxnCommit() returns false
+ * ===========================================================================
+ * This is the EXACT production bug: Accept() opens an outer TxnBegin, writes
+ * vtx, calls Index() which calls SetBest() internally.  SetBest() succeeds and
+ * commits the transaction itself (leaving pTransaction null).  The outer
+ * TxnCommit() in Accept() then returns false — which, before the fix, was
+ * misinterpreted as a hard commit failure and caused Accept() to return false
+ * on every single best-chain block.
+ *
+ * After the fix: Accept() checks HasOpenTransaction() before calling TxnCommit.
+ * When SetBest() has already committed (HasOpenTransaction() == false), Accept()
+ * skips the outer TxnCommit() and returns true.
+ *
+ * This test directly validates that the fix is correct:
+ *  (a) SetBest() with an outer transaction open returns true.
+ *  (b) HasOpenTransaction() is false after SetBest() succeeds.
+ *  (c) A subsequent TxnCommit() returns false (no active transaction).
+ *  (d) ChainState advanced to the candidate block.
+ */
+TEST_CASE("Accept() Case A: outer TxnBegin + SetBest() commits internally, HasOpenTransaction false",
+          "[ledger][accept_txn][real]")
+{
+    RealCodeLedgerGuard ledgerGuard;
+    ChainStateGuard     chainGuard;
+
+    /* ---- Minimal genesis (nNonce distinct from earlier tests in this file to avoid hash collisions) ---- */
+    TAO::Ledger::BlockState genesis;
+    genesis.nVersion      = 4;
+    genesis.hashPrevBlock = uint1024_t(0);
+    genesis.nChannel      = 2;
+    genesis.nHeight       = 0;
+    genesis.nBits         = 1;
+    genesis.nNonce        = 1001;
+    genesis.nChainTrust   = 0; /* explicitly 0 so the heavier-than relationship is clear */
+
+    const uint1024_t hashGenesis = genesis.GetHash();
+    REQUIRE(LLD::Ledger->WriteBlock(hashGenesis, genesis));
+
+    TAO::Ledger::ChainState::tStateGenesis   = genesis;
+    TAO::Ledger::ChainState::tStateBest      = genesis;
+    TAO::Ledger::ChainState::hashBestChain   = hashGenesis;
+    TAO::Ledger::ChainState::nBestHeight     .store(0);
+    TAO::Ledger::ChainState::nBestChainTrust .store(genesis.nChainTrust);
+
+    /* ---- Candidate block: height 1, empty vtx → Connect() succeeds trivially ---- */
+    TAO::Ledger::BlockState candidate;
+    candidate.nVersion      = 4;
+    candidate.hashPrevBlock = hashGenesis;
+    candidate.nChannel      = 2;
+    candidate.nHeight       = 1;
+    candidate.nBits         = 1;
+    candidate.nNonce        = 1002;
+    candidate.nChainTrust   = 1; /* heavier than genesis (nChainTrust 1 > 0) for IsHeavierThan */
+
+    const uint1024_t hashCandidate = candidate.GetHash();
+
+    /* ---- Simulate Accept()'s outer TxnBegin ---- */
+    LLD::TxnBegin();
+
+    /* Confirm outer transaction is open before SetBest() */
+    REQUIRE(LLD::HasOpenTransaction(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS));
+
+    /* ---- Call SetBest() directly (mirrors what Index() → ActivateCandidateBestChain does) ---- */
+    const bool fSetBestOk = candidate.SetBest();
+    REQUIRE(fSetBestOk); /* (a) SetBest() must succeed */
+
+    /* ---- (b) HasOpenTransaction() must be false: SetBest() committed internally ---- */
+    REQUIRE_FALSE(LLD::HasOpenTransaction(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS));
+
+    /* ---- (c) A subsequent TxnCommit() returns false (no active transaction).
+     * Before the fix this false was misinterpreted as a failure in Accept(),
+     * causing every best-chain block acceptance to return false.
+     * After the fix the HasOpenTransaction() guard prevents this call entirely. ---- */
+    const bool fRedundantCommit = LLD::TxnCommit();
+    REQUIRE_FALSE(fRedundantCommit); /* expected: no transaction was open; NOT an error */
+
+    /* ---- (d) ChainState must have advanced to the candidate ---- */
+    REQUIRE(TAO::Ledger::ChainState::hashBestChain.load() == hashCandidate);
+    REQUIRE(TAO::Ledger::ChainState::nBestHeight.load()   == 1u);
+
+    /* Cleanup */
+    LLD::Ledger->EraseBlock(hashCandidate);
+    LLD::Ledger->EraseBlock(hashGenesis);
+}
+
+
+/* ===========================================================================
+ * TEST 9 — Case B: outer TxnBegin without SetBest() → HasOpenTransaction true
+ *           → outer TxnCommit() is needed and succeeds
+ * ===========================================================================
+ * Verifies the Case B path from Accept(): block was accepted by Index() but
+ * did NOT become the new best chain (IsHeavierThan was false, so SetBest was
+ * never called).  The outer transaction is still open; the HasOpenTransaction()
+ * guard correctly detects this and calls TxnCommit(), which succeeds.
+ *
+ * This must not regress: genuine commit failures in Case B (outer transaction
+ * still open but TxnCommit fails) must still be surfaced as false.
+ */
+TEST_CASE("Accept() Case B: outer TxnBegin without SetBest, HasOpenTransaction true, TxnCommit needed",
+          "[ledger][accept_txn][real]")
+{
+    RealCodeLedgerGuard ledgerGuard;
+
+    /* ---- Open an outer transaction (simulating Accept() when block is not heavier) ---- */
+    LLD::TxnBegin();
+
+    /* Confirm transaction is open before any commit */
+    REQUIRE(LLD::HasOpenTransaction(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS));
+
+    /* ---- The fix: guard fires, outer TxnCommit() is called because transaction is open ---- */
+    const bool fNeedsCommit = LLD::HasOpenTransaction();
+    REQUIRE(fNeedsCommit); /* guard would proceed to call TxnCommit() */
+
+    /* Commit the open (empty) transaction — must succeed */
+    const bool fCommitOk = LLD::TxnCommit();
+    REQUIRE(fCommitOk); /* (a) outer TxnCommit succeeds — not a false-positive */
+
+    /* After commit, no transaction should remain open */
+    REQUIRE_FALSE(LLD::HasOpenTransaction(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS));
+}
