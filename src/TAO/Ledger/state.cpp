@@ -1129,8 +1129,11 @@ namespace TAO
                  * before calling SetBest(); that outer transaction — which may also include vtx
                  * writes made before Index() was called — is committed atomically here together
                  * with the full disconnect/connect transition.  The caller's subsequent
-                 * TxnCommit() call is a harmless no-op (pTransaction is null once committed). */
-                LLD::TxnCommit(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
+                 * TxnCommit() call is a harmless no-op (pTransaction is null once committed).
+                 * TxnCommit aggregates per-instance results; a false return means at least one
+                 * instance's commit failed, so the chain transition is aborted. */
+                if(!LLD::TxnCommit(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS))
+                    return debug::error(FUNCTION, "disk transaction commit failed; aborting chain transition");
 
                 /* -- POST-COMMIT: mempool mutations (safe now that disk is durable) -- */
 

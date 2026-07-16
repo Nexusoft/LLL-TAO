@@ -616,7 +616,8 @@ namespace Legacy
         }
 
         /* Commit the transaction to database. */
-        LLD::TxnCommit();
+        if(!LLD::TxnCommit())
+            return debug::error(FUNCTION, "disk transaction commit failed for block acceptance");
 
         return true;
     }
