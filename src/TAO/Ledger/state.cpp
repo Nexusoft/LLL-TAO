@@ -847,6 +847,15 @@ namespace TAO
             }
             else
             {
+                /* Self-contained transaction boundary: open our own TxnBegin only when the
+                 * caller has not already opened one (call sites #1/#2 in legacy.cpp/tritium.cpp
+                 * and #3-#5 in chainstate.cpp all open a TxnBegin before calling SetBest()).
+                 * A future caller that forgets to open a transaction is self-healed here
+                 * instead of silently hitting TxnCommit with no active transaction. */
+                const bool fOwnedTxn = !LLD::HasOpenTransaction(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
+                if(fOwnedTxn)
+                    LLD::TxnBegin(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
+
                 /* Get initial block states. */
                 BlockState fork   = ChainState::tStateBest.load();
                 BlockState longer = *this;
@@ -865,7 +874,10 @@ namespace TAO
                         /* Iterate backwards in chain. */
                         longer = longer.Prev();
                         if(!longer)
+                        {
+                            LLD::TxnAbort(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
                             return debug::error(FUNCTION, "failed to find longer ancestor block");
+                        }
                     }
 
                     /* Break if found. */
@@ -878,7 +890,10 @@ namespace TAO
                     /* Iterate to previous block. */
                     fork = fork.Prev();
                     if(!fork)
+                    {
+                        LLD::TxnAbort(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
                         return debug::error(FUNCTION, "failed to find ancestor fork block");
+                    }
                 }
 
                 /* Track whether this SetBest() call is performing an actual chain reorganization
@@ -936,7 +951,10 @@ namespace TAO
 
                     /* Disconnect the block. */
                     if(!state.Disconnect())
+                    {
+                        LLD::TxnAbort(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
                         return debug::error(FUNCTION, "failed to disconnect ", state.GetHash().SubString());
+                    }
 
                     /* If this disconnect orphaned a locally accepted mined block,
                      * emit a prominent diagnostic before continuing the normal
@@ -980,7 +998,10 @@ namespace TAO
                                 /* Make sure the transaction is on disk. */
                                 TAO::Ledger::Transaction tx;
                                 if(!LLD::Ledger->ReadTx(hash, tx))
+                                {
+                                    LLD::TxnAbort(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
                                     return debug::error(FUNCTION, "transaction not on disk");
+                                }
 
                                 /* Get a copy of our transaction if debugging reorgs. */
                                 const encoding::json jRet =
@@ -1008,7 +1029,10 @@ namespace TAO
 
                     /* Connect the block. */
                     if(!state->Connect())
+                    {
+                        LLD::TxnAbort(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
                         return debug::error(FUNCTION, "failed to connect ", state->GetHash().SubString());
+                    }
 
                     /* Harden a checkpoint if there is any. */
                     #ifndef UNIT_TESTS
@@ -1043,7 +1067,10 @@ namespace TAO
                                 /* Make sure the transaction is on disk. */
                                 TAO::Ledger::Transaction tx;
                                 if(!LLD::Ledger->ReadTx(hash, tx))
+                                {
+                                    LLD::TxnAbort(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
                                     return debug::error(FUNCTION, "transaction not on disk");
+                                }
 
                                 /* Get a copy of our transaction if debugging reorgs. */
                                 const encoding::json jRet =
@@ -1096,11 +1123,15 @@ namespace TAO
                  * transactional boundary: everything above is rollback-safe; everything below is
                  * in-memory-only and runs only after the durable commit succeeds.
                  *
-                 * Callers (#1/#2: legacy.cpp/tritium.cpp Accept()) opened a TxnBegin() that also
-                 * covered writing block transactions to disk before Index() was called.  This
-                 * TxnCommit therefore atomically commits those vtx writes together with the full
-                 * disconnect/connect transition.  The caller's subsequent TxnCommit call is a
-                 * harmless no-op (pTransaction is null once committed). */
+                 * Self-containment: when fOwnedTxn=true SetBest() opened this transaction itself
+                 * (the caller had no active transaction).  When fOwnedTxn=false an outer caller
+                 * (legacy.cpp/tritium.cpp Accept(), or chainstate.cpp) already opened TxnBegin()
+                 * before calling SetBest(); that outer transaction — which may also include vtx
+                 * writes made before Index() was called — is committed atomically here together
+                 * with the full disconnect/connect transition.  The caller's subsequent
+                 * TxnCommit() call is a harmless no-op (pTransaction is null once committed).
+                 * TxnCommit aggregates per-instance results; a false return means at least one
+                 * instance's commit failed, so the chain transition is aborted. */
                 if(!LLD::TxnCommit(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS))
                     return debug::error(FUNCTION, "disk transaction commit failed; aborting chain transition");
 

@@ -800,6 +800,16 @@ namespace LLD
         void Meter();
 
 
+        /** HasTransaction
+         *
+         *  Check if a physical database transaction is currently open.
+         *
+         *  @return True if a transaction is open, false otherwise.
+         *
+         **/
+        bool HasTransaction();
+
+
         /** TxnBegin
          *
          *  Start a database transaction.
