@@ -730,19 +730,19 @@ namespace TAO
                     /* Grab local copy of the pointer. */
                     const std::unique_ptr<TAO::Ledger::Block>& pOrphan = mapOrphans.at(hash);
 
-                    /* Get the next hash backwards in the series. */
-                    const uint1024_t hashPrev = pOrphan->GetHash();
+                    /* Get the orphan's own hash for draining its descendants. */
+                    const uint1024_t hashOrphan = pOrphan->GetHash();
 
                     /* Check if this is a duplicate block. */
-                    if(LLD::Ledger->HasBlock(pOrphan->GetHash()))
+                    if(LLD::Ledger->HasBlock(hashOrphan))
                     {
                         mapOrphans.erase(hash);
-                        hash = hashPrev;
+                        hash = hashOrphan;
                         continue;
                     }
 
                     /* Debug output. */
-                    debug::log(0, FUNCTION, "processing ORPHAN prev=", hashPrev.SubString(), " size=", mapOrphans.size());
+                    debug::log(0, FUNCTION, "processing ORPHAN hash=", hashOrphan.SubString(), " size=", mapOrphans.size());
 
                     /* Check if the block is valid. */
                     if(!pOrphan->Check())
@@ -760,15 +760,15 @@ namespace TAO
 
                         /* Set hashMissing to the orphan's own hash so the LLP
                          * layer re-requests the correct block (not the map key). */
-                        block.hashMissing = hashPrev;
+                        block.hashMissing = hashOrphan;
 
                         /* Track retries so a permanently unresolvable orphan tx
                          * can't wedge the node forever. */
-                        if(mapLastMissing.count(hashPrev))
+                        if(mapLastMissing.count(hashOrphan))
                         {
-                            mapLastMissing[hashPrev]++;
+                            mapLastMissing[hashOrphan]++;
 
-                            if(mapLastMissing[hashPrev] > LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
+                            if(mapLastMissing[hashOrphan] > LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
                             {
                                 block.vMissing.clear();
                                 block.hashMissing = 0;
@@ -781,7 +781,7 @@ namespace TAO
                             /* Same intentional clear-all DoS guard as the main path. */
                             if(mapLastMissing.size() >= MAX_MISSING_MAP_ENTRIES)
                                 mapLastMissing.clear();
-                            mapLastMissing[hashPrev] = 1;
+                            mapLastMissing[hashOrphan] = 1;
                         }
 
                         return;
@@ -792,8 +792,8 @@ namespace TAO
                         return;
 
                     /* Orphan accepted — clear any missing-transaction retry counter. */
-                    if(mapLastMissing.count(hashPrev))
-                        mapLastMissing.erase(hashPrev);
+                    if(mapLastMissing.count(hashOrphan))
+                        mapLastMissing.erase(hashOrphan);
 
                     /* [C2] Orphan resolved — clear its request throttle entry so a
                      * future, unrelated orphan chain starting at this same hash
@@ -804,7 +804,7 @@ namespace TAO
 
                     /* Erase orphans from map. */
                     mapOrphans.erase(hash);
-                    hash = hashPrev;
+                    hash = hashOrphan;
                 }
             }
             catch(const std::exception& e)

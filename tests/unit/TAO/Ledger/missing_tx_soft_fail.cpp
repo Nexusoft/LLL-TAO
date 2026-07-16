@@ -451,6 +451,7 @@ TEST_CASE("Persisted orphan is removed while draining", "[ledger][process]")
 
     REQUIRE((nStatus & TAO::Ledger::PROCESS::ACCEPTED) != 0);
     REQUIRE(TAO::Ledger::mapOrphans.empty());
+    REQUIRE(LLD::Ledger->HasBlock(hashOrphan));
 
     LLD::Ledger->EraseBlock(hashOrphan);
     LLD::Ledger->EraseBlock(hashPrev);
