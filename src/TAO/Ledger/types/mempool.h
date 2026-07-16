@@ -487,7 +487,7 @@ namespace TAO
 
             /** AttemptForkRecovery
              *
-             *  [Option B - EXPERIMENTAL, controlled via -autoforkrecovery, enabled by
+             *  [Option B - EXPERIMENTAL, controlled via -autoforkrecovery, disabled by
              *  default] Attempts an automatic, bounded rollback of the best chain
              *  when a sigchain's transactions keep conflicting with the local
              *  mempool's cached view across many reconciliation cycles in a way

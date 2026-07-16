@@ -975,6 +975,10 @@ TEST_CASE( "Mempool and memory sequencing tests", "[mempool]")
                 }
             }
 
+            /* Every queued orphan must be admitted once its predecessor arrives. */
+            for(const auto& tx : vTX)
+                REQUIRE(TAO::Ledger::mempool.Has(tx.GetHash()));
+
             //check mempool list sequencing
             std::vector<uint512_t> vHashes;
             REQUIRE(TAO::Ledger::mempool.List(vHashes));

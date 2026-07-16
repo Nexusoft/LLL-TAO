@@ -397,3 +397,62 @@ TEST_CASE("Orphan-drain missing tx sets hashMissing to orphan's own hash", "[led
     TAO::Ledger::mapLastMissing.clear();
     LLD::Ledger->EraseBlock(hashPrevOrphan);
 }
+
+
+TEST_CASE("Persisted orphan is removed while draining", "[ledger][process]")
+{
+    LedgerGuard env;
+
+    TAO::Ledger::mapOrphans.clear();
+
+    const uint1024_t hashPrev(0xABCD5700ULL);
+
+    TAO::Ledger::BlockState statePrev;
+    statePrev.nVersion      = 4;
+    statePrev.hashPrevBlock = uint1024_t(0);
+    statePrev.nChannel      = 2;
+    statePrev.nHeight       = 50;
+    statePrev.nBits         = 1;
+    REQUIRE(LLD::Ledger->WriteBlock(hashPrev, statePrev));
+
+    PassBlock parentBlock;
+    parentBlock.nVersion      = 4;
+    parentBlock.hashPrevBlock = hashPrev;
+    parentBlock.nChannel      = 2;
+    parentBlock.nHeight       = 51;
+    parentBlock.nBits         = 1;
+    parentBlock.nNonce        = 4001;
+
+    const uint1024_t hashParent = parentBlock.GetHash();
+
+    PassBlock orphanBlock;
+    orphanBlock.nVersion      = 4;
+    orphanBlock.hashPrevBlock = hashParent;
+    orphanBlock.nChannel      = 2;
+    orphanBlock.nHeight       = 52;
+    orphanBlock.nBits         = 1;
+    orphanBlock.nNonce        = 4002;
+
+    const uint1024_t hashOrphan = orphanBlock.GetHash();
+    TAO::Ledger::BlockState stateOrphan;
+    stateOrphan.nVersion      = orphanBlock.nVersion;
+    stateOrphan.hashPrevBlock = orphanBlock.hashPrevBlock;
+    stateOrphan.nChannel      = orphanBlock.nChannel;
+    stateOrphan.nHeight       = orphanBlock.nHeight;
+    stateOrphan.nBits         = orphanBlock.nBits;
+    REQUIRE(LLD::Ledger->WriteBlock(hashOrphan, stateOrphan));
+
+    TAO::Ledger::mapOrphans.insert(
+        std::make_pair(hashParent,
+        std::unique_ptr<TAO::Ledger::Block>(orphanBlock.Clone())));
+
+    uint8_t nStatus = 0;
+    TAO::Ledger::Process(parentBlock, nStatus);
+
+    REQUIRE((nStatus & TAO::Ledger::PROCESS::ACCEPTED) != 0);
+    REQUIRE(TAO::Ledger::mapOrphans.empty());
+    REQUIRE(LLD::Ledger->HasBlock(hashOrphan));
+
+    LLD::Ledger->EraseBlock(hashOrphan);
+    LLD::Ledger->EraseBlock(hashPrev);
+}

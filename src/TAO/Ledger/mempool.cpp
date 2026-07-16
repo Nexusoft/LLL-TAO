@@ -370,7 +370,7 @@ namespace TAO
                 debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashThis.SubString());
 
                 /* Check if this is already in our mempool. */
-                if(mapLedger.count(hashTx))
+                if(mapLedger.count(hashThis))
                 {
                     /* Erase the transaction. */
                     mapOrphans.erase(hashTx);
@@ -777,7 +777,7 @@ namespace TAO
 
                     if(nMisses >= GENESIS_CONFLICT_RECOVERY_THRESHOLD)
                     {
-                        if(config::GetBoolArg("-autoforkrecovery", true))
+                        if(config::GetBoolArg("-autoforkrecovery", false))
                         {
                             AttemptForkRecovery(hashGenesis, vtx[0].hashPrevTx);
 
@@ -791,7 +791,7 @@ namespace TAO
                         else
                         {
                             /* [B2] -autoforkrecovery has been explicitly disabled by
-                             * the operator (default is now enabled), so no rollback
+                             * the operator (and is disabled by default), so no rollback
                              * will be attempted automatically. Rather than silently
                              * leaving the operator to notice a stuck ORPHAN/CONFLICT
                              * loop and guess a -revertblocks depth, surface a clear,
@@ -981,7 +981,7 @@ namespace TAO
         /* [Option B - EXPERIMENTAL] Attempt an automatic, bounded rollback of the
          * best chain to resolve a sigchain conflict that Check()'s normal disk
          * reconciliation pass cannot resolve on its own. Opt-in via
-         * -autoforkrecovery (default enabled; pass -autoforkrecovery=0 to opt out). */
+         * -autoforkrecovery (disabled by default). */
         bool Mempool::AttemptForkRecovery(const uint256_t& hashGenesis, const uint512_t& hashPrevTx)
         {
             /* [B4] Enforce a cooldown regardless of outcome (including refused
