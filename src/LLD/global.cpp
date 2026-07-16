@@ -511,7 +511,10 @@ namespace LLD
          * it up here.  Leaving a failed transaction intact for retry is not
          * supported at the LLD layer — callers that receive false should abort
          * their higher-level operation and rebuild rather than retrying the same
-         * transaction object. */
+         * transaction object.
+         *
+         * Note: TxnRelease is called for every selected instance below,
+         * regardless of whether that instance's TxnCommit succeeded or failed. */
         if(Logical && (nInstances & INSTANCES::LOGICAL))
             Logical->TxnRelease();
 

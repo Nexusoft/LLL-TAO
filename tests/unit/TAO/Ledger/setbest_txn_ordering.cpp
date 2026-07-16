@@ -49,7 +49,7 @@ ________________________________________________________________________________
 namespace
 {
     /*  Lightweight guard that creates a temporary LedgerDB when the global
-     *  test suite hasn't initialised one.  On destruction it deletes only what
+     *  test suite hasn't initialized one.  On destruction it deletes only what
      *  it created, leaving the global state untouched if it was already set up. */
     struct LedgerGuard
     {
