@@ -38,6 +38,7 @@ This directory contains the active Nexus node documentation. Historical notes an
 
 ## Architecture and design
 
+- [RC13: Transactional chain-transition bug chain (SetBest teaching doc)](release/rc13-transactional-chain-transition-fixes.md)
 - [Blockchain flow alignment](BLOCKCHAIN_FLOW_ALIGNMENT.md)
 - [Block production flow](architecture/BLOCK_PRODUCTION_FLOW.md)
 - [Mempool-only predecessor filter](architecture/MEMPOOL_ONLY_PREDECESSOR_FILTER.md)

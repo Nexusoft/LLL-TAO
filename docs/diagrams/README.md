@@ -53,6 +53,7 @@ Diagram templates for PR descriptions and comprehensive Mermaid architecture dia
 8. **[architecture/ledger-state-machine.md](architecture/ledger-state-machine.md)** - TAO register state transitions
 9. **[architecture/trust-network-topology.md](architecture/trust-network-topology.md)** - Peer reputation system
 10. **[architecture/riscv-mining-protocol-diagrams.md](architecture/riscv-mining-protocol-diagrams.md)** - RISC-V mining protocol architecture diagrams
+11. **[architecture/setbest-transaction-boundary.md](architecture/setbest-transaction-boundary.md)** - RC13 `SetBest()` transactional chain-transition bug chain (PRs #651–#654)
 
 ## Mining Diagrams
 
