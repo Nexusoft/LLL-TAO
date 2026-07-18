@@ -2859,13 +2859,13 @@ namespace LLP
                                  *    a different random peer whose disk/mempool state
                                  *    may not be affected by the local fork. */
                                 {
-                                    std::shared_ptr<TritiumNode> pRand =
+                                    std::shared_ptr<TritiumNode> pRandomNode =
                                         TRITIUM_SERVER->RandomConnection();
-                                    if(pRand != nullptr)
+                                    if(pRandomNode != nullptr)
                                     {
                                         try
                                         {
-                                            pRand->PushMessage(ACTION::GET,
+                                            pRandomNode->PushMessage(ACTION::GET,
                                                 uint8_t(SPECIFIER::TRANSACTIONS),
                                                 uint8_t(TYPES::BLOCK),
                                                 block.GetHash());

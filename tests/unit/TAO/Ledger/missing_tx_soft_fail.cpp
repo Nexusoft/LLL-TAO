@@ -226,7 +226,7 @@ TEST_CASE("Missing transactions yield a soft INCOMPLETE, never a REJECT", "[ledg
 
     /* The retry counter has been reset, so the very next Process() call
      * for the same block should start a fresh cycle: INCOMPLETE again and
-     * the counter re-initialised to 1, not permanently dropped. */
+     * the counter re-initialized to 1, not permanently dropped. */
     {
         uint8_t nStatus = 0;
         TAO::Ledger::Process(block, nStatus);
