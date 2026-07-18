@@ -207,8 +207,10 @@ TEST_CASE("Missing transactions yield a soft INCOMPLETE, never a REJECT", "[ledg
     }
 
     /* The next call exceeds the retry limit: still INCOMPLETE (not REJECTED),
-     * but the block's missing-tx requests are cleared so we stop re-requesting
-     * a permanently unresolvable transaction. */
+     * the block's missing-tx markers are cleared (hashMissing = 0 signals the
+     * LLP layer to escalate to full branch recovery), and — critically — the
+     * mapLastMissing entry is ERASED so the next arrival of this block starts
+     * a fresh retry cycle rather than being permanently silenced. */
     {
         uint8_t nStatus = 0;
         TAO::Ledger::Process(block, nStatus);
@@ -217,6 +219,22 @@ TEST_CASE("Missing transactions yield a soft INCOMPLETE, never a REJECT", "[ledg
         REQUIRE((nStatus & TAO::Ledger::PROCESS::REJECTED)   == 0);
         REQUIRE(block.vMissing.empty());
         REQUIRE(block.hashMissing == 0);
+        /* Counter must be erased — a leftover >50 value would permanently
+         * wedge this block on every future arrival. */
+        REQUIRE(TAO::Ledger::mapLastMissing.count(hashBlock) == 0);
+    }
+
+    /* The retry counter has been reset, so the very next Process() call
+     * for the same block should start a fresh cycle: INCOMPLETE again and
+     * the counter re-initialized to 1, not permanently dropped. */
+    {
+        uint8_t nStatus = 0;
+        TAO::Ledger::Process(block, nStatus);
+
+        REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
+        REQUIRE((nStatus & TAO::Ledger::PROCESS::REJECTED)   == 0);
+        REQUIRE(TAO::Ledger::mapLastMissing.count(hashBlock) != 0);
+        REQUIRE(TAO::Ledger::mapLastMissing[hashBlock] == 1);
     }
 
     /* Clean up. */
@@ -421,6 +439,83 @@ TEST_CASE("Orphan-drain missing tx sets hashMissing to orphan's own hash", "[led
     TAO::Ledger::mapOrphans.Clear();
     TAO::Ledger::mapLastMissing.clear();
     LLD::Ledger->EraseBlock(hashPrevOrphan);
+}
+
+
+TEST_CASE("Orphan-drain retry-limit erases counter and signals branch recovery", "[ledger][process]")
+{
+    LedgerGuard env;
+
+    TAO::Ledger::mapOrphans.Clear();
+    TAO::Ledger::mapLastMissing.clear();
+
+    /* Write a prev block so the accepted parent block doesn't take the orphan
+     * path when Process() is called. */
+    const uint1024_t hashPrevOrphan2(0xABCD5601ULL);
+
+    TAO::Ledger::BlockState statePrevOrphan2;
+    statePrevOrphan2.nVersion      = 4;
+    statePrevOrphan2.hashPrevBlock = uint1024_t(0);
+    statePrevOrphan2.nChannel      = 2;
+    statePrevOrphan2.nHeight       = 43;
+    statePrevOrphan2.nBits         = 1;
+    REQUIRE(LLD::Ledger->WriteBlock(hashPrevOrphan2, statePrevOrphan2));
+
+    /* Build the accepted parent PassBlock. */
+    PassBlock parentBlock2;
+    parentBlock2.nVersion      = 4;
+    parentBlock2.hashPrevBlock = hashPrevOrphan2;
+    parentBlock2.nChannel      = 2;
+    parentBlock2.nHeight       = 44;
+    parentBlock2.nBits         = 1;
+    parentBlock2.nNonce        = 2002;
+
+    const uint1024_t hashParent2 = parentBlock2.GetHash();
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hashParent2));
+
+    /* Build the orphan MissingBlock whose parent is the just-accepted block. */
+    MissingBlock orphanBlock2;
+    orphanBlock2.nVersion      = 4;
+    orphanBlock2.hashPrevBlock = hashParent2;
+    orphanBlock2.nChannel      = 2;
+    orphanBlock2.nHeight       = 45;
+    orphanBlock2.nBits         = 1;
+    orphanBlock2.nNonce        = 3002;
+
+    const uint1024_t hashOrphan2 = orphanBlock2.GetHash();
+
+    /* Seed the orphan pool. */
+    REQUIRE(TAO::Ledger::mapOrphans.Insert(orphanBlock2));
+
+    /* Pre-fill the retry counter to exactly the retry limit, simulating that
+     * this orphan has already been retried MAX_MISSING_TRANSACTIONS_RETRIES
+     * times.  The next call to Process() should push it over the limit. */
+    TAO::Ledger::mapLastMissing[hashOrphan2] =
+        LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES;
+
+    /* Process the parent (accepted), which triggers the orphan-drain and
+     * encounters an over-limit retry for the orphan's missing transactions. */
+    uint8_t nStatus = 0;
+    TAO::Ledger::Process(parentBlock2, nStatus);
+
+    /* Parent accepted, orphan still incomplete. */
+    REQUIRE((nStatus & TAO::Ledger::PROCESS::ACCEPTED)  != 0);
+    REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
+    REQUIRE((nStatus & TAO::Ledger::PROCESS::REJECTED)   == 0);
+
+    /* The escalation path must clear the missing markers. */
+    REQUIRE(parentBlock2.vMissing.empty());
+    REQUIRE(parentBlock2.hashMissing == 0);
+
+    /* CRITICAL: the entry must be ERASED so the orphan is not permanently
+     * wedged on future arrivals — a leftover value > MAX would cause
+     * immediate silent drop on every subsequent Process() call. */
+    REQUIRE(TAO::Ledger::mapLastMissing.count(hashOrphan2) == 0);
+
+    /* Clean up. */
+    TAO::Ledger::mapOrphans.Clear();
+    TAO::Ledger::mapLastMissing.clear();
+    LLD::Ledger->EraseBlock(hashPrevOrphan2);
 }
 
 

@@ -2786,7 +2786,8 @@ namespace LLP
                                 debug::log(2, FUNCTION, "missing tx ", tx.second.SubString());
 
                             /* Re-request the block together with its missing transactions.
-                             * If hashMissing is 0 the retry limit was reached; skip. */
+                             * If hashMissing is 0 the retry limit was reached; skip the
+                             * normal per-tx re-request and escalate to full branch recovery. */
                             if(block.hashMissing != 0)
                             {
                                 std::shared_ptr<TritiumNode> pnode = TRITIUM_SERVER->RandomConnection();
@@ -2805,7 +2806,80 @@ namespace LLP
                                     debug::notice(NODE, "could not find random connection for missing transactions");
                             }
                             else
-                                debug::log(2, FUNCTION, "retry limit reached or no missing-block hash; skipping re-request");
+                            {
+                                /* The per-tx re-request path was exhausted by Process().
+                                 * The retry counter has been reset so future arrivals of
+                                 * this block get fresh retries, but we also need a
+                                 * different recovery path:
+                                 *
+                                 *  1. Attempt peer-best-chain recovery (no-op if the
+                                 *     peer's block isn't on disk yet, but free to try).
+                                 *  2. Re-request the full branch from this peer via
+                                 *     locator so all blocks arrive with their transactions
+                                 *     in a consistent sequence, bypassing the local
+                                 *     mempool state that may be tied to a stale fork.
+                                 *  3. Also request the full block+txs from a random peer
+                                 *     whose mempool/disk state may differ.
+                                 */
+                                debug::warning(NODE,
+                                    "missing-tx retry limit reached for block ",
+                                    block.GetHash().SubString(),
+                                    " height=", block.nHeight,
+                                    "; escalating to branch recovery");
+
+                                /* 1. Try AttemptPeerBestChainRecovery if this peer has
+                                 *    advertised a different best-chain hash that might
+                                 *    now be on disk (e.g. from a parallel sync path). */
+                                if(hashBestChain != 0
+                                && hashBestChain != TAO::Ledger::ChainState::hashBestChain.load()
+                                && LLD::Ledger->HasBlock(hashBestChain))
+                                {
+                                    TAO::Ledger::AttemptPeerBestChainRecovery(
+                                        hashBestChain, nCurrentHeight, NODE.c_str());
+                                }
+
+                                /* 2. Re-request the full branch from this peer via
+                                 *    locator.  Using the peer's advertised best-chain
+                                 *    hash (or the stalled block hash if unavailable)
+                                 *    as the branch tip so we get all diverged blocks
+                                 *    in order, letting proper sigchain state build up. */
+                                {
+                                    const uint1024_t hashTarget =
+                                        (hashBestChain != 0) ? hashBestChain : block.GetHash();
+
+                                    PushMessage(ACTION::LIST,
+                                        uint8_t(TYPES::BLOCK),
+                                        uint8_t(TYPES::LOCATOR),
+                                        TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                        uint1024_t(hashTarget)
+                                    );
+                                }
+
+                                /* 3. Request the full block + inline transactions from
+                                 *    a different random peer whose disk/mempool state
+                                 *    may not be affected by the local fork. */
+                                {
+                                    std::shared_ptr<TritiumNode> pRandomNode =
+                                        TRITIUM_SERVER->RandomConnection();
+                                    if(pRandomNode != nullptr)
+                                    {
+                                        try
+                                        {
+                                            pRandomNode->PushMessage(ACTION::GET,
+                                                uint8_t(SPECIFIER::TRANSACTIONS),
+                                                uint8_t(TYPES::BLOCK),
+                                                block.GetHash());
+                                        }
+                                        catch(const std::exception& e)
+                                        {
+                                            debug::error(FUNCTION, e.what());
+                                        }
+                                    }
+                                    else
+                                        debug::notice(NODE,
+                                            "could not find random connection for block recovery re-fetch");
+                                }
+                            }
                         }
 
                         break;

@@ -768,7 +768,21 @@ namespace TAO
                         /* Increment and check if we have reached limits. */
                         if(mapLastMissing[hashBlock] > LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
                         {
-                            block.vMissing.clear(); //we want to clear so we don't keep re-requesting the transactions
+                            /* Log a clear warning so operators can diagnose a stale-fork
+                             * wedge in node logs.  The counter is ERASED (not merely left
+                             * at the limit) so the next arrival of this block starts a
+                             * fresh retry cycle rather than being permanently silenced.
+                             * hashMissing is set to 0 to tell the LLP layer to escalate
+                             * to full branch recovery instead of the normal per-tx
+                             * re-request path that has already been exhausted. */
+                            debug::warning(FUNCTION,
+                                "missing-tx retry limit exceeded for block ",
+                                hashBlock.SubString(),
+                                " height=", block.nHeight,
+                                "; resetting retry counter and escalating to branch recovery");
+
+                            mapLastMissing.erase(hashBlock);
+                            block.vMissing.clear();
                             block.hashMissing = 0;
                         }
 
@@ -918,6 +932,17 @@ namespace TAO
                                 if(mapLastMissing[hashOrphan] >
                                     LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
                                 {
+                                    /* Erase the entry so the next arrival of this
+                                     * orphan child starts a fresh retry cycle rather
+                                     * than being permanently silenced, and signal
+                                     * the LLP layer to escalate to branch recovery. */
+                                    debug::warning(FUNCTION,
+                                        "missing-tx retry limit exceeded for orphan ",
+                                        hashOrphan.SubString(),
+                                        " height=", pOrphan->nHeight,
+                                        "; resetting retry counter and escalating to branch recovery");
+
+                                    mapLastMissing.erase(hashOrphan);
                                     block.vMissing.clear();
                                     block.hashMissing = 0;
                                 }
