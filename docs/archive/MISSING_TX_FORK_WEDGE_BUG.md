@@ -184,6 +184,40 @@ and never synced with the network.
 
 ---
 
+## Follow-up: repeating branch-recovery loop (post-fix)
+
+After the wedge fix landed, operators observed a different failure mode: the same block could
+re-enter every cycle with the same missing transaction hashes, exhaust retries, and trigger branch
+recovery again indefinitely. This avoided a permanent silent wedge, but still caused no forward
+progress and repeated network traffic.
+
+### Follow-up root cause
+
+The first fix escalated by re-requesting branch/block data, but did not fan out **individual missing
+transaction hash** lookups to multiple peers. If those transactions were unavailable from the peers
+that kept re-serving the block (expired/evicted mempool state), the same block could loop forever.
+
+### Follow-up remediation
+
+1. **Per-transaction multi-peer fanout in `src/LLP/tritium.cpp`**  
+   In the `hashMissing == 0` branch-recovery path, the node now requests each hash in `block.vMissing`
+   from multiple distinct connected peers via `ACTION::GET TYPES::TRANSACTION <hash>` (using legacy
+   specifier where required), in addition to the existing branch/block re-requests.
+
+2. **Escalation-cycle cap in `src/TAO/Ledger/process.cpp` / `include/process.h`**  
+   A new `mapMissingBranchEscalations` counter tracks full branch-recovery cycles per block hash
+   (incremented each time missing-tx retries are exhausted and `mapLastMissing` is erased while
+   `hashMissing` is set to 0). The missing-hash list is preserved for LLP fanout requests.
+   Once this exceeds `MAX_BRANCH_RECOVERY_ESCALATIONS` (3), LLP suppresses repeating branch-recovery
+   traffic for that block and emits an explicit operator-facing warning that manual intervention
+   (peer refresh/resync) is required.
+
+3. **Tests (`tests/unit/TAO/Ledger/missing_tx_soft_fail.cpp`)**  
+   Coverage now verifies escalation-cycle counting and cap behavior in addition to the original
+   retry-counter erase/reset assertions.
+
+---
+
 ## Regression Tests
 
 Two assertions were updated and one new test case was added in

@@ -190,6 +190,7 @@ TEST_CASE("Missing transactions yield a soft INCOMPLETE, never a REJECT", "[ledg
 
     /* Clear any stale retry state from previous tests. */
     TAO::Ledger::mapLastMissing.clear();
+    TAO::Ledger::mapMissingBranchEscalations.clear();
 
     /* Drive the block through Process() up to the retry limit. Each iteration
      * should return INCOMPLETE (never REJECTED) and increment the retry
@@ -217,11 +218,14 @@ TEST_CASE("Missing transactions yield a soft INCOMPLETE, never a REJECT", "[ledg
 
         REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
         REQUIRE((nStatus & TAO::Ledger::PROCESS::REJECTED)   == 0);
-        REQUIRE(block.vMissing.empty());
+        REQUIRE_FALSE(block.vMissing.empty());
         REQUIRE(block.hashMissing == 0);
         /* Counter must be erased — a leftover >50 value would permanently
          * wedge this block on every future arrival. */
         REQUIRE(TAO::Ledger::mapLastMissing.count(hashBlock) == 0);
+        REQUIRE(TAO::Ledger::mapMissingBranchEscalations.count(hashBlock) == 1);
+        REQUIRE(TAO::Ledger::mapMissingBranchEscalations[hashBlock] == 1);
+        REQUIRE_FALSE(TAO::Ledger::IsMissingBranchRecoveryCapped(hashBlock));
     }
 
     /* The retry counter has been reset, so the very next Process() call
@@ -239,6 +243,60 @@ TEST_CASE("Missing transactions yield a soft INCOMPLETE, never a REJECT", "[ledg
 
     /* Clean up. */
     TAO::Ledger::mapLastMissing.clear();
+    TAO::Ledger::mapMissingBranchEscalations.clear();
+    LLD::Ledger->EraseBlock(hashBlock);
+    LLD::Ledger->EraseBlock(hashPrev);
+}
+
+TEST_CASE("Missing-tx branch-recovery escalations are counted and capped", "[ledger][process]")
+{
+    LedgerGuard env;
+
+    const uint1024_t hashPrev(0x2345bcde);
+
+    TAO::Ledger::BlockState statePrev;
+    statePrev.nVersion      = 4;
+    statePrev.hashPrevBlock = uint1024_t(0);
+    statePrev.nChannel      = 2;
+    statePrev.nHeight       = 1;
+    statePrev.nBits         = 1;
+
+    REQUIRE(LLD::Ledger->WriteBlock(hashPrev, statePrev));
+
+    MissingBlock block;
+    block.nVersion      = 4;
+    block.hashPrevBlock = hashPrev;
+    block.nChannel      = 2;
+    block.nHeight       = 2;
+    block.nBits         = 1;
+    block.nNonce        = 4201;
+
+    const uint1024_t hashBlock = block.GetHash();
+    const uint32_t nTestCycles = TAO::Ledger::MAX_BRANCH_RECOVERY_ESCALATIONS + 1;
+    const uint64_t nRetries = LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES + 1;
+
+    TAO::Ledger::mapLastMissing.clear();
+    TAO::Ledger::mapMissingBranchEscalations.clear();
+
+    for(uint32_t nCycle = 1; nCycle <= nTestCycles; ++nCycle)
+    {
+        for(uint64_t i = 0; i < nRetries; ++i)
+        {
+            uint8_t nStatus = 0;
+            TAO::Ledger::Process(block, nStatus);
+            REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
+            REQUIRE((nStatus & TAO::Ledger::PROCESS::REJECTED) == 0);
+        }
+
+        INFO("cycle " << nCycle);
+        REQUIRE(TAO::Ledger::mapLastMissing.count(hashBlock) == 0);
+        REQUIRE(TAO::Ledger::MissingBranchRecoveryEscalations(hashBlock) == nCycle);
+        REQUIRE(TAO::Ledger::IsMissingBranchRecoveryCapped(hashBlock)
+            == (nCycle > TAO::Ledger::MAX_BRANCH_RECOVERY_ESCALATIONS));
+    }
+
+    TAO::Ledger::mapLastMissing.clear();
+    TAO::Ledger::mapMissingBranchEscalations.clear();
     LLD::Ledger->EraseBlock(hashBlock);
     LLD::Ledger->EraseBlock(hashPrev);
 }
@@ -503,8 +561,9 @@ TEST_CASE("Orphan-drain retry-limit erases counter and signals branch recovery",
     REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
     REQUIRE((nStatus & TAO::Ledger::PROCESS::REJECTED)   == 0);
 
-    /* The escalation path must clear the missing markers. */
-    REQUIRE(parentBlock2.vMissing.empty());
+    /* The escalation path now preserves missing hashes while setting
+     * hashMissing=0 so LLP can fan out per-transaction recovery requests. */
+    REQUIRE_FALSE(parentBlock2.vMissing.empty());
     REQUIRE(parentBlock2.hashMissing == 0);
 
     /* CRITICAL: the entry must be ERASED so the orphan is not permanently

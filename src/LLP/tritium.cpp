@@ -2807,6 +2807,23 @@ namespace LLP
                             }
                             else
                             {
+                                const uint1024_t hashBlock = block.GetHash();
+                                const uint32_t nEscalations =
+                                    TAO::Ledger::MissingBranchRecoveryEscalations(hashBlock);
+
+                                if(TAO::Ledger::IsMissingBranchRecoveryCapped(hashBlock))
+                                {
+                                    debug::warning(NODE,
+                                        "missing-tx branch recovery cap exceeded for block ",
+                                        hashBlock.SubString(),
+                                        " height=", block.nHeight,
+                                        " escalations=", nEscalations,
+                                        " cap=", TAO::Ledger::MAX_BRANCH_RECOVERY_ESCALATIONS,
+                                        "; suppressing further branch re-request traffic for this block. ",
+                                        "Manual operator intervention may be required (e.g. peer refresh or resync).");
+                                    break;
+                                }
+
                                 /* The per-tx re-request path was exhausted by Process().
                                  * The retry counter has been reset so future arrivals of
                                  * this block get fresh retries, but we also need a
@@ -2823,8 +2840,10 @@ namespace LLP
                                  */
                                 debug::warning(NODE,
                                     "missing-tx retry limit reached for block ",
-                                    block.GetHash().SubString(),
+                                    hashBlock.SubString(),
                                     " height=", block.nHeight,
+                                    " escalation=", nEscalations,
+                                    "/", TAO::Ledger::MAX_BRANCH_RECOVERY_ESCALATIONS,
                                     "; escalating to branch recovery");
 
                                 /* 1. Try AttemptPeerBestChainRecovery if this peer has
@@ -2845,7 +2864,7 @@ namespace LLP
                                  *    in order, letting proper sigchain state build up. */
                                 {
                                     const uint1024_t hashTarget =
-                                        (hashBestChain != 0) ? hashBestChain : block.GetHash();
+                                        (hashBestChain != 0) ? hashBestChain : hashBlock;
 
                                     PushMessage(ACTION::LIST,
                                         uint8_t(TYPES::BLOCK),
@@ -2868,7 +2887,7 @@ namespace LLP
                                             pRandomNode->PushMessage(ACTION::GET,
                                                 uint8_t(SPECIFIER::TRANSACTIONS),
                                                 uint8_t(TYPES::BLOCK),
-                                                block.GetHash());
+                                                hashBlock);
                                         }
                                         catch(const std::exception& e)
                                         {
@@ -2878,6 +2897,77 @@ namespace LLP
                                     else
                                         debug::notice(NODE,
                                             "could not find random connection for block recovery re-fetch");
+                                }
+
+                                /* 4. Request each missing transaction hash from several
+                                 *    distinct peers so recovery does not rely on any
+                                 *    single node's mempool state. */
+                                {
+                                    if(block.vMissing.empty())
+                                    {
+                                        debug::notice(NODE,
+                                            "branch recovery escalated with no missing tx hashes available for per-tx fanout");
+                                        break;
+                                    }
+
+                                    const auto vPeers = TRITIUM_SERVER->GetConnections();
+                                    std::set<uint64_t> setSessions;
+                                    std::vector<std::shared_ptr<TritiumNode>> vFanoutPeers;
+
+                                    for(const auto& pPeer : vPeers)
+                                    {
+                                        if(!pPeer || pPeer->nCurrentSession == 0
+                                        || pPeer->nCurrentSession == nCurrentSession)
+                                            continue;
+
+                                        /* Connection vectors can briefly contain entries for
+                                         * multiple data-lane objects that map to the same
+                                         * session during handoff/reconnect windows, so dedupe
+                                         * by session before fanout selection. */
+                                        if(!setSessions.insert(pPeer->nCurrentSession).second)
+                                            continue;
+
+                                        vFanoutPeers.push_back(pPeer);
+                                        if(vFanoutPeers.size() >= ACTION::MISSING_TX_RECOVERY_PEER_FANOUT)
+                                            break;
+                                    }
+
+                                    if(vFanoutPeers.empty())
+                                    {
+                                        debug::notice(NODE,
+                                            "could not find distinct peers for per-tx missing recovery fanout");
+                                    }
+                                    else
+                                    {
+                                        uint32_t nPeerIndex = 0;
+                                        for(const auto& missing : block.vMissing)
+                                        {
+                                            const auto& pPeer =
+                                                vFanoutPeers[nPeerIndex % vFanoutPeers.size()];
+                                            ++nPeerIndex;
+
+                                            try
+                                            {
+                                                if(missing.first == TAO::Ledger::TRANSACTION::LEGACY)
+                                                {
+                                                    pPeer->PushMessage(ACTION::GET,
+                                                        uint8_t(SPECIFIER::LEGACY),
+                                                        uint8_t(TYPES::TRANSACTION),
+                                                        missing.second);
+                                                }
+                                                else
+                                                {
+                                                    pPeer->PushMessage(ACTION::GET,
+                                                        uint8_t(TYPES::TRANSACTION),
+                                                        missing.second);
+                                                }
+                                            }
+                                            catch(const std::exception& e)
+                                            {
+                                                debug::error(FUNCTION, e.what());
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

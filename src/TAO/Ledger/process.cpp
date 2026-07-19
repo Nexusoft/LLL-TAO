@@ -174,6 +174,10 @@ namespace TAO
          * path is unaffected. */
         std::map<uint1024_t, uint64_t> mapLastMissing;
 
+        /* Track how many full branch-recovery escalations each missing block
+         * hash has gone through. */
+        std::map<uint1024_t, uint32_t> mapMissingBranchEscalations;
+
 
         /* [Option C] Track consecutive Check()-rejections keyed by the exact
          * block hash. See declaration comment in include/process.h for the
@@ -564,6 +568,25 @@ namespace TAO
         }
 
 
+        uint32_t MissingBranchRecoveryEscalations(const uint1024_t& hashBlock)
+        {
+            LOCK(PROCESSING_MUTEX);
+
+            const auto it = mapMissingBranchEscalations.find(hashBlock);
+            if(it == mapMissingBranchEscalations.end())
+                return 0;
+
+            return it->second;
+        }
+
+
+        bool IsMissingBranchRecoveryCapped(const uint1024_t& hashBlock)
+        {
+            return MissingBranchRecoveryEscalations(hashBlock)
+                > MAX_BRANCH_RECOVERY_ESCALATIONS;
+        }
+
+
         /* Maximum number of unique incomplete-block hashes tracked in
          * mapLastMissing before the map is cleared to bound memory use. */
         /* MAX_MISSING_MAP_ENTRIES is declared in include/process.h */
@@ -578,6 +601,16 @@ namespace TAO
             /* Get the block's hash. */
             const uint1024_t hashBlock = block.GetHash();
 
+            const auto incrementMissingEscalations = [](const uint1024_t& hash)
+            {
+                if(mapMissingBranchEscalations.size() >= MAX_MISSING_ESCALATION_MAP_ENTRIES
+                && !mapMissingBranchEscalations.count(hash))
+                    mapMissingBranchEscalations.clear();
+
+                /* PROCESSING_MUTEX is already held for Process(). */
+                ++mapMissingBranchEscalations[hash];
+            };
+
             /* We want to catch any exceptions that were thrown during processing and set REJECTED if exceptions are thrown. */
             try
             {
@@ -587,6 +620,8 @@ namespace TAO
                 {
                     nStatus |= PROCESS::DUPLICATE;
                     mapOrphans.Remove(hashBlock);
+                    mapLastMissing.erase(hashBlock);
+                    mapMissingBranchEscalations.erase(hashBlock);
                     return;
                 }
 
@@ -781,8 +816,8 @@ namespace TAO
                                 " height=", block.nHeight,
                                 "; resetting retry counter and escalating to branch recovery");
 
+                            incrementMissingEscalations(hashBlock);
                             mapLastMissing.erase(hashBlock);
-                            block.vMissing.clear();
                             block.hashMissing = 0;
                         }
 
@@ -821,6 +856,7 @@ namespace TAO
                  * unaffected and a future stuck block starts counting from zero. */
                 if(mapLastMissing.count(hashBlock))
                     mapLastMissing.erase(hashBlock);
+                mapMissingBranchEscalations.erase(hashBlock);
 
                 /* Special meter for synchronizing. */
                 uint64_t nElapsed = runtime::timestamp(true) - nSynchronizationTimer;
@@ -903,6 +939,7 @@ namespace TAO
                         {
                             const uint64_t nPruned = mapOrphans.RemoveSubtree(hashOrphan);
                             mapLastMissing.erase(hashOrphan);
+                            mapMissingBranchEscalations.erase(hashOrphan);
                             debug::warning(FUNCTION, "removed invalid orphan subtree root=",
                                 hashOrphan.SubString(), " count=", nPruned);
                             continue;
@@ -942,8 +979,8 @@ namespace TAO
                                         " height=", pOrphan->nHeight,
                                         "; resetting retry counter and escalating to branch recovery");
 
+                                    incrementMissingEscalations(hashOrphan);
                                     mapLastMissing.erase(hashOrphan);
-                                    block.vMissing.clear();
                                     block.hashMissing = 0;
                                 }
                                 else
@@ -957,12 +994,14 @@ namespace TAO
                         {
                             const uint64_t nPruned = mapOrphans.RemoveSubtree(hashOrphan);
                             mapLastMissing.erase(hashOrphan);
+                            mapMissingBranchEscalations.erase(hashOrphan);
                             debug::warning(FUNCTION, "removed rejected orphan subtree root=",
                                 hashOrphan.SubString(), " count=", nPruned);
                             continue;
                         }
 
                         mapLastMissing.erase(hashOrphan);
+                        mapMissingBranchEscalations.erase(hashOrphan);
                         mapLastOrphanRequest.erase(hashParent);
                         mapOrphans.Remove(hashOrphan);
                         queueParents.push(hashOrphan);

@@ -359,6 +359,10 @@ namespace LLP
              *  the node. **/
             static const uint32_t MAX_MISSING_TRANSACTIONS_RETRIES = 50;
 
+            /** Number of distinct peers to fan out per-transaction missing-hash
+             *  recovery requests to when branch recovery escalates. **/
+            static const uint32_t MISSING_TX_RECOVERY_PEER_FANOUT = 3;
+
 
             /* Message enumeration values. */
             enum : MessagePacket::message_t
