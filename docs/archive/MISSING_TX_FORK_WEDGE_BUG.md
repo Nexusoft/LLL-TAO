@@ -200,9 +200,10 @@ that kept re-serving the block (expired/evicted mempool state), the same block c
 ### Follow-up remediation
 
 1. **Per-transaction multi-peer fanout in `src/LLP/tritium.cpp`**  
-   In the `hashMissing == 0` branch-recovery path, the node now requests each hash in `block.vMissing`
-   from multiple distinct connected peers via `ACTION::GET TYPES::TRANSACTION <hash>` (using legacy
-   specifier where required), in addition to the existing branch/block re-requests.
+   In the `hashMissing == 0` branch-recovery path, the node now spreads hashes in `block.vMissing`
+   across a small set of distinct connected peers (round-robin) via
+   `ACTION::GET TYPES::TRANSACTION <hash>` (using legacy specifier where required), in addition to
+   the existing branch/block re-requests.
 
 2. **Escalation-cycle cap in `src/TAO/Ledger/process.cpp` / `include/process.h`**  
    A new `mapMissingBranchEscalations` counter tracks full branch-recovery cycles per block hash

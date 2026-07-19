@@ -2899,9 +2899,9 @@ namespace LLP
                                             "could not find random connection for block recovery re-fetch");
                                 }
 
-                                /* 4. Request each missing transaction hash from several
-                                 *    distinct peers so recovery does not rely on any
-                                 *    single node's mempool state. */
+                                /* 4. Distribute missing transaction hash requests across
+                                 *    a small set of distinct peers (round-robin) so
+                                 *    recovery does not rely on one node's mempool. */
                                 {
                                     if(block.vMissing.empty())
                                     {
@@ -2916,7 +2916,8 @@ namespace LLP
 
                                     for(const auto& pPeer : vPeers)
                                     {
-                                        if(!pPeer || pPeer->nCurrentSession == 0
+                                        if(!pPeer || !pPeer->Connected()
+                                        || pPeer->nCurrentSession == 0
                                         || pPeer->nCurrentSession == nCurrentSession)
                                             continue;
 
