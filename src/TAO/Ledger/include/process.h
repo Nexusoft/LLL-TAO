@@ -91,6 +91,13 @@ namespace TAO
          *  we don't keep re-requesting the same unresolvable transactions. **/
         extern std::map<uint1024_t, uint64_t> mapLastMissing;
 
+        /** Track the number of full branch-recovery escalation cycles that
+         *  have occurred for a missing-transaction block hash. This counter is
+         *  incremented each time mapLastMissing[hash] exceeds
+         *  MAX_MISSING_TRANSACTIONS_RETRIES and is erased/reset only when the
+         *  block (or orphan child) is eventually accepted or pruned. **/
+        extern std::map<uint1024_t, uint32_t> mapMissingBranchEscalations;
+
 
         /** Maximum number of unique incomplete-block hashes tracked in
          *  mapLastMissing before the entire map is cleared to bound memory use.
@@ -100,6 +107,15 @@ namespace TAO
          *  avoids the complexity of LRU eviction.  The vast majority of legitimate
          *  incomplete blocks will have resolved long before the cap is hit. **/
         static const uint64_t MAX_MISSING_MAP_ENTRIES = 10000;
+
+        /** Maximum number of unique block hashes tracked in
+         *  mapMissingBranchEscalations before the map is cleared. **/
+        static const uint64_t MAX_MISSING_ESCALATION_MAP_ENTRIES = 10000;
+
+        /** Maximum number of full branch-recovery escalation cycles allowed for
+         *  a given block hash before LLP suppresses further branch-recovery
+         *  network requests and emits an operator-facing warning. **/
+        static const uint32_t MAX_BRANCH_RECOVERY_ESCALATIONS = 3;
 
 
         /** [C2] Track the last time we asked peers for an orphan ancestor's chain
@@ -243,6 +259,14 @@ namespace TAO
          *
          **/
         bool IsBestChainSynchronized(const uint1024_t& hashPeerBest);
+
+        /** Returns the current missing-tx branch-recovery escalation count for
+         *  hashBlock. **/
+        uint32_t MissingBranchRecoveryEscalations(const uint1024_t& hashBlock);
+
+        /** Returns true once missing-tx branch-recovery escalation count has
+         *  exceeded MAX_BRANCH_RECOVERY_ESCALATIONS for hashBlock. **/
+        bool IsMissingBranchRecoveryCapped(const uint1024_t& hashBlock);
 
 
         /** ActivateCandidateBestChain
