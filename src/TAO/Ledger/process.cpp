@@ -601,6 +601,16 @@ namespace TAO
             /* Get the block's hash. */
             const uint1024_t hashBlock = block.GetHash();
 
+            const auto incrementMissingEscalations = [](const uint1024_t& hash)
+            {
+                if(mapMissingBranchEscalations.size() >= MAX_MISSING_ESCALATION_MAP_ENTRIES
+                && !mapMissingBranchEscalations.count(hash))
+                    mapMissingBranchEscalations.clear();
+
+                /* PROCESSING_MUTEX is already held for Process(). */
+                ++mapMissingBranchEscalations[hash];
+            };
+
             /* We want to catch any exceptions that were thrown during processing and set REJECTED if exceptions are thrown. */
             try
             {
@@ -806,13 +816,8 @@ namespace TAO
                                 " height=", block.nHeight,
                                 "; resetting retry counter and escalating to branch recovery");
 
-                            if(mapMissingBranchEscalations.size() >= MAX_MISSING_ESCALATION_MAP_ENTRIES
-                            && !mapMissingBranchEscalations.count(hashBlock))
-                                mapMissingBranchEscalations.clear();
-
-                            ++mapMissingBranchEscalations[hashBlock];
+                            incrementMissingEscalations(hashBlock);
                             mapLastMissing.erase(hashBlock);
-                            block.vMissing.clear();
                             block.hashMissing = 0;
                         }
 
@@ -974,13 +979,8 @@ namespace TAO
                                         " height=", pOrphan->nHeight,
                                         "; resetting retry counter and escalating to branch recovery");
 
-                                    if(mapMissingBranchEscalations.size() >= MAX_MISSING_ESCALATION_MAP_ENTRIES
-                                    && !mapMissingBranchEscalations.count(hashOrphan))
-                                        mapMissingBranchEscalations.clear();
-
-                                    ++mapMissingBranchEscalations[hashOrphan];
+                                    incrementMissingEscalations(hashOrphan);
                                     mapLastMissing.erase(hashOrphan);
-                                    block.vMissing.clear();
                                     block.hashMissing = 0;
                                 }
                                 else

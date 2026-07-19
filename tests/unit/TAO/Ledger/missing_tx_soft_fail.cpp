@@ -218,7 +218,7 @@ TEST_CASE("Missing transactions yield a soft INCOMPLETE, never a REJECT", "[ledg
 
         REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
         REQUIRE((nStatus & TAO::Ledger::PROCESS::REJECTED)   == 0);
-        REQUIRE(block.vMissing.empty());
+        REQUIRE_FALSE(block.vMissing.empty());
         REQUIRE(block.hashMissing == 0);
         /* Counter must be erased — a leftover >50 value would permanently
          * wedge this block on every future arrival. */
@@ -272,13 +272,13 @@ TEST_CASE("Missing-tx branch-recovery escalations are counted and capped", "[led
     block.nNonce        = 4201;
 
     const uint1024_t hashBlock = block.GetHash();
-    const uint32_t nCycles = TAO::Ledger::MAX_BRANCH_RECOVERY_ESCALATIONS + 1;
+    const uint32_t nTestCycles = TAO::Ledger::MAX_BRANCH_RECOVERY_ESCALATIONS + 1;
     const uint64_t nRetries = LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES + 1;
 
     TAO::Ledger::mapLastMissing.clear();
     TAO::Ledger::mapMissingBranchEscalations.clear();
 
-    for(uint32_t nCycle = 1; nCycle <= nCycles; ++nCycle)
+    for(uint32_t nCycle = 1; nCycle <= nTestCycles; ++nCycle)
     {
         for(uint64_t i = 0; i < nRetries; ++i)
         {
@@ -561,8 +561,9 @@ TEST_CASE("Orphan-drain retry-limit erases counter and signals branch recovery",
     REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
     REQUIRE((nStatus & TAO::Ledger::PROCESS::REJECTED)   == 0);
 
-    /* The escalation path must clear the missing markers. */
-    REQUIRE(parentBlock2.vMissing.empty());
+    /* The escalation path now preserves missing hashes while setting
+     * hashMissing=0 so LLP can fan out per-transaction recovery requests. */
+    REQUIRE_FALSE(parentBlock2.vMissing.empty());
     REQUIRE(parentBlock2.hashMissing == 0);
 
     /* CRITICAL: the entry must be ERASED so the orphan is not permanently

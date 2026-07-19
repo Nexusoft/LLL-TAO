@@ -206,7 +206,8 @@ that kept re-serving the block (expired/evicted mempool state), the same block c
 
 2. **Escalation-cycle cap in `src/TAO/Ledger/process.cpp` / `include/process.h`**  
    A new `mapMissingBranchEscalations` counter tracks full branch-recovery cycles per block hash
-   (incremented each time missing-tx retries are exhausted and `mapLastMissing` is erased).
+   (incremented each time missing-tx retries are exhausted and `mapLastMissing` is erased while
+   `hashMissing` is set to 0). The missing-hash list is preserved for LLP fanout requests.
    Once this exceeds `MAX_BRANCH_RECOVERY_ESCALATIONS` (3), LLP suppresses repeating branch-recovery
    traffic for that block and emits an explicit operator-facing warning that manual intervention
    (peer refresh/resync) is required.

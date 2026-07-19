@@ -2903,11 +2903,16 @@ namespace LLP
                                  *    distinct peers so recovery does not rely on any
                                  *    single node's mempool state. */
                                 {
-                                    static const uint32_t MAX_MISSING_TX_PEER_FANOUT = 3;
+                                    if(block.vMissing.empty())
+                                    {
+                                        debug::notice(NODE,
+                                            "branch recovery escalated with no missing tx hashes available for per-tx fanout");
+                                        break;
+                                    }
 
                                     const auto vPeers = TRITIUM_SERVER->GetConnections();
                                     std::set<uint64_t> setSessions;
-                                    uint32_t nPeersContacted = 0;
+                                    std::vector<std::shared_ptr<TritiumNode>> vFanoutPeers;
 
                                     for(const auto& pPeer : vPeers)
                                     {
@@ -2915,12 +2920,33 @@ namespace LLP
                                         || pPeer->nCurrentSession == nCurrentSession)
                                             continue;
 
+                                        /* Connection vectors can briefly contain entries for
+                                         * multiple data-lane objects that map to the same
+                                         * session during handoff/reconnect windows, so dedupe
+                                         * by session before fanout selection. */
                                         if(!setSessions.insert(pPeer->nCurrentSession).second)
                                             continue;
 
-                                        try
+                                        vFanoutPeers.push_back(pPeer);
+                                        if(vFanoutPeers.size() >= ACTION::MISSING_TX_RECOVERY_PEER_FANOUT)
+                                            break;
+                                    }
+
+                                    if(vFanoutPeers.empty())
+                                    {
+                                        debug::notice(NODE,
+                                            "could not find distinct peers for per-tx missing recovery fanout");
+                                    }
+                                    else
+                                    {
+                                        uint32_t nPeerIndex = 0;
+                                        for(const auto& missing : block.vMissing)
                                         {
-                                            for(const auto& missing : block.vMissing)
+                                            const auto& pPeer =
+                                                vFanoutPeers[nPeerIndex % vFanoutPeers.size()];
+                                            ++nPeerIndex;
+
+                                            try
                                             {
                                                 if(missing.first == TAO::Ledger::TRANSACTION::LEGACY)
                                                 {
@@ -2936,21 +2962,11 @@ namespace LLP
                                                         missing.second);
                                                 }
                                             }
+                                            catch(const std::exception& e)
+                                            {
+                                                debug::error(FUNCTION, e.what());
+                                            }
                                         }
-                                        catch(const std::exception& e)
-                                        {
-                                            debug::error(FUNCTION, e.what());
-                                            continue;
-                                        }
-
-                                        if(++nPeersContacted >= MAX_MISSING_TX_PEER_FANOUT)
-                                            break;
-                                    }
-
-                                    if(nPeersContacted == 0)
-                                    {
-                                        debug::notice(NODE,
-                                            "could not find distinct peers for per-tx missing recovery fanout");
                                     }
                                 }
                             }
