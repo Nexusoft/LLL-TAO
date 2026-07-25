@@ -99,6 +99,39 @@ namespace TAO
         extern std::map<uint1024_t, uint32_t> mapMissingBranchEscalations;
 
 
+        /** Rate-limit tracking: last timestamp (milliseconds since epoch) at
+         *  which each known-incomplete block hash was fully processed in
+         *  Process(). Guards re-entry into the expensive Check() + escalation
+         *  path within a short window so PROCESSING_MUTEX is not taken dozens
+         *  of times per second per peer for the same stuck block (directly
+         *  addresses the DataThread time-budget overruns seen during fork-wedge
+         *  conditions). **/
+        extern std::map<uint1024_t, uint64_t> mapLastMissingProcessTime;
+
+
+        /** Minimum number of milliseconds that must elapse between successive
+         *  full-path reprocessing attempts for the same known-incomplete block
+         *  hash.  Arrivals within this window return INCOMPLETE immediately
+         *  without invoking Check() or updating any counters. **/
+        static const uint64_t MISSING_REPROCESS_RATE_LIMIT_MS = 250;
+
+
+        /** Hard terminal blacklist for blocks that have exhausted all
+         *  branch-recovery paths.  Once a block hash is added here, Process()
+         *  returns IGNORED immediately — before any LLD, orphan-pool, or
+         *  Check() work — so the DataThread budget is not consumed on an
+         *  unrecoverable block.  An entry is cleared if the block is later
+         *  accepted (e.g. after a reorg that makes the missing tx available)
+         *  or the orphan pool is purged. **/
+        extern std::set<uint1024_t> setUnrecoverableBlocks;
+
+
+        /** Maximum number of unique block hashes held in setUnrecoverableBlocks
+         *  before the set is cleared.  Same intentional cheap DoS-guard
+         *  rationale as MAX_MISSING_MAP_ENTRIES above. **/
+        static const uint64_t MAX_UNRECOVERABLE_ENTRIES = 10000;
+
+
         /** Maximum number of unique incomplete-block hashes tracked in
          *  mapLastMissing before the entire map is cleared to bound memory use.
          *  When the map reaches this size and a new (unseen) block hash would be
@@ -267,6 +300,31 @@ namespace TAO
         /** Returns true once missing-tx branch-recovery escalation count has
          *  exceeded MAX_BRANCH_RECOVERY_ESCALATIONS for hashBlock. **/
         bool IsMissingBranchRecoveryCapped(const uint1024_t& hashBlock);
+
+
+        /** ShouldSendCappedBranchSync
+         *
+         *  Determines whether the node should send a throttled branch-sync LIST
+         *  on the capped recovery path for hashBlock.
+         *
+         *  Returns true when BOTH of the following hold:
+         *    (a) The missing-tx escalation count for hashBlock exceeds
+         *        MAX_BRANCH_RECOVERY_ESCALATIONS (i.e. the block is capped).
+         *    (b) At least ORPHAN_REQUEST_THROTTLE_SECONDS seconds have elapsed
+         *        since the last capped-path LIST was sent for this hash (or no
+         *        such request has been sent yet).
+         *
+         *  When returning true the function also records the current timestamp in
+         *  mapLastOrphanRequest so the next call is throttled correctly.
+         *
+         *  This helper owns its own PROCESSING_MUTEX lock.  Callers must NOT hold
+         *  PROCESSING_MUTEX when calling this function.
+         *
+         *  @param[in] hashBlock The block hash to test.
+         *  @return true if a capped-path branch sync LIST should be pushed now.
+         *
+         **/
+        bool ShouldSendCappedBranchSync(const uint1024_t& hashBlock);
 
 
         /** ActivateCandidateBestChain

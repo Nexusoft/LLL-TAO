@@ -2530,6 +2530,7 @@ namespace LLP
                                         " local_height=", TAO::Ledger::ChainState::nBestHeight.load());
 
                                     PushMessage(ACTION::LIST,
+                                        config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
                                         uint8_t(TYPES::BLOCK),
                                         uint8_t(TYPES::LOCATOR),
                                         TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
@@ -2821,6 +2822,28 @@ namespace LLP
                                         " cap=", TAO::Ledger::MAX_BRANCH_RECOVERY_ESCALATIONS,
                                         "; suppressing further branch re-request traffic for this block. ",
                                         "Manual operator intervention may be required (e.g. peer refresh or resync).");
+
+                                    /* Even when capped, send one throttled ancestor-
+                                     * anchored branch sync so the orphan pool can
+                                     * drain if the correct chain becomes available.
+                                     * The blacklist in Process() prevents per-block
+                                     * work; this LIST is the only outgoing traffic
+                                     * that still makes sense at this stage.
+                                     * ShouldSendCappedBranchSync owns its own lock
+                                     * and throttle-state; callers must not hold
+                                     * PROCESSING_MUTEX here. */
+                                    if(TAO::Ledger::ShouldSendCappedBranchSync(hashBlock))
+                                    {
+                                        PushMessage(ACTION::LIST,
+                                            config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
+                                            uint8_t(TYPES::BLOCK),
+                                            uint8_t(TYPES::LOCATOR),
+                                            TAO::Ledger::Locator(
+                                                TAO::Ledger::ChainState::hashBestChain.load()),
+                                            uint1024_t(0)
+                                        );
+                                    }
+
                                     break;
                                 }
 
@@ -2867,6 +2890,7 @@ namespace LLP
                                         (hashBestChain != 0) ? hashBestChain : hashBlock;
 
                                     PushMessage(ACTION::LIST,
+                                        config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
                                         uint8_t(TYPES::BLOCK),
                                         uint8_t(TYPES::LOCATOR),
                                         TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
