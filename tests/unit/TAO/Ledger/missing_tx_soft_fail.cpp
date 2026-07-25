@@ -1053,7 +1053,7 @@ TEST_CASE("Escalation cap invariant: counter never exceeds MAX+1", "[ledger][pro
 }
 
 
-TEST_CASE("Blacklist short-circuit: INCOMPLETE/hashMissing=0 before Check()/mapLastMissing", "[ledger][process]")
+TEST_CASE("Blacklist short-circuit: INCOMPLETE with hashMissing=0", "[ledger][process]")
 {
     LedgerGuard env;
 
