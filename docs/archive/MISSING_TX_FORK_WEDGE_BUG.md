@@ -243,7 +243,77 @@ make -f makefile.cli UNIT_TESTS=1 -j$(nproc)
 
 ---
 
+## Follow-up 3: orphan-purge staleness, throttle-key collision, and true walkback recovery
+
+A later review pass (PR #660-series) found four additional gaps left open by the follow-up work
+above.
+
+### 1. Incomplete purge on orphan-pool flush (`process.cpp`)
+
+`nConsecutiveOrphans >= 10000` cleared `mapOrphans` inline, but left `setUnrecoverableBlocks`,
+`mapLastMissingProcessTime`, `mapLastMissing`, `mapMissingBranchEscalations`, and
+`mapLastOrphanRequest` untouched. A block blacklisted against the now-discarded orphan graph
+stayed permanently blacklisted even after the purge. `PurgeOrphanRecoveryState(pszReason)` now
+owns `PROCESSING_MUTEX` itself and clears all six structures atomically; `tritium.cpp` calls it
+instead of reaching into ledger globals directly.
+
+### 2. `mapLastOrphanRequest` key-namespace collision (`process.cpp`)
+
+The throttle map was written with two different key types: the LLP capped-path wrote
+`hashBlock` (the stuck block itself), while the orphan-drain BFS loop wrote and erased
+`hashPrevBlock` (the missing ancestor). `erase(hashParent)` in the drain loop could therefore
+never clear entries the LLP path had written. `ShouldSendBranchSyncRequest(hashAncestor)`
+replaces the old helper and is keyed canonically on the missing ancestor's `hashPrevBlock`
+everywhere it is called — including the peer-best-chain gap path, which had briefly regressed to
+keying on the branch **tip** (`hashPeerBest`) instead of the deepest walked ancestor.
+
+### 3. Blacklist self-healing (`process.cpp`)
+
+The terminal blacklist guard (`setUnrecoverableBlocks.count(hashBlock)`) originally returned
+`PROCESS::IGNORED` with no `hashMissing` set. `IGNORED` is never inspected by the LLP layer, so
+the throttled `ShouldSendBranchSyncRequest()` capped-path branch — reachable only via
+`PROCESS::INCOMPLETE` — fired exactly once, on the arrival that *first* inserted the blacklist
+entry. Every later arrival of the same block returned `IGNORED` and went silent forever, making
+the `ORPHAN_REQUEST_THROTTLE_SECONDS` throttle moot (there was never a second call to throttle).
+The guard now returns `INCOMPLETE` with `hashMissing = 0` on every arrival — still skipping
+`Check()` and the escalation counter entirely — so the LLP capped-path branch, and therefore
+`ShouldSendBranchSyncRequest()`, stays reachable for the life of the blacklist entry.
+
+### 4. `AttemptPeerBestChainRecovery()` walks the graph instead of only logging (`process.cpp`)
+
+Previously computed `fInOrphanPool`, logged it, and always returned `false` — deferring the
+actual recovery to a caller that never existed. It now walks the orphan graph backwards from
+`hashPeerBest` via `hashPrevBlock` (depth-capped at `MAX_BLOCK_ORPHANS`, with a visited-set guard
+against a crafted parent cycle) to find the deepest ancestor already on disk. If found, it
+releases `PROCESSING_MUTEX` and feeds that ancestor through `Process()`, letting the existing BFS
+drain connect the chain forward. If there is a genuine gap, it issues the same throttled,
+locator-anchored `LIST` as item 2. A `thread_local` re-entrancy guard makes explicit the one-way
+invariant that nothing inside `Process()` may call back into this function on the same thread
+(the mutex is non-recursive).
+
+### The SPECIFIER protocol gotcha
+
+The gap-path `LIST` request must carry `SPECIFIER::SYNC` (or `SPECIFIER::CLIENT` in `-client`
+mode) — **not** a plain/legacy specifier — or the peer's `TYPES::LOCATOR` response omits inline
+transaction bodies. A locator request sent without this specifier looks identical on the wire to
+a successful branch-sync request but silently degrades to header-only blocks, which then re-enter
+the missing-transaction path immediately on arrival and manufacture an apparent "infinite loop"
+that has nothing to do with the actual throttle or escalation logic. Any future branch-recovery
+`LIST`/`LOCATOR` request added to this code path must set `SPECIFIER::SYNC`/`CLIENT` to get full
+transaction data back.
+
+### Related files (follow-up 3)
+
+| File | Change |
+|------|--------|
+| `src/TAO/Ledger/process.cpp` | `PurgeOrphanRecoveryState()`; `ShouldSendBranchSyncRequest()` key unification; blacklist guard reports `INCOMPLETE`/`hashMissing=0` instead of silent `IGNORED`; `AttemptPeerBestChainRecovery()` walkback with cycle detection and re-entrancy guard; restored `-checkpoints` gate |
+| `src/LLP/tritium.cpp` | Calls `PurgeOrphanRecoveryState()` instead of clearing `mapOrphans` directly; capped-path `LIST` keyed via `ShouldSendBranchSyncRequest(block.hashPrevBlock)` |
+| `tests/unit/TAO/Ledger/missing_tx_soft_fail.cpp` | Regression coverage for all of the above |
+
+---
+
 ## Related Files
+
 
 | File | Change |
 |------|--------|

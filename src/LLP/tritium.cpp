@@ -2829,10 +2829,12 @@ namespace LLP
                                      * The blacklist in Process() prevents per-block
                                      * work; this LIST is the only outgoing traffic
                                      * that still makes sense at this stage.
-                                     * ShouldSendCappedBranchSync owns its own lock
-                                     * and throttle-state; callers must not hold
-                                     * PROCESSING_MUTEX here. */
-                                    if(TAO::Ledger::ShouldSendCappedBranchSync(hashBlock))
+                                     *
+                                     * Key: throttle by block.hashPrevBlock (the missing
+                                     * ancestor) — the same key used by the orphan-insert
+                                     * path in Process() — so the drain-loop erase(
+                                     * hashParent) cleanup is always effective. */
+                                    if(TAO::Ledger::ShouldSendBranchSyncRequest(block.hashPrevBlock))
                                     {
                                         PushMessage(ACTION::LIST,
                                             config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
@@ -2840,7 +2842,7 @@ namespace LLP
                                             uint8_t(TYPES::LOCATOR),
                                             TAO::Ledger::Locator(
                                                 TAO::Ledger::ChainState::hashBestChain.load()),
-                                            uint1024_t(0)
+                                            uint1024_t(hashBestChain != 0 ? hashBestChain : hashBlock)
                                         );
                                     }
 
@@ -2869,15 +2871,17 @@ namespace LLP
                                     "/", TAO::Ledger::MAX_BRANCH_RECOVERY_ESCALATIONS,
                                     "; escalating to branch recovery");
 
-                                /* 1. Try AttemptPeerBestChainRecovery if this peer has
-                                 *    advertised a different best-chain hash that might
-                                 *    now be on disk (e.g. from a parallel sync path). */
+                                /* 1. Try AttemptPeerBestChainRecovery.  Now handles the
+                                 *    case where the peer's best is in the orphan pool
+                                 *    but not yet on disk: it walks the orphan graph to
+                                 *    find a connectable ancestor and feeds it through
+                                 *    Process().  Pass 'this' so the function can send
+                                 *    a locator-anchored LIST if the branch has a gap. */
                                 if(hashBestChain != 0
-                                && hashBestChain != TAO::Ledger::ChainState::hashBestChain.load()
-                                && LLD::Ledger->HasBlock(hashBestChain))
+                                && hashBestChain != TAO::Ledger::ChainState::hashBestChain.load())
                                 {
                                     TAO::Ledger::AttemptPeerBestChainRecovery(
-                                        hashBestChain, nCurrentHeight, NODE.c_str());
+                                        hashBestChain, nCurrentHeight, NODE.c_str(), this);
                                 }
 
                                 /* 2. Re-request the full branch from this peer via
@@ -3104,12 +3108,11 @@ namespace LLP
                 /* Detect large orphan chains and ask for new blocks from origin again. */
                 if(nConsecutiveOrphans >= 10000)
                 {
-                    {
-                        LOCK(TAO::Ledger::PROCESSING_MUTEX);
-
-                        /* Clear the memory to prevent DoS attacks. */
-                        TAO::Ledger::mapOrphans.Clear();
-                    }
+                    /* Purge the orphan pool AND all correlated recovery state so
+                     * that blacklist / escalation entries computed against the now-
+                     * discarded orphan graph don't persist as stale data and cause
+                     * legitimate future blocks to be silently IGNORED. */
+                    TAO::Ledger::PurgeOrphanRecoveryState("nConsecutiveOrphans>=10000");
 
                     /* Switch to another available node. */
                     if(TAO::Ledger::ChainState::Synchronizing() && TAO::Ledger::nSyncSession.load() == nCurrentSession)
