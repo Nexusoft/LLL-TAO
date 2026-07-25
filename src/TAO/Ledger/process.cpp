@@ -523,7 +523,8 @@ namespace TAO
 
         bool AttemptPeerBestChainRecovery(const uint1024_t& hashPeerBest,
                                           uint32_t nPeerHeight,
-                                          const char* pszSource)
+                                          const char* pszSource,
+                                          LLP::TritiumNode* pnode)
         {
             if(hashPeerBest == 0 || hashPeerBest == ChainState::hashBestChain.load())
                 return false;
@@ -534,28 +535,128 @@ namespace TAO
             TAO::Ledger::BlockState statePeer;
             if(!LLD::Ledger->ReadBlock(hashPeerBest, statePeer))
             {
-                /* The peer's advertised tip is not on disk yet.  During a
-                 * wedge condition the majority-chain tip typically sits in
-                 * the orphan pool rather than on disk, which caused the
-                 * original implementation to bail silently and never reach
-                 * IsHeavierThan() or FindCommonAncestor().
-                 *
-                 * Log the orphan-pool status so operators can correlate this
-                 * with the FORK_WEDGE_DETECTED warning.  The caller is
-                 * responsible for issuing a locator-anchored branch-sync
-                 * request when this returns false. */
-                LOCK(PROCESSING_MUTEX);
-                const bool fInOrphanPool = mapOrphans.Contains(hashPeerBest);
-                debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW,
-                    "=== PEER_BEST_RECOVERY ===", ANSI_COLOR_RESET,
+                /* The peer's advertised tip is not on disk yet.  Walk the orphan
+                 * graph backwards from hashPeerBest to find the deepest orphan
+                 * whose own hashPrevBlock IS on disk (a "connectable ancestor").
+                 * If found, feed it through Process() so the BFS drain can
+                 * connect the chain forward to hashPeerBest.  If not found
+                 * (genuine gap), issue a throttled locator-anchored branch
+                 * request so the missing blocks can be downloaded. */
+
+                std::unique_ptr<TAO::Ledger::Block> pConnectable;
+                bool fInOrphanPool = false;
+
+                {
+                    LOCK(PROCESSING_MUTEX);
+
+                    fInOrphanPool = mapOrphans.Contains(hashPeerBest);
+                    if(fInOrphanPool)
+                    {
+                        uint1024_t hashCurrent = hashPeerBest;
+                        uint32_t nDepth = 0;
+
+                        while(nDepth < MAX_BLOCK_ORPHANS)
+                        {
+                            const TAO::Ledger::Block* pBlock = mapOrphans.Get(hashCurrent);
+                            if(!pBlock)
+                                break; /* gap — missing link in the orphan chain */
+
+                            if(LLD::Ledger->HasBlock(pBlock->hashPrevBlock))
+                            {
+                                /* Clone so we can use it after releasing the lock. */
+                                pConnectable.reset(pBlock->Clone());
+                                break;
+                            }
+
+                            hashCurrent = pBlock->hashPrevBlock;
+                            ++nDepth;
+                        }
+                    }
+                }
+                /* PROCESSING_MUTEX is released here — safe to call Process()
+                 * or PushMessage below. */
+
+                if(!fInOrphanPool)
+                {
+                    debug::log(0, FUNCTION,
+                        ANSI_COLOR_BRIGHT_YELLOW, "=== PEER_BEST_RECOVERY ===", ANSI_COLOR_RESET,
+                        " source=", (pszSource ? pszSource : "peer"),
+                        " peer_best=", hashPeerBest.SubString(),
+                        " peer_height=", nPeerHeight,
+                        " not_on_disk=true in_orphan_pool=no",
+                        " action=block-not-yet-received");
+                    return false;
+                }
+
+                if(pConnectable)
+                {
+                    /* A connectable ancestor was found: feed it through the
+                     * normal acceptance path.  If it is accepted the BFS orphan
+                     * drain will connect all descendants up to hashPeerBest. */
+                    debug::warning(FUNCTION,
+                        ANSI_COLOR_BRIGHT_YELLOW, "=== PEER_BEST_RECOVERY ===", ANSI_COLOR_RESET,
+                        " source=", (pszSource ? pszSource : "peer"),
+                        " peer_best=", hashPeerBest.SubString(),
+                        " peer_height=", nPeerHeight,
+                        " not_on_disk=true in_orphan_pool=yes",
+                        " connectable=", pConnectable->GetHash().SubString(),
+                        " action=feeding-connectable-ancestor");
+
+                    uint8_t nStatus = 0;
+                    Process(*pConnectable, nStatus, pnode, false);
+
+                    const bool fProgress = (nStatus & PROCESS::ACCEPTED) != 0;
+                    if(fProgress)
+                        debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "=== PEER_BEST_RECOVERED ===",
+                            ANSI_COLOR_RESET,
+                            " best=", ChainState::hashBestChain.load().SubString(),
+                            " height=", ChainState::nBestHeight.load(),
+                            " source=orphan-pool-walkback");
+                    return fProgress;
+                }
+
+                /* Gap in the orphan branch — we have some blocks in memory but not
+                 * a contiguous path to disk.  Issue a throttled locator-anchored
+                 * LIST so the missing segment can be downloaded, using hashPeerBest
+                 * as the stop hash and SPECIFIER::SYNC/CLIENT so the peer includes
+                 * full transaction data in its response. */
+                debug::warning(FUNCTION,
+                    ANSI_COLOR_BRIGHT_YELLOW, "=== PEER_BEST_RECOVERY ===", ANSI_COLOR_RESET,
                     " source=", (pszSource ? pszSource : "peer"),
                     " peer_best=", hashPeerBest.SubString(),
                     " peer_height=", nPeerHeight,
-                    " not_on_disk=true",
-                    " in_orphan_pool=", (fInOrphanPool ? "yes" : "no"),
-                    " action=", (fInOrphanPool
-                        ? "locator-branch-sync-needed (orphan tip, check caller)"
-                        : "block-not-yet-received"));
+                    " not_on_disk=true in_orphan_pool=yes has_gap=true",
+                    " action=locator-branch-sync-request");
+
+                /* Use the calling node; fall back to a random connection. */
+                LLP::TritiumNode* pSend = pnode;
+                std::shared_ptr<LLP::TritiumNode> pRandom;
+                if(!pSend && LLP::TRITIUM_SERVER)
+                {
+                    pRandom = LLP::TRITIUM_SERVER->RandomConnection();
+                    pSend = pRandom.get();
+                }
+
+                if(pSend && ShouldSendBranchSyncRequest(hashPeerBest))
+                {
+                    try
+                    {
+                        pSend->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                            config::fClient.load()
+                                ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)
+                                : uint8_t(LLP::TritiumNode::SPECIFIER::SYNC),
+                            uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                            uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
+                            TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                            uint1024_t(hashPeerBest)
+                        );
+                    }
+                    catch(const std::exception& e)
+                    {
+                        debug::error(FUNCTION, e.what());
+                    }
+                }
+
                 return false;
             }
 
@@ -624,21 +725,17 @@ namespace TAO
         }
 
 
-        bool ShouldSendCappedBranchSync(const uint1024_t& hashBlock)
+        bool ShouldSendBranchSyncRequest(const uint1024_t& hashAncestor)
         {
             LOCK(PROCESSING_MUTEX);
 
-            /* Only send when the escalation cap has been exceeded. */
-            const auto itEsc = mapMissingBranchEscalations.find(hashBlock);
-            if(itEsc == mapMissingBranchEscalations.end()
-            || itEsc->second <= MAX_BRANCH_RECOVERY_ESCALATIONS)
-                return false;
-
             /* Throttle: require at least ORPHAN_REQUEST_THROTTLE_SECONDS between
-             * capped-path LIST requests for the same block hash so the node
-             * cannot spam recovery traffic on every incoming block delivery. */
+             * LIST requests for the same missing ancestor hash.  Keyed by the
+             * ancestor hash (hashPrevBlock of the requesting block) so the drain-
+             * loop cleanup mapLastOrphanRequest.erase(hashParent) is always
+             * effective regardless of which code path last wrote the entry. */
             const uint64_t nNow = runtime::timestamp();
-            const auto itReq = mapLastOrphanRequest.find(hashBlock);
+            const auto itReq = mapLastOrphanRequest.find(hashAncestor);
             if(itReq != mapLastOrphanRequest.end()
             && (nNow - itReq->second) < ORPHAN_REQUEST_THROTTLE_SECONDS)
                 return false;
@@ -647,8 +744,34 @@ namespace TAO
             if(mapLastOrphanRequest.size() >= MAX_ORPHAN_REQUEST_MAP_ENTRIES)
                 mapLastOrphanRequest.clear();
 
-            mapLastOrphanRequest[hashBlock] = nNow;
+            mapLastOrphanRequest[hashAncestor] = nNow;
             return true;
+        }
+
+
+        void PurgeOrphanRecoveryState(const char* pszReason)
+        {
+            LOCK(PROCESSING_MUTEX);
+
+            /* Clear the orphan graph and all correlated recovery state.  This is
+             * called when the orphan pool is flushed as a DoS guard so that
+             * blacklist and escalation entries computed against the now-discarded
+             * orphan graph do not persist and mis-filter legitimate future blocks. */
+            mapOrphans.Clear();
+            setUnrecoverableBlocks.clear();
+            mapLastMissingProcessTime.clear();
+            mapLastMissing.clear();
+            mapMissingBranchEscalations.clear();
+            mapLastOrphanRequest.clear();
+
+            debug::warning(FUNCTION, "purged orphan recovery state",
+                " reason=", (pszReason ? pszReason : "unknown"),
+                " orphan_pool=cleared",
+                " setUnrecoverableBlocks=cleared",
+                " mapLastMissing=cleared",
+                " mapMissingBranchEscalations=cleared",
+                " mapLastMissingProcessTime=cleared",
+                " mapLastOrphanRequest=cleared");
         }
 
         /* Maximum number of unique incomplete-block hashes tracked in
@@ -744,8 +867,15 @@ namespace TAO
                     /* Set the status message. */
                     nStatus |= PROCESS::ORPHAN;
 
-                    /* Check the checkpoint height. */
-                    if(!config::fTestNet.load() && block.nHeight < TAO::Ledger::ChainState::nCheckpointHeight)
+                    /* Check the checkpoint height.  Upstream Nexusoft/LLL-TAO
+                     * gates this skip behind -checkpoints so operators can opt
+                     * in to strict height-based orphan rejection.  Without the
+                     * gate, any orphan below nCheckpointHeight would be silently
+                     * IGNORED during a deep reorg, potentially discarding
+                     * legitimate branch blocks. */
+                    if(!config::fTestNet.load()
+                    && config::GetBoolArg("-checkpoints", false)
+                    && block.nHeight < TAO::Ledger::ChainState::nCheckpointHeight)
                     {
                         nStatus |= PROCESS::IGNORED;
                         return;
@@ -964,14 +1094,28 @@ namespace TAO
 
                             if(nEscalations >= MAX_BRANCH_RECOVERY_ESCALATIONS)
                             {
-                                /* Only emit the wedge warning and insert into
-                                 * the blacklist the first time we see the capped
-                                 * condition for this hash. */
+                                /* Only emit the wedge warning, insert into the
+                                 * blacklist, and increment the escalation counter
+                                 * the first time we see the capped condition for
+                                 * this hash.  Incrementing once here is intentional:
+                                 * it advances the counter to exactly MAX+1 so that
+                                 * IsMissingBranchRecoveryCapped() returns true and
+                                 * the cap-invariant tests can assert a finite upper
+                                 * bound.  Subsequent arrivals are dropped by the
+                                 * setUnrecoverableBlocks guard at the top of
+                                 * Process() before reaching this code, so the
+                                 * counter can never exceed MAX+1. */
                                 if(!setUnrecoverableBlocks.count(hashBlock))
                                 {
                                     if(setUnrecoverableBlocks.size() >= MAX_UNRECOVERABLE_ENTRIES)
                                         setUnrecoverableBlocks.clear();
                                     setUnrecoverableBlocks.insert(hashBlock);
+
+                                    /* Advance counter to MAX+1 and clean up the
+                                     * per-tx retry map — same cleanup as the normal
+                                     * escalation path. */
+                                    incrementMissingEscalations(hashBlock);
+                                    mapLastMissing.erase(hashBlock);
 
                                     debug::warning(FUNCTION,
                                         ANSI_COLOR_BRIGHT_RED,
@@ -979,7 +1123,7 @@ namespace TAO
                                         ANSI_COLOR_RESET,
                                         " local_height=", block.nHeight,
                                         " block=", hashBlock.SubString(),
-                                        " escalations=", nEscalations,
+                                        " escalations=", nEscalations + 1,
                                         " cap=", MAX_BRANCH_RECOVERY_ESCALATIONS,
                                         " missing_tx_count=", block.vMissing.size(),
                                         " — ancestor-anchored branch sync triggered;"
@@ -1185,13 +1329,18 @@ namespace TAO
                                                 setUnrecoverableBlocks.clear();
                                             setUnrecoverableBlocks.insert(hashOrphan);
 
+                                            /* Advance counter to MAX+1 and clean up the
+                                             * per-tx retry map — mirrors the primary path. */
+                                            incrementMissingEscalations(hashOrphan);
+                                            mapLastMissing.erase(hashOrphan);
+
                                             debug::warning(FUNCTION,
                                                 ANSI_COLOR_BRIGHT_RED,
                                                 "=== FORK_WEDGE_DETECTED ===",
                                                 ANSI_COLOR_RESET,
                                                 " orphan local_height=", pOrphan->nHeight,
                                                 " block=", hashOrphan.SubString(),
-                                                " escalations=", nEscalations,
+                                                " escalations=", nEscalations + 1,
                                                 " cap=", MAX_BRANCH_RECOVERY_ESCALATIONS,
                                                 " missing_tx_count=", pOrphan->vMissing.size());
                                             for(const auto& missing : pOrphan->vMissing)

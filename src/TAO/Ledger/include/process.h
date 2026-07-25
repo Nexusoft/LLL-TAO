@@ -273,16 +273,74 @@ namespace TAO
         void FinalizeLocalMinedTrackingAfterSetBest(const TAO::Ledger::BlockState& stateNewBest);
 
 
+        /** PurgeOrphanRecoveryState
+         *
+         *  Atomically clears the orphan pool and **all** correlated recovery
+         *  state under PROCESSING_MUTEX, so that entries in the blacklist or
+         *  the escalation / rate-limit maps that were computed against a now-
+         *  discarded orphan graph do not persist as stale data.
+         *
+         *  Call this whenever the orphan pool is emptied as a DoS guard
+         *  (e.g. the nConsecutiveOrphans >= 10 000 flush in the LLP layer).
+         *
+         *  @param[in] pszReason  Short label written to the warning log.
+         *
+         **/
+        void PurgeOrphanRecoveryState(const char* pszReason = nullptr);
+
+
+        /** ShouldSendBranchSyncRequest
+         *
+         *  Throttle-gated check for whether a locator-anchored branch-sync LIST
+         *  should be sent for the missing ancestor identified by hashAncestor.
+         *
+         *  Canonical key: the *missing ancestor* hash (typically the orphan
+         *  block's own hashPrevBlock).  Using hashPrevBlock as the key ensures
+         *  that the orphan-drain BFS cleanup `mapLastOrphanRequest.erase(
+         *  hashParent)` always removes entries regardless of which code path
+         *  last wrote them, and that the throttle semantics are uniform across
+         *  both the ledger and the LLP layer.
+         *
+         *  Returns true when at least ORPHAN_REQUEST_THROTTLE_SECONDS have
+         *  elapsed since the last request for this ancestor (or no prior
+         *  request exists), and records the current timestamp when returning
+         *  true.
+         *
+         *  This helper owns its own PROCESSING_MUTEX lock.  Callers must NOT
+         *  hold PROCESSING_MUTEX when calling this function.
+         *
+         *  @param[in] hashAncestor  The missing-ancestor hash to throttle on.
+         *  @return true if a branch-sync LIST should be pushed now.
+         *
+         **/
+        bool ShouldSendBranchSyncRequest(const uint1024_t& hashAncestor);
+
+
         /** AttemptPeerBestChainRecovery
          *
          *  Recovery for cases where peers advertise a different known best hash.
          *  The advertised height is diagnostic only; activation requires a
          *  complete, fully checked, strictly heavier candidate branch.
          *
+         *  When the peer's tip is not on disk but IS present in the orphan pool
+         *  the function walks the orphan graph backwards (capped at
+         *  MAX_BLOCK_ORPHANS depth) to find the deepest ancestor whose own
+         *  hashPrevBlock is on disk.  If a connectable ancestor is found it is
+         *  fed through Process() so the existing BFS drain can connect the
+         *  chain forward.  If no connectable ancestor exists a throttled
+         *  locator-anchored branch-sync LIST is issued via pnode (or a random
+         *  connection if pnode is nullptr).
+         *
+         *  @param[in] pnode  Optional sending node.  If nullptr, falls back to
+         *                    a TRITIUM_SERVER->RandomConnection() for the
+         *                    branch-sync request.  Must NOT hold
+         *                    PROCESSING_MUTEX.
+         *
          **/
         bool AttemptPeerBestChainRecovery(const uint1024_t& hashPeerBest,
                                           uint32_t nPeerHeight,
-                                          const char* pszSource = nullptr);
+                                          const char* pszSource = nullptr,
+                                          LLP::TritiumNode* pnode = nullptr);
 
 
         /** IsBestChainSynchronized
@@ -300,31 +358,6 @@ namespace TAO
         /** Returns true once missing-tx branch-recovery escalation count has
          *  exceeded MAX_BRANCH_RECOVERY_ESCALATIONS for hashBlock. **/
         bool IsMissingBranchRecoveryCapped(const uint1024_t& hashBlock);
-
-
-        /** ShouldSendCappedBranchSync
-         *
-         *  Determines whether the node should send a throttled branch-sync LIST
-         *  on the capped recovery path for hashBlock.
-         *
-         *  Returns true when BOTH of the following hold:
-         *    (a) The missing-tx escalation count for hashBlock exceeds
-         *        MAX_BRANCH_RECOVERY_ESCALATIONS (i.e. the block is capped).
-         *    (b) At least ORPHAN_REQUEST_THROTTLE_SECONDS seconds have elapsed
-         *        since the last capped-path LIST was sent for this hash (or no
-         *        such request has been sent yet).
-         *
-         *  When returning true the function also records the current timestamp in
-         *  mapLastOrphanRequest so the next call is throttled correctly.
-         *
-         *  This helper owns its own PROCESSING_MUTEX lock.  Callers must NOT hold
-         *  PROCESSING_MUTEX when calling this function.
-         *
-         *  @param[in] hashBlock The block hash to test.
-         *  @return true if a capped-path branch sync LIST should be pushed now.
-         *
-         **/
-        bool ShouldSendCappedBranchSync(const uint1024_t& hashBlock);
 
 
         /** ActivateCandidateBestChain
