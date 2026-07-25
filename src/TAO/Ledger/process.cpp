@@ -624,6 +624,33 @@ namespace TAO
         }
 
 
+        bool ShouldSendCappedBranchSync(const uint1024_t& hashBlock)
+        {
+            LOCK(PROCESSING_MUTEX);
+
+            /* Only send when the escalation cap has been exceeded. */
+            const auto itEsc = mapMissingBranchEscalations.find(hashBlock);
+            if(itEsc == mapMissingBranchEscalations.end()
+            || itEsc->second <= MAX_BRANCH_RECOVERY_ESCALATIONS)
+                return false;
+
+            /* Throttle: require at least ORPHAN_REQUEST_THROTTLE_SECONDS between
+             * capped-path LIST requests for the same block hash so the node
+             * cannot spam recovery traffic on every incoming block delivery. */
+            const uint64_t nNow = runtime::timestamp();
+            const auto itReq = mapLastOrphanRequest.find(hashBlock);
+            if(itReq != mapLastOrphanRequest.end()
+            && (nNow - itReq->second) < ORPHAN_REQUEST_THROTTLE_SECONDS)
+                return false;
+
+            /* Bound the throttle map size before inserting. */
+            if(mapLastOrphanRequest.size() >= MAX_ORPHAN_REQUEST_MAP_ENTRIES)
+                mapLastOrphanRequest.clear();
+
+            mapLastOrphanRequest[hashBlock] = nNow;
+            return true;
+        }
+
         /* Maximum number of unique incomplete-block hashes tracked in
          * mapLastMissing before the map is cleared to bound memory use. */
         /* MAX_MISSING_MAP_ENTRIES is declared in include/process.h */

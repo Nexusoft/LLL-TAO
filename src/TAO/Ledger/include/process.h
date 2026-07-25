@@ -302,6 +302,31 @@ namespace TAO
         bool IsMissingBranchRecoveryCapped(const uint1024_t& hashBlock);
 
 
+        /** ShouldSendCappedBranchSync
+         *
+         *  Determines whether the node should send a throttled branch-sync LIST
+         *  on the capped recovery path for hashBlock.
+         *
+         *  Returns true when BOTH of the following hold:
+         *    (a) The missing-tx escalation count for hashBlock exceeds
+         *        MAX_BRANCH_RECOVERY_ESCALATIONS (i.e. the block is capped).
+         *    (b) At least ORPHAN_REQUEST_THROTTLE_SECONDS seconds have elapsed
+         *        since the last capped-path LIST was sent for this hash (or no
+         *        such request has been sent yet).
+         *
+         *  When returning true the function also records the current timestamp in
+         *  mapLastOrphanRequest so the next call is throttled correctly.
+         *
+         *  This helper owns its own PROCESSING_MUTEX lock.  Callers must NOT hold
+         *  PROCESSING_MUTEX when calling this function.
+         *
+         *  @param[in] hashBlock The block hash to test.
+         *  @return true if a capped-path branch sync LIST should be pushed now.
+         *
+         **/
+        bool ShouldSendCappedBranchSync(const uint1024_t& hashBlock);
+
+
         /** ActivateCandidateBestChain
          *
          *  Validates a complete, strictly heavier candidate path and activates

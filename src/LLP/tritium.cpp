@@ -2829,30 +2829,19 @@ namespace LLP
                                      * The blacklist in Process() prevents per-block
                                      * work; this LIST is the only outgoing traffic
                                      * that still makes sense at this stage.
-                                     * Throttle through mapLastOrphanRequest to avoid
-                                     * re-request spam. */
+                                     * ShouldSendCappedBranchSync owns its own lock
+                                     * and throttle-state; callers must not hold
+                                     * PROCESSING_MUTEX here. */
+                                    if(TAO::Ledger::ShouldSendCappedBranchSync(hashBlock))
                                     {
-                                        LOCK(TAO::Ledger::PROCESSING_MUTEX);
-                                        const uint64_t nNow = runtime::timestamp();
-                                        auto& nLastReq =
-                                            TAO::Ledger::mapLastOrphanRequest[hashBlock];
-                                        if(nNow - nLastReq >=
-                                            TAO::Ledger::ORPHAN_REQUEST_THROTTLE_SECONDS)
-                                        {
-                                            if(TAO::Ledger::mapLastOrphanRequest.size()
-                                            >= TAO::Ledger::MAX_ORPHAN_REQUEST_MAP_ENTRIES)
-                                                TAO::Ledger::mapLastOrphanRequest.clear();
-                                            TAO::Ledger::mapLastOrphanRequest[hashBlock] = nNow;
-
-                                            PushMessage(ACTION::LIST,
-                                                config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
-                                                uint8_t(TYPES::BLOCK),
-                                                uint8_t(TYPES::LOCATOR),
-                                                TAO::Ledger::Locator(
-                                                    TAO::Ledger::ChainState::hashBestChain.load()),
-                                                uint1024_t(0)
-                                            );
-                                        }
+                                        PushMessage(ACTION::LIST,
+                                            config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
+                                            uint8_t(TYPES::BLOCK),
+                                            uint8_t(TYPES::LOCATOR),
+                                            TAO::Ledger::Locator(
+                                                TAO::Ledger::ChainState::hashBestChain.load()),
+                                            uint1024_t(0)
+                                        );
                                     }
 
                                     break;
