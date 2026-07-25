@@ -583,11 +583,12 @@ namespace TAO
                         uint1024_t hashCurrent = hashPeerBest;
                         uint32_t nDepth = 0;
 
-                        /* Bound the walk to the real chain length rather than
-                         * the raw depth cap: a crafted orphan set with a short
-                         * parent cycle would otherwise burn the full
-                         * MAX_BLOCK_ORPHANS iterations under PROCESSING_MUTEX
-                         * on every call. */
+                        /* Guard against cycles in the orphan graph: a crafted
+                         * orphan set with a short parent cycle could otherwise
+                         * loop indefinitely rather than terminating via the
+                         * depth cap. The visited-set bounds the walk to the
+                         * actual chain length rather than relying solely on
+                         * MAX_BLOCK_ORPHANS. */
                         std::set<uint1024_t> setVisited;
 
                         while(nDepth < MAX_BLOCK_ORPHANS)
@@ -608,7 +609,8 @@ namespace TAO
                                  * treats any hash already present in mapOrphans as
                                  * a known ORPHAN and returns immediately without
                                  * running Check()/Accept(), so leaving the entry
-                                 * in place would make the walkback below a no-op. */
+                                 * in place would make the subsequent Process()
+                                 * call below a no-op. */
                                 pConnectable.reset(pBlock->Clone());
                                 mapOrphans.Remove(hashCurrent);
                                 break;
