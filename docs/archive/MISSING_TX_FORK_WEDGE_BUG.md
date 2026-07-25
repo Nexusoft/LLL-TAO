@@ -321,7 +321,7 @@ already-synced operator node.
 ```
 ACTION::NOTIFY: BESTCHAIN differs; requesting branch <hash>
                known=no peer_height=N local_height=M
-DROPPED: ProcessPacket : unsolicted sync block
+DROPPED: ProcessPacket : unsolicited sync block
 Tritium Node : <ip> Outgoing Disconnected (Force)
 ```
 
@@ -340,7 +340,7 @@ no transactions**.  This was the original fork-wedge defect.
 
 | Specifier | What the peer returns | Receiver-side gate |
 |---|---|---|
-| `SPECIFIER::SYNC` | `SyncBlock` with inline `vtx` | **Rejected if `nCurrentSession != nSyncSession \|\| fSynchronized`** — initial sync only |
+| `SPECIFIER::SYNC` | `SyncBlock` with inline `vtx` | **Rejected if `nCurrentSession != nSyncSession || fSynchronized`** — initial sync only |
 | `SPECIFIER::TRANSACTIONS` | transactions pushed individually, then block tagged `SPECIFIER::TRITIUM` | **No sync-state gate** — correct for post-sync recovery |
 | `SPECIFIER::CLIENT` | `ClientBlock` | `-client` mode only |
 | none / `0` | bare header, no transactions | Never correct for recovery |
@@ -361,7 +361,7 @@ on an already-synced node.
 operation exercised the right code path every time.  Only fork recovery — which runs
 rarely and only on an already-synced node — used the wrong one.  First the specifier was
 omitted entirely (headers only, no transactions); the over-correction to `SYNC` then
-caused `DROPPED: ProcessPacket : unsolicted sync block` plus `Outgoing Disconnected
+caused `DROPPED: ProcessPacket : unsolicited sync block` plus `Outgoing Disconnected
 (Force)`.
 
 ### Changed call sites

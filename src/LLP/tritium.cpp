@@ -2534,7 +2534,7 @@ namespace LLP
                                      * transactions.  SPECIFIER::SYNC is only accepted by the
                                      * receiver during initial synchronization
                                      * (nCurrentSession == nSyncSession && !fSynchronized);
-                                     * sending it here causes "unsolicted sync block" drops
+                                     * sending it here causes "unsolicited sync block" drops
                                      * and DISCONNECT::FORCE on an already-synced peer. */
                                     PushMessage(ACTION::LIST,
                                         config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS),
