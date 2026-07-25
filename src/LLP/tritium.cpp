@@ -2530,6 +2530,7 @@ namespace LLP
                                         " local_height=", TAO::Ledger::ChainState::nBestHeight.load());
 
                                     PushMessage(ACTION::LIST,
+                                        config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
                                         uint8_t(TYPES::BLOCK),
                                         uint8_t(TYPES::LOCATOR),
                                         TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
@@ -2844,6 +2845,7 @@ namespace LLP
                                             TAO::Ledger::mapLastOrphanRequest[hashBlock] = nNow;
 
                                             PushMessage(ACTION::LIST,
+                                                config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
                                                 uint8_t(TYPES::BLOCK),
                                                 uint8_t(TYPES::LOCATOR),
                                                 TAO::Ledger::Locator(
@@ -2899,6 +2901,7 @@ namespace LLP
                                         (hashBestChain != 0) ? hashBestChain : hashBlock;
 
                                     PushMessage(ACTION::LIST,
+                                        config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
                                         uint8_t(TYPES::BLOCK),
                                         uint8_t(TYPES::LOCATOR),
                                         TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
