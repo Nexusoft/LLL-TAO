@@ -193,6 +193,19 @@ namespace TAO
         std::map<uint1024_t, uint64_t> mapLastOrphanRequest;
 
 
+        /* Last-processed timestamp (ms) for each known-incomplete block hash.
+         * Used to rate-limit re-entry into the expensive Check() + escalation
+         * path so PROCESSING_MUTEX is not taken dozens of times per second
+         * per peer for the same stuck block. */
+        std::map<uint1024_t, uint64_t> mapLastMissingProcessTime;
+
+
+        /* Hard terminal blacklist for blocks that have exhausted all
+         * branch-recovery paths.  Checked at the top of Process() so an
+         * unrecoverable block does not consume any DataThread budget. */
+        std::set<uint1024_t> setUnrecoverableBlocks;
+
+
         namespace
         {
             /** LocalMinedBlockRecord
@@ -520,7 +533,31 @@ namespace TAO
 
             TAO::Ledger::BlockState statePeer;
             if(!LLD::Ledger->ReadBlock(hashPeerBest, statePeer))
+            {
+                /* The peer's advertised tip is not on disk yet.  During a
+                 * wedge condition the majority-chain tip typically sits in
+                 * the orphan pool rather than on disk, which caused the
+                 * original implementation to bail silently and never reach
+                 * IsHeavierThan() or FindCommonAncestor().
+                 *
+                 * Log the orphan-pool status so operators can correlate this
+                 * with the FORK_WEDGE_DETECTED warning.  The caller is
+                 * responsible for issuing a locator-anchored branch-sync
+                 * request when this returns false. */
+                LOCK(PROCESSING_MUTEX);
+                const bool fInOrphanPool = mapOrphans.Contains(hashPeerBest);
+                debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW,
+                    "=== PEER_BEST_RECOVERY ===", ANSI_COLOR_RESET,
+                    " source=", (pszSource ? pszSource : "peer"),
+                    " peer_best=", hashPeerBest.SubString(),
+                    " peer_height=", nPeerHeight,
+                    " not_on_disk=true",
+                    " in_orphan_pool=", (fInOrphanPool ? "yes" : "no"),
+                    " action=", (fInOrphanPool
+                        ? "locator-branch-sync-needed (orphan tip, check caller)"
+                        : "block-not-yet-received"));
                 return false;
+            }
 
             LOCK(PROCESSING_MUTEX);
 
@@ -614,6 +651,47 @@ namespace TAO
             /* We want to catch any exceptions that were thrown during processing and set REJECTED if exceptions are thrown. */
             try
             {
+                /* 0. Terminal blacklist: blocks that have exhausted all branch-
+                 *    recovery paths are rejected before any expensive LLD, orphan-
+                 *    pool, or Check() work.  This directly addresses the
+                 *    DataThread time-budget overrun storm caused by multiple peers
+                 *    continuously re-serving an unrecoverable block. */
+                if(setUnrecoverableBlocks.count(hashBlock))
+                {
+                    nStatus |= PROCESS::IGNORED;
+                    return;
+                }
+
+                /* 1. Rate-limit reprocessing of known-incomplete blocks.
+                 *    When a block is already in mapLastMissing, it is an
+                 *    INCOMPLETE block we have processed before and are still
+                 *    waiting on.  Guard re-entry into the expensive Check()
+                 *    path within a short window so PROCESSING_MUTEX is not
+                 *    taken dozens of times per second when multiple peers keep
+                 *    re-serving the same stuck block.
+                 *
+                 *    Important: this guard runs before duplicate / orphan
+                 *    checks so that a truly-resolved block (now on disk) still
+                 *    takes the normal DUPLICATE or ACCEPTED path — the first
+                 *    thing Process() does after this guard is LLD::Ledger->
+                 *    HasBlock(), which will catch blocks that were accepted
+                 *    concurrently and clear their mapLastMissing entry. */
+                if(mapLastMissing.count(hashBlock))
+                {
+                    const uint64_t nNow = runtime::timestamp(true);
+                    const auto itTime = mapLastMissingProcessTime.find(hashBlock);
+                    if(itTime != mapLastMissingProcessTime.end()
+                    && (nNow - itTime->second) < MISSING_REPROCESS_RATE_LIMIT_MS)
+                    {
+                        nStatus |= PROCESS::INCOMPLETE;
+                        return;
+                    }
+                    /* Update the rate-limit timestamp before calling Check(). */
+                    if(mapLastMissingProcessTime.size() >= MAX_MISSING_MAP_ENTRIES)
+                        mapLastMissingProcessTime.clear();
+                    mapLastMissingProcessTime[hashBlock] = nNow;
+                }
+
                 /* Duplicate suppression is keyed by the block's own hash and must
                  * happen before parent availability is considered. */
                 if(LLD::Ledger->HasBlock(hashBlock))
@@ -622,6 +700,8 @@ namespace TAO
                     mapOrphans.Remove(hashBlock);
                     mapLastMissing.erase(hashBlock);
                     mapMissingBranchEscalations.erase(hashBlock);
+                    setUnrecoverableBlocks.erase(hashBlock);
+                    mapLastMissingProcessTime.erase(hashBlock);
                     return;
                 }
 
@@ -683,24 +763,64 @@ namespace TAO
                                 mapLastOrphanRequest.clear();
                             mapLastOrphanRequest[block.hashPrevBlock] = nNow;
 
-                            /* Ask for list of blocks. */
-                            pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,
-                                uint8_t(LLP::TritiumNode::TYPES::BLOCK),
-                                uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
-                                TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                                uint1024_t(block.hashPrevBlock)
-                            );
+                            if(config::GetBoolArg("-syncorphans", false))
+                            {
+                                /* Direct-fetch fallback: targeted GET for the specific
+                                 * missing ancestor block (upstream delta: restore the
+                                 * commented-out ACTION::GET recovery route behind a
+                                 * config flag so the direct-fetch path is available
+                                 * when the locator-sync is too broad). */
+                                pnode->PushMessage(LLP::TritiumNode::ACTION::GET,
+                                    uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                                    block.hashPrevBlock);
+                            }
+                            else
+                            {
+                                /* Full locator-anchored branch sync.  Send with
+                                 * SPECIFIER::SYNC (or CLIENT) so the peer includes
+                                 * full transaction data in its response — matching
+                                 * the upstream Nexusoft/LLL-TAO wire-protocol
+                                 * convention for orphan branch recovery. */
+                                pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                                    config::fClient.load()
+                                        ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)
+                                        : uint8_t(LLP::TritiumNode::SPECIFIER::SYNC),
+                                    uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                                    uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
+                                    TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                    uint1024_t(block.hashPrevBlock)
+                                );
+
+                                /* Random-connection fallback: ask a second distinct
+                                 * peer so the node that sent the orphan cannot also
+                                 * be the sole source of the recovery path (upstream
+                                 * delta: RandomConnection fallback for orphan LIST). */
+                                if(LLP::TRITIUM_SERVER)
+                                {
+                                    std::shared_ptr<LLP::TritiumNode> pRandom =
+                                        LLP::TRITIUM_SERVER->RandomConnection();
+                                    if(pRandom && pRandom.get() != pnode)
+                                    {
+                                        try
+                                        {
+                                            pRandom->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                                                config::fClient.load()
+                                                    ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)
+                                                    : uint8_t(LLP::TritiumNode::SPECIFIER::SYNC),
+                                                uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                                                uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
+                                                TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                                uint1024_t(block.hashPrevBlock)
+                                            );
+                                        }
+                                        catch(const std::exception& e)
+                                        {
+                                            debug::error(FUNCTION, e.what());
+                                        }
+                                    }
+                                }
+                            }
                         }
-
-                        /* Send a request to download the orphaned block.
-                        pnode->PushMessage(LLP::TritiumNode::ACTION::GET,
-
-                            #ifndef DEBUG_MISSING
-                            uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
-                            #endif
-
-                            uint8_t(LLP::TritiumNode::TYPES::BLOCK), block.hashPrevBlock);
-                        */
                     }
 
 
@@ -803,22 +923,68 @@ namespace TAO
                         /* Increment and check if we have reached limits. */
                         if(mapLastMissing[hashBlock] > LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
                         {
-                            /* Log a clear warning so operators can diagnose a stale-fork
-                             * wedge in node logs.  The counter is ERASED (not merely left
-                             * at the limit) so the next arrival of this block starts a
-                             * fresh retry cycle rather than being permanently silenced.
-                             * hashMissing is set to 0 to tell the LLP layer to escalate
-                             * to full branch recovery instead of the normal per-tx
-                             * re-request path that has already been exhausted. */
-                            debug::warning(FUNCTION,
-                                "missing-tx retry limit exceeded for block ",
-                                hashBlock.SubString(),
-                                " height=", block.nHeight,
-                                "; resetting retry counter and escalating to branch recovery");
+                            /* Check whether we have already reached the branch-
+                             * recovery escalation cap for this block.  When capped,
+                             * do NOT increment the escalation counter again (that is
+                             * what caused escalations=207 vs cap=3 in production):
+                             * the cap is now truly terminal.  Instead, add the block
+                             * to the hard blacklist so future arrivals are rejected
+                             * at the top of Process() without any expensive work,
+                             * and emit a single FORK_WEDGE_DETECTED warning. */
+                            const uint32_t nEscalations =
+                                mapMissingBranchEscalations.count(hashBlock)
+                                ? mapMissingBranchEscalations[hashBlock] : 0;
 
-                            incrementMissingEscalations(hashBlock);
-                            mapLastMissing.erase(hashBlock);
-                            block.hashMissing = 0;
+                            if(nEscalations >= MAX_BRANCH_RECOVERY_ESCALATIONS)
+                            {
+                                /* Only emit the wedge warning and insert into
+                                 * the blacklist the first time we see the capped
+                                 * condition for this hash. */
+                                if(!setUnrecoverableBlocks.count(hashBlock))
+                                {
+                                    if(setUnrecoverableBlocks.size() >= MAX_UNRECOVERABLE_ENTRIES)
+                                        setUnrecoverableBlocks.clear();
+                                    setUnrecoverableBlocks.insert(hashBlock);
+
+                                    debug::warning(FUNCTION,
+                                        ANSI_COLOR_BRIGHT_RED,
+                                        "=== FORK_WEDGE_DETECTED ===",
+                                        ANSI_COLOR_RESET,
+                                        " local_height=", block.nHeight,
+                                        " block=", hashBlock.SubString(),
+                                        " escalations=", nEscalations,
+                                        " cap=", MAX_BRANCH_RECOVERY_ESCALATIONS,
+                                        " missing_tx_count=", block.vMissing.size(),
+                                        " — ancestor-anchored branch sync triggered;"
+                                        " no further per-tx spam will be emitted for this block");
+                                    for(const auto& missing : block.vMissing)
+                                        debug::warning(FUNCTION,
+                                            "  missing_tx=", missing.second.SubString());
+                                }
+
+                                /* Set hashMissing = 0 so the LLP layer sends an
+                                 * ancestor-anchored branch sync (escalation path)
+                                 * rather than the per-tx re-request (normal path).
+                                 * The blacklist entry will suppress future arrivals
+                                 * from the very top of Process(). */
+                                block.hashMissing = 0;
+                            }
+                            else
+                            {
+                                /* Normal escalation: erase the per-tx retry
+                                 * counter so the next arrival starts a fresh
+                                 * cycle, and signal the LLP layer to escalate
+                                 * to full branch recovery. */
+                                debug::warning(FUNCTION,
+                                    "missing-tx retry limit exceeded for block ",
+                                    hashBlock.SubString(),
+                                    " height=", block.nHeight,
+                                    "; resetting retry counter and escalating to branch recovery");
+
+                                incrementMissingEscalations(hashBlock);
+                                mapLastMissing.erase(hashBlock);
+                                block.hashMissing = 0;
+                            }
                         }
 
                         /* Give some debug info that we are missing some transactions here. */
@@ -853,10 +1019,15 @@ namespace TAO
 
                 /* Block accepted — remove any missing-transaction retry counter so
                  * the genuine "transaction not seen yet" recovery path is
-                 * unaffected and a future stuck block starts counting from zero. */
+                 * unaffected and a future stuck block starts counting from zero.
+                 * Also clear the rate-limit timestamp and blacklist entry so if
+                 * this exact hash ever re-appears (e.g. a reorg that reverses a
+                 * previously unrecoverable decision) it is processed normally. */
                 if(mapLastMissing.count(hashBlock))
                     mapLastMissing.erase(hashBlock);
                 mapMissingBranchEscalations.erase(hashBlock);
+                setUnrecoverableBlocks.erase(hashBlock);
+                mapLastMissingProcessTime.erase(hashBlock);
 
                 /* Special meter for synchronizing. */
                 uint64_t nElapsed = runtime::timestamp(true) - nSynchronizationTimer;
@@ -940,6 +1111,8 @@ namespace TAO
                             const uint64_t nPruned = mapOrphans.RemoveSubtree(hashOrphan);
                             mapLastMissing.erase(hashOrphan);
                             mapMissingBranchEscalations.erase(hashOrphan);
+                            setUnrecoverableBlocks.erase(hashOrphan);
+                            mapLastMissingProcessTime.erase(hashOrphan);
                             debug::warning(FUNCTION, "removed invalid orphan subtree root=",
                                 hashOrphan.SubString(), " count=", nPruned);
                             continue;
@@ -969,19 +1142,53 @@ namespace TAO
                                 if(mapLastMissing[hashOrphan] >
                                     LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES)
                                 {
-                                    /* Erase the entry so the next arrival of this
-                                     * orphan child starts a fresh retry cycle rather
-                                     * than being permanently silenced, and signal
-                                     * the LLP layer to escalate to branch recovery. */
-                                    debug::warning(FUNCTION,
-                                        "missing-tx retry limit exceeded for orphan ",
-                                        hashOrphan.SubString(),
-                                        " height=", pOrphan->nHeight,
-                                        "; resetting retry counter and escalating to branch recovery");
+                                    /* Apply the same cap-terminal logic as the
+                                     * primary missing-tx path: once the escalation
+                                     * cap is reached for an orphan, add it to the
+                                     * blacklist and do not increment further. */
+                                    const uint32_t nEscalations =
+                                        mapMissingBranchEscalations.count(hashOrphan)
+                                        ? mapMissingBranchEscalations[hashOrphan] : 0;
 
-                                    incrementMissingEscalations(hashOrphan);
-                                    mapLastMissing.erase(hashOrphan);
-                                    block.hashMissing = 0;
+                                    if(nEscalations >= MAX_BRANCH_RECOVERY_ESCALATIONS)
+                                    {
+                                        if(!setUnrecoverableBlocks.count(hashOrphan))
+                                        {
+                                            if(setUnrecoverableBlocks.size() >= MAX_UNRECOVERABLE_ENTRIES)
+                                                setUnrecoverableBlocks.clear();
+                                            setUnrecoverableBlocks.insert(hashOrphan);
+
+                                            debug::warning(FUNCTION,
+                                                ANSI_COLOR_BRIGHT_RED,
+                                                "=== FORK_WEDGE_DETECTED ===",
+                                                ANSI_COLOR_RESET,
+                                                " orphan local_height=", pOrphan->nHeight,
+                                                " block=", hashOrphan.SubString(),
+                                                " escalations=", nEscalations,
+                                                " cap=", MAX_BRANCH_RECOVERY_ESCALATIONS,
+                                                " missing_tx_count=", pOrphan->vMissing.size());
+                                            for(const auto& missing : pOrphan->vMissing)
+                                                debug::warning(FUNCTION,
+                                                    "  missing_tx=", missing.second.SubString());
+                                        }
+                                        block.hashMissing = 0;
+                                    }
+                                    else
+                                    {
+                                        /* Erase the entry so the next arrival of this
+                                         * orphan child starts a fresh retry cycle rather
+                                         * than being permanently silenced, and signal
+                                         * the LLP layer to escalate to branch recovery. */
+                                        debug::warning(FUNCTION,
+                                            "missing-tx retry limit exceeded for orphan ",
+                                            hashOrphan.SubString(),
+                                            " height=", pOrphan->nHeight,
+                                            "; resetting retry counter and escalating to branch recovery");
+
+                                        incrementMissingEscalations(hashOrphan);
+                                        mapLastMissing.erase(hashOrphan);
+                                        block.hashMissing = 0;
+                                    }
                                 }
                                 else
                                     debug::notice(FUNCTION, "orphan missing ",
@@ -995,6 +1202,8 @@ namespace TAO
                             const uint64_t nPruned = mapOrphans.RemoveSubtree(hashOrphan);
                             mapLastMissing.erase(hashOrphan);
                             mapMissingBranchEscalations.erase(hashOrphan);
+                            setUnrecoverableBlocks.erase(hashOrphan);
+                            mapLastMissingProcessTime.erase(hashOrphan);
                             debug::warning(FUNCTION, "removed rejected orphan subtree root=",
                                 hashOrphan.SubString(), " count=", nPruned);
                             continue;
@@ -1002,6 +1211,8 @@ namespace TAO
 
                         mapLastMissing.erase(hashOrphan);
                         mapMissingBranchEscalations.erase(hashOrphan);
+                        setUnrecoverableBlocks.erase(hashOrphan);
+                        mapLastMissingProcessTime.erase(hashOrphan);
                         mapLastOrphanRequest.erase(hashParent);
                         mapOrphans.Remove(hashOrphan);
                         queueParents.push(hashOrphan);

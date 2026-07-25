@@ -2821,6 +2821,38 @@ namespace LLP
                                         " cap=", TAO::Ledger::MAX_BRANCH_RECOVERY_ESCALATIONS,
                                         "; suppressing further branch re-request traffic for this block. ",
                                         "Manual operator intervention may be required (e.g. peer refresh or resync).");
+
+                                    /* Even when capped, send one throttled ancestor-
+                                     * anchored branch sync so the orphan pool can
+                                     * drain if the correct chain becomes available.
+                                     * The blacklist in Process() prevents per-block
+                                     * work; this LIST is the only outgoing traffic
+                                     * that still makes sense at this stage.
+                                     * Throttle through mapLastOrphanRequest to avoid
+                                     * re-request spam. */
+                                    {
+                                        LOCK(TAO::Ledger::PROCESSING_MUTEX);
+                                        const uint64_t nNow = runtime::timestamp();
+                                        auto& nLastReq =
+                                            TAO::Ledger::mapLastOrphanRequest[hashBlock];
+                                        if(nNow - nLastReq >=
+                                            TAO::Ledger::ORPHAN_REQUEST_THROTTLE_SECONDS)
+                                        {
+                                            if(TAO::Ledger::mapLastOrphanRequest.size()
+                                            >= TAO::Ledger::MAX_ORPHAN_REQUEST_MAP_ENTRIES)
+                                                TAO::Ledger::mapLastOrphanRequest.clear();
+                                            TAO::Ledger::mapLastOrphanRequest[hashBlock] = nNow;
+
+                                            PushMessage(ACTION::LIST,
+                                                uint8_t(TYPES::BLOCK),
+                                                uint8_t(TYPES::LOCATOR),
+                                                TAO::Ledger::Locator(
+                                                    TAO::Ledger::ChainState::hashBestChain.load()),
+                                                uint1024_t(0)
+                                            );
+                                        }
+                                    }
+
                                     break;
                                 }
 
