@@ -526,6 +526,25 @@ namespace TAO
                                           const char* pszSource,
                                           LLP::TritiumNode* pnode)
         {
+            /* Re-entrancy guard: this function releases PROCESSING_MUTEX and
+             * calls Process(), which re-acquires it.  That is safe today
+             * because nothing inside Process() calls back into this function.
+             * Should a future code path introduce such a call on the same
+             * thread, re-entering here would self-deadlock on the non-
+             * recursive PROCESSING_MUTEX.  This thread_local flag makes that
+             * one-way invariant explicit and turns a potential deadlock into
+             * a harmless no-op instead. */
+            thread_local bool fInPeerBestChainRecovery = false;
+            if(fInPeerBestChainRecovery)
+                return false;
+
+            struct ReentrancyGuard
+            {
+                bool& fFlag;
+                explicit ReentrancyGuard(bool& fFlagIn) : fFlag(fFlagIn) { fFlag = true; }
+                ~ReentrancyGuard() { fFlag = false; }
+            } guard(fInPeerBestChainRecovery);
+
             if(hashPeerBest == 0 || hashPeerBest == ChainState::hashBestChain.load())
                 return false;
 
@@ -546,6 +565,15 @@ namespace TAO
                 std::unique_ptr<TAO::Ledger::Block> pConnectable;
                 bool fInOrphanPool = false;
 
+                /* Deepest hashPrevBlock reached by the walkback below.  This is
+                 * the canonical throttle key (the missing ancestor hash) used
+                 * for the gap-path ShouldSendBranchSyncRequest() call further
+                 * down — never hashPeerBest, which would reintroduce the two-
+                 * namespace key collision this helper was designed to
+                 * eliminate.  Defaults to hashPeerBest itself so the throttle
+                 * still has a sane key if the loop never executes. */
+                uint1024_t hashDeepestAncestor = hashPeerBest;
+
                 {
                     LOCK(PROCESSING_MUTEX);
 
@@ -555,16 +583,34 @@ namespace TAO
                         uint1024_t hashCurrent = hashPeerBest;
                         uint32_t nDepth = 0;
 
+                        /* Bound the walk to the real chain length rather than
+                         * the raw depth cap: a crafted orphan set with a short
+                         * parent cycle would otherwise burn the full
+                         * MAX_BLOCK_ORPHANS iterations under PROCESSING_MUTEX
+                         * on every call. */
+                        std::set<uint1024_t> setVisited;
+
                         while(nDepth < MAX_BLOCK_ORPHANS)
                         {
+                            if(!setVisited.insert(hashCurrent).second)
+                                break; /* cycle detected in the orphan graph */
+
                             const TAO::Ledger::Block* pBlock = mapOrphans.Get(hashCurrent);
                             if(!pBlock)
                                 break; /* gap — missing link in the orphan chain */
 
+                            hashDeepestAncestor = pBlock->hashPrevBlock;
+
                             if(LLD::Ledger->HasBlock(pBlock->hashPrevBlock))
                             {
-                                /* Clone so we can use it after releasing the lock. */
+                                /* Clone so we can use it after releasing the lock,
+                                 * then remove it from mapOrphans: Process() itself
+                                 * treats any hash already present in mapOrphans as
+                                 * a known ORPHAN and returns immediately without
+                                 * running Check()/Accept(), so leaving the entry
+                                 * in place would make the walkback below a no-op. */
                                 pConnectable.reset(pBlock->Clone());
+                                mapOrphans.Remove(hashCurrent);
                                 break;
                             }
 
@@ -637,7 +683,12 @@ namespace TAO
                     pSend = pRandom.get();
                 }
 
-                if(pSend && ShouldSendBranchSyncRequest(hashPeerBest))
+                /* Throttle keyed on the deepest walked ancestor's hashPrevBlock
+                 * (the missing ancestor), not hashPeerBest — hashPeerBest is the
+                 * branch tip and keying on it would reintroduce the two-namespace
+                 * collision this helper was designed to eliminate: the drain-loop
+                 * erase(hashParent) cleanup only ever clears hashPrevBlock keys. */
+                if(pSend && ShouldSendBranchSyncRequest(hashDeepestAncestor))
                 {
                     try
                     {
@@ -805,10 +856,19 @@ namespace TAO
                  *    recovery paths are rejected before any expensive LLD, orphan-
                  *    pool, or Check() work.  This directly addresses the
                  *    DataThread time-budget overrun storm caused by multiple peers
-                 *    continuously re-serving an unrecoverable block. */
+                 *    continuously re-serving an unrecoverable block.
+                 *
+                 *    Report INCOMPLETE with hashMissing = 0 (not a silent IGNORED)
+                 *    so the LLP capped-path branch is reached on every arrival, not
+                 *    just the one where the blacklist entry was first inserted.
+                 *    That keeps ShouldSendBranchSyncRequest() in the loop — its own
+                 *    throttle bounds the actual outgoing traffic — instead of going
+                 *    permanently silent after a single recovery attempt. Check() and
+                 *    the escalation counter are still skipped entirely. */
                 if(setUnrecoverableBlocks.count(hashBlock))
                 {
-                    nStatus |= PROCESS::IGNORED;
+                    nStatus |= PROCESS::INCOMPLETE;
+                    block.hashMissing = 0;
                     return;
                 }
 
@@ -1171,6 +1231,18 @@ namespace TAO
                         if(mapLastMissing.size() >= MAX_MISSING_MAP_ENTRIES)
                             mapLastMissing.clear();
                         mapLastMissing[hashBlock] = 1;
+
+                        /* Seed the rate-limit timestamp on the very first miss
+                         * too, not just on subsequent re-entries.  The guard at
+                         * the top of Process() only checks/updates this map when
+                         * mapLastMissing already has an entry for hashBlock —
+                         * which is not yet true on this, the first, arrival —
+                         * so without seeding it here a second rapid arrival
+                         * would find no timestamp and incorrectly run the full
+                         * path again instead of being rate-limited. */
+                        if(mapLastMissingProcessTime.size() >= MAX_MISSING_MAP_ENTRIES)
+                            mapLastMissingProcessTime.clear();
+                        mapLastMissingProcessTime[hashBlock] = runtime::timestamp(true);
                     }
 
                     return;
@@ -1308,6 +1380,17 @@ namespace TAO
                                     if(mapLastMissing.size() >= MAX_MISSING_MAP_ENTRIES)
                                         mapLastMissing.clear();
                                     mapLastMissing[hashOrphan] = 1;
+
+                                    /* Seed the rate-limit timestamp on the first
+                                     * miss here too, mirroring the primary path:
+                                     * without it, a subsequent top-level Process()
+                                     * arrival of this same orphan hash would find
+                                     * no mapLastMissingProcessTime entry and run
+                                     * the full path again instead of being
+                                     * rate-limited. */
+                                    if(mapLastMissingProcessTime.size() >= MAX_MISSING_MAP_ENTRIES)
+                                        mapLastMissingProcessTime.clear();
+                                    mapLastMissingProcessTime[hashOrphan] = runtime::timestamp(true);
                                 }
 
                                 if(mapLastMissing[hashOrphan] >

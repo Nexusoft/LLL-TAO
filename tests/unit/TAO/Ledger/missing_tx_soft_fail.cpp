@@ -1000,19 +1000,21 @@ TEST_CASE("Escalation cap invariant: counter never exceeds MAX+1", "[ledger][pro
     uint32_t nCyclesCompleted = 0;
     for(uint32_t nCycle = 0; nCycle < nTotalCycles; ++nCycle)
     {
-        /* Each call to Process() returns either INCOMPLETE or IGNORED once
-         * the block is blacklisted.  Drive the inner retry loop only while
-         * the block is not yet blacklisted. */
+        /* Every call to Process() returns INCOMPLETE (hashMissing==0 once
+         * blacklisted, since Check()/mapLastMissing are then skipped).
+         * Drive the inner retry loop only while the block is not yet
+         * blacklisted, since once blacklisted the escalation counter is
+         * frozen and further cycles would be redundant. */
         if(TAO::Ledger::setUnrecoverableBlocks.count(hashBlock))
-            break; /* blacklisted — further calls return IGNORED immediately */
+            break; /* blacklisted — further calls short-circuit immediately */
 
         for(uint64_t i = 0; i < nRetries; ++i)
         {
             TAO::Ledger::mapLastMissingProcessTime.erase(hashBlock);
             uint8_t nStatus = 0;
             TAO::Ledger::Process(block, nStatus);
-            /* Status is INCOMPLETE until the blacklist is set; after that it
-             * returns IGNORED.  Break as soon as we're blacklisted. */
+            /* Status is always INCOMPLETE; break as soon as we're blacklisted
+             * since further arrivals no longer advance the escalation counter. */
             if(TAO::Ledger::setUnrecoverableBlocks.count(hashBlock))
                 break;
             REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
@@ -1028,13 +1030,17 @@ TEST_CASE("Escalation cap invariant: counter never exceeds MAX+1", "[ledger][pro
     REQUIRE(TAO::Ledger::IsMissingBranchRecoveryCapped(hashBlock));
     REQUIRE(TAO::Ledger::setUnrecoverableBlocks.count(hashBlock) == 1);
 
-    /* Drive many more calls: every one returns IGNORED, counter stays frozen. */
+    /* Drive many more calls: every one returns INCOMPLETE with hashMissing==0
+     * (not IGNORED — the blacklist guard now reports INCOMPLETE so the LLP
+     * capped-path branch, and ShouldSendBranchSyncRequest(), stay reachable
+     * on every arrival), counter stays frozen. */
     for(uint32_t i = 0; i < 20; ++i)
     {
         TAO::Ledger::mapLastMissingProcessTime.erase(hashBlock);
         uint8_t nStatus = 0;
         TAO::Ledger::Process(block, nStatus);
-        REQUIRE((nStatus & TAO::Ledger::PROCESS::IGNORED) != 0);
+        REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
+        REQUIRE(block.hashMissing == 0);
         REQUIRE(TAO::Ledger::MissingBranchRecoveryEscalations(hashBlock) == nMaxEsc + 1);
     }
 
@@ -1047,7 +1053,7 @@ TEST_CASE("Escalation cap invariant: counter never exceeds MAX+1", "[ledger][pro
 }
 
 
-TEST_CASE("Blacklist short-circuit: IGNORED before Check()/mapLastMissing", "[ledger][process]")
+TEST_CASE("Blacklist short-circuit: INCOMPLETE/hashMissing=0 before Check()/mapLastMissing", "[ledger][process]")
 {
     LedgerGuard env;
 
@@ -1079,14 +1085,17 @@ TEST_CASE("Blacklist short-circuit: IGNORED before Check()/mapLastMissing", "[le
     /* Manually blacklist the block. */
     TAO::Ledger::setUnrecoverableBlocks.insert(hashBlock);
 
-    /* Process() must return IGNORED immediately — before any Check(),
-     * mapLastMissing write, or escalation logic. */
+    /* Process() must short-circuit immediately — before any Check(),
+     * mapLastMissing write, or escalation logic — but must still report
+     * INCOMPLETE with hashMissing == 0 (not a silent IGNORED) so the LLP
+     * capped-path branch, and therefore ShouldSendBranchSyncRequest(),
+     * stays reachable on every arrival rather than firing only once. */
     uint8_t nStatus = 0;
     TAO::Ledger::Process(block, nStatus);
 
-    REQUIRE((nStatus & TAO::Ledger::PROCESS::IGNORED)   != 0);
-    REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) == 0);
+    REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
     REQUIRE((nStatus & TAO::Ledger::PROCESS::REJECTED)   == 0);
+    REQUIRE(block.hashMissing == 0);
 
     /* mapLastMissing must NOT have been written — the early-return prevented it. */
     REQUIRE(TAO::Ledger::mapLastMissing.count(hashBlock) == 0);
@@ -1334,12 +1343,16 @@ TEST_CASE("AttemptPeerBestChainRecovery walks orphan pool for connectable ancest
 
     REQUIRE(fRecovered);
 
-    /* Both blocks should now be on disk. */
-    REQUIRE(LLD::Ledger->HasBlock(hashA));
-    REQUIRE(LLD::Ledger->HasBlock(hashB));
-
-    /* Orphan pool should be empty after the drain. */
+    /* Both blockA and blockB must have been walked through Accept() (the
+     * mock PassBlock::Accept() does not itself persist to disk, so this is
+     * verified via the orphan pool having been fully drained rather than
+     * LLD::Ledger->HasBlock(), mirroring the "Persisted orphan is removed
+     * while draining" test's pattern). Orphan pool should be empty: blockA
+     * was consumed as the connectable ancestor fed through Process(), and
+     * blockB was drained by the BFS walk that follows a successful accept. */
     REQUIRE(TAO::Ledger::mapOrphans.Empty());
+    REQUIRE_FALSE(TAO::Ledger::mapOrphans.Contains(hashA));
+    REQUIRE_FALSE(TAO::Ledger::mapOrphans.Contains(hashB));
 
     /* Clean up. */
     TAO::Ledger::mapOrphans.Clear();
