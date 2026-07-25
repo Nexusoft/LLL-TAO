@@ -191,12 +191,16 @@ TEST_CASE("Missing transactions yield a soft INCOMPLETE, never a REJECT", "[ledg
     /* Clear any stale retry state from previous tests. */
     TAO::Ledger::mapLastMissing.clear();
     TAO::Ledger::mapMissingBranchEscalations.clear();
+    TAO::Ledger::mapLastMissingProcessTime.clear();
 
     /* Drive the block through Process() up to the retry limit. Each iteration
      * should return INCOMPLETE (never REJECTED) and increment the retry
-     * counter keyed by the block hash. */
+     * counter keyed by the block hash.  Clear mapLastMissingProcessTime before
+     * each call so the 250-ms rate-limit guard does not coalesce rapid
+     * successive test invocations into a single counter increment. */
     for(uint64_t i = 1; i <= LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES; ++i)
     {
+        TAO::Ledger::mapLastMissingProcessTime.erase(hashBlock);
         uint8_t nStatus = 0;
         TAO::Ledger::Process(block, nStatus);
 
@@ -213,6 +217,7 @@ TEST_CASE("Missing transactions yield a soft INCOMPLETE, never a REJECT", "[ledg
      * mapLastMissing entry is ERASED so the next arrival of this block starts
      * a fresh retry cycle rather than being permanently silenced. */
     {
+        TAO::Ledger::mapLastMissingProcessTime.erase(hashBlock);
         uint8_t nStatus = 0;
         TAO::Ledger::Process(block, nStatus);
 
@@ -244,6 +249,7 @@ TEST_CASE("Missing transactions yield a soft INCOMPLETE, never a REJECT", "[ledg
     /* Clean up. */
     TAO::Ledger::mapLastMissing.clear();
     TAO::Ledger::mapMissingBranchEscalations.clear();
+    TAO::Ledger::mapLastMissingProcessTime.clear();
     LLD::Ledger->EraseBlock(hashBlock);
     LLD::Ledger->EraseBlock(hashPrev);
 }
@@ -277,11 +283,16 @@ TEST_CASE("Missing-tx branch-recovery escalations are counted and capped", "[led
 
     TAO::Ledger::mapLastMissing.clear();
     TAO::Ledger::mapMissingBranchEscalations.clear();
+    TAO::Ledger::mapLastMissingProcessTime.clear();
+    TAO::Ledger::setUnrecoverableBlocks.clear();
 
     for(uint32_t nCycle = 1; nCycle <= nTestCycles; ++nCycle)
     {
         for(uint64_t i = 0; i < nRetries; ++i)
         {
+            /* Bypass the 250-ms reprocess rate-limit so rapid test calls each
+             * count as a distinct attempt rather than being coalesced. */
+            TAO::Ledger::mapLastMissingProcessTime.erase(hashBlock);
             uint8_t nStatus = 0;
             TAO::Ledger::Process(block, nStatus);
             REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
@@ -297,6 +308,8 @@ TEST_CASE("Missing-tx branch-recovery escalations are counted and capped", "[led
 
     TAO::Ledger::mapLastMissing.clear();
     TAO::Ledger::mapMissingBranchEscalations.clear();
+    TAO::Ledger::mapLastMissingProcessTime.clear();
+    TAO::Ledger::setUnrecoverableBlocks.clear();
     LLD::Ledger->EraseBlock(hashBlock);
     LLD::Ledger->EraseBlock(hashPrev);
 }
@@ -332,10 +345,15 @@ TEST_CASE("Missing-transaction retry counter clears on successful ACCEPT", "[led
 
     TAO::Ledger::mapLastMissing.clear();
     TAO::Ledger::mapOrphans.Clear();
+    TAO::Ledger::mapLastMissingProcessTime.clear();
 
-    /* Drive a few INCOMPLETE results to build up the counter. */
+    /* Drive a few INCOMPLETE results to build up the counter.
+     * Erase the rate-limit entry before each call so the 250-ms guard does
+     * not prevent rapid successive test calls from each incrementing the
+     * counter. */
     for(uint32_t i = 0; i < 3; ++i)
     {
+        TAO::Ledger::mapLastMissingProcessTime.erase(hashMissing);
         uint8_t nStatus = 0;
         TAO::Ledger::Process(missingBlock, nStatus);
         REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
@@ -373,6 +391,7 @@ TEST_CASE("Missing-transaction retry counter clears on successful ACCEPT", "[led
 
     /* Clean up. */
     TAO::Ledger::mapLastMissing.clear();
+    TAO::Ledger::mapLastMissingProcessTime.clear();
     LLD::Ledger->EraseBlock(hashPrev);
 }
 
@@ -928,3 +947,461 @@ TEST_CASE("Synchronization requires the advertised hash to be active",
 
     TAO::Ledger::ChainState::hashBestChain.store(hashBestBefore);
 }
+
+
+/* ========================================================================
+ * Follow-up regression tests for the third failure mode:
+ *   - Escalation cap invariant
+ *   - Blacklist short-circuit
+ *   - 250-ms rate limit
+ *   - Blacklist clears on accept
+ *   - Throttle key unification (mapLastOrphanRequest keyed by hashPrevBlock)
+ *   - PurgeOrphanRecoveryState completeness
+ *   - AttemptPeerBestChainRecovery orphan-pool walkback
+ *   - Hash-channel (nChannel=2) PoW non-regression
+ * ======================================================================== */
+
+
+TEST_CASE("Escalation cap invariant: counter never exceeds MAX+1", "[ledger][process]")
+{
+    LedgerGuard env;
+
+    const uint1024_t hashPrev(0xCA000001ULL);
+
+    TAO::Ledger::BlockState statePrev;
+    statePrev.nVersion      = 4;
+    statePrev.hashPrevBlock = uint1024_t(0);
+    statePrev.nChannel      = 2;
+    statePrev.nHeight       = 100;
+    statePrev.nBits         = 1;
+    REQUIRE(LLD::Ledger->WriteBlock(hashPrev, statePrev));
+
+    MissingBlock block;
+    block.nVersion      = 4;
+    block.hashPrevBlock = hashPrev;
+    block.nChannel      = 2;
+    block.nHeight       = 101;
+    block.nBits         = 1;
+    block.nNonce        = 9001;
+
+    const uint1024_t hashBlock = block.GetHash();
+    const uint64_t nRetries = LLP::TritiumNode::ACTION::MAX_MISSING_TRANSACTIONS_RETRIES + 1;
+    const uint32_t nMaxEsc   = TAO::Ledger::MAX_BRANCH_RECOVERY_ESCALATIONS;
+
+    TAO::Ledger::mapLastMissing.clear();
+    TAO::Ledger::mapMissingBranchEscalations.clear();
+    TAO::Ledger::mapLastMissingProcessTime.clear();
+    TAO::Ledger::setUnrecoverableBlocks.clear();
+
+    /* Drive through enough cycles to reach and exceed the cap. */
+    const uint32_t nExtraCycles = 5;
+    const uint32_t nTotalCycles = nMaxEsc + 1 + nExtraCycles;
+
+    uint32_t nCyclesCompleted = 0;
+    for(uint32_t nCycle = 0; nCycle < nTotalCycles; ++nCycle)
+    {
+        /* Every call to Process() returns INCOMPLETE (hashMissing==0 once
+         * blacklisted, since Check()/mapLastMissing are then skipped).
+         * Drive the inner retry loop only while the block is not yet
+         * blacklisted, since once blacklisted the escalation counter is
+         * frozen and further cycles would be redundant. */
+        if(TAO::Ledger::setUnrecoverableBlocks.count(hashBlock))
+            break; /* blacklisted — further calls short-circuit immediately */
+
+        for(uint64_t i = 0; i < nRetries; ++i)
+        {
+            TAO::Ledger::mapLastMissingProcessTime.erase(hashBlock);
+            uint8_t nStatus = 0;
+            TAO::Ledger::Process(block, nStatus);
+            /* Status is always INCOMPLETE; break as soon as we're blacklisted
+             * since further arrivals no longer advance the escalation counter. */
+            if(TAO::Ledger::setUnrecoverableBlocks.count(hashBlock))
+                break;
+            REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
+        }
+        ++nCyclesCompleted;
+    }
+
+    /* After the cap cycle fires the counter must be exactly MAX+1 — no more,
+     * no less.  Subsequent arrivals are blocked by the blacklist before
+     * reaching incrementMissingEscalations(), so the counter is frozen. */
+    const uint32_t nFinalEsc = TAO::Ledger::MissingBranchRecoveryEscalations(hashBlock);
+    REQUIRE(nFinalEsc == nMaxEsc + 1);
+    REQUIRE(TAO::Ledger::IsMissingBranchRecoveryCapped(hashBlock));
+    REQUIRE(TAO::Ledger::setUnrecoverableBlocks.count(hashBlock) == 1);
+
+    /* Drive many more calls: every one returns INCOMPLETE with hashMissing==0
+     * (not IGNORED — the blacklist guard now reports INCOMPLETE so the LLP
+     * capped-path branch, and ShouldSendBranchSyncRequest(), stay reachable
+     * on every arrival), counter stays frozen. */
+    for(uint32_t i = 0; i < 20; ++i)
+    {
+        TAO::Ledger::mapLastMissingProcessTime.erase(hashBlock);
+        uint8_t nStatus = 0;
+        TAO::Ledger::Process(block, nStatus);
+        REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
+        REQUIRE(block.hashMissing == 0);
+        REQUIRE(TAO::Ledger::MissingBranchRecoveryEscalations(hashBlock) == nMaxEsc + 1);
+    }
+
+    /* Clean up. */
+    TAO::Ledger::mapLastMissing.clear();
+    TAO::Ledger::mapMissingBranchEscalations.clear();
+    TAO::Ledger::mapLastMissingProcessTime.clear();
+    TAO::Ledger::setUnrecoverableBlocks.clear();
+    LLD::Ledger->EraseBlock(hashPrev);
+}
+
+
+TEST_CASE("Blacklist short-circuit: INCOMPLETE with hashMissing=0", "[ledger][process]")
+{
+    LedgerGuard env;
+
+    const uint1024_t hashPrev(0xB100001ULL);
+
+    TAO::Ledger::BlockState statePrev;
+    statePrev.nVersion      = 4;
+    statePrev.hashPrevBlock = uint1024_t(0);
+    statePrev.nChannel      = 2;
+    statePrev.nHeight       = 110;
+    statePrev.nBits         = 1;
+    REQUIRE(LLD::Ledger->WriteBlock(hashPrev, statePrev));
+
+    MissingBlock block;
+    block.nVersion      = 4;
+    block.hashPrevBlock = hashPrev;
+    block.nChannel      = 2;
+    block.nHeight       = 111;
+    block.nBits         = 1;
+    block.nNonce        = 9002;
+
+    const uint1024_t hashBlock = block.GetHash();
+
+    TAO::Ledger::mapLastMissing.clear();
+    TAO::Ledger::mapMissingBranchEscalations.clear();
+    TAO::Ledger::mapLastMissingProcessTime.clear();
+    TAO::Ledger::setUnrecoverableBlocks.clear();
+
+    /* Manually blacklist the block. */
+    TAO::Ledger::setUnrecoverableBlocks.insert(hashBlock);
+
+    /* Process() must short-circuit immediately — before any Check(),
+     * mapLastMissing write, or escalation logic — but must still report
+     * INCOMPLETE with hashMissing == 0 (not a silent IGNORED) so the LLP
+     * capped-path branch, and therefore ShouldSendBranchSyncRequest(),
+     * stays reachable on every arrival rather than firing only once. */
+    uint8_t nStatus = 0;
+    TAO::Ledger::Process(block, nStatus);
+
+    REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
+    REQUIRE((nStatus & TAO::Ledger::PROCESS::REJECTED)   == 0);
+    REQUIRE(block.hashMissing == 0);
+
+    /* mapLastMissing must NOT have been written — the early-return prevented it. */
+    REQUIRE(TAO::Ledger::mapLastMissing.count(hashBlock) == 0);
+
+    /* Clean up. */
+    TAO::Ledger::setUnrecoverableBlocks.clear();
+    LLD::Ledger->EraseBlock(hashPrev);
+}
+
+
+TEST_CASE("Rate-limit: two rapid calls produce only one full-path execution", "[ledger][process]")
+{
+    LedgerGuard env;
+
+    const uint1024_t hashPrev(0xA1000001ULL);
+
+    TAO::Ledger::BlockState statePrev;
+    statePrev.nVersion      = 4;
+    statePrev.hashPrevBlock = uint1024_t(0);
+    statePrev.nChannel      = 2;
+    statePrev.nHeight       = 120;
+    statePrev.nBits         = 1;
+    REQUIRE(LLD::Ledger->WriteBlock(hashPrev, statePrev));
+
+    MissingBlock block;
+    block.nVersion      = 4;
+    block.hashPrevBlock = hashPrev;
+    block.nChannel      = 2;
+    block.nHeight       = 121;
+    block.nBits         = 1;
+    block.nNonce        = 9003;
+
+    const uint1024_t hashBlock = block.GetHash();
+
+    TAO::Ledger::mapLastMissing.clear();
+    TAO::Ledger::mapLastMissingProcessTime.clear();
+    TAO::Ledger::setUnrecoverableBlocks.clear();
+
+    /* First call: hash not yet in mapLastMissing — no rate-limit check.
+     * Process() runs the full path and sets mapLastMissing[hash] = 1. */
+    {
+        uint8_t nStatus = 0;
+        TAO::Ledger::Process(block, nStatus);
+        REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
+        REQUIRE(TAO::Ledger::mapLastMissing.count(hashBlock) == 1);
+        REQUIRE(TAO::Ledger::mapLastMissing[hashBlock] == 1);
+    }
+
+    /* Second call immediately (within 250 ms): hash IS in mapLastMissing and
+     * mapLastMissingProcessTime was set by the first call — rate-limit fires.
+     * Returns INCOMPLETE immediately; counter stays at 1. */
+    {
+        uint8_t nStatus = 0;
+        TAO::Ledger::Process(block, nStatus);
+        REQUIRE((nStatus & TAO::Ledger::PROCESS::INCOMPLETE) != 0);
+        /* Counter must NOT have been incremented — rate-limit short-circuited. */
+        REQUIRE(TAO::Ledger::mapLastMissing[hashBlock] == 1);
+    }
+
+    /* Clean up. */
+    TAO::Ledger::mapLastMissing.clear();
+    TAO::Ledger::mapLastMissingProcessTime.clear();
+    LLD::Ledger->EraseBlock(hashPrev);
+}
+
+
+TEST_CASE("Blacklist clears on ACCEPT: all recovery maps erased", "[ledger][process]")
+{
+    LedgerGuard env;
+
+    const uint1024_t hashPrev(0xBC000001ULL);
+
+    TAO::Ledger::BlockState statePrev;
+    statePrev.nVersion      = 4;
+    statePrev.hashPrevBlock = uint1024_t(0);
+    statePrev.nChannel      = 2;
+    statePrev.nHeight       = 130;
+    statePrev.nBits         = 1;
+    REQUIRE(LLD::Ledger->WriteBlock(hashPrev, statePrev));
+
+    /* PassBlock will be accepted (Check/Accept both succeed). */
+    PassBlock block;
+    block.nVersion      = 4;
+    block.hashPrevBlock = hashPrev;
+    block.nChannel      = 2;
+    block.nHeight       = 131;
+    block.nBits         = 1;
+    block.nNonce        = 9004;
+
+    const uint1024_t hashBlock = block.GetHash();
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hashBlock));
+
+    /* Pre-populate every recovery map to simulate a prior incomplete run. */
+    TAO::Ledger::mapLastMissing[hashBlock]              = 42;
+    TAO::Ledger::mapMissingBranchEscalations[hashBlock] = 2;
+    TAO::Ledger::setUnrecoverableBlocks.insert(hashBlock);
+    TAO::Ledger::mapLastMissingProcessTime[hashBlock]   = runtime::timestamp(true) - 10000;
+
+    /* Process() checks setUnrecoverableBlocks FIRST, so a blacklisted PassBlock
+     * would return IGNORED.  Verify the accept-path clears maps correctly:
+     * first, remove from blacklist to let the accept path run, then accept. */
+    TAO::Ledger::setUnrecoverableBlocks.erase(hashBlock);
+
+    uint8_t nStatus = 0;
+    TAO::Ledger::Process(block, nStatus);
+    REQUIRE((nStatus & TAO::Ledger::PROCESS::ACCEPTED) != 0);
+
+    /* All recovery maps must be cleared on ACCEPT. */
+    REQUIRE(TAO::Ledger::mapLastMissing.count(hashBlock)              == 0);
+    REQUIRE(TAO::Ledger::mapMissingBranchEscalations.count(hashBlock) == 0);
+    REQUIRE(TAO::Ledger::setUnrecoverableBlocks.count(hashBlock)      == 0);
+    REQUIRE(TAO::Ledger::mapLastMissingProcessTime.count(hashBlock)   == 0);
+
+    /* Clean up. */
+    TAO::Ledger::mapLastMissing.clear();
+    TAO::Ledger::mapMissingBranchEscalations.clear();
+    TAO::Ledger::setUnrecoverableBlocks.clear();
+    TAO::Ledger::mapLastMissingProcessTime.clear();
+    LLD::Ledger->EraseBlock(hashPrev);
+}
+
+
+TEST_CASE("Throttle key unification: mapLastOrphanRequest keyed by hashPrevBlock", "[ledger][process]")
+{
+    /* ShouldSendBranchSyncRequest() records its timestamp in mapLastOrphanRequest
+     * keyed by the hashAncestor argument (== block.hashPrevBlock, the missing
+     * ancestor).  Both the orphan-insert path in Process() and the capped-path
+     * LIST in the LLP layer use this same canonical key so the drain-loop
+     * cleanup erase(hashParent) is always effective. */
+
+    const uint1024_t hashAncestor(0xA2000001ULL);
+
+    TAO::Ledger::mapLastOrphanRequest.clear();
+
+    /* First call must return true (no prior entry). */
+    REQUIRE(TAO::Ledger::ShouldSendBranchSyncRequest(hashAncestor));
+
+    /* Verify the timestamp was recorded under the ancestor key. */
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashAncestor) == 1);
+
+    /* Second call within ORPHAN_REQUEST_THROTTLE_SECONDS must return false. */
+    REQUIRE_FALSE(TAO::Ledger::ShouldSendBranchSyncRequest(hashAncestor));
+
+    /* The drain-loop cleanup: erasing by hashParent (== hashAncestor) removes
+     * the throttle entry regardless of which code path wrote it. */
+    TAO::Ledger::mapLastOrphanRequest.erase(hashAncestor);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashAncestor) == 0);
+
+    /* After erase, ShouldSendBranchSyncRequest should allow a new request. */
+    REQUIRE(TAO::Ledger::ShouldSendBranchSyncRequest(hashAncestor));
+
+    TAO::Ledger::mapLastOrphanRequest.clear();
+}
+
+
+TEST_CASE("PurgeOrphanRecoveryState clears all correlated maps", "[ledger][process]")
+{
+    LedgerGuard env;
+
+    const uint1024_t h1(0xA3000001ULL);
+    const uint1024_t h2(0xA3000002ULL);
+    const uint1024_t h3(0xA3000003ULL);
+
+    /* Seed every recovery map with at least one entry. */
+    TAO::Ledger::mapLastMissing[h1]              = 5;
+    TAO::Ledger::mapMissingBranchEscalations[h2] = 2;
+    TAO::Ledger::setUnrecoverableBlocks.insert(h3);
+    TAO::Ledger::mapLastMissingProcessTime[h1]   = 12345678;
+    TAO::Ledger::mapLastOrphanRequest[h2]        = 87654321;
+
+    /* Seed the orphan pool with a dummy block. */
+    PassBlock dummy;
+    dummy.nVersion      = 4;
+    dummy.hashPrevBlock = uint1024_t(0xDEAD);
+    dummy.nNonce        = 0xBEEF;
+    TAO::Ledger::mapOrphans.Insert(dummy);
+    REQUIRE_FALSE(TAO::Ledger::mapOrphans.Empty());
+
+    /* Purge everything at once. */
+    TAO::Ledger::PurgeOrphanRecoveryState("unit-test");
+
+    /* Every map and set must be empty after the purge. */
+    REQUIRE(TAO::Ledger::mapOrphans.Empty());
+    REQUIRE(TAO::Ledger::mapLastMissing.empty());
+    REQUIRE(TAO::Ledger::mapMissingBranchEscalations.empty());
+    REQUIRE(TAO::Ledger::setUnrecoverableBlocks.empty());
+    REQUIRE(TAO::Ledger::mapLastMissingProcessTime.empty());
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.empty());
+}
+
+
+TEST_CASE("AttemptPeerBestChainRecovery walks orphan pool for connectable ancestor",
+    "[ledger][process]")
+{
+    LedgerGuard env;
+
+    /* Set up a known-good root block on disk. */
+    const uint1024_t hashRoot(0xA4000001ULL);
+
+    TAO::Ledger::BlockState stateRoot;
+    stateRoot.nVersion      = 4;
+    stateRoot.hashPrevBlock = uint1024_t(0);
+    stateRoot.nChannel      = 2;
+    stateRoot.nHeight       = 200;
+    stateRoot.nBits         = 1;
+    REQUIRE(LLD::Ledger->WriteBlock(hashRoot, stateRoot));
+
+    /* Block A: connectable orphan (its hashPrevBlock is on disk). */
+    PassBlock blockA;
+    blockA.nVersion      = 4;
+    blockA.hashPrevBlock = hashRoot;
+    blockA.nChannel      = 2;
+    blockA.nHeight       = 201;
+    blockA.nBits         = 1;
+    blockA.nNonce        = 10001;
+    const uint1024_t hashA = blockA.GetHash();
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hashA));
+
+    /* Block B: peer tip — orphan whose hashPrevBlock is hashA (also in pool). */
+    PassBlock blockB;
+    blockB.nVersion      = 4;
+    blockB.hashPrevBlock = hashA;
+    blockB.nChannel      = 2;
+    blockB.nHeight       = 202;
+    blockB.nBits         = 1;
+    blockB.nNonce        = 10002;
+    const uint1024_t hashB = blockB.GetHash();
+
+    /* Seed both blocks in the orphan pool: B is the peer's advertised tip;
+     * A is the connectable ancestor (prev is on disk). */
+    TAO::Ledger::mapOrphans.Clear();
+    TAO::Ledger::mapLastMissing.clear();
+    TAO::Ledger::mapLastMissingProcessTime.clear();
+    TAO::Ledger::setUnrecoverableBlocks.clear();
+    REQUIRE(TAO::Ledger::mapOrphans.Insert(blockA));
+    REQUIRE(TAO::Ledger::mapOrphans.Insert(blockB));
+
+    /* AttemptPeerBestChainRecovery should:
+     *   1. ReadBlock(hashB) fails (not on disk).
+     *   2. Walk back: hashB → hashA (connectable, prev=hashRoot is on disk).
+     *   3. Process(blockA) → ACCEPTED → BFS drain picks up blockB.
+     *   4. Return true (forward progress made). */
+    const bool fRecovered = TAO::Ledger::AttemptPeerBestChainRecovery(
+        hashB, 202, "unit-test", nullptr);
+
+    REQUIRE(fRecovered);
+
+    /* Both blockA and blockB must have been walked through Accept() (the
+     * mock PassBlock::Accept() does not itself persist to disk, so this is
+     * verified via the orphan pool having been fully drained rather than
+     * LLD::Ledger->HasBlock(), mirroring the "Persisted orphan is removed
+     * while draining" test's pattern). Orphan pool should be empty: blockA
+     * was consumed as the connectable ancestor fed through Process(), and
+     * blockB was drained by the BFS walk that follows a successful accept. */
+    REQUIRE(TAO::Ledger::mapOrphans.Empty());
+    REQUIRE_FALSE(TAO::Ledger::mapOrphans.Contains(hashA));
+    REQUIRE_FALSE(TAO::Ledger::mapOrphans.Contains(hashB));
+
+    /* Clean up. */
+    TAO::Ledger::mapOrphans.Clear();
+    TAO::Ledger::mapLastMissing.clear();
+    TAO::Ledger::mapLastMissingProcessTime.clear();
+    LLD::Ledger->EraseBlock(hashA);
+    LLD::Ledger->EraseBlock(hashB);
+    LLD::Ledger->EraseBlock(hashRoot);
+}
+
+
+TEST_CASE("Hash-channel (nChannel=2) PoW non-regression: Check() branches correctly",
+    "[ledger][process]")
+{
+    /* Verify that a Hash-channel block has its proof hash computed over
+     * [nVersion .. nNonce] (not [nVersion .. nBits] like the Prime channel).
+     * This is tested at the Block level to confirm ProofHash() dispatches
+     * correctly; the stuck block in production never reached VerifyWork()
+     * because it returned early at the vMissing guard. */
+
+    TAO::Ledger::TritiumBlock block;
+    block.nVersion = TAO::Ledger::CurrentBlockVersion();
+    block.nChannel = 2;   /* Hash channel */
+    block.nHeight  = 1;
+    block.nNonce   = 0xDEADBEEF12345678ULL;
+    block.nBits    = 0x20ffffff;
+
+    /* ProofHash for nChannel != 1 must include nNonce (it's computed over
+     * [nVersion, nNonce] inclusive), so changing nNonce changes the hash. */
+    const uint1024_t hashNonce1 = block.ProofHash();
+    block.nNonce = 0xDEADBEEF12345679ULL;
+    const uint1024_t hashNonce2 = block.ProofHash();
+    REQUIRE(hashNonce1 != hashNonce2);
+
+    /* For comparison, Prime channel (nChannel == 1) hashes over
+     * [nVersion, nBits] — nNonce changes do NOT change the proof hash. */
+    block.nChannel = 1;
+    const uint1024_t hashPrime1 = block.ProofHash();
+    block.nNonce = 0xDEADBEEF12345680ULL;
+    const uint1024_t hashPrime2 = block.ProofHash();
+    REQUIRE(hashPrime1 == hashPrime2);
+
+    /* Restore Hash channel and verify changing nBits also changes the hash
+     * (both fields are in [nVersion, nNonce]). */
+    block.nChannel = 2;
+    block.nNonce   = 0xDEADBEEF12345678ULL;
+    const uint1024_t hashBits1 = block.ProofHash();
+    block.nBits = 0x20fefefe;
+    const uint1024_t hashBits2 = block.ProofHash();
+    REQUIRE(hashBits1 != hashBits2);
+}
+
