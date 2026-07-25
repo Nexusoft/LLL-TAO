@@ -666,8 +666,9 @@ namespace TAO
                 /* Gap in the orphan branch — we have some blocks in memory but not
                  * a contiguous path to disk.  Issue a throttled locator-anchored
                  * LIST so the missing segment can be downloaded, using hashPeerBest
-                 * as the stop hash and SPECIFIER::SYNC/CLIENT so the peer includes
-                 * full transaction data in its response. */
+                 * as the stop hash and SPECIFIER::TRANSACTIONS so the peer pushes
+                 * inline txs then the block tagged SPECIFIER::TRITIUM.  SYNC would
+                 * be rejected as "unsolicited" on an already-synced receiver. */
                 debug::warning(FUNCTION,
                     ANSI_COLOR_BRIGHT_YELLOW, "=== PEER_BEST_RECOVERY ===", ANSI_COLOR_RESET,
                     " source=", (pszSource ? pszSource : "peer"),
@@ -692,12 +693,16 @@ namespace TAO
                  * erase(hashParent) cleanup only ever clears hashPrevBlock keys. */
                 if(pSend && ShouldSendBranchSyncRequest(hashDeepestAncestor))
                 {
+                    /* Use SPECIFIER::TRANSACTIONS (not SYNC): this is a post-sync fork-recovery
+                     * path.  SYNC blocks are rejected as "unsolicited" once fSynchronized == true;
+                     * TRANSACTIONS causes the peer to push inline txs then the block as TRITIUM,
+                     * which the receiver accepts unconditionally. */
                     try
                     {
                         pSend->PushMessage(LLP::TritiumNode::ACTION::LIST,
                             config::fClient.load()
                                 ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)
-                                : uint8_t(LLP::TritiumNode::SPECIFIER::SYNC),
+                                : uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
                             uint8_t(LLP::TritiumNode::TYPES::BLOCK),
                             uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
                             TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
@@ -995,15 +1000,16 @@ namespace TAO
                             }
                             else
                             {
-                                /* Full locator-anchored branch sync.  Send with
-                                 * SPECIFIER::SYNC (or CLIENT) so the peer includes
-                                 * full transaction data in its response — matching
-                                 * the upstream Nexusoft/LLL-TAO wire-protocol
-                                 * convention for orphan branch recovery. */
+                                /* Full locator-anchored branch sync.  Use SPECIFIER::TRANSACTIONS
+                                 * (not SYNC) so the peer pushes inline txs then the block as
+                                 * SPECIFIER::TRITIUM.  SYNC blocks are rejected as "unsolicited"
+                                 * once the receiving node has completed initial sync
+                                 * (fSynchronized == true), which is precisely when orphan-based
+                                 * fork recovery fires. */
                                 pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,
                                     config::fClient.load()
                                         ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)
-                                        : uint8_t(LLP::TritiumNode::SPECIFIER::SYNC),
+                                        : uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
                                     uint8_t(LLP::TritiumNode::TYPES::BLOCK),
                                     uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
                                     TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
@@ -1022,10 +1028,11 @@ namespace TAO
                                     {
                                         try
                                         {
+                                            /* Same TRANSACTIONS specifier — receiver is synced. */
                                             pRandom->PushMessage(LLP::TritiumNode::ACTION::LIST,
                                                 config::fClient.load()
                                                     ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)
-                                                    : uint8_t(LLP::TritiumNode::SPECIFIER::SYNC),
+                                                    : uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
                                                 uint8_t(LLP::TritiumNode::TYPES::BLOCK),
                                                 uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
                                                 TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),

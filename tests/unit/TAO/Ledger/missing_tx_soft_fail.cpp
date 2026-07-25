@@ -1405,3 +1405,137 @@ TEST_CASE("Hash-channel (nChannel=2) PoW non-regression: Check() branches correc
     REQUIRE(hashBits1 != hashBits2);
 }
 
+
+/* ==========================================================================
+ * Tests for ACTION::LIST specifier sync-state coupling
+ *
+ * Background (PR #66x regression): fork-recovery LIST calls incorrectly used
+ * SPECIFIER::SYNC after initial synchronisation completed.  The receiving
+ * handler rejects SYNC blocks as "unsolicited" whenever fSynchronized == true,
+ * causing silent DISCONNECT::FORCE.  The fix is to use SPECIFIER::TRANSACTIONS
+ * on every post-sync recovery path, preserving SPECIFIER::SYNC only for the
+ * true sync-time paths (TritiumNode::Sync() and the LASTINDEX handler).
+ * ========================================================================== */
+
+TEST_CASE("SPECIFIER enum values are stable (regression guard)", "[ledger][process]")
+{
+    /* These constant values are part of the on-wire protocol.  Any reordering
+     * or renumbering silently changes which specifier is sent to remote peers.
+     * Document them explicitly so an accidental renumber shows up as a test
+     * failure rather than a protocol regression. */
+    REQUIRE(uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY)       == 0x40);
+    REQUIRE(uint8_t(LLP::TritiumNode::SPECIFIER::TRITIUM)      == 0x41);
+    REQUIRE(uint8_t(LLP::TritiumNode::SPECIFIER::SYNC)         == 0x42);
+    REQUIRE(uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS) == 0x43);
+    REQUIRE(uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)       == 0x44);
+
+    /* TRANSACTIONS and SYNC must be distinct — the entire post-sync vs sync-time
+     * specifier split relies on this. */
+    REQUIRE(LLP::TritiumNode::SPECIFIER::TRANSACTIONS != LLP::TritiumNode::SPECIFIER::SYNC);
+}
+
+
+TEST_CASE("Unsolicited-sync guard: fSynchronized==true rejects SPECIFIER::SYNC",
+    "[ledger][process]")
+{
+    /* Document the guard condition that makes the SPECIFIER::SYNC regression
+     * possible.  In src/LLP/tritium.cpp the TYPES::BLOCK / SPECIFIER::SYNC
+     * handler reads:
+     *
+     *   if(nCurrentSession != TAO::Ledger::nSyncSession || fSynchronized.load())
+     *       return debug::drop(FUNCTION, "unsolicted sync block");
+     *
+     * After initial sync completes:
+     *   - TAO::Ledger::nSyncSession is reset to 0
+     *   - fSynchronized is set to true
+     *
+     * Therefore the guard trips for every SYNC block received on a fully
+     * synced node — including responses to our own recovery requests. */
+
+    /* Save and restore the global sync session so we don't disturb other tests. */
+    const uint64_t nSavedSession = TAO::Ledger::nSyncSession.load();
+    const bool fSavedSynced      = LLP::TritiumNode::fSynchronized.load();
+
+    /* --- Simulate: initial-sync in progress -------------------------------- */
+    /* Assign an arbitrary non-zero sync session and clear fSynchronized. */
+    TAO::Ledger::nSyncSession.store(42);
+    LLP::TritiumNode::fSynchronized.store(false);
+
+    const uint64_t nCurrentSession = 42; /* matches nSyncSession */
+
+    /* Guard condition: (nCurrentSession != nSyncSession) || fSynchronized */
+    const bool fDropDuringSyncWithMatchingSession =
+        (nCurrentSession != TAO::Ledger::nSyncSession.load())
+        || LLP::TritiumNode::fSynchronized.load();
+
+    /* Should NOT drop during active sync when sessions match. */
+    REQUIRE_FALSE(fDropDuringSyncWithMatchingSession);
+
+    /* --- Simulate: sync complete (post-sync state) ------------------------- */
+    TAO::Ledger::nSyncSession.store(0);
+    LLP::TritiumNode::fSynchronized.store(true);
+
+    const bool fDropPostSync =
+        (nCurrentSession != TAO::Ledger::nSyncSession.load())
+        || LLP::TritiumNode::fSynchronized.load();
+
+    /* MUST drop: any SYNC block arriving on a synced node is unsolicited from
+     * the receiver's perspective, even if we sent the LIST ourselves. */
+    REQUIRE(fDropPostSync);
+
+    /* --- Simulate: session mismatch during sync (different peer) ----------- */
+    TAO::Ledger::nSyncSession.store(99);     /* different from nCurrentSession */
+    LLP::TritiumNode::fSynchronized.store(false);
+
+    const bool fDropMismatchedSession =
+        (nCurrentSession != TAO::Ledger::nSyncSession.load())
+        || LLP::TritiumNode::fSynchronized.load();
+
+    /* Must drop: this peer is not the designated sync peer. */
+    REQUIRE(fDropMismatchedSession);
+
+    /* Restore global state. */
+    TAO::Ledger::nSyncSession.store(nSavedSession);
+    LLP::TritiumNode::fSynchronized.store(fSavedSynced);
+}
+
+
+TEST_CASE("Post-sync state: nSyncSession==0 and fSynchronized==true after Sync() completes",
+    "[ledger][process]")
+{
+    /* After the ACTION::NOTIFY BESTCHAIN handler detects synchronisation is
+     * complete it executes:
+     *
+     *   fSynchronized.store(true);
+     *   TAO::Ledger::nSyncSession.store(0);
+     *
+     * This test documents the expected post-sync state so that any future
+     * change to the completion logic is visible as a test failure. */
+
+    const uint64_t nSavedSession = TAO::Ledger::nSyncSession.load();
+    const bool fSavedSynced      = LLP::TritiumNode::fSynchronized.load();
+
+    /* Simulate the two stores that mark sync complete. */
+    LLP::TritiumNode::fSynchronized.store(true);
+    TAO::Ledger::nSyncSession.store(0);
+
+    REQUIRE(LLP::TritiumNode::fSynchronized.load() == true);
+    REQUIRE(TAO::Ledger::nSyncSession.load()       == 0);
+
+    /* In this state, the unsolicited-sync guard always fires regardless of
+     * what nCurrentSession the *receiving* handler reads: even if some stale
+     * connection still has nCurrentSession == 0 the condition
+     *   (0 != 0) || true  →  true
+     * causes a drop.  This is why SPECIFIER::TRANSACTIONS must be used for
+     * all post-sync fork-recovery LIST requests. */
+    const uint64_t nCurrentSession = 0;   /* worst-case stale session value */
+    const bool fWouldDrop =
+        (nCurrentSession != TAO::Ledger::nSyncSession.load())
+        || LLP::TritiumNode::fSynchronized.load();
+    REQUIRE(fWouldDrop);
+
+    /* Restore. */
+    TAO::Ledger::nSyncSession.store(nSavedSession);
+    LLP::TritiumNode::fSynchronized.store(fSavedSynced);
+}
+

@@ -293,14 +293,105 @@ invariant that nothing inside `Process()` may call back into this function on th
 
 ### The SPECIFIER protocol gotcha
 
-The gap-path `LIST` request must carry `SPECIFIER::SYNC` (or `SPECIFIER::CLIENT` in `-client`
-mode) — **not** a plain/legacy specifier — or the peer's `TYPES::LOCATOR` response omits inline
-transaction bodies. A locator request sent without this specifier looks identical on the wire to
-a successful branch-sync request but silently degrades to header-only blocks, which then re-enter
-the missing-transaction path immediately on arrival and manufacture an apparent "infinite loop"
-that has nothing to do with the actual throttle or escalation logic. Any future branch-recovery
-`LIST`/`LOCATOR` request added to this code path must set `SPECIFIER::SYNC`/`CLIENT` to get full
-transaction data back.
+> **This section was updated after the regression described in follow-up 4 below.** The
+> original wording advised using `SPECIFIER::SYNC` for recovery paths; that was incorrect
+> and caused the production failure documented there.
+
+The gap-path `LIST` request must carry `SPECIFIER::TRANSACTIONS` (or `SPECIFIER::CLIENT`
+in `-client` mode) — **not** `SPECIFIER::SYNC` and not a plain/legacy specifier — so the
+peer pushes inline transaction bodies then the block tagged `SPECIFIER::TRITIUM`, which
+the receiver accepts unconditionally regardless of sync state.  A locator request sent
+without any specifier silently degrades to header-only blocks.
+
+---
+
+## Follow-up 4 — `SPECIFIER::SYNC` regression in fork-recovery paths (PR #66x)
+
+### Summary
+
+After initial synchronization, `SPECIFIER::SYNC` on `ACTION::LIST` silently fails:
+the receiving node's handler rejects every such response as "unsolicited" and forces
+a disconnect.  Follow-ups 1–3 changed the recovery-path `LIST` calls to use
+`SPECIFIER::SYNC`, which is correct during initial sync but wrong once
+`fSynchronized == true`.  The regression was invisible until a live fork occurred on an
+already-synced operator node.
+
+### Operator-visible diagnostic signature
+
+```
+ACTION::NOTIFY: BESTCHAIN differs; requesting branch <hash>
+               known=no peer_height=N local_height=M
+DROPPED: ProcessPacket : unsolicited sync block
+Tritium Node : <ip> Outgoing Disconnected (Force)
+```
+
+The 286–362 ms gap between "requesting branch" and "DROPPED" is the round-trip time to
+the peer; the dropped packet is the peer's answer to *our own* request.
+
+### `ACTION::LIST` specifier semantics and sync-state coupling
+
+The specifier byte is optional on the wire but load-bearing for content.  The
+`ACTION::LIST` parser peeks the first byte and only consumes it if it matches a known
+specifier.  Omitting it does not desync the stream or trigger `debug::drop` — but
+`nSpecifier` defaults to `0`, and `PushBlock()` then returns **bare block headers with
+no transactions**.  This was the original fork-wedge defect.
+
+#### Specifier table
+
+| Specifier | What the peer returns | Receiver-side gate |
+|---|---|---|
+| `SPECIFIER::SYNC` | `SyncBlock` with inline `vtx` | **Rejected if `nCurrentSession != nSyncSession || fSynchronized`** — initial sync only |
+| `SPECIFIER::TRANSACTIONS` | transactions pushed individually, then block tagged `SPECIFIER::TRITIUM` | **No sync-state gate** — correct for post-sync recovery |
+| `SPECIFIER::CLIENT` | `ClientBlock` | `-client` mode only |
+| none / `0` | bare header, no transactions | Never correct for recovery |
+
+#### The sync-state coupling rule
+
+> **The correct specifier depends on whether the requesting node is still synchronizing.**
+>
+> - Sync-time paths (`TritiumNode::Sync()`, `ACTION::NOTIFY → TYPES::LASTINDEX` handler): use `SPECIFIER::SYNC`.
+> - Post-sync recovery paths (all `ACTION::LIST` branch-recovery calls after `fSynchronized == true`): must use `SPECIFIER::TRANSACTIONS`.
+
+Getting this wrong causes silent peer force-disconnects that only manifest during a fork
+on an already-synced node.
+
+#### Why the failure mode hid so long
+
+`Sync()` and the `LASTINDEX` handler always used the correct specifier, so normal
+operation exercised the right code path every time.  Only fork recovery — which runs
+rarely and only on an already-synced node — used the wrong one.  First the specifier was
+omitted entirely (headers only, no transactions); the over-correction to `SYNC` then
+caused `DROPPED: ProcessPacket : unsolicited sync block` plus `Outgoing Disconnected
+(Force)`.
+
+### Changed call sites
+
+| File | Location | Old specifier | New specifier |
+|---|---|---|---|
+| `src/LLP/tritium.cpp` | `ACTION::NOTIFY → TYPES::BESTCHAIN` handler | `SYNC` | `TRANSACTIONS` |
+| `src/LLP/tritium.cpp` | Capped-path throttled LIST (`IsMissingBranchRecoveryCapped`) | `SYNC` | `TRANSACTIONS` |
+| `src/LLP/tritium.cpp` | Retry-limit-exhausted branch-recovery LIST | `SYNC` | `TRANSACTIONS` |
+| `src/TAO/Ledger/process.cpp` | `AttemptPeerBestChainRecovery()` gap-path LIST | `SYNC` | `TRANSACTIONS` |
+| `src/TAO/Ledger/process.cpp` | Orphan-insert locator LIST | `SYNC` | `TRANSACTIONS` |
+| `src/TAO/Ledger/process.cpp` | `RandomConnection()` fallback LIST | `SYNC` | `TRANSACTIONS` |
+
+### Unchanged call sites (correct as-is)
+
+| File | Location | Specifier | Rationale |
+|---|---|---|---|
+| `src/LLP/tritium.cpp` | `TritiumNode::Sync()` | `SYNC` | Runs during initial sync; `fSynchronized == false` |
+| `src/LLP/tritium.cpp` | `ACTION::NOTIFY → TYPES::LASTINDEX` handler | `SYNC` | Only fires while `nCurrentSession == nSyncSession` |
+
+### Related files (follow-up 4)
+
+| File | Change |
+|---|---|
+| `src/LLP/tritium.cpp` | BESTCHAIN handler, capped LIST, retry-limit LIST: `SYNC` → `TRANSACTIONS` |
+| `src/TAO/Ledger/process.cpp` | Three recovery-path LIST calls: `SYNC` → `TRANSACTIONS`; stale comments updated |
+| `tests/unit/TAO/Ledger/missing_tx_soft_fail.cpp` | Post-sync specifier assertions; unsolicited-sync guard test |
+| `docs/archive/MISSING_TX_FORK_WEDGE_BUG.md` | This section |
+
+---
 
 ### Related files (follow-up 3)
 

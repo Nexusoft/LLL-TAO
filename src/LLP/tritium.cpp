@@ -2529,8 +2529,15 @@ namespace LLP
                                         " peer_height=", nCurrentHeight,
                                         " local_height=", TAO::Ledger::ChainState::nBestHeight.load());
 
+                                    /* Use SPECIFIER::TRANSACTIONS (not SYNC) so the peer
+                                     * returns blocks tagged SPECIFIER::TRITIUM with inline
+                                     * transactions.  SPECIFIER::SYNC is only accepted by the
+                                     * receiver during initial synchronization
+                                     * (nCurrentSession == nSyncSession && !fSynchronized);
+                                     * sending it here causes "unsolicited sync block" drops
+                                     * and DISCONNECT::FORCE on an already-synced peer. */
                                     PushMessage(ACTION::LIST,
-                                        config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
+                                        config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS),
                                         uint8_t(TYPES::BLOCK),
                                         uint8_t(TYPES::LOCATOR),
                                         TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
@@ -2836,8 +2843,12 @@ namespace LLP
                                      * hashParent) cleanup is always effective. */
                                     if(TAO::Ledger::ShouldSendBranchSyncRequest(block.hashPrevBlock))
                                     {
+                                        /* Use SPECIFIER::TRANSACTIONS (not SYNC): post-sync
+                                         * recovery must deliver inline transactions via the
+                                         * TRITIUM-tagged path; SYNC blocks are rejected as
+                                         * "unsolicited" once fSynchronized == true. */
                                         PushMessage(ACTION::LIST,
-                                            config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
+                                            config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS),
                                             uint8_t(TYPES::BLOCK),
                                             uint8_t(TYPES::LOCATOR),
                                             TAO::Ledger::Locator(
@@ -2885,16 +2896,16 @@ namespace LLP
                                 }
 
                                 /* 2. Re-request the full branch from this peer via
-                                 *    locator.  Using the peer's advertised best-chain
-                                 *    hash (or the stalled block hash if unavailable)
-                                 *    as the branch tip so we get all diverged blocks
-                                 *    in order, letting proper sigchain state build up. */
+                                 *    locator.  Use SPECIFIER::TRANSACTIONS (not SYNC) so
+                                 *    the peer pushes inline txs then the block as TRITIUM;
+                                 *    SYNC blocks are rejected as "unsolicited" after initial
+                                 *    sync completes (fSynchronized == true). */
                                 {
                                     const uint1024_t hashTarget =
                                         (hashBestChain != 0) ? hashBestChain : hashBlock;
 
                                     PushMessage(ACTION::LIST,
-                                        config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
+                                       config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS),
                                         uint8_t(TYPES::BLOCK),
                                         uint8_t(TYPES::LOCATOR),
                                         TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
