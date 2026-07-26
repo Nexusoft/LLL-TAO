@@ -206,6 +206,12 @@ namespace TAO
         std::set<uint1024_t> setUnrecoverableBlocks;
 
 
+        /* Cache of the missing-tx hash list captured at the moment a block
+         * hash is blacklisted, so the terminal-blacklist early return can
+         * still hand block.vMissing to callers without running Check(). */
+        std::map<uint1024_t, std::vector<std::pair<uint8_t, uint512_t> > > mapMissingTxCache;
+
+
         namespace
         {
             /** LocalMinedBlockRecord
@@ -817,6 +823,7 @@ namespace TAO
              * orphan graph do not persist and mis-filter legitimate future blocks. */
             mapOrphans.Clear();
             setUnrecoverableBlocks.clear();
+            mapMissingTxCache.clear();
             mapLastMissingProcessTime.clear();
             mapLastMissing.clear();
             mapMissingBranchEscalations.clear();
@@ -876,6 +883,15 @@ namespace TAO
                 {
                     nStatus |= PROCESS::INCOMPLETE;
                     block.hashMissing = 0;
+
+                    /* Check() is skipped on this path, so block.vMissing would
+                     * otherwise be empty and disable the LLP layer's per-tx
+                     * fanout recovery.  Repopulate it from the cache captured
+                     * at the moment this hash was blacklisted. */
+                    const auto itCache = mapMissingTxCache.find(hashBlock);
+                    if(itCache != mapMissingTxCache.end())
+                        block.vMissing = itCache->second;
+
                     return;
                 }
 
@@ -918,6 +934,7 @@ namespace TAO
                     mapLastMissing.erase(hashBlock);
                     mapMissingBranchEscalations.erase(hashBlock);
                     setUnrecoverableBlocks.erase(hashBlock);
+                    mapMissingTxCache.erase(hashBlock);
                     mapLastMissingProcessTime.erase(hashBlock);
                     return;
                 }
@@ -1191,6 +1208,15 @@ namespace TAO
                                         setUnrecoverableBlocks.clear();
                                     setUnrecoverableBlocks.insert(hashBlock);
 
+                                    /* Cache the missing-tx hash list now, while
+                                     * block.vMissing is still populated from this
+                                     * call's Check(), so future arrivals that hit
+                                     * the terminal-blacklist early return can still
+                                     * hand it to the LLP layer's per-tx fanout. */
+                                    if(mapMissingTxCache.size() >= MAX_UNRECOVERABLE_ENTRIES)
+                                        mapMissingTxCache.clear();
+                                    mapMissingTxCache[hashBlock] = block.vMissing;
+
                                     /* Advance counter to MAX+1 and clean up the
                                      * per-tx retry map — same cleanup as the normal
                                      * escalation path. */
@@ -1290,6 +1316,7 @@ namespace TAO
                     mapLastMissing.erase(hashBlock);
                 mapMissingBranchEscalations.erase(hashBlock);
                 setUnrecoverableBlocks.erase(hashBlock);
+                mapMissingTxCache.erase(hashBlock);
                 mapLastMissingProcessTime.erase(hashBlock);
 
                 /* Special meter for synchronizing. */
@@ -1375,6 +1402,7 @@ namespace TAO
                             mapLastMissing.erase(hashOrphan);
                             mapMissingBranchEscalations.erase(hashOrphan);
                             setUnrecoverableBlocks.erase(hashOrphan);
+                            mapMissingTxCache.erase(hashOrphan);
                             mapLastMissingProcessTime.erase(hashOrphan);
                             debug::warning(FUNCTION, "removed invalid orphan subtree root=",
                                 hashOrphan.SubString(), " count=", nPruned);
@@ -1432,6 +1460,14 @@ namespace TAO
                                                 setUnrecoverableBlocks.clear();
                                             setUnrecoverableBlocks.insert(hashOrphan);
 
+                                            /* Cache the missing-tx list, mirroring the
+                                             * primary path, so the terminal-blacklist
+                                             * early return can still populate vMissing
+                                             * on future arrivals. */
+                                            if(mapMissingTxCache.size() >= MAX_UNRECOVERABLE_ENTRIES)
+                                                mapMissingTxCache.clear();
+                                            mapMissingTxCache[hashOrphan] = pOrphan->vMissing;
+
                                             /* Advance counter to MAX+1 and clean up the
                                              * per-tx retry map — mirrors the primary path. */
                                             incrementMissingEscalations(hashOrphan);
@@ -1482,6 +1518,7 @@ namespace TAO
                             mapLastMissing.erase(hashOrphan);
                             mapMissingBranchEscalations.erase(hashOrphan);
                             setUnrecoverableBlocks.erase(hashOrphan);
+                            mapMissingTxCache.erase(hashOrphan);
                             mapLastMissingProcessTime.erase(hashOrphan);
                             debug::warning(FUNCTION, "removed rejected orphan subtree root=",
                                 hashOrphan.SubString(), " count=", nPruned);
@@ -1491,6 +1528,7 @@ namespace TAO
                         mapLastMissing.erase(hashOrphan);
                         mapMissingBranchEscalations.erase(hashOrphan);
                         setUnrecoverableBlocks.erase(hashOrphan);
+                        mapMissingTxCache.erase(hashOrphan);
                         mapLastMissingProcessTime.erase(hashOrphan);
                         mapLastOrphanRequest.erase(hashParent);
                         mapOrphans.Remove(hashOrphan);

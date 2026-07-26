@@ -899,6 +899,12 @@ namespace TAO
         /* Connect a transaction object to the main chain. */
         bool Transaction::Connect(const uint8_t nFlags, const BlockState* pblock) const
         {
+            /* Reset the thread-local admissibility classification at entry so a
+             * DEFERRED_LOCAL_STATE left over from an earlier, unrelated Connect()
+             * call on this thread cannot be misread by a caller that checks it
+             * after this call fails for a completely different reason. */
+            SetLastConnectClass(AdmissibilityClass::UNKNOWN);
+
             /* Get the transaction's hash. */
             const uint512_t hash = GetHash();
 

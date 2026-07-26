@@ -11,6 +11,8 @@
 
 __________________________________________________________________________________________*/
 
+#include <LLC/include/random.h>
+
 #include <LLD/include/global.h>
 
 #include <LLP/types/tritium.h>
@@ -23,8 +25,12 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/tritium.h>
+#include <TAO/Ledger/types/credentials.h>
 
 #include <TAO/Operation/include/enum.h>
+
+#include <TAO/Register/types/address.h>
+#include <TAO/Register/types/object.h>
 
 #include <Util/include/args.h>
 #include <Util/include/filesystem.h>
@@ -1650,47 +1656,179 @@ TEST_CASE("Idle sigchain with ancestor on main chain must not be INVALID_ABSOLUT
      *
      * This test locks in the invariant: when fAncestorOnMainChain == true,
      * the correct classification is DEFERRED_LOCAL_STATE regardless of nDepth.
-     * nDepth must NEVER be used as a rejection or eviction input.
-     *
-     * Implementation note: the full ComputeForkDivergence() path requires a
-     * live LedgerDB with committed blocks.  This test validates the
-     * classification LOGIC rather than the divergence computation itself:
-     * given a ForkDivergenceInfo with fAncestorFound && fAncestorOnMainChain,
-     * the Check() path must retain (not evict) the transactions. */
+     * nDepth must NEVER be used as a rejection or eviction input.  Unlike a
+     * bare predicate check, this test drives the actual Mempool::Check()
+     * conflict-reconciliation pass end-to-end so a future change that adds a
+     * depth threshold to Check() would fail this test. */
 
-    /* Build a ForkDivergenceInfo that represents a deeply idle sigchain
-     * whose predecessor IS on the main chain. */
-    TAO::Ledger::Mempool::ForkDivergenceInfo tInfo;
-    tInfo.fAncestorFound     = true;
-    tInfo.fAncestorOnMainChain = true;
-    tInfo.nDepth             = 16172; /* large idle depth — must NOT trigger eviction */
-    tInfo.nBestHeight        = 6799812;
-    tInfo.nAncestorHeight    = 6799812 - 16172;
+    using namespace TAO::Register;
+    using namespace TAO::Operation;
 
-    /* The classifier logic in Check() is:
-     *   if(tInfo.fAncestorFound && tInfo.fAncestorOnMainChain) → DEFERRED_LOCAL_STATE
-     *   else → INVALID_ABSOLUTE
-     *
-     * Test the predicate directly. */
-    const bool fWouldDefer =
-        tInfo.fAncestorFound && tInfo.fAncestorOnMainChain;
-    REQUIRE(fWouldDefer);
+    LedgerGuard env;
 
-    /* A large nDepth with an ancestor on the main chain must NOT classify
-     * as INVALID_ABSOLUTE.  There is no depth threshold for eviction. */
-    const bool fWouldEvict = !fWouldDefer;
-    REQUIRE_FALSE(fWouldEvict);
+    const uint32_t nSavedBestHeight = TAO::Ledger::ChainState::nBestHeight.load();
 
-    /* Cross-check: a conflict where the ancestor is NOT on the main chain
-     * (genuine fork) must classify as INVALID_ABSOLUTE. */
-    TAO::Ledger::Mempool::ForkDivergenceInfo tForkInfo;
-    tForkInfo.fAncestorFound      = true;
-    tForkInfo.fAncestorOnMainChain = false;  /* off-chain */
-    tForkInfo.nDepth              = 3;        /* shallow, but still a real fork */
+    /* Unique identifiers for this test. */
+    const uint256_t hashGenesis  =
+        TAO::Ledger::Credentials::Genesis(std::string("strandedstateidle" + std::to_string(LLC::GetRand())).c_str());
+    const uint512_t hashPrivKey1 = LLC::GetRand512();
+    const uint512_t hashAncestorTx(0xA11CE500 + 1);
+    const uint1024_t hashAncestorBlock(0xA11CEB10 + 1);
+    const uint512_t hashDiskLast = LLC::GetRand512();
 
-    const bool fForkWouldEvict =
-        !(tForkInfo.fAncestorFound && tForkInfo.fAncestorOnMainChain);
-    REQUIRE(fForkWouldEvict);
+    /* Ancestor block: mark it connected into the main chain via a nonzero
+     * hashNextBlock, matching BlockState::IsInMainChain()'s definition
+     * (hashNextBlock != 0 || hash == best chain tip).  Height is set far
+     * below the current best height to reproduce the large idle nDepth. */
+    TAO::Ledger::BlockState stateAncestor;
+    stateAncestor.nVersion      = 4;
+    stateAncestor.hashPrevBlock = uint1024_t(0);
+    stateAncestor.nChannel      = 2;
+    stateAncestor.nHeight       = 500;
+    stateAncestor.nBits         = 1;
+    stateAncestor.hashNextBlock = uint1024_t(0xBEEF);
+
+    REQUIRE(LLD::Ledger->WriteBlock(hashAncestorBlock, stateAncestor));
+    REQUIRE(LLD::Ledger->IndexBlock(hashAncestorTx, hashAncestorBlock));
+
+    /* A minimal placeholder record so LLD::Ledger->HasTx()/Exists() for the
+     * ancestor tx hash succeeds (Mempool::Accept() requires the previous
+     * transaction to be known before evaluating conflict state). */
+    {
+        TAO::Ledger::Transaction txAncestor;
+        txAncestor.hashGenesis = hashGenesis;
+        txAncestor.nSequence   = 0;
+        txAncestor.nTimestamp  = runtime::timestamp();
+        REQUIRE(LLD::Ledger->WriteTx(hashAncestorTx, txAncestor));
+    }
+
+    /* Set the local best height far ahead of the ancestor so nDepth (which
+     * is diagnostic-only) comes out large, mirroring the ~16172 seen in
+     * production. */
+    TAO::Ledger::ChainState::nBestHeight.store(stateAncestor.nHeight + 16172);
+
+    /* Disk's committed last transaction for this genesis is unrelated to the
+     * ancestor tx that the conflicting transaction expects as its
+     * predecessor.  This mismatch is exactly what Check()'s reconciliation
+     * pass treats as a conflict. */
+    REQUIRE(LLD::Ledger->WriteLast(hashGenesis, hashDiskLast));
+
+    /* Build a conflicting, idle-sigchain transaction whose hashPrevTx points
+     * at the ancestor (on the main chain), not at disk's actual last hash. */
+    TAO::Ledger::Transaction tx;
+    tx.hashGenesis = hashGenesis;
+    tx.nSequence   = 1;
+    tx.hashPrevTx  = hashAncestorTx;
+    tx.nTimestamp  = runtime::timestamp();
+    tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+    tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+    tx.NextHash(LLC::GetRand512());
+
+    TAO::Register::Address hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
+
+    Object object;
+    object << std::string("byte") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::UINT8_T) << uint8_t(1);
+
+    tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+
+    REQUIRE(tx.Build());
+    tx.Sign(hashPrivKey1);
+
+    const uint512_t hashTx = tx.GetHash();
+
+    /* Accept() should reject with a conflict (hashPrevTx != disk's last
+     * hash) and place the transaction in the conflicted pool rather than
+     * accepting or dropping it outright. */
+    REQUIRE_FALSE(TAO::Ledger::mempool.Accept(tx));
+
+    {
+        TAO::Ledger::Transaction txOut;
+        bool fConflicted = false;
+        REQUIRE(TAO::Ledger::mempool.Get(hashTx, txOut, fConflicted));
+        REQUIRE(fConflicted);
+    }
+
+    /* Drive the real reconciliation pass. Because the ancestor block is on
+     * the main chain, Check() must classify this as DEFERRED_LOCAL_STATE and
+     * retain the transaction in mapConflicts rather than evicting it,
+     * regardless of the large diagnostic nDepth. */
+    TAO::Ledger::mempool.Check();
+
+    {
+        TAO::Ledger::Transaction txOut;
+        bool fConflicted = false;
+        REQUIRE(TAO::Ledger::mempool.Get(hashTx, txOut, fConflicted));
+        REQUIRE(fConflicted);
+    }
+
+    /* Cross-check: when the ancestor is NOT on the main chain (genuine
+     * fork), Check() must evict rather than retain. Reuse the same genesis
+     * with a fresh ancestor whose hashNextBlock is zero and whose own hash
+     * is not the best chain tip. */
+    const uint512_t hashForkAncestorTx(0xFEED500 + 1);
+    const uint1024_t hashForkAncestorBlock(0xFEEDB10 + 1);
+
+    TAO::Ledger::BlockState stateForkAncestor;
+    stateForkAncestor.nVersion      = 4;
+    stateForkAncestor.hashPrevBlock = uint1024_t(0);
+    stateForkAncestor.nChannel      = 2;
+    stateForkAncestor.nHeight       = 501;
+    stateForkAncestor.nBits         = 1;
+    stateForkAncestor.hashNextBlock = uint1024_t(0); /* not connected: off-chain */
+
+    REQUIRE(LLD::Ledger->WriteBlock(hashForkAncestorBlock, stateForkAncestor));
+    REQUIRE(LLD::Ledger->IndexBlock(hashForkAncestorTx, hashForkAncestorBlock));
+
+    {
+        TAO::Ledger::Transaction txForkAncestor;
+        txForkAncestor.hashGenesis = hashGenesis;
+        txForkAncestor.nSequence   = 0;
+        txForkAncestor.nTimestamp  = runtime::timestamp();
+        REQUIRE(LLD::Ledger->WriteTx(hashForkAncestorTx, txForkAncestor));
+    }
+
+    TAO::Ledger::Transaction txFork;
+    txFork.hashGenesis = hashGenesis;
+    txFork.nSequence   = 1;
+    txFork.hashPrevTx  = hashForkAncestorTx;
+    txFork.nTimestamp  = runtime::timestamp();
+    txFork.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+    txFork.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+    txFork.NextHash(LLC::GetRand512());
+
+    TAO::Register::Address hashAddressFork = TAO::Register::Address(TAO::Register::Address::OBJECT);
+    Object objectFork;
+    objectFork << std::string("byte") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::UINT8_T) << uint8_t(2);
+    txFork[0] << uint8_t(OP::CREATE) << hashAddressFork << uint8_t(REGISTER::OBJECT) << objectFork.GetState();
+
+    REQUIRE(txFork.Build());
+    txFork.Sign(hashPrivKey1);
+
+    const uint512_t hashTxFork = txFork.GetHash();
+
+    /* Remove the previous conflict first so this genesis's conflict set only
+     * reflects the fork scenario for this reconciliation pass. Remove()
+     * erases mapConflicts entries unconditionally but only returns true when
+     * the hash was also found in the live mapLedger pool, so its return
+     * value is not asserted here. */
+    TAO::Ledger::mempool.Remove(hashTx);
+
+    REQUIRE_FALSE(TAO::Ledger::mempool.Accept(txFork));
+
+    TAO::Ledger::mempool.Check();
+
+    {
+        TAO::Ledger::Transaction txOut;
+        bool fConflicted = false;
+        /* Evicted: Get() must fail to locate it in either pool. */
+        REQUIRE_FALSE(TAO::Ledger::mempool.Get(hashTxFork, txOut, fConflicted));
+    }
+
+    /* Clean up. */
+    TAO::Ledger::mempool.Remove(hashTxFork);
+    LLD::Ledger->EraseBlock(hashAncestorBlock);
+    LLD::Ledger->EraseBlock(hashForkAncestorBlock);
+    TAO::Ledger::ChainState::nBestHeight.store(nSavedBestHeight);
 }
 
 
@@ -1699,15 +1837,15 @@ TEST_CASE("mapConflicts retry budget bounds are well-formed", "[ledger][process]
     /* MAX_CONFLICT_STALE_RETRIES must be positive (so at least one retry is
      * allowed before force-eviction) and must not exceed MAX_CONFLICTS_MAP_ENTRIES
      * (which bounds the retry map itself). */
-    REQUIRE(TAO::Ledger::Mempool::MAX_CONFLICT_STALE_RETRIES  > 0u);
-    REQUIRE(TAO::Ledger::Mempool::MAX_CONFLICT_STALE_RETRIES  <=
-            TAO::Ledger::Mempool::MAX_CONFLICTS_MAP_ENTRIES);
+    REQUIRE(TAO::Ledger::MAX_CONFLICT_STALE_RETRIES  > 0u);
+    REQUIRE(TAO::Ledger::MAX_CONFLICT_STALE_RETRIES  <=
+            TAO::Ledger::MAX_CONFLICTS_MAP_ENTRIES);
 
     /* The retry window at CONFLICTS_SWEEP_INTERVAL_SECONDS (30 s) should be
      * at least 5 minutes so a node with modest peer latency can recover. */
     const uint64_t nWindowSecs =
-        static_cast<uint64_t>(TAO::Ledger::Mempool::MAX_CONFLICT_STALE_RETRIES)
-        * TAO::Ledger::Mempool::CONFLICTS_SWEEP_INTERVAL_SECONDS;
+        static_cast<uint64_t>(TAO::Ledger::MAX_CONFLICT_STALE_RETRIES)
+        * TAO::Ledger::CONFLICTS_SWEEP_INTERVAL_SECONDS;
     REQUIRE(nWindowSecs >= 300u);  /* >= 5 minutes */
 }
 
