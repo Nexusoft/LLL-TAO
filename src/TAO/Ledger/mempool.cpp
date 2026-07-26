@@ -24,6 +24,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/verify.h>
 
+#include <TAO/Ledger/include/admissibility.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -302,8 +303,27 @@ namespace TAO
                 {
                     /* Abort memory commits on failures. */
                     LLD::TxnAbort(FLAGS::MEMPOOL);
-                    mapRejected.insert(hashTx);
 
+                    /* Check if Transaction::Connect() classified this as a
+                     * local-state-dependent failure (e.g. coinbase appears
+                     * immature at our stale local height but would pass at
+                     * the peer-advertised best height).  In that case do NOT
+                     * add the tx to mapRejected — the blacklist would prevent
+                     * re-admission once the node catches up, turning a
+                     * transient staleness into a permanent wedge.  Simply
+                     * return false; the peer will re-offer the tx, and once
+                     * our height advances the next Accept() call will succeed. */
+                    const AdmissibilityClass nClass = TakeLastConnectClass();
+                    if(nClass == AdmissibilityClass::DEFERRED_LOCAL_STATE)
+                    {
+                        debug::warning(FUNCTION,
+                            "=== STRANDED_STATE_DETECTED === tx ", hashTx.SubString(),
+                            " deferred (local state stale): ", debug::GetLastError(),
+                            " — will retry when height advances");
+                        return false;
+                    }
+
+                    mapRejected.insert(hashTx);
                     return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
                 }
 
@@ -766,22 +786,87 @@ namespace TAO
                     const uint256_t& hashGenesis = rTransaction.first;
                     const ForkDivergenceInfo tInfo =
                         ComputeForkDivergence(hashGenesis, vtx[0].hashPrevTx);
+
+                    /* Classify the conflict using the admissibility framework.
+                     *
+                     * DEFERRED_LOCAL_STATE: ancestor is on our main chain —
+                     *   the sigchain is idle (has not published a transaction
+                     *   in some time) and the predecessor our conflicted tx
+                     *   expects is on the canonical chain.  This is NOT a fork:
+                     *   it is local chain-state staleness.  Retain and retry.
+                     *   Note: tInfo.nDepth measures sigchain idle time in blocks
+                     *   NOT fork divergence depth — must NOT drive eviction.
+                     *
+                     * INVALID_ABSOLUTE: ancestor not found on main chain, or
+                     *   insufficient data to classify — evict permanently. */
                     if(tInfo.fAncestorFound && tInfo.fAncestorOnMainChain)
                     {
-                        debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW,
-                            "FORK CONFLICT DIAGNOSTIC:", ANSI_COLOR_RESET,
-                            " genesis=", hashGenesis.SubString(),
-                            " divergence_depth=", tInfo.nDepth,
-                            " ancestor=", tInfo.hashAncestorBlock.SubString(),
-                            " action=none (mempool cannot change best chain)");
+                        /* DEFERRED_LOCAL_STATE path.
+                         * Emit once-per-genesis operator diagnostic so operators
+                         * can see long-idle sigchains without being spammed. */
+                        if(!setStrandedGeneses.count(hashGenesis))
+                        {
+                            if(setStrandedGeneses.size() >= MAX_CONFLICTS_MAP_ENTRIES)
+                                setStrandedGeneses.clear();
+                            setStrandedGeneses.insert(hashGenesis);
+
+                            debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW,
+                                "=== STRANDED_STATE_DETECTED ===", ANSI_COLOR_RESET,
+                                " class=DEFERRED_LOCAL_STATE",
+                                " genesis=", hashGenesis.SubString(),
+                                " divergence_depth=", tInfo.nDepth,
+                                " (diagnostic only — measures sigchain idle time, NOT fork depth)",
+                                " ancestor=", tInfo.hashAncestorBlock.SubString(),
+                                " action=retain_and_retry");
+                        }
+                        else
+                        {
+                            debug::log(2, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW,
+                                "FORK CONFLICT DIAGNOSTIC:", ANSI_COLOR_RESET,
+                                " genesis=", hashGenesis.SubString(),
+                                " divergence_depth=", tInfo.nDepth,
+                                " ancestor=", tInfo.hashAncestorBlock.SubString(),
+                                " action=retain_and_retry (DEFERRED_LOCAL_STATE)");
+                        }
+
+                        /* Bound and increment the retry counter for this genesis. */
+                        if(mapConflictRetries.size() >= MAX_CONFLICTS_MAP_ENTRIES)
+                            mapConflictRetries.clear();
+                        const uint32_t nRetries = ++mapConflictRetries[hashGenesis];
+
+                        if(nRetries > MAX_CONFLICT_STALE_RETRIES)
+                        {
+                            /* Budget exhausted: evict to stop consuming sweep cycles.
+                             * This is a last-resort guard — genuine DEFERRED_LOCAL_STATE
+                             * conflicts should resolve well within the budget. */
+                            debug::warning(FUNCTION,
+                                "conflict retry budget exhausted for genesis=", hashGenesis.SubString(),
+                                " retries=", nRetries,
+                                " evicting — chain may require manual intervention");
+
+                            mapConflictRetries.erase(hashGenesis);
+                            setStrandedGeneses.erase(hashGenesis);
+                            for(const auto& tx : vtx)
+                                mapConflicts.erase(tx.GetHash());
+                        }
+                        /* else: retain in mapConflicts — do not erase */
                     }
                     else
-                        debug::warning(FUNCTION, "fork conflict diagnostic unavailable for genesis=",
-                            hashGenesis.SubString(), " reason=", tInfo.strError);
+                    {
+                        /* INVALID_ABSOLUTE: ancestor is off the main chain or
+                         * not found — this is a genuine fork conflict.  Evict
+                         * permanently. */
+                        debug::warning(FUNCTION, "fork conflict INVALID_ABSOLUTE for genesis=",
+                            hashGenesis.SubString(),
+                            " reason=", tInfo.strError.empty() ? "ancestor not on main chain" : tInfo.strError);
 
-                    /* Loop through our transactions and remove them. */
-                    for(const auto& tx : vtx)
-                        mapConflicts.erase(tx.GetHash());
+                        /* Clear any stale retry state for this genesis. */
+                        mapConflictRetries.erase(hashGenesis);
+                        setStrandedGeneses.erase(hashGenesis);
+
+                        for(const auto& tx : vtx)
+                            mapConflicts.erase(tx.GetHash());
+                    }
                 }
 
                 /* [B3] The conflict has resolved (e.g. after a reorg/fork
@@ -796,6 +881,12 @@ namespace TAO
                  * re-connected, and moved back into mapLedger. */
                 else
                 {
+                    /* Conflict has resolved: clear retry state for this genesis
+                     * so stale counts don't affect a future re-conflict. */
+                    const uint256_t& hashGenesis = rTransaction.first;
+                    mapConflictRetries.erase(hashGenesis);
+                    setStrandedGeneses.erase(hashGenesis);
+
                     /* Loop through our transactions in sequence order. */
                     for(const auto& tx : vtx)
                     {

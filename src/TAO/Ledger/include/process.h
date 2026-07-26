@@ -132,6 +132,19 @@ namespace TAO
         static const uint64_t MAX_UNRECOVERABLE_ENTRIES = 10000;
 
 
+        /** Cache of the missing-transaction hash list captured the moment a
+         *  block hash is inserted into setUnrecoverableBlocks (the last call
+         *  where Check() actually ran and populated block.vMissing).  The
+         *  terminal-blacklist early return at the top of Process() skips
+         *  Check() entirely on every subsequent arrival, which would otherwise
+         *  leave block.vMissing empty and disable the LLP layer's per-tx
+         *  fanout recovery path.  Process() repopulates block.vMissing from
+         *  this cache before returning so the fanout still has hashes to work
+         *  with. Bounded to MAX_UNRECOVERABLE_ENTRIES and cleared alongside
+         *  setUnrecoverableBlocks. **/
+        extern std::map<uint1024_t, std::vector<std::pair<uint8_t, uint512_t> > > mapMissingTxCache;
+
+
         /** Maximum number of unique incomplete-block hashes tracked in
          *  mapLastMissing before the entire map is cleared to bound memory use.
          *  When the map reaches this size and a new (unseen) block hash would be
