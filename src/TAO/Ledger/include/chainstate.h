@@ -41,6 +41,15 @@ namespace TAO
             extern std::atomic<uint32_t> nBestHeight;
 
 
+            /** The highest block height advertised by any connected peer.
+             *  Updated by TritiumNode when it receives an ACTION::NOTIFY
+             *  BESTHEIGHT message.  Used to distinguish a locally-stale node
+             *  (behind peers) from a node that is genuinely up-to-date, so
+             *  local-state-dependent invalidity can be classified correctly.
+             *  Never used for consensus decisions; diagnostic and deferral only. **/
+            extern std::atomic<uint32_t> nMaxPeerHeight;
+
+
             /** The best trust in the chain. **/
             extern std::atomic<uint64_t> nBestChainTrust;
 

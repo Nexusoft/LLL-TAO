@@ -944,6 +944,17 @@ namespace TAO
                     && config::GetBoolArg("-checkpoints", false)
                     && block.nHeight < TAO::Ledger::ChainState::nCheckpointHeight)
                     {
+                        /* Emit a single diagnostic so operators know why this
+                         * block was discarded rather than silently dropped.
+                         * Addresses the "stranded-state" defect class: local
+                         * chain state treated as authoritative, no recovery signal. */
+                        debug::warning(FUNCTION,
+                            "=== STRANDED_STATE_DETECTED === block discarded: height below checkpoint",
+                            " block_height=", block.nHeight,
+                            " checkpoint_height=", TAO::Ledger::ChainState::nCheckpointHeight.load(),
+                            " hash=", hashBlock.SubString(),
+                            " class=INVALID_ABSOLUTE (checkpoint enforcement)");
+
                         nStatus |= PROCESS::IGNORED;
                         return;
                     }

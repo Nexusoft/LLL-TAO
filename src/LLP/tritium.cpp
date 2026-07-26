@@ -81,6 +81,19 @@ namespace LLP
     static std::atomic<uint64_t> nLastConflictsSweep(0);
 
 
+    /* Per-block-hash timestamp of the last "recovery cap exceeded" warning.
+     * The capped-path warning fires once per block arrival per peer; without
+     * throttling it generates hundreds of lines in a 2 ms window during a
+     * multi-peer miss storm, contributing to the DataThread time-budget
+     * overruns it is meant to help diagnose.
+     *
+     * Bounded to CAP_WARNING_THROTTLE_MAX_ENTRIES entries using the same
+     * cheap clear-on-cap pattern already used for mapLastMissing. */
+    static constexpr uint32_t CAP_WARNING_THROTTLE_MAX_ENTRIES = 256;
+    static constexpr uint64_t CAP_WARNING_THROTTLE_SECONDS     = 60;
+    static std::map<uint1024_t, uint64_t> mapCapWarningLastTime;
+
+
     /* Declaration of client mutex for synchronizing client mode transactions. */
     std::mutex TritiumNode::CLIENT_MUTEX;
 
@@ -2367,6 +2380,22 @@ namespace LLP
                             if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                                 nSyncStop.store(nCurrentHeight);
 
+                            /* Update the global max-peer-height tracker so
+                             * local-state-dependent checks (e.g. coinbase
+                             * maturity during mempool admission) can tell the
+                             * difference between a genuinely immature coinbase
+                             * and one that is mature at network height but
+                             * appears immature because this node is 1-2 blocks
+                             * behind.  This is diagnostic and deferral only —
+                             * never used for consensus decisions. */
+                            {
+                                uint32_t nPrev = TAO::Ledger::ChainState::nMaxPeerHeight.load();
+                                while(nCurrentHeight > nPrev &&
+                                      !TAO::Ledger::ChainState::nMaxPeerHeight
+                                           .compare_exchange_weak(nPrev, nCurrentHeight))
+                                    ; /* re-read nPrev on CAS miss */
+                            }
+
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::NOTIFY: BESTHEIGHT ", nCurrentHeight);
 
@@ -2821,14 +2850,35 @@ namespace LLP
 
                                 if(TAO::Ledger::IsMissingBranchRecoveryCapped(hashBlock))
                                 {
-                                    debug::warning(NODE,
-                                        "missing-tx branch recovery cap exceeded for block ",
-                                        hashBlock.SubString(),
-                                        " height=", block.nHeight,
-                                        " escalations=", nEscalations,
-                                        " cap=", TAO::Ledger::MAX_BRANCH_RECOVERY_ESCALATIONS,
-                                        "; suppressing further branch re-request traffic for this block. ",
-                                        "Manual operator intervention may be required (e.g. peer refresh or resync).");
+                                    /* Throttle the "recovery cap exceeded" warning to at most
+                                     * once per CAP_WARNING_THROTTLE_SECONDS per block hash.
+                                     * Without throttling this warning fires once per arrival
+                                     * per peer — potentially hundreds of times in a 2 ms
+                                     * window during a multi-peer miss storm, worsening the
+                                     * DataThread budget overruns it is meant to diagnose. */
+                                    const uint64_t nNow = runtime::timestamp();
+                                    bool fEmitWarning = false;
+                                    {
+                                        auto itW = mapCapWarningLastTime.find(hashBlock);
+                                        if(itW == mapCapWarningLastTime.end()
+                                        || nNow - itW->second >= CAP_WARNING_THROTTLE_SECONDS)
+                                        {
+                                            fEmitWarning = true;
+                                            if(mapCapWarningLastTime.size() >= CAP_WARNING_THROTTLE_MAX_ENTRIES)
+                                                mapCapWarningLastTime.clear();
+                                            mapCapWarningLastTime[hashBlock] = nNow;
+                                        }
+                                    }
+
+                                    if(fEmitWarning)
+                                        debug::warning(NODE,
+                                            "missing-tx branch recovery cap exceeded for block ",
+                                            hashBlock.SubString(),
+                                            " height=", block.nHeight,
+                                            " escalations=", nEscalations,
+                                            " cap=", TAO::Ledger::MAX_BRANCH_RECOVERY_ESCALATIONS,
+                                            "; suppressing further branch re-request traffic for this block. ",
+                                            "Manual operator intervention may be required (e.g. peer refresh or resync).");
 
                                     /* Even when capped, send one throttled ancestor-
                                      * anchored branch sync so the orphan pool can

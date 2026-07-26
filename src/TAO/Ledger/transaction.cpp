@@ -40,6 +40,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/ambassador.h>
+#include <TAO/Ledger/include/admissibility.h>
 #include <TAO/Ledger/include/developer.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -1055,9 +1056,51 @@ namespace TAO
                             if(!LLD::Ledger->ReadConfirmations(hashPrev, nConfirms, pblock))
                                 return debug::error(FUNCTION, "failed to read confirmations for coinbase");
 
-                            /* Check that the previous TX has reached sig chain maturity */
-                            if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::tStateBest.load())))
+                            /* Check that the previous TX has reached sig chain maturity.
+                             *
+                             * CONSENSUS CONSTRAINT: when pblock != nullptr (block-connect
+                             * validation), this check is unchanged — reject immediately.
+                             *
+                             * MEMPOOL ADMISSION (pblock == nullptr): if the coinbase
+                             * appears immature at local height but would be mature at the
+                             * best height advertised by any connected peer, the node is
+                             * merely stale (1-2 blocks behind).  Classify as
+                             * DEFERRED_LOCAL_STATE so Mempool::Accept() retains the
+                             * transaction instead of permanently blacklisting it — the
+                             * immature-coinbase feedback loop that wedges the node at a
+                             * fixed height is broken by this path.  The block-connect
+                             * path (pblock != nullptr) still enforces maturity
+                             * unconditionally, preserving consensus semantics. */
+                            const uint32_t nMaturity =
+                                MaturityCoinBase((pblock ? *pblock : ChainState::tStateBest.load()));
+                            if(nConfirms + 1 < nMaturity)
+                            {
+                                if(!pblock)
+                                {
+                                    /* Compute what confirmation count would be at the
+                                     * highest peer-advertised height.  A non-zero
+                                     * nMaxPeerHeight only makes the check MORE lenient;
+                                     * if no peer height has been observed yet (== 0),
+                                     * fall through to the unconditional rejection below. */
+                                    const uint32_t nPeerHeight  = ChainState::nMaxPeerHeight.load();
+                                    const uint32_t nLocalHeight = ChainState::nBestHeight.load();
+                                    if(nPeerHeight > nLocalHeight)
+                                    {
+                                        const uint32_t nPeerConfs = nConfirms + (nPeerHeight - nLocalHeight);
+                                        if(nPeerConfs + 1 >= nMaturity)
+                                        {
+                                            /* Mark this as a local-state-dependent failure
+                                             * so Accept() knows not to permanently reject. */
+                                            TAO::Ledger::SetLastConnectClass(
+                                                TAO::Ledger::AdmissibilityClass::DEFERRED_LOCAL_STATE);
+                                            return debug::error(FUNCTION,
+                                                "coinbase is immature ", nConfirms,
+                                                " (DEFERRED: mature at peer height ", nPeerHeight, ")");
+                                        }
+                                    }
+                                }
                                 return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
+                            }
 
                             break;
                         }

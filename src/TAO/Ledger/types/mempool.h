@@ -61,6 +61,18 @@ namespace TAO
         static const uint32_t MAX_CONFLICTS_MAP_ENTRIES = 10000;
 
 
+        /** Maximum number of consecutive DEFERRED_LOCAL_STATE passes that
+         *  Check() will retain a genesis's transactions in mapConflicts before
+         *  force-evicting them.  An ancestor-on-main-chain conflict that has
+         *  not resolved after this many sweeps is genuinely unresolvable (or
+         *  a sign of a larger chain problem) and should stop consuming cycles.
+         *
+         *  Sized relative to CONFLICTS_SWEEP_INTERVAL_SECONDS (30 s): 20
+         *  retries × 30 s = 10 minutes of retention — enough for the node to
+         *  catch up in any reasonable network scenario before giving up. **/
+        static const uint32_t MAX_CONFLICT_STALE_RETRIES = 20;
+
+
         /** Minimum number of seconds between periodic,
          *  chain-tip-independent calls to Mempool::Check() from
          *  TritiumNode's per-connection GENERIC event handler. Check()'s
@@ -150,6 +162,23 @@ namespace TAO
 
             /** The transactions in the conflicted ledger memory pool. **/
             std::map<uint512_t, TAO::Ledger::Transaction> mapConflicts;
+
+
+            /** Per-genesis count of consecutive DEFERRED_LOCAL_STATE passes in
+             *  Check()'s conflict-reconciliation loop.  When the count exceeds
+             *  MAX_CONFLICT_STALE_RETRIES the genesis's transactions are
+             *  force-evicted from mapConflicts so they stop consuming sweep
+             *  cycles.  Bounded to MAX_CONFLICTS_MAP_ENTRIES entries; cleared
+             *  wholesale when the cap is hit, matching the mapConflicts pattern. **/
+            std::map<uint256_t, uint32_t> mapConflictRetries;
+
+
+            /** Genesis-ids for which a STRANDED_STATE_DETECTED warning has
+             *  already been emitted during the current session.  Bounded to
+             *  MAX_CONFLICTS_MAP_ENTRIES entries; wholesale-cleared when full.
+             *  Guards the "once per genesis" requirement for the operator
+             *  diagnostic so the logs are actionable rather than noisy. **/
+            std::set<uint256_t> setStrandedGeneses;
 
 
             /** [Option 1] Bounds mapConflicts before inserting a new entry: if the

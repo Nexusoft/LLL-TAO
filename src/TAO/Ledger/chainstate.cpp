@@ -35,6 +35,10 @@ namespace TAO
         std::atomic<uint32_t> ChainState::nBestHeight;
 
 
+        /* The highest block height advertised by any connected peer. */
+        std::atomic<uint32_t> ChainState::nMaxPeerHeight(0);
+
+
         /* The best trust in the chain. */
         std::atomic<uint64_t> ChainState::nBestChainTrust;
 

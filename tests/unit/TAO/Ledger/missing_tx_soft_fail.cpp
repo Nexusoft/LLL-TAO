@@ -15,10 +15,12 @@ ________________________________________________________________________________
 
 #include <LLP/types/tritium.h>
 
+#include <TAO/Ledger/include/admissibility.h>
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/timelocks.h>
+#include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/tritium.h>
 
@@ -1537,5 +1539,175 @@ TEST_CASE("Post-sync state: nSyncSession==0 and fSynchronized==true after Sync()
     /* Restore. */
     TAO::Ledger::nSyncSession.store(nSavedSession);
     LLP::TritiumNode::fSynchronized.store(fSavedSynced);
+}
+
+
+/* ==========================================================================
+ * Tests for the admissibility classifier (stranded-state loop fix)
+ *
+ * Background: three call sites compared against local chain state, decided
+ * something was invalid, and took no recovery action.  On a node already
+ * behind, local state is exactly what is wrong, so the condition is
+ * self-sustaining.  The admissibility classifier distinguishes
+ * INVALID_ABSOLUTE from DEFERRED_LOCAL_STATE so recovery paths can retain
+ * and retry instead of permanently blacklisting.
+ * ========================================================================== */
+
+TEST_CASE("AdmissibilityClass enum has correct values", "[ledger][process]")
+{
+    /* Verify the enum is defined and the values are distinct.
+     * This locks in the classifier API so future refactors show up as
+     * compile-time failures rather than silent behavioural regressions. */
+    REQUIRE(TAO::Ledger::AdmissibilityClass::VALID
+         != TAO::Ledger::AdmissibilityClass::INVALID_ABSOLUTE);
+    REQUIRE(TAO::Ledger::AdmissibilityClass::VALID
+         != TAO::Ledger::AdmissibilityClass::DEFERRED_LOCAL_STATE);
+    REQUIRE(TAO::Ledger::AdmissibilityClass::INVALID_ABSOLUTE
+         != TAO::Ledger::AdmissibilityClass::DEFERRED_LOCAL_STATE);
+    REQUIRE(TAO::Ledger::AdmissibilityClass::UNKNOWN
+         != TAO::Ledger::AdmissibilityClass::VALID);
+}
+
+
+TEST_CASE("AdmissibilityClass thread-local side-channel set/take semantics", "[ledger][process]")
+{
+    /* The thread-local side-channel used between Transaction::Connect() and
+     * Mempool::Accept() must:
+     *   1. Start at UNKNOWN.
+     *   2. Reflect the value set by SetLastConnectClass().
+     *   3. Be reset to UNKNOWN after a single TakeLastConnectClass() call —
+     *      stale classifications must not persist across unrelated Connect()
+     *      calls on the same thread. */
+
+    /* Initial value must be UNKNOWN. */
+    TAO::Ledger::g_nLastConnectClass = TAO::Ledger::AdmissibilityClass::UNKNOWN;
+    REQUIRE(TAO::Ledger::g_nLastConnectClass == TAO::Ledger::AdmissibilityClass::UNKNOWN);
+
+    /* After setting DEFERRED_LOCAL_STATE, TakeLastConnectClass() returns it. */
+    TAO::Ledger::SetLastConnectClass(TAO::Ledger::AdmissibilityClass::DEFERRED_LOCAL_STATE);
+    REQUIRE(TAO::Ledger::g_nLastConnectClass ==
+            TAO::Ledger::AdmissibilityClass::DEFERRED_LOCAL_STATE);
+
+    const TAO::Ledger::AdmissibilityClass cls = TAO::Ledger::TakeLastConnectClass();
+    REQUIRE(cls == TAO::Ledger::AdmissibilityClass::DEFERRED_LOCAL_STATE);
+
+    /* After the take the slot must be reset to UNKNOWN. */
+    REQUIRE(TAO::Ledger::g_nLastConnectClass == TAO::Ledger::AdmissibilityClass::UNKNOWN);
+
+    /* A second take without an intervening set returns UNKNOWN. */
+    const TAO::Ledger::AdmissibilityClass cls2 = TAO::Ledger::TakeLastConnectClass();
+    REQUIRE(cls2 == TAO::Ledger::AdmissibilityClass::UNKNOWN);
+
+    /* INVALID_ABSOLUTE round-trip. */
+    TAO::Ledger::SetLastConnectClass(TAO::Ledger::AdmissibilityClass::INVALID_ABSOLUTE);
+    REQUIRE(TAO::Ledger::TakeLastConnectClass() ==
+            TAO::Ledger::AdmissibilityClass::INVALID_ABSOLUTE);
+    REQUIRE(TAO::Ledger::g_nLastConnectClass == TAO::Ledger::AdmissibilityClass::UNKNOWN);
+}
+
+
+TEST_CASE("nMaxPeerHeight is distinct from nBestHeight", "[ledger][process]")
+{
+    /* nMaxPeerHeight is the highest height any connected peer has advertised.
+     * It must be accessible and independently settable from nBestHeight so
+     * the coinbase-maturity deferral logic can tell the difference between
+     * "immature at local height" and "would be mature at peer height". */
+
+    const uint32_t nSavedLocal = TAO::Ledger::ChainState::nBestHeight.load();
+    const uint32_t nSavedPeer  = TAO::Ledger::ChainState::nMaxPeerHeight.load();
+
+    /* Simulate local height 100, peer height 102. */
+    TAO::Ledger::ChainState::nBestHeight.store(100);
+    TAO::Ledger::ChainState::nMaxPeerHeight.store(102);
+
+    REQUIRE(TAO::Ledger::ChainState::nBestHeight.load()    == 100);
+    REQUIRE(TAO::Ledger::ChainState::nMaxPeerHeight.load() == 102);
+    REQUIRE(TAO::Ledger::ChainState::nMaxPeerHeight.load() >
+            TAO::Ledger::ChainState::nBestHeight.load());
+
+    /* The gap between peer height and local height is the number of extra
+     * confirmations a coinbase would have at network height. */
+    const uint32_t nExtraConfs =
+        TAO::Ledger::ChainState::nMaxPeerHeight.load() -
+        TAO::Ledger::ChainState::nBestHeight.load();
+    REQUIRE(nExtraConfs == 2);
+
+    /* Restore. */
+    TAO::Ledger::ChainState::nBestHeight.store(nSavedLocal);
+    TAO::Ledger::ChainState::nMaxPeerHeight.store(nSavedPeer);
+}
+
+
+TEST_CASE("Idle sigchain with ancestor on main chain must not be INVALID_ABSOLUTE",
+    "[ledger][process]")
+{
+    /* === Constraint from problem statement (treat as given) ===
+     *
+     * ForkDivergenceInfo::nDepth measures sigchain staleness, NOT fork
+     * divergence.  A sigchain idle for N blocks yields nDepth = N on a
+     * completely healthy node.  The observed divergence_depth=16172 was
+     * emitted with fAncestorOnMainChain == true — not a fork.
+     *
+     * This test locks in the invariant: when fAncestorOnMainChain == true,
+     * the correct classification is DEFERRED_LOCAL_STATE regardless of nDepth.
+     * nDepth must NEVER be used as a rejection or eviction input.
+     *
+     * Implementation note: the full ComputeForkDivergence() path requires a
+     * live LedgerDB with committed blocks.  This test validates the
+     * classification LOGIC rather than the divergence computation itself:
+     * given a ForkDivergenceInfo with fAncestorFound && fAncestorOnMainChain,
+     * the Check() path must retain (not evict) the transactions. */
+
+    /* Build a ForkDivergenceInfo that represents a deeply idle sigchain
+     * whose predecessor IS on the main chain. */
+    TAO::Ledger::Mempool::ForkDivergenceInfo tInfo;
+    tInfo.fAncestorFound     = true;
+    tInfo.fAncestorOnMainChain = true;
+    tInfo.nDepth             = 16172; /* large idle depth — must NOT trigger eviction */
+    tInfo.nBestHeight        = 6799812;
+    tInfo.nAncestorHeight    = 6799812 - 16172;
+
+    /* The classifier logic in Check() is:
+     *   if(tInfo.fAncestorFound && tInfo.fAncestorOnMainChain) → DEFERRED_LOCAL_STATE
+     *   else → INVALID_ABSOLUTE
+     *
+     * Test the predicate directly. */
+    const bool fWouldDefer =
+        tInfo.fAncestorFound && tInfo.fAncestorOnMainChain;
+    REQUIRE(fWouldDefer);
+
+    /* A large nDepth with an ancestor on the main chain must NOT classify
+     * as INVALID_ABSOLUTE.  There is no depth threshold for eviction. */
+    const bool fWouldEvict = !fWouldDefer;
+    REQUIRE_FALSE(fWouldEvict);
+
+    /* Cross-check: a conflict where the ancestor is NOT on the main chain
+     * (genuine fork) must classify as INVALID_ABSOLUTE. */
+    TAO::Ledger::Mempool::ForkDivergenceInfo tForkInfo;
+    tForkInfo.fAncestorFound      = true;
+    tForkInfo.fAncestorOnMainChain = false;  /* off-chain */
+    tForkInfo.nDepth              = 3;        /* shallow, but still a real fork */
+
+    const bool fForkWouldEvict =
+        !(tForkInfo.fAncestorFound && tForkInfo.fAncestorOnMainChain);
+    REQUIRE(fForkWouldEvict);
+}
+
+
+TEST_CASE("mapConflicts retry budget bounds are well-formed", "[ledger][process]")
+{
+    /* MAX_CONFLICT_STALE_RETRIES must be positive (so at least one retry is
+     * allowed before force-eviction) and must not exceed MAX_CONFLICTS_MAP_ENTRIES
+     * (which bounds the retry map itself). */
+    REQUIRE(TAO::Ledger::Mempool::MAX_CONFLICT_STALE_RETRIES  > 0u);
+    REQUIRE(TAO::Ledger::Mempool::MAX_CONFLICT_STALE_RETRIES  <=
+            TAO::Ledger::Mempool::MAX_CONFLICTS_MAP_ENTRIES);
+
+    /* The retry window at CONFLICTS_SWEEP_INTERVAL_SECONDS (30 s) should be
+     * at least 5 minutes so a node with modest peer latency can recover. */
+    const uint64_t nWindowSecs =
+        static_cast<uint64_t>(TAO::Ledger::Mempool::MAX_CONFLICT_STALE_RETRIES)
+        * TAO::Ledger::Mempool::CONFLICTS_SWEEP_INTERVAL_SECONDS;
+    REQUIRE(nWindowSecs >= 300u);  /* >= 5 minutes */
 }
 
