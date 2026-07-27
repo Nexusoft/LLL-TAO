@@ -1435,16 +1435,28 @@ namespace TAO
                         debug::log(0, FUNCTION, "processing ORPHAN hash=",
                             hashOrphan.SubString(), " size=", mapOrphans.Size());
 
-                        /* Intentionally forces full proof verification (fForceProof=true)
-                         * unlike the primary Check() in the main sync path above. A node
-                         * performing initial block download follows the header/locator
-                         * chain sequentially and does not populate mapOrphans, so this
-                         * BFS drain only runs post-sync during fork/orphan-storm
-                         * recovery -- a low-volume, security-sensitive path where the
-                         * extra PrimeCheck()/VerifyWork() cost is acceptable and the
-                         * stronger guarantee (never reconnect an under-verified orphan)
-                         * is worth it. */
-                        if(!pOrphan->Check(true))
+                        /* Do NOT force full proof verification here (fForceProof=false),
+                         * matching the primary Check() in the main sync path above and
+                         * upstream Nexusoft/LLL-TAO's orphan loop.
+                         *
+                         * This previously forced fForceProof=true on the theory that a
+                         * node performing initial block download follows the header/
+                         * locator chain sequentially and does not populate mapOrphans,
+                         * so this BFS drain would only run post-sync during rare
+                         * fork/orphan-storm recovery. That assumption does not hold in
+                         * practice: multiple peers can deliver blocks out of order (or
+                         * from competing tips) throughout an active sync, continuously
+                         * populating and draining mapOrphans long before
+                         * Synchronizing() clears. Forcing full PrimeCheck()/VerifyWork()
+                         * (Miller-Rabin + Fermat BN_mod_exp per Cunningham chain member)
+                         * on every drained orphan therefore ran on a hot path during
+                         * sync, not a rare one, and was a direct contributor to
+                         * multi-day "sync from zero" regressions. Using the same
+                         * fForceProof=false gate as the main path also removes the
+                         * inconsistency where the identical block could be judged
+                         * differently depending on which ingestion path it arrived
+                         * through. */
+                        if(!pOrphan->Check())
                         {
                             const uint64_t nPruned = mapOrphans.RemoveSubtree(hashOrphan);
                             mapLastMissing.erase(hashOrphan);
