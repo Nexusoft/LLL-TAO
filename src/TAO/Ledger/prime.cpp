@@ -44,10 +44,11 @@ namespace TAO
 
 
         /* Determines the difficulty of the Given Prime Number. */
-        double GetPrimeDifficulty(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets, const bool fVerify)
+        double GetPrimeDifficulty(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets, const bool fVerify,
+                                   const uint32_t nVersion)
         {
             /* Return 0 if base is not prime. */
-            if(fVerify && !PrimeCheck(hashPrime))
+            if(fVerify && !PrimeCheck(hashPrime, nVersion))
                 return 0.0;
 
             /* Keep track of the cluster size. */
@@ -89,7 +90,7 @@ namespace TAO
                     hashNext += nOffset;
 
                     /* Check prime at offset. */
-                    if(!fVerify || PrimeCheck(hashNext))
+                    if(!fVerify || PrimeCheck(hashNext, nVersion))
                         ++nClusterSize;
 
                 }
@@ -118,7 +119,7 @@ namespace TAO
                 for(hashNext = hashPrime + 2; hashNext <= hashLast + 12; hashNext += 2)
                 {
                     /* Check if this interval is prime. */
-                    if(PrimeCheck(hashNext))
+                    if(PrimeCheck(hashNext, nVersion))
                     {
                         hashLast = hashNext;
                         ++nClusterSize;
@@ -139,7 +140,7 @@ namespace TAO
 
         /* Return list of offsets for use in optimized prime proof of work calculations. */
         /* Gets the offsets of the prime numbers in the cluster. */
-        void GetOffsets(const uint1024_t& hashPrime, std::vector<uint8_t> &vOffsets)
+        void GetOffsets(const uint1024_t& hashPrime, std::vector<uint8_t> &vOffsets, const uint32_t nVersion)
         {
             bool fDiagnostic = (config::nVerbose >= 2);
             
@@ -155,7 +156,7 @@ namespace TAO
             if(fDiagnostic)
                 debug::log(2, FUNCTION, "🔍 Validating base prime...");
             
-            if(!PrimeCheck(hashPrime))
+            if(!PrimeCheck(hashPrime, nVersion))
             {
                 if(fDiagnostic)
                 {
@@ -181,7 +182,7 @@ namespace TAO
             for(uint1024_t hashNext = hashPrime + 2; nOffset <= 12; hashNext += 2, nOffset += 2)
             {
                 /* Check if this interval is prime. */
-                if(PrimeCheck(hashNext))
+                if(PrimeCheck(hashNext, nVersion))
                 {
                     if(fDiagnostic)
                         debug::log(2, FUNCTION, "   ✅ Offset ", static_cast<int>(nOffset), " → PRIME");
@@ -216,9 +217,10 @@ namespace TAO
 
 
         /* Gets the unsigned int representative of a decimal prime difficulty. */
-        uint32_t GetPrimeBits(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets, const bool fVerify)
+        uint32_t GetPrimeBits(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets, const bool fVerify,
+                              const uint32_t nVersion)
         {
-            return SetBits(GetPrimeDifficulty(hashPrime, vOffsets, fVerify));
+            return SetBits(GetPrimeDifficulty(hashPrime, vOffsets, fVerify, nVersion));
         }
 
 
@@ -236,7 +238,7 @@ namespace TAO
 
 
         /* Determines if given number is Prime. */
-        bool PrimeCheck(const uint1024_t& hashTest)
+        bool PrimeCheck(const uint1024_t& hashTest, const uint32_t nVersion)
         {
             /* [C1] The verbose per-test diagnostic dump below is expensive (string
              * formatting + several log calls per candidate) and is normally emitted
@@ -271,18 +273,30 @@ namespace TAO
             if(fDiagnostic)
                 debug::log(3, FUNCTION, "✅ PASSED: Small divisor test");
 
-            /* Check B: Miller-Rabin Test (OpenSSL probabilistic primality test) */
-            if(!Miller_Rabin(hashTest))
+            /* Check B: Miller-Rabin Test (OpenSSL probabilistic primality test)
+             *
+             * Consensus-tightening added by PR #129. Only enforced from block
+             * version PRIME_MILLER_RABIN_MIN_VERSION onward: a genuine prime can
+             * never fail Miller-Rabin, but retroactively enforcing it against
+             * chain history mined under the original Fermat-only rule would
+             * reject already-accepted Fermat-pseudoprime blocks and wedge sync. */
+            if(nVersion >= PRIME_MILLER_RABIN_MIN_VERSION)
             {
-                if(fDiagnostic)
+                if(!Miller_Rabin(hashTest))
                 {
-                    debug::log(3, FUNCTION, "❌ FAILED: Miller-Rabin test");
-                    debug::log(3, FUNCTION, "   Prime failed cryptographic primality test (PR #129)");
+                    if(fDiagnostic)
+                    {
+                        debug::log(3, FUNCTION, "❌ FAILED: Miller-Rabin test");
+                        debug::log(3, FUNCTION, "   Prime failed cryptographic primality test (PR #129)");
+                    }
+                    return false;
                 }
-                return false;
+                if(fDiagnostic)
+                    debug::log(3, FUNCTION, "✅ PASSED: Miller-Rabin test");
             }
-            if(fDiagnostic)
-                debug::log(3, FUNCTION, "✅ PASSED: Miller-Rabin test");
+            else if(fDiagnostic)
+                debug::log(3, FUNCTION, "⏭️  SKIPPED: Miller-Rabin test (block version ", nVersion,
+                           " below activation ", PRIME_MILLER_RABIN_MIN_VERSION, ")");
 
             /* Check C: Fermat Test */
             if(FermatTest(hashTest) != 1)
@@ -326,7 +340,11 @@ namespace TAO
         {
             LLC::CBigNum bnPrime(hashTest);
 
-            return (BN_is_prime_ex(bnPrime.getBN(), 1, nullptr, nullptr) == 1);
+            /* nchecks = 0 lets OpenSSL select a secure, size-appropriate number of
+             * Miller-Rabin rounds (BN_prime_checks_for_size) instead of a fixed,
+             * weak round count of 1. This check is consensus-critical (PR #129),
+             * so it should use OpenSSL's recommended security margin. */
+            return (BN_is_prime_ex(bnPrime.getBN(), 0, nullptr, nullptr) == 1);
         }
 
 
