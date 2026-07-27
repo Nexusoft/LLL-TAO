@@ -797,8 +797,23 @@ namespace TAO
                      *   Note: tInfo.nDepth measures sigchain idle time in blocks
                      *   NOT fork divergence depth — must NOT drive eviction.
                      *
-                     * INVALID_ABSOLUTE: ancestor not found on main chain, or
-                     *   insufficient data to classify — evict permanently. */
+                     * UNKNOWN: the conflicting predecessor's block could not
+                     *   be located on disk at all (!tInfo.fAncestorFound).
+                     *   This is NOT proof of a genuine fork -- it is exactly
+                     *   what a node still catching up to a peer's canonical
+                     *   branch looks like (the ancestor simply has not been
+                     *   synced yet). Treating this the same as a confirmed
+                     *   off-chain ancestor was the root cause of nodes
+                     *   getting permanently wedged on a stale/orphaned local
+                     *   branch: the correct chain's own transaction was being
+                     *   evicted before the block sync that would have
+                     *   resolved it could catch up. Retain, retry with a
+                     *   larger budget, and actively re-request the missing
+                     *   predecessor transaction so the gap can close.
+                     *
+                     * INVALID_ABSOLUTE: ancestor was found but confirmed off
+                     *   our main chain — a genuine, resolved fork conflict.
+                     *   Evict permanently. */
                     if(tInfo.fAncestorFound && tInfo.fAncestorOnMainChain)
                     {
                         /* DEFERRED_LOCAL_STATE path.
@@ -851,11 +866,77 @@ namespace TAO
                         }
                         /* else: retain in mapConflicts — do not erase */
                     }
+                    else if(!tInfo.fAncestorFound)
+                    {
+                        /* UNKNOWN path: sync gap, not a confirmed fork.
+                         * Emit once-per-genesis operator diagnostic so operators
+                         * can see a stuck sync without being spammed. */
+                        if(!setUnknownAncestorGeneses.count(hashGenesis))
+                        {
+                            if(setUnknownAncestorGeneses.size() >= MAX_CONFLICTS_MAP_ENTRIES)
+                                setUnknownAncestorGeneses.clear();
+                            setUnknownAncestorGeneses.insert(hashGenesis);
+
+                            debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW,
+                                "=== STRANDED_STATE_DETECTED ===", ANSI_COLOR_RESET,
+                                " class=UNKNOWN",
+                                " genesis=", hashGenesis.SubString(),
+                                " conflicting_predecessor=", tInfo.hashPrevTx.SubString(),
+                                " reason=", tInfo.strError.empty() ? "ancestor not found on disk" : tInfo.strError,
+                                " action=retain_and_retry (fetching missing predecessor)");
+                        }
+                        else
+                        {
+                            debug::log(2, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW,
+                                "FORK CONFLICT DIAGNOSTIC:", ANSI_COLOR_RESET,
+                                " genesis=", hashGenesis.SubString(),
+                                " conflicting_predecessor=", tInfo.hashPrevTx.SubString(),
+                                " action=retain_and_retry (UNKNOWN)");
+                        }
+
+                        /* Actively re-request the missing predecessor transaction
+                         * from a random connected peer.  This mirrors the GET
+                         * request already issued for a brand-new orphan in
+                         * Accept(), giving a stuck sync a concrete chance to
+                         * close the gap rather than depending solely on the
+                         * unrelated block-level sync catching up on its own. */
+                        if(LLP::TRITIUM_SERVER)
+                        {
+                            const std::shared_ptr<LLP::TritiumNode> pRandom =
+                                LLP::TRITIUM_SERVER->RandomConnection();
+
+                            if(pRandom && pRandom->Connected())
+                                pRandom->PushMessage(LLP::TritiumNode::ACTION::GET,
+                                    uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), tInfo.hashPrevTx);
+                        }
+
+                        /* Bound and increment the retry counter for this genesis. */
+                        if(mapUnknownAncestorRetries.size() >= MAX_CONFLICTS_MAP_ENTRIES)
+                            mapUnknownAncestorRetries.clear();
+                        const uint32_t nRetries = ++mapUnknownAncestorRetries[hashGenesis];
+
+                        if(nRetries > MAX_UNKNOWN_ANCESTOR_RETRIES)
+                        {
+                            /* Budget exhausted: evict to stop consuming sweep cycles.
+                             * This is a last-resort guard — a sync gap this
+                             * persistent likely needs manual intervention. */
+                            debug::warning(FUNCTION,
+                                "unknown-ancestor retry budget exhausted for genesis=", hashGenesis.SubString(),
+                                " retries=", nRetries,
+                                " evicting — chain may require manual intervention");
+
+                            mapUnknownAncestorRetries.erase(hashGenesis);
+                            setUnknownAncestorGeneses.erase(hashGenesis);
+                            for(const auto& tx : vtx)
+                                mapConflicts.erase(tx.GetHash());
+                        }
+                        /* else: retain in mapConflicts — do not erase */
+                    }
                     else
                     {
-                        /* INVALID_ABSOLUTE: ancestor is off the main chain or
-                         * not found — this is a genuine fork conflict.  Evict
-                         * permanently. */
+                        /* INVALID_ABSOLUTE: ancestor was found but is
+                         * confirmed off the main chain — this is a genuine,
+                         * resolved fork conflict.  Evict permanently. */
                         debug::warning(FUNCTION, "fork conflict INVALID_ABSOLUTE for genesis=",
                             hashGenesis.SubString(),
                             " reason=", tInfo.strError.empty() ? "ancestor not on main chain" : tInfo.strError);
@@ -863,6 +944,8 @@ namespace TAO
                         /* Clear any stale retry state for this genesis. */
                         mapConflictRetries.erase(hashGenesis);
                         setStrandedGeneses.erase(hashGenesis);
+                        mapUnknownAncestorRetries.erase(hashGenesis);
+                        setUnknownAncestorGeneses.erase(hashGenesis);
 
                         for(const auto& tx : vtx)
                             mapConflicts.erase(tx.GetHash());
@@ -886,6 +969,8 @@ namespace TAO
                     const uint256_t& hashGenesis = rTransaction.first;
                     mapConflictRetries.erase(hashGenesis);
                     setStrandedGeneses.erase(hashGenesis);
+                    mapUnknownAncestorRetries.erase(hashGenesis);
+                    setUnknownAncestorGeneses.erase(hashGenesis);
 
                     /* Loop through our transactions in sequence order. */
                     for(const auto& tx : vtx)
