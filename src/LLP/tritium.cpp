@@ -94,6 +94,26 @@ namespace LLP
     static constexpr uint64_t CAP_WARNING_THROTTLE_SECONDS     = 60;
     static std::map<uint1024_t, uint64_t> mapCapWarningLastTime;
 
+    /* Allow a small height delta so minor notification races don't block sync
+     * finalization when peers are effectively at the same tip. */
+    static constexpr uint32_t SYNC_FINALIZATION_HEIGHT_TOLERANCE = 2;
+
+    static bool SyncPeerHeightIsCurrent(const uint32_t nPeerHeight)
+    {
+        const uint64_t nPeerHeight64 = nPeerHeight;
+        const uint64_t nMaxPeerHeight = TAO::Ledger::ChainState::nMaxPeerHeight.load();
+        if(nMaxPeerHeight == 0)
+            return true;
+
+        return nPeerHeight64 + SYNC_FINALIZATION_HEIGHT_TOLERANCE >= nMaxPeerHeight;
+    }
+
+    static bool CanFinalizeSyncFromPeer(const uint32_t nPeerHeight)
+    {
+        return TAO::Ledger::ChainState::nBestHeight.load() >= nPeerHeight
+            && SyncPeerHeightIsCurrent(nPeerHeight);
+    }
+
 
     /* Declaration of client mutex for synchronizing client mode transactions. */
     std::mutex TritiumNode::CLIENT_MUTEX;
@@ -2500,7 +2520,8 @@ namespace LLP
 
                                         /* Check for complete synchronization. */
                                         if(hashLast == TAO::Ledger::ChainState::hashBestChain.load()
-                                        && hashLast == hashBestChain)
+                                        && hashLast == hashBestChain
+                                        && CanFinalizeSyncFromPeer(nCurrentHeight))
                                         {
                                             /* Set state to synchronized. */
                                             fSynchronized.store(true);
@@ -2614,7 +2635,8 @@ namespace LLP
                              * disk as a side-branch block. */
                             if(TAO::Ledger::nSyncSession.load() != 0
                             && nCurrentSession == TAO::Ledger::nSyncSession.load()
-                            && TAO::Ledger::IsBestChainSynchronized(hashBestChain))
+                            && TAO::Ledger::IsBestChainSynchronized(hashBestChain)
+                            && CanFinalizeSyncFromPeer(nCurrentHeight))
                             {
                                 /* Set state to synchronized. */
                                 fSynchronized.store(true);
@@ -3122,8 +3144,14 @@ namespace LLP
                             return debug::drop(NODE, "TYPES::BLOCK::SYNC: disabled in -client mode");
 
                         /* Check if this is an unsolicited sync block. */
-                        //if(nCurrentSession != TAO::Ledger::nSyncSession || fSynchronized.load())
-                        //    return debug::drop(FUNCTION, "unsolicted sync block");
+                        if(nCurrentSession != TAO::Ledger::nSyncSession.load() || fSynchronized.load())
+                        {
+                            debug::warning(FUNCTION,
+                                "ignoring unsolicited sync block from session ", std::hex,
+                                nCurrentSession, " sync_session=", TAO::Ledger::nSyncSession.load(),
+                                std::dec, " synchronized=", fSynchronized.load());
+                            break;
+                        }
 
                         /* Get the block from the stream. */
                         TAO::Ledger::SyncBlock block;
