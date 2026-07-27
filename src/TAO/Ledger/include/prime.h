@@ -16,7 +16,6 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEDGER_INCLUDE_PRIME_H
 
 #include <LLC/types/uint1024.h>
-#include <TAO/Ledger/include/timelocks.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -25,20 +24,6 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-
-        /** PRIME_MILLER_RABIN_MIN_VERSION
-         *
-         *  Minimum block version required for PrimeCheck() to enforce the
-         *  Miller-Rabin primality test added by PR #129. Blocks below this
-         *  version (i.e. all chain history mined before the hardening was
-         *  activated) are validated using only the original small-divisor +
-         *  Fermat rule, since Miller-Rabin can never reject a genuine prime
-         *  but a not-yet-detected Fermat pseudoprime already accepted into
-         *  history would otherwise wedge re-validation on a fresh sync.
-         *
-         **/
-        constexpr uint32_t PRIME_MILLER_RABIN_MIN_VERSION = 9;
-
 
         /** SetBits
          *
@@ -85,16 +70,11 @@ namespace TAO
          *
          *  @param[in] hashPrime The prime to check.
          *  @param[in] vOffsets Optional offsets for quicker checking.
-         *  @param[in] fVerify Whether to verify the offsets are actually prime.
-         *  @param[in] nVersion Block version, used to gate the Miller-Rabin
-         *             hardening (see PRIME_MILLER_RABIN_MIN_VERSION) so it is
-         *             only enforced for blocks mined after activation.
          *
          *  @return The double value of prime difficulty.
          *
          **/
-        double GetPrimeDifficulty(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets, const bool fVerify = true,
-                                   const uint32_t nVersion = CurrentBlockVersion());
+        double GetPrimeDifficulty(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets, const bool fVerify = true);
 
 
         /** GetOffsets
@@ -103,12 +83,10 @@ namespace TAO
          *
          *  @param[in] hashPrime The prime to check.
          *  @param[out] vOffsets The list of offsets to return.
-         *  @param[in] nVersion Block version, used to gate the Miller-Rabin
-         *             hardening (see PRIME_MILLER_RABIN_MIN_VERSION).
          *
          *
          **/
-        void GetOffsets(const uint1024_t& hashPrime, std::vector<uint8_t> &vOffsets, const uint32_t nVersion = CurrentBlockVersion());
+        void GetOffsets(const uint1024_t& hashPrime, std::vector<uint8_t> &vOffsets);
 
 
         /** GetPrimeBits
@@ -116,16 +94,11 @@ namespace TAO
          *  Gets the unsigned int representative of a decimal prime difficulty.
          *
          *  @param[in] bnPrime The prime to get bits for
-         *  @param[in] vOffsets Optional offsets for quicker checking.
-         *  @param[in] fVerify Whether to verify the offsets are actually prime.
-         *  @param[in] nVersion Block version, used to gate the Miller-Rabin
-         *             hardening (see PRIME_MILLER_RABIN_MIN_VERSION).
          *
          *  @return uint32_t representation of prime difficulty.
          *
          **/
-        uint32_t GetPrimeBits(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets, const bool fVerify = true,
-                              const uint32_t nVersion = CurrentBlockVersion());
+        uint32_t GetPrimeBits(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets, const bool fVerify = true);
 
 
         /** GetFractionalDifficulty
@@ -145,14 +118,11 @@ namespace TAO
          *  Determines if given number is Prime.
          *
          *	@param[in] hashTest The number to test for primality
-         *  @param[in] nVersion Block version, used to gate the Miller-Rabin
-         *             hardening (see PRIME_MILLER_RABIN_MIN_VERSION) so it is
-         *             only enforced for blocks mined after activation.
          *
          *  @return True if number passes prime tests.
          *
          **/
-        bool PrimeCheck(const uint1024_t& hashTest, const uint32_t nVersion = CurrentBlockVersion());
+        bool PrimeCheck(const uint1024_t& hashTest);
 
 
         /** FermatTest

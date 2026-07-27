@@ -22,21 +22,12 @@ namespace TAO
     namespace Ledger
     {
 
-        /* The network current block version.
-         *
-         * Bumped to 9 to activation-gate the PR #129 Miller-Rabin primality
-         * hardening in TAO::Ledger::PrimeCheck(). See PRIME_MILLER_RABIN_MIN_VERSION
-         * in prime.h: blocks at version <= 8 (all chain history mined before this
-         * change) are validated with the original Fermat-only prime rule, while
-         * version 9+ blocks additionally require Miller-Rabin. This keeps the
-         * stronger consensus check from being applied retroactively to already
-         * accepted history, which would otherwise wedge a fresh sync at the first
-         * historical Fermat-pseudoprime block. */
-        const uint32_t NETWORK_BLOCK_CURRENT_VERSION = 9;
+        /* The network current block version. */
+        const uint32_t NETWORK_BLOCK_CURRENT_VERSION = 8;
 
 
         /* The testnet current block version. */
-        const uint32_t TESTNET_BLOCK_CURRENT_VERSION = 9;
+        const uint32_t TESTNET_BLOCK_CURRENT_VERSION = 8;
 
 
         /* The network current transaction version. */
@@ -64,8 +55,7 @@ namespace TAO
             1536562800,        //--- Block Version 5 Testnet Activation:  09/10/2018 00:00:00 GMT - 7
             1537167600,        //--- Block Version 6 Testnet Activation:  09/17/2018 00:00:00 GMT - 7
             1572325200,        //--- Block Version 7 Testnet Activation:  10/28/2019 22:00:00 GMT - 7
-            1582946400,        //--- Block Version 8 Testnet Activation:  02/28/2020 20:20:00 GMT - 7
-            1785110400         //--- Block Version 9 Testnet Activation:  07/27/2026 00:00:00 GMT (Miller-Rabin gate)
+            1582946400         //--- Block Version 8 Testnet Activation:  02/28/2020 20:20:00 GMT - 7
         };
 
 
@@ -78,8 +68,7 @@ namespace TAO
             1536977460,        //--- Block Version 5 Activation:          09/14/2018 19:11:00 GMT - 7
             1538791860,        //--- Block Version 6 Activation:          10/05/2018 19:11:00 GMT - 7
             1573539371,        //--- Block Version 7 Activation:          11/11/2019 23:11:11 GMT - 6
-            1584676140,        //--- Block Version 8 Activation:          03/20/2020 03:49:00 GMT (03/19/2020 20:49:00 GMT -7)
-            1785110400         //--- Block Version 9 Activation:          07/27/2026 00:00:00 GMT (Miller-Rabin gate)
+            1584676140         //--- Block Version 8 Activation:          03/20/2020 03:49:00 GMT (03/19/2020 20:49:00 GMT -7)
         };
 
 

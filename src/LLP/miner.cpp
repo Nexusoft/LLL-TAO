@@ -2495,7 +2495,7 @@ namespace LLP
              * them (compact wrapper path).  This preserves backwards compatibility
              * with older miners that do not include vOffsets in the payload. */
             if(block.vOffsets.empty())
-                TAO::Ledger::GetOffsets(block.GetPrime(), block.vOffsets, block.nVersion);
+                TAO::Ledger::GetOffsets(block.GetPrime(), block.vOffsets);
         }
         else if(block.nChannel == TAO::Ledger::CHANNEL::HASH)
         {

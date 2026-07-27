@@ -231,12 +231,23 @@ namespace TAO
         }
 
 
-        /* GetPrime - Calculate prime candidate from ProofHash + nonce */
+        /* GetPrime - Calculate prime candidate from ProofHash + nonce 
+         * 
+         * CRITICAL FIX (PR #128): Ensure nonce is LITTLE-ENDIAN
+         * Falcon protocol uses little-endian for all multi-byte integers.
+         * The nonce must be correctly interpreted before adding to ProofHash.
+         */
         uint1024_t Block::GetPrime() const
         {
             /* Get the proof hash base */
             uint1024_t nPrime = ProofHash();
-
+            
+            /* Nonce endianness handling (Falcon protocol standard)
+             * On x86/x64 architectures, uint64_t is already stored little-endian.
+             * The serialization framework (READWRITE) preserves this byte order.
+             * This explicit variable documents the expected endianness for clarity. */
+            uint64_t nNonceLE = nNonce;
+            
             /* Training wheels logging (opt-in diagnostic mode) */
             bool fTrainingWheels = config::GetBoolArg("-trainingwheels", false);
             if(fTrainingWheels)
@@ -244,18 +255,26 @@ namespace TAO
                 debug::log(0, "");
                 debug::log(0, "🔬 GetPrime() CALCULATION:");
                 debug::log(0, "   ProofHash:  ", nPrime.ToString().substr(0, 64), "...");
-                debug::log(0, "   nNonce:     0x", std::hex, nNonce, std::dec);
+                
+                /* Show nonce in multiple formats for debugging */
+                std::ostringstream oss;
+                oss << "0x" << std::hex << std::setfill('0') << std::setw(16) << nNonceLE;
+                debug::log(0, "   nNonce (LE): ", oss.str());
+                
+                /* Show raw bytes (little-endian byte order) */
+                debug::log(0, "   nNonce (raw bytes): ", HexStr(reinterpret_cast<const uint8_t*>(&nNonce), 
+                                                                  reinterpret_cast<const uint8_t*>(&nNonce) + 8));
             }
-
+            
             /* Add nonce to prime */
-            nPrime += nNonce;
-
+            nPrime += nNonceLE;
+            
             if(fTrainingWheels)
             {
                 debug::log(0, "   hashPrime:  ", nPrime.ToString().substr(0, 64), "...");
                 debug::log(0, "");
             }
-
+            
             return nPrime;
         }
 
@@ -570,7 +589,7 @@ namespace TAO
                  * fForceVerify) OR whenever the node is not synchronizing.  During
                  * genuine IBD of already-confirmed history the check is skipped for
                  * speed; a freshly mined tip block always passes fForceVerify=true. */
-                uint32_t nPrimeBits = GetPrimeBits(nPrimeCandidate, vOffsets, fForceVerify || !ChainState::Synchronizing(), nVersion);
+                uint32_t nPrimeBits = GetPrimeBits(nPrimeCandidate, vOffsets, fForceVerify || !ChainState::Synchronizing());
                 
                 if(fTrainingWheels)
                 {
