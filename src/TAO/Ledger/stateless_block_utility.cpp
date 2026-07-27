@@ -1269,8 +1269,10 @@ namespace TAO::Ledger
 
         /* Chain-offset bytes are all bytes except the last 4 (fractional difficulty).
          * Each chain-offset encodes the gap to the next prime in the Cunningham chain;
-         * the maximum valid gap is 12 (hardcoded in GetOffsets / GetPrimeDifficulty). */
-        const size_t nChainOffsets = vOffsets.size() - 4;
+         * the maximum valid gap is 12 (hardcoded in GetOffsets / GetPrimeDifficulty).
+         * Use the shared PrimeChainOffsetCount() helper (single source of truth,
+         * safe against underflow) rather than re-deriving `size() - 4` here. */
+        const size_t nChainOffsets = PrimeChainOffsetCount(vOffsets);
         for(size_t i = 0; i < nChainOffsets; ++i)
         {
             if(vOffsets[i] > 12)

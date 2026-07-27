@@ -53,6 +53,29 @@ namespace TAO
         uint32_t SetBits(double nDiff);
 
 
+        /** PrimeChainOffsetCount
+         *
+         *  Safely computes the number of Cunningham chain-offset bytes encoded
+         *  in a serialized Prime vOffsets vector, i.e. `vOffsets.size() - 4`
+         *  (the trailing 4 bytes are always the fractional difficulty).
+         *
+         *  A well-formed vOffsets is either empty (optimized path unused) or
+         *  has size >= 5. Any non-empty vector shorter than 5 bytes is
+         *  malformed; computing `size() - 4` directly on such a vector with
+         *  unsigned arithmetic underflows and causes out-of-bounds reads in
+         *  every caller that loops using the raw subtraction. This helper is
+         *  the single source of truth for that computation so no call site
+         *  can reintroduce the underflow.
+         *
+         *  @param[in] vOffsets The serialized Prime offsets vector.
+         *
+         *  @return The number of chain-offset bytes, or 0 if vOffsets is
+         *          empty or malformed (size < 5).
+         *
+         **/
+        size_t PrimeChainOffsetCount(const std::vector<uint8_t>& vOffsets);
+
+
         /** GetPrimeDifficulty
          *
          *  Determines the difficulty of the Given Prime Number.

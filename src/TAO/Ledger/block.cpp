@@ -546,7 +546,7 @@ namespace TAO
                          * vOffsets has 4 trailing bytes for fractional difficulty, so we need size > 4 */
                         if(vOffsets.size() > 4)
                         {
-                            size_t nChainMembers = std::min(size_t(5), vOffsets.size() > 4 ? vOffsets.size() - 4 : 0);
+                            size_t nChainMembers = std::min(size_t(5), PrimeChainOffsetCount(vOffsets));
                             if(nChainMembers > 0)
                             {
                                 debug::log(0, "");
@@ -635,12 +635,22 @@ namespace TAO
                     return debug::error(FUNCTION, "prime-cluster below target ", "(proof: ", nPrimeBits, " target: ", nBits, ")");
                 }
 
-                /* Build offset list. */
+                /* Build offset list.
+                 *
+                 * NOTE: vOffsets can legitimately be empty here (e.g. legacy/
+                 * pre-optimization blocks that took the brute-force cluster
+                 * scan fallback in GetPrimeDifficulty()). PrimeChainOffsetCount()
+                 * returns 0 in that case rather than underflowing on the raw
+                 * `vOffsets.size() - 4` subtraction (a size_t/uint32_t
+                 * underflow here previously caused an out-of-bounds read and
+                 * a segfault on fresh sync — see PrimeChainOffsetCount() in
+                 * prime.h for the full rationale). */
                 std::string strOffsets = "";
-                for(uint32_t i = 0; i < vOffsets.size() - 4; ++i)
+                const size_t nChainOffsets = PrimeChainOffsetCount(vOffsets);
+                for(size_t i = 0; i < nChainOffsets; ++i)
                 {
                     strOffsets += debug::safe_printstr("+ ", uint32_t(vOffsets[i]));
-                    if(i < vOffsets.size() - 5)
+                    if(i + 1 < nChainOffsets)
                         strOffsets += ", ";
                 }
 
