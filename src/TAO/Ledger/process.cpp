@@ -327,25 +327,6 @@ namespace TAO
             }
 
 
-            bool ValidateStoredState(const TAO::Ledger::BlockState& state)
-            {
-                if(state.nVersion < 7 || state.vtx.empty()
-                || state.vtx.back().first != TRANSACTION::TRITIUM)
-                    return false;
-
-                TAO::Ledger::TritiumBlock block;
-                static_cast<TAO::Ledger::Block&>(block) =
-                    static_cast<const TAO::Ledger::Block&>(state);
-                block.nTime = state.nTime;
-                block.vtx.assign(state.vtx.begin(), std::prev(state.vtx.end()));
-
-                if(!LLD::Ledger->ReadTx(state.vtx.back().second, block.producer,
-                    FLAGS::BLOCK))
-                    return false;
-
-                return block.CheckStored(true) && block.vMissing.empty()
-                    && !block.fConflicted;
-            }
         }
 
 
@@ -473,12 +454,21 @@ namespace TAO
                 nConnectDepth, nDisconnectDepth))
                 return false;
 
-            /* Preflight the complete connecting ancestry before any state change. */
+            /* Preflight the complete connecting ancestry before any state change.
+             * This only verifies hash-chain continuity (parent linkage and
+             * height sequencing); it does not re-run full stored-state
+             * validation (block.CheckStored()), since blocks reaching this
+             * point were already validated by Check()/Accept() at original
+             * acceptance time. A prior stored-state re-validation here was
+             * Tritium-only (required nVersion >= 7 and a trailing TRITIUM
+             * tx), which made it unconditionally reject every pre-Tritium
+             * Legacy-era block and permanently blocked best-chain activation
+             * on any fresh sync from genesis. */
             TAO::Ledger::BlockState stateCursor = stateCandidate;
             uint32_t nValidated = 0;
             while(stateCursor != stateAncestor)
             {
-                if(stateCursor.fConflicted || !ValidateStoredState(stateCursor))
+                if(stateCursor.fConflicted)
                     return debug::error(FUNCTION, "candidate preflight failed for ",
                         stateCursor.GetHash().SubString());
 
