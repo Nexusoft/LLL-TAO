@@ -421,31 +421,6 @@ namespace TAO
                 if(GetChannel() != CHANNEL::PRIME && !vOffsets.empty())
                     return debug::error(FUNCTION, "offsets included in non prime block");
 
-                /* [DoS hardening] Cap the size of network-received Prime
-                 * vOffsets before it reaches GetPrimeBits() / GetPrimeDifficulty(),
-                 * which iterates once per chain-offset byte and (once the node
-                 * is fully synchronized, i.e. fVerify == true) performs a full
-                 * Miller-Rabin + Fermat primality test per iteration. A block
-                 * received from a peer over the wire is otherwise bounded only
-                 * by the connection's send-buffer limit (multiple MB), so an
-                 * unbounded vOffsets could force many thousands of expensive
-                 * BIGNUM primality tests per received block — a CPU-exhaustion
-                 * DoS vector distinct from (and not fixed by) the Miller-Rabin
-                 * activation gate above.
-                 *
-                 * This mirrors the identical ceiling already enforced for
-                 * miner-submitted offsets by VerifySubmittedPrimeOffsets() /
-                 * LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX, so both
-                 * the mined-block and network-relay paths share one source of
-                 * truth. It is a purely structural ceiling (no Cunningham chain
-                 * of this length has ever been found at any known difficulty),
-                 * so it is safe to apply unconditionally to all Tritium-era
-                 * blocks without a version gate. */
-                if(GetChannel() == CHANNEL::PRIME
-                && vOffsets.size() > LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX)
-                    return debug::error(FUNCTION, "prime vOffsets too long: ", vOffsets.size(),
-                                        " bytes (maximum ", LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX, ")");
-
                 /* Check the Proof of Work Claims.  fForceProof bypasses the
                  * Synchronizing() fast-path so mined/submitted blocks are always
                  * fully verified (closes both the Check() gate and the inner

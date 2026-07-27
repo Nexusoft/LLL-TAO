@@ -20,6 +20,7 @@ ________________________________________________________________________________
 
 #include <LLP/types/tritium.h>
 #include <LLP/include/global.h>
+#include <LLP/include/falcon_constants.h>
 #include <LLP/include/manager.h>
 #include <LLP/templates/events.h>
 
@@ -2845,6 +2846,21 @@ namespace LLP
                         TAO::Ledger::TritiumBlock block;
                         ssPacket >> block;
 
+                        /* [DoS prefilter] Reject oversized Prime vOffsets before
+                         * they reach Check() / GetPrimeBits() and trigger expensive
+                         * BIGNUM primality tests. This is an ingress-only policy (not
+                         * a consensus rule) so it lives here rather than in Check(). */
+                        if(block.GetChannel() == TAO::Ledger::CHANNEL::PRIME
+                        && block.vOffsets.size() > LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX)
+                        {
+                            if(DDOS)
+                                DDOS->rSCORE += 50;
+
+                            return debug::drop(NODE, "TYPES::BLOCK::TRITIUM: prime vOffsets too long: ",
+                                               block.vOffsets.size(), " (maximum ",
+                                               LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX, ")");
+                        }
+
                         /* Process the block. */
                         TAO::Ledger::Process(block, nStatus, this);
 
@@ -3149,6 +3165,20 @@ namespace LLP
                         /* Get the block from the stream. */
                         TAO::Ledger::ClientBlock block;
                         ssPacket >> block;
+
+                        /* [DoS prefilter] Reject oversized Prime vOffsets before
+                         * they reach Check() / GetPrimeBits() and trigger expensive
+                         * BIGNUM primality tests. Ingress-only policy, not a consensus rule. */
+                        if(block.GetChannel() == TAO::Ledger::CHANNEL::PRIME
+                        && block.vOffsets.size() > LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX)
+                        {
+                            if(DDOS)
+                                DDOS->rSCORE += 50;
+
+                            return debug::drop(NODE, "TYPES::BLOCK::CLIENT: prime vOffsets too long: ",
+                                               block.vOffsets.size(), " (maximum ",
+                                               LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX, ")");
+                        }
 
                         /* Process the block. */
                         TAO::Ledger::Process(block, nStatus);

@@ -448,15 +448,6 @@ namespace TAO
                 if(GetChannel() != CHANNEL::PRIME && !vOffsets.empty())
                     return debug::error(FUNCTION, "offsets included in non prime block");
 
-                /* [DoS hardening] Cap network-received Prime vOffsets size.
-                 * See TritiumBlock::Check() in tritium.cpp for full rationale;
-                 * this mirrors that same ceiling for the -client mode block
-                 * path so both share one source of truth. */
-                if(GetChannel() == CHANNEL::PRIME
-                && vOffsets.size() > LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX)
-                    return debug::error(FUNCTION, "prime vOffsets too long: ", vOffsets.size(),
-                                        " bytes (maximum ", LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX, ")");
-
                 /* Check the Proof of Work Claims.  fForceProof bypasses the
                  * Synchronizing() fast-path for unconditional verification. */
                 if((fForceProof || !TAO::Ledger::ChainState::Synchronizing()) && !VerifyWork(fForceProof))
