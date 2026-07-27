@@ -1091,8 +1091,23 @@ namespace TAO
                     return;
                 }
 
-                /* Check if the block is valid. Skip when already validated by ValidateMinedBlock(). */
-                if(!fSkipCheck && !block.Check(true))
+                /* Check if the block is valid. Skip when already validated by ValidateMinedBlock().
+                 *
+                 * Do NOT force full proof here (fForceProof=false). This is the main
+                 * network/sync ingestion path -- every block received during initial
+                 * block download (IBD) passes through here, not just newly mined tips.
+                 * Forcing fForceProof=true short-circuits the `fForceProof ||
+                 * !Synchronizing()` gate in CheckInternal()/VerifyWork(), making the
+                 * Synchronizing() fast-path dead code and running full PrimeCheck()
+                 * (Miller-Rabin + Fermat BN_mod_exp per Cunningham chain member) on
+                 * every single already-confirmed historical block, which collapsed
+                 * sync speed from hours to days. Leaving fForceProof=false here
+                 * restores the intended behavior: Synchronizing()==true skips the
+                 * expensive re-verification of history already agreed upon by the
+                 * network, while Synchronizing()==false (caught up) or a locally
+                 * mined/submitted block (via ValidateMinedBlock()'s explicit
+                 * Check(true)) still gets full verification. */
+                if(!fSkipCheck && !block.Check())
                 {
                     /* [Option C] Negative/retry cache for Check()-rejected blocks.
                      * Count consecutive rejections for this exact block hash. */
@@ -1130,6 +1145,12 @@ namespace TAO
 
                         mempool.Check();
 
+                        /* Intentionally forces full proof verification (fForceProof=true)
+                         * unlike the primary Check() above. This is a rare, targeted
+                         * recovery retry (gated behind CHECK_REJECT_RESYNC_THRESHOLD
+                         * consecutive rejections of the identical block hash), not the
+                         * bulk IBD ingestion path, so the extra PrimeCheck()/VerifyWork()
+                         * cost here is negligible and the stronger guarantee is worth it. */
                         if(block.Check(true))
                         {
                             fRecovered = true;
@@ -1414,6 +1435,15 @@ namespace TAO
                         debug::log(0, FUNCTION, "processing ORPHAN hash=",
                             hashOrphan.SubString(), " size=", mapOrphans.Size());
 
+                        /* Intentionally forces full proof verification (fForceProof=true)
+                         * unlike the primary Check() in the main sync path above. A node
+                         * performing initial block download follows the header/locator
+                         * chain sequentially and does not populate mapOrphans, so this
+                         * BFS drain only runs post-sync during fork/orphan-storm
+                         * recovery -- a low-volume, security-sensitive path where the
+                         * extra PrimeCheck()/VerifyWork() cost is acceptable and the
+                         * stronger guarantee (never reconnect an under-verified orphan)
+                         * is worth it. */
                         if(!pOrphan->Check(true))
                         {
                             const uint64_t nPruned = mapOrphans.RemoveSubtree(hashOrphan);

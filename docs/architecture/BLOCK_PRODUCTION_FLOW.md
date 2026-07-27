@@ -785,6 +785,29 @@ deferred to `VerifyWork()`.
 > produced by our own miner extends our current tip and is never legitimately
 > "synchronizing", so it does not qualify for that fast-path.
 
+> **Regression history: `fForceProof` leaked into the main sync path.** For a period,
+> `TAO::Ledger::Process()` (`src/TAO/Ledger/process.cpp`) called
+> `block.Check(/*fForceProof=*/true)` on its primary ingestion path — i.e. on
+> *every* block received over the network, not only mined/submitted ones. Because
+> `fForceProof=true` short-circuits the `fForceProof || !Synchronizing()` gate,
+> the `Synchronizing()` fast-path became dead code: full `VerifyWork()` /
+> `PrimeCheck()` (small-divisor sieve + Miller-Rabin + Fermat `BN_mod_exp`, once
+> per Cunningham chain offset) ran on every already-confirmed historical Prime
+> block during IBD, turning a multi-hour resync into a multi-day one. This has
+> been reverted: the primary path now calls plain `block.Check()`
+> (`fForceProof=false`), restoring the intended fast-path for
+> `Synchronizing()==true`. Two other call sites intentionally still pass
+> `fForceProof=true` and were left as-is because they are not part of the bulk
+> IBD path and the extra verification cost there is negligible:
+> - The targeted mempool-resync retry (`process.cpp`, gated behind
+>   `CHECK_REJECT_RESYNC_THRESHOLD` consecutive `Check()` rejections of the
+>   identical block hash) — a rare recovery branch, not per-block.
+> - The orphan-drain BFS (`process.cpp`, walks `mapOrphans` after a parent
+>   connects) — a node performing IBD follows the locator/header chain
+>   sequentially and does not populate `mapOrphans`, so this path only runs
+>   post-sync during fork/orphan-storm recovery, where full verification is a
+>   deliberate stronger guarantee before reconnecting an orphan subtree.
+
 #### `FinalizeWalletSignatureForSolvedBlock(block)`
 
 Generates the canonical `vchBlockSig` for a solved block:
