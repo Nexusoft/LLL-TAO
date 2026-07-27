@@ -2,7 +2,7 @@
 
 		Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-		(c) Copyright The Nexus Developers 2014 - 2025
+		(c) Copyright The Nexus Developers 2014 - 2026
 
 		Distributed under the MIT software license, see the accompanying
 		file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -1098,7 +1098,6 @@ namespace TAO
                         }
                     }
 
-
                     return;
                 }
 
@@ -1316,12 +1315,20 @@ namespace TAO
                 }
 
                 /* Check if valid in the chain. */
-                else if(!block.Accept())
+                else
                 {
-                    /* Set the status. */
-                    nStatus |= PROCESS::REJECTED;
+                    /* Print the block if it gets this far into processing. */
+                    if(config::nVerbose >= 2)
+                        debug::log(2, block.ToString());
 
-                    return;
+                    /* Attempt to accept block when we have all the transactions. */
+                    if(!block.Accept())
+                    {
+                        /* Set the status. */
+                        nStatus |= PROCESS::REJECTED;
+
+                        return;
+                    }
                 }
 
                 /* Set the status. */

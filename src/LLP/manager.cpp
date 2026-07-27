@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2025
+            (c) Copyright The Nexus Developers 2014 - 2026
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -115,7 +115,7 @@ namespace LLP
             return;
         }
 
-        uint64_t hash = addr.GetHash();
+        const uint64_t hash = addr.GetHash();
 
         LOCK(MUTEX);
 
@@ -196,7 +196,7 @@ namespace LLP
     /*  Determines if the address manager has the address or not. */
     bool AddressManager::Has(const BaseAddress &addr) const
     {
-        uint64_t hash = addr.GetHash();
+        const uint64_t hash = addr.GetHash();
         LOCK(MUTEX);
 
         auto it = mapTrustAddress.find(hash);
@@ -207,20 +207,22 @@ namespace LLP
     }
 
     /* Gets a TrustAddress from the BaseAddress */
-    const LLP::TrustAddress& AddressManager::Get(const BaseAddress &addr)
+    const LLP::TrustAddress& AddressManager::Get(const BaseAddress &addr) const
     {
-        uint64_t hash = addr.GetHash();
+        const uint64_t hash = addr.GetHash();
         LOCK(MUTEX);
 
-        return mapTrustAddress[hash];
+        const LLP::TrustAddress& rRet =
+            std::ref(mapTrustAddress.at(hash));
 
+        return rRet;
     }
 
 
     /*  Gets the Connect State of the address in the manager if it exists. */
     uint8_t AddressManager::GetState(const BaseAddress &addr) const
     {
-        uint64_t hash = addr.GetHash();
+        const uint64_t hash = addr.GetHash();
         uint8_t nState = static_cast<uint8_t>(ConnectState::NEW);
 
         LOCK(MUTEX);
@@ -235,7 +237,7 @@ namespace LLP
     /*  Finds the trust address and sets it's updated latency. */
     void AddressManager::SetLatency(uint32_t lat, const BaseAddress &addr)
     {
-        uint64_t hash = addr.GetHash();
+        const uint64_t hash = addr.GetHash();
         LOCK(MUTEX);
 
         auto it = mapTrustAddress.find(hash);
@@ -252,7 +254,7 @@ namespace LLP
     /*  Finds the trust address and sets it's updated block height. */
     void AddressManager::SetHeight(uint32_t height, const BaseAddress &addr)
     {
-        uint64_t hash = addr.GetHash();
+        const uint64_t hash = addr.GetHash();
         LOCK(MUTEX);
 
         auto it = mapTrustAddress.find(hash);
@@ -268,7 +270,7 @@ namespace LLP
 
 
     /*  Select a good address to connect to that isn't already connected. */
-    bool AddressManager::StochasticSelect(BaseAddress &addr)
+    bool AddressManager::StochasticSelect(BaseAddress &addr) const
     {
         std::vector<TrustAddress> vAddresses;
         uint64_t nSelect = 0;
@@ -313,7 +315,7 @@ namespace LLP
 
 
     /* Print the current nState of the address manager. */
-    std::string AddressManager::ToString()
+    std::string AddressManager::ToString() const
     {
         LOCK(MUTEX);
         std::string strRet = debug::safe_printstr(
@@ -347,7 +349,7 @@ namespace LLP
      *  behavior is to ban indefinitely.*/
     void AddressManager::Ban(const BaseAddress &addr, uint32_t nBanTime)
     {
-        uint64_t hash = addr.GetHash();
+        const uint64_t hash = addr.GetHash();
         LOCK(MUTEX);
 
         /* Store the hash in the map for banned addresses */
@@ -357,9 +359,9 @@ namespace LLP
         remove_address(addr);
     }
 
-    bool AddressManager::GetDNSName(const BaseAddress &addr, std::string &strDNS)
+    bool AddressManager::GetDNSName(const BaseAddress &addr, std::string &strDNS) const
     {
-        uint64_t hash = addr.GetHash();
+        const uint64_t hash = addr.GetHash();
         LOCK(MUTEX);
 
         /* Attempt to find the DNS string. */
@@ -404,7 +406,7 @@ namespace LLP
                     for(const auto& addr : vAddr)
                     {
                         /* Get the hash and load it into the map. */
-                        uint64_t hash = addr.GetHash();
+                        const uint64_t hash = addr.GetHash();
                         mapTrustAddress[hash] = addr;
 
                         hashLast = hash;
@@ -450,7 +452,7 @@ namespace LLP
 
 
     /*  Gets an array of trust addresses specified by the nState nFlags. */
-    void AddressManager::get_addresses(std::vector<TrustAddress> &vInfo, const uint8_t nFlags, const uint8_t nNotFlags)
+    void AddressManager::get_addresses(std::vector<TrustAddress> &vInfo, const uint8_t nFlags, const uint8_t nNotFlags) const
     {
         vInfo.clear();
         for(const auto &addr : mapTrustAddress)
@@ -467,7 +469,7 @@ namespace LLP
 
 
     /*  Gets the number of addresses specified by the nState nFlags. */
-    uint32_t AddressManager::count(const uint8_t nFlags)
+    uint32_t AddressManager::count(const uint8_t nFlags) const
     {
         uint32_t c = 0;
         for(const auto &it : mapTrustAddress)
@@ -505,7 +507,7 @@ namespace LLP
 
 
     /* Gets the cumulative count of each address nState nFlags. */
-    uint32_t AddressManager::total_count(const uint8_t nFlags)
+    uint32_t AddressManager::total_count(const uint8_t nFlags) const
     {
         uint32_t nTotal = 0;
         for(const auto& addr : mapTrustAddress)
@@ -529,21 +531,21 @@ namespace LLP
 
     /*  Helper function to determine if an address identified by it's hash
      *  is banned. */
-    bool AddressManager::is_banned(uint64_t hash)
+    bool AddressManager::is_banned(const uint64_t hash) const
     {
         return mapBanned.find(hash) != mapBanned.end();
     }
 
 
     /*  Returns the total number of addresses currently banned. */
-    uint32_t AddressManager::ban_count()
+    uint32_t AddressManager::ban_count() const
     {
         return static_cast<uint32_t>(mapBanned.size());
     }
 
 
     /*  Returns the total number of LISP EID addresses. */
-    uint32_t AddressManager::eid_count()
+    uint32_t AddressManager::eid_count() const
     {
         uint32_t c = 0;
         auto it = mapTrustAddress.begin();

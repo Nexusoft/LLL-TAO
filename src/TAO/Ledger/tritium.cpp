@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2025
+            (c) Copyright The Nexus Developers 2014 - 2026
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -378,10 +378,6 @@ namespace TAO
             /* Check that the producer is a valid transaction. */
             if(!producer.Check())
                 return debug::error(FUNCTION, "producer transaction is invalid");
-
-            /* Print the block if it gets this far into processing. */
-            if(config::nVerbose >= 2)
-                debug::log(2, ToString());
 
             /* Proof of stake specific checks. */
             if(IsProofOfStake())
@@ -793,8 +789,12 @@ namespace TAO
             }
 
             /* Add the producer transaction(s) */
-            if(!LLD::Ledger->WriteTx(producer.GetHash(), producer))
+            const uint512_t hashProducer = producer.GetHash();
+            if(!LLD::Ledger->WriteTx(hashProducer, producer))
                 return debug::error(FUNCTION, "failed to write producer to disk");
+
+            /* Make sure we don't have any orphans to process from the producer. */
+            mempool.ProcessOrphans(hashProducer);
 
             /* Accept the block state. */
             if(!state.Index())
