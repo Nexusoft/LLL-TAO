@@ -2,7 +2,7 @@
 
 			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2025
+			(c) Copyright The Nexus Developers 2014 - 2026
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -224,6 +224,10 @@ namespace TAO
          *  before the map is cleared. Same intentional cheap DoS guard
          *  rationale as MAX_MISSING_MAP_ENTRIES above. **/
         static const uint64_t MAX_CHECK_REJECT_MAP_ENTRIES = 10000;
+
+
+        /** Track the times we have requested processed missing transactions so we don't loop too much. **/
+        extern std::map<uint1024_t, uint64_t> mapLastMissing;
 
 
         /** Mutex to protect checking more than one block at a time. **/

@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2025
+            (c) Copyright The Nexus Developers 2014 - 2026
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -180,7 +180,7 @@ namespace LLP
          *  @param[in] addr The address to find.
          *
          **/
-        const LLP::TrustAddress& Get(const BaseAddress &addr);
+        const LLP::TrustAddress& Get(const BaseAddress &addr) const;
 
 
         /** GetState
@@ -226,7 +226,7 @@ namespace LLP
          *  @return True is successful, false otherwise
          *
          **/
-        bool StochasticSelect(BaseAddress &addr);
+        bool StochasticSelect(BaseAddress &addr) const;
 
 
         /** ReadDatabase
@@ -242,7 +242,7 @@ namespace LLP
          *  Print the current nState of the address manager.
          *
          **/
-        std::string ToString();
+        std::string ToString() const;
 
 
         /** SetPort
@@ -275,7 +275,7 @@ namespace LLP
           *  @return Returns true if the address has a DNS name.
           *
           **/
-         bool GetDNSName(const BaseAddress &addr, std::string &strDNS);
+         bool GetDNSName(const BaseAddress &addr, std::string &strDNS) const;
 
 
     private:
@@ -290,7 +290,7 @@ namespace LLP
          *  @param[in] nFlags Specify which types of connections to get the info from.
          *
          **/
-        void get_addresses(std::vector<TrustAddress> &vInfo, const uint8_t nFlags = CONNECT_FLAGS_ALL, const uint8_t nNotFlags = 0);
+        void get_addresses(std::vector<TrustAddress> &vInfo, const uint8_t nFlags = CONNECT_FLAGS_ALL, const uint8_t nNotFlags = 0) const;
 
 
         /** count
@@ -300,7 +300,7 @@ namespace LLP
          *  @param[in] nFlags Specify which types of connections to get the info from.
          *
          **/
-        uint32_t count(const uint8_t nFlags = CONNECT_FLAGS_ALL);
+        uint32_t count(const uint8_t nFlags = CONNECT_FLAGS_ALL) const;
 
 
         /** total_count
@@ -310,7 +310,7 @@ namespace LLP
          *  @param[in] nFlags Specify which types of connections to get the info from.
          *
          **/
-        uint32_t total_count(const uint8_t nFlags);
+        uint32_t total_count(const uint8_t nFlags) const;
 
 
         /** remove_address
@@ -333,7 +333,7 @@ namespace LLP
          *  @return Returns true if address is banned, false otherwise.
          *
          **/
-        bool is_banned(uint64_t hash);
+        bool is_banned(uint64_t hash) const;
 
 
         /** ban_count
@@ -341,7 +341,7 @@ namespace LLP
          *  Returns the total number of addresses currently banned.
          *
          **/
-        uint32_t ban_count();
+        uint32_t ban_count() const;
 
 
         /** eid_count
@@ -349,7 +349,7 @@ namespace LLP
          *  Returns the total number of LISP EID addresses.
          *
          **/
-        uint32_t eid_count();
+        uint32_t eid_count()const ;
 
 
         /** update_state

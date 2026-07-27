@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2025
+            (c) Copyright The Nexus Developers 2014 - 2026
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -75,6 +75,10 @@ namespace TAO
              * descendant enforcement). */
             if(ChainState::Synchronizing())
             {
+                /* If no checkpoint defined, return true. */
+                if(ChainState::hashCheckpoint == 0)
+                    return true;
+
                 /* Check that height isn't exceeded. */
                 if(config::fTestNet || state.nHeight > CHECKPOINT_HEIGHT)
                     return true;
