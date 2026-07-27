@@ -73,6 +73,25 @@ namespace TAO
         static const uint32_t MAX_CONFLICT_STALE_RETRIES = 20;
 
 
+        /** Maximum number of consecutive UNKNOWN-ancestor passes that Check()
+         *  will retain a genesis's transactions in mapConflicts before
+         *  force-evicting them.  UNKNOWN means the conflicting predecessor's
+         *  block could not be located on disk at all -- distinct from
+         *  DEFERRED_LOCAL_STATE (ancestor confirmed on our main chain) and
+         *  INVALID_ABSOLUTE (ancestor confirmed off our main chain).  This
+         *  most commonly happens while a node is still catching up to a
+         *  peer's canonical branch after being wedged on a stale/orphaned
+         *  side branch, so it needs a larger budget than
+         *  MAX_CONFLICT_STALE_RETRIES: resolving it depends on a full block
+         *  sync completing (which can take longer than a single idle
+         *  sigchain reconnecting), not just local state catching up.
+         *
+         *  Sized relative to CONFLICTS_SWEEP_INTERVAL_SECONDS (30 s): 80
+         *  retries x 30 s = 40 minutes of retention before falling back to
+         *  eviction as a last resort. **/
+        static const uint32_t MAX_UNKNOWN_ANCESTOR_RETRIES = 80;
+
+
         /** Minimum number of seconds between periodic,
          *  chain-tip-independent calls to Mempool::Check() from
          *  TritiumNode's per-connection GENERIC event handler. Check()'s
@@ -179,6 +198,25 @@ namespace TAO
              *  Guards the "once per genesis" requirement for the operator
              *  diagnostic so the logs are actionable rather than noisy. **/
             std::set<uint256_t> setStrandedGeneses;
+
+
+            /** Per-genesis count of consecutive UNKNOWN-ancestor passes (the
+             *  conflicting predecessor's block is not on disk at all) in
+             *  Check()'s conflict-reconciliation loop.  Tracked separately
+             *  from mapConflictRetries because UNKNOWN is a distinct
+             *  classification from DEFERRED_LOCAL_STATE with its own, larger
+             *  retry budget (MAX_UNKNOWN_ANCESTOR_RETRIES).  Bounded to
+             *  MAX_CONFLICTS_MAP_ENTRIES entries; cleared wholesale when the
+             *  cap is hit, matching the mapConflictRetries pattern. **/
+            std::map<uint256_t, uint32_t> mapUnknownAncestorRetries;
+
+
+            /** Genesis-ids for which an UNKNOWN-ancestor STRANDED_STATE
+             *  diagnostic has already been emitted during the current
+             *  session.  Bounded to MAX_CONFLICTS_MAP_ENTRIES entries;
+             *  wholesale-cleared when full.  Guards the "once per genesis"
+             *  requirement so the logs stay actionable rather than noisy. **/
+            std::set<uint256_t> setUnknownAncestorGeneses;
 
 
             /** [Option 1] Bounds mapConflicts before inserting a new entry: if the
