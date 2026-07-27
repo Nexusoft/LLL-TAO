@@ -3831,7 +3831,7 @@ namespace LLP
                 /* Legacy fallback: derive offsets locally when the miner did not submit
                  * them (compact wrapper path).  Backwards-compatible with older miners. */
                 if(pBlock->vOffsets.empty())
-                    TAO::Ledger::GetOffsets(pBlock->GetPrime(), pBlock->vOffsets);
+                    TAO::Ledger::GetOffsets(pBlock->GetPrime(), pBlock->vOffsets, pBlock->nVersion);
 
                 debug::log(2, FUNCTION, "Prime channel: solved candidate built (nTime preserved, vOffsets applied)");
             }

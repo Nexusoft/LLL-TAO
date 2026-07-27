@@ -1775,7 +1775,7 @@ namespace TAO
                         return nBits * 25;
 
                     /* Get the prime difficulty. */
-                    uint64_t nWeight = SetBits(GetPrimeDifficulty(GetPrime(), vOffsets, false)) * 25;
+                    uint64_t nWeight = SetBits(GetPrimeDifficulty(GetPrime(), vOffsets, false, nVersion)) * 25;
 
                     return nWeight + 1;
                 }
