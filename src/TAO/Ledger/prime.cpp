@@ -43,6 +43,17 @@ namespace TAO
         }
 
 
+        /* Safely computes the number of Cunningham chain-offset bytes encoded
+         * in a serialized Prime vOffsets vector. See prime.h for rationale. */
+        size_t PrimeChainOffsetCount(const std::vector<uint8_t>& vOffsets)
+        {
+            if(vOffsets.size() < 5)
+                return 0;
+
+            return vOffsets.size() - 4;
+        }
+
+
         /* Determines the difficulty of the Given Prime Number. */
         double GetPrimeDifficulty(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets, const bool fVerify,
                                    const uint32_t nVersion)
@@ -62,9 +73,12 @@ namespace TAO
                  *
                  * A well-formed vOffsets is [gap_1 .. gap_(N-1), frac_0 .. frac_3]
                  * with N >= 2 (chain length 2 or longer), giving size >= 5.
-                 * Any non-empty vector with size < 5 is malformed and would
-                 * unsigned-underflow `nSize - 4` below, walking the loop off the
-                 * end of the buffer and reading garbage from `&vOffsets[nSize-4]`.
+                 * Any non-empty vector with size < 5 is malformed; using the
+                 * raw `size() - 4` subtraction would unsigned-underflow, walking
+                 * the loop off the end of the buffer and reading garbage from
+                 * `&vOffsets[size()-4]`. PrimeChainOffsetCount() is the single
+                 * source of truth for this computation and returns 0 for any
+                 * malformed (non-empty, size < 5) vector instead of underflowing.
                  *
                  * The submission path is shielded by VerifySubmittedPrimeOffsets,
                  * but GetPrimeDifficulty is also reachable from local-derivation
@@ -76,8 +90,8 @@ namespace TAO
                     return 0.0;
 
                 /* Loop through offsets pattern. */
-                uint32_t nSize = vOffsets.size();
-                for(uint32_t n = 0; n < nSize - 4; ++n)
+                const size_t nChainOffsets = PrimeChainOffsetCount(vOffsets);
+                for(size_t n = 0; n < nChainOffsets; ++n)
                 {
                     /* Get the offset. */
                     uint8_t nOffset = vOffsets[n];
@@ -97,7 +111,7 @@ namespace TAO
 
                 /* Get fractional difficulty. */
                 uint32_t nFraction = 0;
-                std::memcpy(&nFraction, &vOffsets[nSize - 4], 4);
+                std::memcpy(&nFraction, &vOffsets[nChainOffsets], 4);
 
                 /* If verifying check the fractional difficulty. */
                 if(fVerify && GetFractionalDifficulty(hashNext + 14) != nFraction)
@@ -208,7 +222,7 @@ namespace TAO
             if(fDiagnostic)
             {
                 debug::log(2, FUNCTION, "════════════════════════════════════════");
-                debug::log(2, FUNCTION, "Result: ", vOffsets.size() - 4, " offsets found");
+                debug::log(2, FUNCTION, "Result: ", PrimeChainOffsetCount(vOffsets), " offsets found");
                 debug::log(2, FUNCTION, "Cunningham chain length: ", nChainLength);
                 debug::log(2, FUNCTION, "Fractional difficulty: ", nFraction);
                 debug::log(2, FUNCTION, "════════════════════════════════════════");
