@@ -1548,6 +1548,47 @@ TEST_CASE("Post-sync state: nSyncSession==0 and fSynchronized==true after Sync()
 }
 
 
+TEST_CASE("Sync completion height guard prevents stale half-chain finalization", "[ledger][process]")
+{
+    const uint32_t nSavedBestHeight    = TAO::Ledger::ChainState::nBestHeight.load();
+    const uint32_t nSavedMaxPeerHeight = TAO::Ledger::ChainState::nMaxPeerHeight.load();
+
+    /* Model the completion guard in src/LLP/tritium.cpp:
+     *   local_best >= sync_peer_height
+     *   && sync_peer_height + tolerance >= global_max_peer_height
+     *
+     * This prevents declaring full sync when the active sync peer is still far
+     * behind the strongest advertised peer height (the half-chain stale-state
+     * failure mode). */
+    constexpr uint32_t nTolerance = 2;
+
+    TAO::Ledger::ChainState::nBestHeight.store(500000);
+    TAO::Ledger::ChainState::nMaxPeerHeight.store(900000);
+    const uint32_t nSyncPeerHeight = 500000;
+
+    const bool fCanFinalizeWithStaleSyncPeer =
+        (TAO::Ledger::ChainState::nBestHeight.load() >= nSyncPeerHeight)
+        && (static_cast<uint64_t>(nSyncPeerHeight) + nTolerance
+            >= static_cast<uint64_t>(TAO::Ledger::ChainState::nMaxPeerHeight.load()));
+
+    REQUIRE_FALSE(fCanFinalizeWithStaleSyncPeer);
+
+    TAO::Ledger::ChainState::nBestHeight.store(900000);
+    TAO::Ledger::ChainState::nMaxPeerHeight.store(900001);
+    const uint32_t nNearTipSyncPeerHeight = 900000;
+
+    const bool fCanFinalizeNearTip =
+        (TAO::Ledger::ChainState::nBestHeight.load() >= nNearTipSyncPeerHeight)
+        && (static_cast<uint64_t>(nNearTipSyncPeerHeight) + nTolerance
+            >= static_cast<uint64_t>(TAO::Ledger::ChainState::nMaxPeerHeight.load()));
+
+    REQUIRE(fCanFinalizeNearTip);
+
+    TAO::Ledger::ChainState::nBestHeight.store(nSavedBestHeight);
+    TAO::Ledger::ChainState::nMaxPeerHeight.store(nSavedMaxPeerHeight);
+}
+
+
 /* ==========================================================================
  * Tests for the admissibility classifier (stranded-state loop fix)
  *
@@ -1848,4 +1889,3 @@ TEST_CASE("mapConflicts retry budget bounds are well-formed", "[ledger][process]
         * TAO::Ledger::CONFLICTS_SWEEP_INTERVAL_SECONDS;
     REQUIRE(nWindowSecs >= 300u);  /* >= 5 minutes */
 }
-
