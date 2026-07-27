@@ -424,13 +424,13 @@ namespace TAO
                     /* Unix timestamp of the last time this node had any communications with the peer */
                     obj["lastseen"] = connection.get()->nLastPing.load();
 
-                    /* See if the connection is in the address manager */
+                    /* See if the connection is in the address manager. Use the atomic
+                     * Get() overload so a concurrent removal/ban between a separate
+                     * Has()/Get() pair can't throw std::out_of_range. */
+                    LLP::TrustAddress trustAddress;
                     if(LLP::TRITIUM_SERVER->GetAddressManager() != nullptr
-                    && LLP::TRITIUM_SERVER->GetAddressManager()->Has(connection.get()->addr))
+                    && LLP::TRITIUM_SERVER->GetAddressManager()->Get(connection.get()->addr, trustAddress))
                     {
-                        /* Get the trust address from the address manager */
-                        const LLP::TrustAddress& trustAddress = LLP::TRITIUM_SERVER->GetAddressManager()->Get(connection.get()->addr);
-
                         /* The number of connections successfully established with this peer since this node started */
                         obj["connects"] = trustAddress.nConnected;
 

@@ -183,6 +183,21 @@ namespace LLP
         const LLP::TrustAddress& Get(const BaseAddress &addr) const;
 
 
+        /** Get
+         *
+         *  Atomically checks for and retrieves a TrustAddress from the BaseAddress
+         *  under a single lock, avoiding the check-then-act race between a separate
+         *  Has() and Get() call where a concurrent removal/ban could throw.
+         *
+         *  @param[in] addr The address to find.
+         *  @param[out] addrOut The TrustAddress to populate if found.
+         *
+         *  @return True if the address was found and addrOut was populated, false otherwise.
+         *
+         **/
+        bool Get(const BaseAddress &addr, TrustAddress &addrOut) const;
+
+
         /** GetState
          *
          *  Gets the Connect State of the address in the manager if it exists.

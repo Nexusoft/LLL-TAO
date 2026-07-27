@@ -2670,13 +2670,12 @@ namespace LLP
                                 /* Add addresses to manager.. */
                                 if(TRITIUM_SERVER->GetAddressManager() && addr.IsRoutable())
                                 {
-                                    /* Only output debug info if new address. */
-                                    if(TRITIUM_SERVER->GetAddressManager()->Has(addr))
+                                    /* Only output debug info if new address. Use the atomic Get()
+                                     * overload so a concurrent removal/ban between a separate
+                                     * Has()/Get() pair can't throw std::out_of_range. */
+                                    LLP::TrustAddress addrInfo;
+                                    if(TRITIUM_SERVER->GetAddressManager()->Get(addr, addrInfo))
                                     {
-                                        /* Only notify address logs if more than ten minutes since last connection. */
-                                        const LLP::TrustAddress& addrInfo =
-                                            TRITIUM_SERVER->GetAddressManager()->Get(addr);
-
                                         /* Calculate how long it has been since last connection. */
                                         const uint64_t nTimeAway =
                                             (runtime::unifiedtimestamp() - addrInfo.nLastSeen);
