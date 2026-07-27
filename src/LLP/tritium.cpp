@@ -19,7 +19,6 @@ ________________________________________________________________________________
 #include <LLD/cache/binary_key.h>
 
 #include <LLP/types/tritium.h>
-#include <LLP/include/falcon_constants.h>
 #include <LLP/include/global.h>
 #include <LLP/include/manager.h>
 #include <LLP/templates/events.h>
@@ -3150,20 +3149,6 @@ namespace LLP
                         /* Get the block from the stream. */
                         TAO::Ledger::ClientBlock block;
                         ssPacket >> block;
-
-                        /* [DoS prefilter] Reject oversized Prime vOffsets before the block
-                         * reaches consensus validation.  This is an ingress-only anti-DoS
-                         * ceiling, not a consensus rule: GetPrimeDifficulty() iterates once
-                         * per chain-offset byte and (post-sync) runs Miller-Rabin + Fermat
-                         * per iteration, so an unbounded vOffsets supplied by a malicious
-                         * peer is a CPU-exhaustion vector.  The ceiling mirrors
-                         * LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX used for
-                         * miner-submitted offsets, so both ingress paths share one limit. */
-                        if(block.GetChannel() == TAO::Ledger::CHANNEL::PRIME
-                        && block.vOffsets.size() > LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX)
-                            return debug::drop(NODE, "CLIENT block prime vOffsets too long: ",
-                                               block.vOffsets.size(), " bytes (maximum ",
-                                               LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX, ")");
 
                         /* Process the block. */
                         TAO::Ledger::Process(block, nStatus);
