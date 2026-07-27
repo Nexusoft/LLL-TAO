@@ -916,7 +916,28 @@ namespace TAO
                     if(itTime != mapLastMissingProcessTime.end()
                     && (nNow - itTime->second) < MISSING_REPROCESS_RATE_LIMIT_MS)
                     {
+                        /* This early return skips Check(), so block.vMissing
+                         * stays empty and block.hashMissing stays at its
+                         * default-constructed value of 0. The LLP layer
+                         * (tritium.cpp) treats hashMissing == 0 as "the
+                         * per-tx retry budget was just exhausted, escalate
+                         * to full branch recovery" (see the block.hashMissing
+                         * != 0 branch there). Without explicitly setting
+                         * hashMissing here, every throttled re-arrival of an
+                         * ordinary still-incomplete block (up to several
+                         * times a second per re-serving peer) was
+                         * misclassified the same way, triggering full
+                         * AttemptPeerBestChainRecovery + branch-sync +
+                         * random-peer re-fetch on each hit — and since
+                         * vMissing is empty on this fast path, the per-tx
+                         * fanout step always immediately no-ops with "no
+                         * missing tx hashes available for per-tx fanout".
+                         * Set hashMissing = hashBlock so the LLP layer takes
+                         * the normal, cheap "re-request this block's
+                         * transactions" branch instead, matching the
+                         * behavior of a genuine (non-rate-limited) miss. */
                         nStatus |= PROCESS::INCOMPLETE;
+                        block.hashMissing = hashBlock;
                         return;
                     }
                     /* Update the rate-limit timestamp before calling Check(). */
