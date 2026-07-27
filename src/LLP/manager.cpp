@@ -219,6 +219,21 @@ namespace LLP
     }
 
 
+    /* Atomically checks for and retrieves a TrustAddress from the BaseAddress. */
+    bool AddressManager::Get(const BaseAddress &addr, TrustAddress &addrOut) const
+    {
+        const uint64_t hash = addr.GetHash();
+        LOCK(MUTEX);
+
+        auto it = mapTrustAddress.find(hash);
+        if(it == mapTrustAddress.end())
+            return false;
+
+        addrOut = it->second;
+        return true;
+    }
+
+
     /*  Gets the Connect State of the address in the manager if it exists. */
     uint8_t AddressManager::GetState(const BaseAddress &addr) const
     {
