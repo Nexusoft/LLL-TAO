@@ -97,6 +97,8 @@ TEST_CASE("Stale sync warning limiter bounds and resets session state",
 {
     std::map<uint64_t, StaleSyncWarningState> mapStates;
 
+    /* Intentional same-timestamp fill: the production policy is a cheap
+     * clear-on-cap reset, not timestamp-ordered eviction. */
     for (std::size_t i = 0; i < STALE_SYNC_WARNING_MAX_ENTRIES; ++i)
         REQUIRE(RecordStaleSyncWarningEvent(mapStates, i + 1, 100).fEmitWarning);
 

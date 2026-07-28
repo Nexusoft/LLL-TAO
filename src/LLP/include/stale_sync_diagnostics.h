@@ -49,6 +49,9 @@ namespace LLP
         auto it = mapStates.find(nStaleSession);
         if(it == mapStates.end())
         {
+            /* Intentional clear-on-cap policy: this mirrors the existing
+             * bounded warning maps used in LLP hot paths and avoids an
+             * O(n) oldest-entry scan on every first-seen stale session. */
             if(mapStates.size() >= nMaxEntries)
                 mapStates.clear();
 
@@ -58,6 +61,9 @@ namespace LLP
         StaleSyncWarningState& state = it->second;
         ++state.nSuppressedBlocks;
 
+        /* If wall time moves backward, emit immediately and reset the stored
+         * timestamp so a future-valued last-warning time cannot suppress
+         * diagnostics indefinitely after the clock skew resolves. */
         if(!state.fHasEmittedWarning
         || nNow < state.nLastWarningTime
         || nNow - state.nLastWarningTime >= nThrottleSeconds)

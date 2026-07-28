@@ -3168,6 +3168,10 @@ namespace LLP
                             return debug::drop(NODE, "TYPES::BLOCK::SYNC: disabled in -client mode");
 
                         /* Check if this is an unsolicited sync block. */
+                        /* Capture a diagnostic snapshot once so the rejection
+                         * decision and any emitted warning describe the same
+                         * observed state, even if those atomics move again
+                         * before the warning is formatted. */
                         const uint64_t nSyncSession = TAO::Ledger::nSyncSession.load();
                         const bool fAlreadySynchronized = fSynchronized.load();
                         if(nCurrentSession != nSyncSession || fAlreadySynchronized)
