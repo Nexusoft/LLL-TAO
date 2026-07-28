@@ -51,6 +51,8 @@ namespace LLP
      *  - If `mapStates` is already at `nMaxEntries` when a new session arrives,
      *    the map is cleared before inserting the new entry. This intentionally
      *    mirrors the cheap clear-on-cap policy used by other LLP warning maps.
+     *    The cap-hit path is intentionally silent so stale-SYNC rejection does
+     *    not reintroduce extra log work in the hot receive path.
      *  - If `nNow` moves backward relative to the stored timestamp, the warning
      *    emits immediately and resets the timestamp to avoid indefinite silence.
      *  - If `nNow` jumps far forward, the interval comparison naturally makes
@@ -84,7 +86,9 @@ namespace LLP
         /* If wall-clock time moves backward (for example after a system-time
          * adjustment), emit immediately and reset the stored timestamp so a
          * future-valued last-warning time cannot suppress diagnostics
-         * indefinitely after the clock skew resolves. */
+         * indefinitely after the clock skew resolves. The skew check is kept
+         * before the subtraction branch so the unsigned interval arithmetic
+         * below cannot underflow on a backward time step. */
         if(!state.fHasEmittedWarning
         || nNow < state.nLastWarningTime
         || nNow - state.nLastWarningTime >= nThrottleSeconds)

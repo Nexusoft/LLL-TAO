@@ -3171,7 +3171,11 @@ namespace LLP
                         /* Capture a diagnostic snapshot once so the rejection
                          * decision and any emitted warning describe the same
                          * observed state, even if those atomics move again
-                         * before the warning is formatted. */
+                         * before the warning is formatted. Relaxed loads are
+                         * intentional here: the stale-SYNC guard only needs
+                         * the currently observed values for this packet, and
+                         * the warning is diagnostic rather than a cross-atomic
+                         * consistency guarantee. */
                         const uint64_t nSyncSession =
                             TAO::Ledger::nSyncSession.load(std::memory_order_relaxed);
                         const bool fAlreadySynchronized =
