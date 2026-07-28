@@ -3173,9 +3173,9 @@ namespace LLP
                          * observed state, even if those atomics move again
                          * before the warning is formatted. */
                         const uint64_t nSyncSession =
-                            TAO::Ledger::nSyncSession.load(std::memory_order_acquire);
+                            TAO::Ledger::nSyncSession.load(std::memory_order_relaxed);
                         const bool fAlreadySynchronized =
-                            fSynchronized.load(std::memory_order_acquire);
+                            fSynchronized.load(std::memory_order_relaxed);
                         if(nCurrentSession != nSyncSession || fAlreadySynchronized)
                         {
                             const uint64_t nNow = runtime::timestamp();

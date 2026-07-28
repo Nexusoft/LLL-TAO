@@ -53,6 +53,9 @@ namespace LLP
      *    mirrors the cheap clear-on-cap policy used by other LLP warning maps.
      *  - If `nNow` moves backward relative to the stored timestamp, the warning
      *    emits immediately and resets the timestamp to avoid indefinite silence.
+     *  - If `nNow` jumps far forward, the interval comparison naturally makes
+     *    the next event eligible immediately, after which throttling resumes
+     *    from the new timestamp.
      *
      *  Thread safety: this function does not lock `mapStates`; callers must
      *  provide any synchronization required by their connection model. */
