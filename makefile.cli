@@ -394,6 +394,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_session_store_tests.o \
 		   build/Tests_LLP_socket_buffer_tests.o \
 		   build/Tests_LLP_shared_template_payload_tests.o \
+		   build/Tests_LLP_stale_sync_warning_limiter_tests.o \
 		   build/Tests_LLP_stateless_miner.o \
 		   build/Tests_LLP_submit_block_format_test.o \
 		   build/Tests_LLP_template_metadata_channel_height.o \
