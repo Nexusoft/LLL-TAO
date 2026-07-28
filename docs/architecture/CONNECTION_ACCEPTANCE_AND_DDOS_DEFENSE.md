@@ -10,6 +10,14 @@ this change. `src/LLP/permissions.cpp` and the DDoS defaults in
 `src/LLP/global.cpp` were part of the ~553 files that auto-merged without
 textual conflicts and were therefore never manually reviewed.
 
+> **Note on "E.x" labels:** §2 below is titled "Fix E.3" because that is how
+> this specific fix was originally requested (as one item from a numbered
+> "E.1–E.6" list from an earlier audit conversation). That numbering scheme
+> is not used anywhere else in the codebase — it has no meaning outside this
+> document. §4 explains why the rest of that list (E.1, E.2, E.4, E.5, E.6)
+> could not be carried forward, and what was done instead to close out the
+> request.
+
 ---
 
 ## 1. The connection-acceptance pipeline
