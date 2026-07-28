@@ -1218,8 +1218,9 @@ namespace TAO
                 uint64_t nInputsTime   = swScript.ElapsedMicroseconds();
 
                 /* Only output best chain data when not syncing. */
-                if(config::nVerbose >= TAO::Ledger::ChainState::Synchronizing() ? 1 : 0)
-                    debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
+                const uint32_t nBestChainLogLevel = ChainState::Synchronizing() ? 1 : 0;
+                if(config::nVerbose >= nBestChainLogLevel)
+                    debug::log(0, FUNCTION,
                         "New Best Block hash=", hash.SubString(),
                         " height=", nHeight,
                         " trust=", nChainTrust,
@@ -1253,7 +1254,9 @@ namespace TAO
                 /* Capture whether this SetBest invocation was completing a chain reorganization.
                  * Must be read before fChainReorg is cleared so the value is preserved for the
                  * reorg-recovery diagnostic emitted after the push event is enqueued below. */
+                #ifndef UNIT_TESTS
                 const bool fWasReorg = ChainState::fChainReorg.load();
+                #endif
 
                 /* Reset our reorg block now. */
                 ChainState::fChainReorg.store(false);
@@ -1284,81 +1287,86 @@ namespace TAO
                  * happens, PoW templates anchored to the previous tip become stale.  Notify ALL Prime and
                  * Hash subscribers so miners immediately fetch fresh templates regardless of which channel
                  * produced the winning block. */
-                if (config::fShutdown.load())
+                #ifndef UNIT_TESTS
+                if(!ChainState::Synchronizing())
                 {
-                    debug::log(1, FUNCTION, "Shutdown requested; skipping miner notifications");
-                }
-                else
-                {
-                    /* Diagnostic log: compute per-channel state only when verbosity warrants it
-                     * (GetLastState and GetNextTargetRequired can involve disk I/O) */
-                    if(config::nVerbose >= 2)
+                    if(config::fShutdown.load())
                     {
-                        BlockState statePrime = *this;
-                        BlockState stateHash  = *this;
-                        uint32_t nPrimeBits = 0;
-                        uint32_t nHashBits  = 0;
-                        if(GetLastState(statePrime, 1))
-                            nPrimeBits = GetNextTargetRequired(statePrime, 1, false);
-                        if(GetLastState(stateHash, 2))
-                            nHashBits = GetNextTargetRequired(stateHash, 2, false);
-
-                        debug::log(2, FUNCTION, "Universal tip push: best=", hash.SubString(),
-                                   " unified=", nHeight,
-                                   " | Prime ch=", statePrime.nChannelHeight,
-                                   " nBits=0x", std::hex, nPrimeBits, std::dec,
-                                   " | Hash ch=", stateHash.nChannelHeight,
-                                   " nBits=0x", std::hex, nHashBits, std::dec,
-                                   " (block_ch=", GetChannel(), ")");
+                        debug::log(1, FUNCTION, "Shutdown requested; skipping miner notifications");
                     }
+                    else
+                    {
+                        /* Diagnostic log: compute per-channel state only when verbosity warrants it
+                         * (GetLastState and GetNextTargetRequired can involve disk I/O) */
+                        if(config::nVerbose >= 2)
+                        {
+                            BlockState statePrime = *this;
+                            BlockState stateHash  = *this;
+                            uint32_t nPrimeBits = 0;
+                            uint32_t nHashBits  = 0;
+                            if(GetLastState(statePrime, 1))
+                                nPrimeBits = GetNextTargetRequired(statePrime, 1, false);
+                            if(GetLastState(stateHash, 2))
+                                nHashBits = GetNextTargetRequired(stateHash, 2, false);
 
-                    /* Pre-warm the per-channel template cache for every
-                     * recently seen (channel, reward) tuple now that the
-                     * blockchain tip has advanced.  The warmer runs on its
-                     * own background thread so the SetBest critical path is
-                     * not slowed down.
-                     *
-                     * Ordering matters: fire prewarmer FIRST, then enqueue
-                     * PUSH notifications. This gives prewarmer a small head
-                     * start; combined with create.cpp singleflight coalescing,
-                     * per-connection workers are more likely to join an
-                     * existing in-flight build instead of duplicating Falcon
-                     * CreateProducer signing work. */
-                    LLP::MiningTemplatePrewarmer::Instance().NotifyTipAdvance(nHeight, hash);
+                            debug::log(2, FUNCTION, "Universal tip push: best=", hash.SubString(),
+                                       " unified=", nHeight,
+                                       " | Prime ch=", statePrime.nChannelHeight,
+                                       " nBits=0x", std::hex, nPrimeBits, std::dec,
+                                       " | Hash ch=", stateHash.nChannelHeight,
+                                       " nBits=0x", std::hex, nHashBits, std::dec,
+                                       " (block_ch=", GetChannel(), ")");
+                        }
 
-                    /* MinerPushDispatcher — canonical unified pathway for all
-                     * miner push notifications. Broadcasts to BOTH lanes
-                     * (Stateless + Legacy) for BOTH channels (Prime + Hash),
-                     * with deduplication to prevent double-sends from
-                     * accidental re-entry. EnqueuePushEvent() returns
-                     * immediately after queueing. */
-                    LLP::MinerPushDispatcher::EnqueuePushEvent(nHeight, hash);
+                        /* Pre-warm the per-channel template cache for every
+                         * recently seen (channel, reward) tuple now that the
+                         * blockchain tip has advanced.  The warmer runs on its
+                         * own background thread so the SetBest critical path is
+                         * not slowed down.
+                         *
+                         * Ordering matters: fire prewarmer FIRST, then enqueue
+                         * PUSH notifications. This gives prewarmer a small head
+                         * start; combined with create.cpp singleflight coalescing,
+                         * per-connection workers are more likely to join an
+                         * existing in-flight build instead of duplicating Falcon
+                         * CreateProducer signing work. */
+                        LLP::MiningTemplatePrewarmer::Instance().NotifyTipAdvance(nHeight, hash);
 
-                    /* Only Prime and Hash are listed here because external
-                     * miner templates are served for PoW channels. Proof-of-Stake
-                     * (channel 0) is intentionally excluded because stake minting
-                     * does not consume LLP mining templates. */
-                    debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_GREEN,
-                        "=== MINING_TEMPLATES_FLUSHED ===", ANSI_COLOR_RESET,
-                        " best=", hash.SubString(),
-                        " height=", nHeight,
-                        " channels=PRIME,HASH");
+                        /* MinerPushDispatcher — canonical unified pathway for all
+                         * miner push notifications. Broadcasts to BOTH lanes
+                         * (Stateless + Legacy) for BOTH channels (Prime + Hash),
+                         * with deduplication to prevent double-sends from
+                         * accidental re-entry. EnqueuePushEvent() returns
+                         * immediately after queueing. */
+                        LLP::MinerPushDispatcher::EnqueuePushEvent(nHeight, hash);
 
-                    /* Reorg-recovery diagnostic: if this SetBest completed a chain reorganization,
-                     * log that the push was enqueued so operators can trace reorg-recovery behavior.
-                     * During large reorgs the miner's LLP poll timeout may fire while SetBest() is
-                     * still processing, causing a disconnect.  This entry confirms the push was
-                     * sent regardless of how many miners were connected at enqueue time. */
-                    if(fWasReorg)
-                        debug::log(0, FUNCTION, "Reorg-recovery push enqueued at height ", nHeight,
-                                   " (disconnect=", vDisconnect.size(), " connect=", vConnect.size(), ")");
+                        /* Only Prime and Hash are listed here because external
+                         * miner templates are served for PoW channels. Proof-of-Stake
+                         * (channel 0) is intentionally excluded because stake minting
+                         * does not consume LLP mining templates. */
+                        debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_GREEN,
+                            "=== MINING_TEMPLATES_FLUSHED ===", ANSI_COLOR_RESET,
+                            " best=", hash.SubString(),
+                            " height=", nHeight,
+                            " channels=PRIME,HASH");
+
+                        /* Reorg-recovery diagnostic: if this SetBest completed a chain reorganization,
+                         * log that the push was enqueued so operators can trace reorg-recovery behavior.
+                         * During large reorgs the miner's LLP poll timeout may fire while SetBest() is
+                         * still processing, causing a disconnect.  This entry confirms the push was
+                         * sent regardless of how many miners were connected at enqueue time. */
+                        if(fWasReorg)
+                            debug::log(0, FUNCTION, "Reorg-recovery push enqueued at height ", nHeight,
+                                       " (disconnect=", vDisconnect.size(), " connect=", vConnect.size(), ")");
+                    }
                 }
+                #endif
 
                 /* Verify unified height consistency using existing ChannelStateManager infrastructure */
-                uint32_t nVerifyInterval = config::GetArg("-verifyunified", 10);
-                if(nVerifyInterval > 0)
+                if(!ChainState::Synchronizing())
                 {
-                    if(!LLP::ChannelStateManager::VerifyAllChannels(nVerifyInterval))
+                    const uint32_t nVerifyInterval = config::GetArg("-verifyunified", 10);
+                    if(nVerifyInterval > 0 && !LLP::ChannelStateManager::VerifyAllChannels(nVerifyInterval))
                     {
                         debug::warning(FUNCTION, "Unified height verification failed at height ", nHeight);
                         debug::warning(FUNCTION, "Chain may be in inconsistent state - fork callbacks triggered");
@@ -1367,7 +1375,8 @@ namespace TAO
                     }
                 }
 
-                TAO::Ledger::FinalizeLocalMinedTrackingAfterSetBest(*this);
+                if(!ChainState::Synchronizing())
+                    TAO::Ledger::FinalizeLocalMinedTrackingAfterSetBest(*this);
             }
 
             return true;
