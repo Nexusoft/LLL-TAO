@@ -695,21 +695,33 @@ namespace TAO
                      * which the receiver accepts unconditionally. */
                     try
                     {
-                        pSend->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                        const uint1024_t hashTarget = TAO::Ledger::ChainState::hashBestChain.load();
+                        const uint64_t nWindowRequest = !config::fClient.load()
+                            ? pSend->OpenTxResponseWindow(LLP::TxResponseKind::LIST,
+                                hashTarget, hashPeerBest)
+                            : 0;
+                        try
+                        {
+                        if(!pSend->PushMessage(LLP::TritiumNode::ACTION::LIST,
                             config::fClient.load()
                                 ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)
                                 : uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
                             uint8_t(LLP::TritiumNode::TYPES::BLOCK),
                             uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
-                            TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                            TAO::Ledger::Locator(hashTarget),
                             uint1024_t(hashPeerBest)
-                        );
-
-                        /* Open a response window so inline TYPES::TRANSACTION packets
-                         * that precede each block in the LIST response are accepted
-                         * rather than force-dropped as "unsolicited data". */
-                        if(!config::fClient.load())
-                            pSend->OpenTxResponseWindow(LLP::TxResponseKind::LIST);
+                        ))
+                        {
+                            if(nWindowRequest != 0)
+                                pSend->RollbackTxResponseWindow(nWindowRequest);
+                        }
+                        }
+                        catch(...)
+                        {
+                            if(nWindowRequest != 0)
+                                pSend->RollbackTxResponseWindow(nWindowRequest);
+                            throw;
+                        }
                     }
                     catch(const std::exception& e)
                     {
@@ -1051,20 +1063,34 @@ namespace TAO
                                  * once the receiving node has completed initial sync
                                  * (fSynchronized == true), which is precisely when orphan-based
                                  * fork recovery fires. */
-                                pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                                const uint1024_t hashTarget =
+                                    TAO::Ledger::ChainState::hashBestChain.load();
+                                const uint64_t nWindowRequest = !config::fClient.load()
+                                    ? pnode->OpenTxResponseWindow(LLP::TxResponseKind::LIST,
+                                        hashTarget, block.hashPrevBlock)
+                                    : 0;
+                                try
+                                {
+                                if(!pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,
                                     config::fClient.load()
                                         ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)
                                         : uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
                                     uint8_t(LLP::TritiumNode::TYPES::BLOCK),
                                     uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
-                                    TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                    TAO::Ledger::Locator(hashTarget),
                                     uint1024_t(block.hashPrevBlock)
-                                );
-
-                                /* Open a response window so inline TYPES::TRANSACTION
-                                 * packets from the LIST response are not force-dropped. */
-                                if(!config::fClient.load())
-                                    pnode->OpenTxResponseWindow(LLP::TxResponseKind::LIST);
+                                ))
+                                {
+                                    if(nWindowRequest != 0)
+                                        pnode->RollbackTxResponseWindow(nWindowRequest);
+                                }
+                                }
+                                catch(...)
+                                {
+                                    if(nWindowRequest != 0)
+                                        pnode->RollbackTxResponseWindow(nWindowRequest);
+                                    throw;
+                                }
 
                                 /* Random-connection fallback: ask a second distinct
                                  * peer so the node that sent the orphan cannot also
@@ -1078,20 +1104,33 @@ namespace TAO
                                     {
                                         try
                                         {
+                                            const uint64_t nWindowRequest = !config::fClient.load()
+                                                ? pRandom->OpenTxResponseWindow(LLP::TxResponseKind::LIST,
+                                                    hashTarget, block.hashPrevBlock)
+                                                : 0;
+                                            try
+                                            {
                                             /* Same TRANSACTIONS specifier — receiver is synced. */
-                                            pRandom->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                                            if(!pRandom->PushMessage(LLP::TritiumNode::ACTION::LIST,
                                                 config::fClient.load()
                                                     ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)
                                                     : uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
                                                 uint8_t(LLP::TritiumNode::TYPES::BLOCK),
                                                 uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
-                                                TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                                TAO::Ledger::Locator(hashTarget),
                                                 uint1024_t(block.hashPrevBlock)
-                                            );
-
-                                            /* Open window on the random peer too. */
-                                            if(!config::fClient.load())
-                                                pRandom->OpenTxResponseWindow(LLP::TxResponseKind::LIST);
+                                            ))
+                                            {
+                                                if(nWindowRequest != 0)
+                                                    pRandom->RollbackTxResponseWindow(nWindowRequest);
+                                            }
+                                            }
+                                            catch(...)
+                                            {
+                                                if(nWindowRequest != 0)
+                                                    pRandom->RollbackTxResponseWindow(nWindowRequest);
+                                                throw;
+                                            }
                                         }
                                         catch(const std::exception& e)
                                         {

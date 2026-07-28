@@ -2676,19 +2676,30 @@ namespace LLP
                                      * (nCurrentSession == nSyncSession && !fSynchronized);
                                      * sending it here causes "unsolicited sync block" drops
                                      * and DISCONNECT::FORCE on an already-synced peer. */
-                                    PushMessage(ACTION::LIST,
-                                        config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS),
-                                        uint8_t(TYPES::BLOCK),
-                                        uint8_t(TYPES::LOCATOR),
-                                        TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                                        uint1024_t(hashBestChain)
-                                    );
-
-                                    /* Open a response window so incoming TYPES::TRANSACTION
-                                    * packets that precede each block in the LIST response are
-                                    * accepted rather than force-dropped. */
-                                    if(!config::fClient.load())
-                                       OpenTxResponseWindow(TxResponseKind::LIST);
+                                    const uint1024_t hashTarget = TAO::Ledger::ChainState::hashBestChain.load();
+                                    const uint64_t nWindowRequest = !config::fClient.load()
+                                       ? OpenTxResponseWindow(TxResponseKind::LIST, hashTarget, hashBestChain)
+                                       : 0;
+                                    try
+                                    {
+                                    if(!PushMessage(ACTION::LIST,
+                                       config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS),
+                                       uint8_t(TYPES::BLOCK),
+                                       uint8_t(TYPES::LOCATOR),
+                                       TAO::Ledger::Locator(hashTarget),
+                                       uint1024_t(hashBestChain)
+                                    ))
+                                    {
+                                        if(nWindowRequest != 0)
+                                            RollbackTxResponseWindow(nWindowRequest);
+                                    }
+                                    }
+                                    catch(...)
+                                    {
+                                       if(nWindowRequest != 0)
+                                           RollbackTxResponseWindow(nWindowRequest);
+                                       throw;
+                                    }
                                 }
                             }
 
@@ -2897,21 +2908,6 @@ namespace LLP
                 uint8_t nSpecifier = 0;
                 ssPacket >> nSpecifier;
 
-                /* Close any GET-type SPECIFIER::TRANSACTIONS response window: the
-                 * requested block (preceded by its inline transactions) has arrived,
-                 * so the window has served its purpose.  LIST windows stay open
-                 * until the final TYPES::LASTINDEX notification arrives. */
-                {
-                    LOCK(m_txRespWindowMutex);
-                    if(m_txRespWindow.IsActive() && m_txRespWindow.eKind == TxResponseKind::GET)
-                    {
-                        debug::log(2, NODE, "tx-response-window closed: matching-block received",
-                            " session=", nCurrentSession,
-                            " tx_count=", m_txRespWindow.nTxCount);
-                        m_txRespWindow.Close();
-                    }
-                }
-
                 /* Switch based on specifier. */
                 uint8_t nStatus = 0;
                 switch(nSpecifier)
@@ -2926,6 +2922,7 @@ namespace LLP
                         /* Get the block from the stream. */
                         Legacy::LegacyBlock block;
                         ssPacket >> block;
+                        CloseTxResponseWindowForBlock(block.GetHash());
 
                         /* Process the block. */
                         TAO::Ledger::Process(block, nStatus, this);
@@ -2943,6 +2940,7 @@ namespace LLP
                         /* Get the block from the stream. */
                         TAO::Ledger::TritiumBlock block;
                         ssPacket >> block;
+                        CloseTxResponseWindowForBlock(block.GetHash());
 
                         /* [DoS prefilter] Reject oversized Prime vOffsets before
                          * they reach Check() / GetPrimeBits() and trigger expensive
@@ -2979,12 +2977,19 @@ namespace LLP
                                 {
                                     try
                                     {
-                                        pnode->PushMessage(ACTION::GET, uint8_t(SPECIFIER::TRANSACTIONS), uint8_t(TYPES::BLOCK), block.hashMissing);
-
-                                        /* Open a response window on the helper peer so it can
-                                         * deliver inline transactions without being force-dropped
-                                         * as "unsolicited data". */
-                                        pnode->OpenTxResponseWindow(TxResponseKind::GET);
+                                        const uint64_t nWindowRequest =
+                                            pnode->OpenTxResponseWindow(TxResponseKind::GET, block.hashMissing);
+                                        try
+                                        {
+                                            if(!pnode->PushMessage(ACTION::GET, uint8_t(SPECIFIER::TRANSACTIONS),
+                                                uint8_t(TYPES::BLOCK), block.hashMissing))
+                                                pnode->RollbackTxResponseWindow(nWindowRequest);
+                                        }
+                                        catch(...)
+                                        {
+                                            pnode->RollbackTxResponseWindow(nWindowRequest);
+                                            throw;
+                                        }
                                     }
                                     catch(const std::exception& e)
                                     {
@@ -3049,19 +3054,33 @@ namespace LLP
                                          * recovery must deliver inline transactions via the
                                          * TRITIUM-tagged path; SYNC blocks are rejected as
                                          * "unsolicited" once fSynchronized == true. */
-                                        PushMessage(ACTION::LIST,
+                                        const uint1024_t hashTarget =
+                                            TAO::Ledger::ChainState::hashBestChain.load();
+                                        const uint1024_t hashStop =
+                                            hashBestChain != 0 ? hashBestChain : hashBlock;
+                                        const uint64_t nWindowRequest = !config::fClient.load()
+                                            ? OpenTxResponseWindow(TxResponseKind::LIST, hashTarget, hashStop)
+                                            : 0;
+                                        try
+                                        {
+                                        if(!PushMessage(ACTION::LIST,
                                             config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS),
                                             uint8_t(TYPES::BLOCK),
                                             uint8_t(TYPES::LOCATOR),
-                                            TAO::Ledger::Locator(
-                                                TAO::Ledger::ChainState::hashBestChain.load()),
-                                            uint1024_t(hashBestChain != 0 ? hashBestChain : hashBlock)
-                                        );
-
-                                        /* Open response window so inline txs from the LIST
-                                         * batch are accepted rather than force-dropped. */
-                                        if(!config::fClient.load())
-                                            OpenTxResponseWindow(TxResponseKind::LIST);
+                                            TAO::Ledger::Locator(hashTarget),
+                                            uint1024_t(hashStop)
+                                        ))
+                                        {
+                                            if(nWindowRequest != 0)
+                                                RollbackTxResponseWindow(nWindowRequest);
+                                        }
+                                        }
+                                        catch(...)
+                                        {
+                                            if(nWindowRequest != 0)
+                                                RollbackTxResponseWindow(nWindowRequest);
+                                            throw;
+                                        }
                                     }
 
                                     break;
@@ -3111,18 +3130,31 @@ namespace LLP
                                     const uint1024_t hashTarget =
                                         (hashBestChain != 0) ? hashBestChain : hashBlock;
 
-                                    PushMessage(ACTION::LIST,
+                                    const uint1024_t hashLocator =
+                                        TAO::Ledger::ChainState::hashBestChain.load();
+                                    const uint64_t nWindowRequest = !config::fClient.load()
+                                        ? OpenTxResponseWindow(TxResponseKind::LIST, hashLocator, hashTarget)
+                                        : 0;
+                                    try
+                                    {
+                                    if(!PushMessage(ACTION::LIST,
                                        config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS),
                                         uint8_t(TYPES::BLOCK),
                                         uint8_t(TYPES::LOCATOR),
-                                        TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+                                        TAO::Ledger::Locator(hashLocator),
                                         uint1024_t(hashTarget)
-                                    );
-
-                                    /* Open response window so inline txs from the LIST
-                                     * batch are accepted rather than force-dropped. */
-                                    if(!config::fClient.load())
-                                        OpenTxResponseWindow(TxResponseKind::LIST);
+                                    ))
+                                    {
+                                        if(nWindowRequest != 0)
+                                            RollbackTxResponseWindow(nWindowRequest);
+                                    }
+                                    }
+                                    catch(...)
+                                    {
+                                        if(nWindowRequest != 0)
+                                            RollbackTxResponseWindow(nWindowRequest);
+                                        throw;
+                                    }
                                 }
 
                                 /* 3. Request the full block + inline transactions from
@@ -3135,14 +3167,21 @@ namespace LLP
                                     {
                                         try
                                         {
-                                            pRandomNode->PushMessage(ACTION::GET,
+                                            const uint64_t nWindowRequest =
+                                                pRandomNode->OpenTxResponseWindow(TxResponseKind::GET, hashBlock);
+                                            try
+                                            {
+                                            if(!pRandomNode->PushMessage(ACTION::GET,
                                                 uint8_t(SPECIFIER::TRANSACTIONS),
                                                 uint8_t(TYPES::BLOCK),
-                                                hashBlock);
-
-                                            /* Open a response window on the helper peer so
-                                             * its inline transaction delivery is accepted. */
-                                            pRandomNode->OpenTxResponseWindow(TxResponseKind::GET);
+                                                hashBlock))
+                                                    pRandomNode->RollbackTxResponseWindow(nWindowRequest);
+                                            }
+                                            catch(...)
+                                            {
+                                                pRandomNode->RollbackTxResponseWindow(nWindowRequest);
+                                                throw;
+                                            }
                                         }
                                         catch(const std::exception& e)
                                         {
@@ -4460,7 +4499,9 @@ namespace LLP
 
 
     /* Open a bounded SPECIFIER::TRANSACTIONS response window on this peer. */
-    void TritiumNode::OpenTxResponseWindow(const TxResponseKind eKind)
+    uint64_t TritiumNode::OpenTxResponseWindow(const TxResponseKind eKind,
+                                               const uint1024_t& hashTarget,
+                                               const uint1024_t& hashStop)
     {
         const uint64_t nNow   = runtime::timestamp();
         const uint64_t nTTL   = (eKind == TxResponseKind::LIST)
@@ -4470,14 +4511,49 @@ namespace LLP
             ? TX_RESPONSE_WINDOW_LIST_MAX_TX
             : TX_RESPONSE_WINDOW_GET_MAX_TX;
 
+        uint64_t nRequestId = 0;
         { LOCK(m_txRespWindowMutex);
-            m_txRespWindow.Open(eKind, nNow, nTTL, nMaxTx);
+            nRequestId = m_txRespWindow.Open(eKind, nNow, nTTL, nMaxTx, hashTarget, hashStop);
         }
 
         debug::log(2, NODE, "tx-response-window opened: kind=",
             (eKind == TxResponseKind::LIST ? "LIST" : "GET"),
             " TTL=", nTTL, "s budget=", nMaxTx,
+            " request=", nRequestId,
+            " target=", hashTarget.SubString(),
+            " stop=", hashStop.SubString(),
             " session=", nCurrentSession);
+        return nRequestId;
+    }
+
+
+    void TritiumNode::RollbackTxResponseWindow(const uint64_t nRequestId)
+    {
+        { LOCK(m_txRespWindowMutex);
+            if(!LLP::RollbackTxResponseWindow(m_txRespWindow, nRequestId))
+                return;
+
+            debug::log(2, NODE, "tx-response-window closed: request queue failed",
+                " request=", nRequestId,
+                " tx_count=", m_txRespWindow.nTxCount,
+                " session=", nCurrentSession);
+        }
+    }
+
+
+    void TritiumNode::CloseTxResponseWindowForBlock(const uint1024_t& hashBlock)
+    {
+        { LOCK(m_txRespWindowMutex);
+            if(!IsMatchingTxResponseBlock(m_txRespWindow, hashBlock))
+                return;
+
+            m_txRespWindow.Close();
+            debug::log(2, NODE, "tx-response-window closed: matching-block received",
+                " request=", m_txRespWindow.nRequestId,
+                " target=", m_txRespWindow.hashTarget.SubString(),
+                " tx_count=", m_txRespWindow.nTxCount,
+                " session=", nCurrentSession);
+        }
     }
 
 

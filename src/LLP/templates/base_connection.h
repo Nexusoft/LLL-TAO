@@ -519,9 +519,8 @@ namespace LLP
          *  @param[in] PACKET The packet of type PacketType to write.
          *
          **/
-        void WritePacket(const PacketType& PACKET);
-
-        void WritePacket(const PacketType& PACKET, bool fPriority);
+        bool WritePacket(const PacketType& PACKET);
+        bool WritePacket(const PacketType& PACKET, bool fPriority);
 
 
         /** ReadPacket

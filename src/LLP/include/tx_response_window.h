@@ -16,6 +16,8 @@ ________________________________________________________________________________
 
 #include <cstdint>
 
+#include <LLC/types/uint1024.h>
+
 namespace LLP
 {
     /** Default TTL (seconds) for a GET SPECIFIER::TRANSACTIONS response window.
@@ -66,6 +68,7 @@ namespace LLP
         EXPIRED        = 2, ///< TTL elapsed before the response completed.
         BUDGET         = 3, ///< Per-window tx-count budget exhausted.
         DISCONNECT     = 4, ///< Peer connection was closed.
+        SEND_FAILED    = 5, ///< The request could not be queued.
     };
 
 
@@ -96,6 +99,9 @@ namespace LLP
         uint64_t       nTTL      = 0;    ///< TTL in seconds.
         uint32_t       nTxCount  = 0;    ///< Transactions accepted through this window so far.
         uint32_t       nMaxTx    = 0;    ///< Safety budget (max tx allowed).
+        uint64_t       nRequestId = 0;   ///< Monotonically increasing request identifier.
+        uint1024_t     hashTarget = 0;   ///< GET block hash or LIST locator target.
+        uint1024_t     hashStop   = 0;   ///< LIST stop hash (zero for GET).
 
 
         /** IsActive — returns true if the window is open. **/
@@ -124,25 +130,51 @@ namespace LLP
          *  @param[in] nNowIn    Current unix timestamp (seconds).
          *  @param[in] nTTLIn    TTL in seconds.
          *  @param[in] nMaxTxIn  Tx-count budget. **/
-        void Open(const TxResponseKind eKindIn,
+        uint64_t Open(const TxResponseKind eKindIn,
                   const uint64_t       nNowIn,
                   const uint64_t       nTTLIn,
-                  const uint32_t       nMaxTxIn) noexcept
+                  const uint32_t       nMaxTxIn,
+                  const uint1024_t&    hashTargetIn = 0,
+                  const uint1024_t&    hashStopIn = 0) noexcept
         {
             eKind    = eKindIn;
             nOpenedAt = nNowIn;
             nTTL     = nTTLIn;
             nTxCount = 0;
             nMaxTx   = nMaxTxIn;
+            ++nRequestId;
+            hashTarget = hashTargetIn;
+            hashStop   = hashStopIn;
+            return nRequestId;
         }
 
-        /** Close — deactivate the window and reset counters. **/
+        /** Close — deactivate the window while retaining request diagnostics. **/
         void Close() noexcept
         {
             eKind    = TxResponseKind::NONE;
-            nTxCount = 0;
         }
     };
+
+    /** Returns true when a GET window belongs to the received block. **/
+    inline bool IsMatchingTxResponseBlock(const TxResponseWindow& window,
+                                          const uint1024_t& hashBlock) noexcept
+    {
+        return window.eKind == TxResponseKind::GET
+            && window.hashTarget == hashBlock;
+    }
+
+    /** Roll back a just-opened window only if no newer request superseded it. **/
+    inline bool RollbackTxResponseWindow(TxResponseWindow& window,
+                                         const uint64_t nRequestId) noexcept
+    {
+        if(window.IsActive() && window.nRequestId == nRequestId)
+        {
+            window.Close();
+            return true;
+        }
+
+        return false;
+    }
 
 
     /** CheckAndUseTxResponseWindow

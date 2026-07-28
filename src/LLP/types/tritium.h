@@ -819,7 +819,7 @@ namespace LLP
          *
          *  Open a bounded per-peer response window that authorises incoming raw
          *  TYPES::TRANSACTION messages expected as part of a SPECIFIER::TRANSACTIONS
-         *  block response.  Called immediately after sending the corresponding
+         *  block response.  Called immediately before queueing the corresponding
          *  ACTION::GET or ACTION::LIST request to this peer.
          *
          *  Any previously active window on this peer is replaced.
@@ -828,10 +828,19 @@ namespace LLP
          *  example when a random helper peer is selected to serve a missing-tx
          *  re-request).
          *
-         *  @param[in] eKind  GET (single-block recovery) or LIST (branch recovery).
+         *  @param[in] eKind       GET (single-block recovery) or LIST (branch recovery).
+         *  @param[in] hashTarget  GET block hash or LIST locator target.
+         *  @param[in] hashStop    LIST stop hash (zero for GET).
          *
          **/
-        void OpenTxResponseWindow(TxResponseKind eKind);
+        uint64_t OpenTxResponseWindow(TxResponseKind eKind, const uint1024_t& hashTarget,
+                                      const uint1024_t& hashStop = 0);
+
+        /** Roll back an unqueueable request without cancelling a newer request. **/
+        void RollbackTxResponseWindow(uint64_t nRequestId);
+
+        /** Close a GET window only when its requested block was received. **/
+        void CloseTxResponseWindowForBlock(const uint1024_t& hashBlock);
 
 
         /** NewMessage
@@ -860,10 +869,10 @@ namespace LLP
          *  @param[in] nMsg The message type.
          *
          **/
-        void PushMessage(const uint16_t nMsg)
+        bool PushMessage(const uint16_t nMsg)
         {
             MessagePacket RESPONSE(nMsg);
-            WritePacket(RESPONSE);
+            return WritePacket(RESPONSE);
         }
 
 
@@ -873,14 +882,15 @@ namespace LLP
          *
          **/
         template<typename... Args>
-        void PushMessage(const uint16_t nMsg, Args&&... args)
+        bool PushMessage(const uint16_t nMsg, Args&&... args)
         {
             DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
             ((ssData << args), ...);
 
-            WritePacket(NewMessage(nMsg, ssData));
+            const bool fQueued = WritePacket(NewMessage(nMsg, ssData));
 
             debug::log(4, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, ssData.size(), " bytes");
+            return fQueued;
         }
 
 

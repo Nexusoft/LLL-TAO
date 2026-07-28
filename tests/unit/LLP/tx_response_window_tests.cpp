@@ -102,26 +102,28 @@ TEST_CASE("TxResponseWindow session isolation: separate windows are independent"
 }
 
 
-/* ────────────────────────────────────────────────────────────────────────────
- * 3.  Matching block closes the GET window; subsequent txs become unsolicited.
- * ──────────────────────────────────────────────────────────────────────────── */
-TEST_CASE("TxResponseWindow GET window closes when block arrives",
+TEST_CASE("TxResponseWindow GET closes only for its requested block",
     "[llp][tx_response_window]")
 {
     TxResponseWindow window;
-    window.Open(TxResponseKind::GET, 100, TX_RESPONSE_WINDOW_GET_TTL_SECONDS, TX_RESPONSE_WINDOW_GET_MAX_TX);
+    const uint1024_t hashRequested = 123;
+    window.Open(TxResponseKind::GET, 100, TX_RESPONSE_WINDOW_GET_TTL_SECONDS,
+        TX_RESPONSE_WINDOW_GET_MAX_TX, hashRequested);
 
     /* Some transactions arrive. */
     REQUIRE(CheckAndUseTxResponseWindow(window, 101));
     REQUIRE(CheckAndUseTxResponseWindow(window, 102));
     REQUIRE(window.nTxCount == 2);
 
-    /* Block arrival: production code calls window.Close() on TYPES::BLOCK while
-     * eKind == GET.  Simulate that here. */
+    /* An unrelated block must not close the GET response window. */
+    REQUIRE_FALSE(IsMatchingTxResponseBlock(window, uint1024_t(456)));
     REQUIRE(window.IsActive());
+
+    /* The requested block closes the window. */
+    REQUIRE(IsMatchingTxResponseBlock(window, hashRequested));
     window.Close();
     REQUIRE_FALSE(window.IsActive());
-    REQUIRE(window.nTxCount == 0);
+    REQUIRE(window.nTxCount == 2);
 
     /* Subsequent TYPES::TRANSACTION should now be treated as unsolicited. */
     REQUIRE_FALSE(CheckAndUseTxResponseWindow(window, 103));
@@ -204,7 +206,7 @@ TEST_CASE("TxResponseWindow disconnect cleanup",
     window.Close();
 
     REQUIRE_FALSE(window.IsActive());
-    REQUIRE(window.nTxCount == 0);
+    REQUIRE(window.nTxCount == nCountBeforeClose);
     (void)nCountBeforeClose;  /* suppress unused-variable warning */
 
     /* Trying to authorise after disconnect: returns false. */
@@ -289,26 +291,40 @@ TEST_CASE("TxResponseWindow LIST constants are larger than GET constants",
 }
 
 
-/* ────────────────────────────────────────────────────────────────────────────
- * 10. Opening a second window replaces the first (safe supersession).
- * ──────────────────────────────────────────────────────────────────────────── */
-TEST_CASE("TxResponseWindow second Open replaces existing window",
+TEST_CASE("TxResponseWindow request opening and rollback preserve newer request",
     "[llp][tx_response_window]")
 {
     TxResponseWindow window;
-    window.Open(TxResponseKind::GET, 500, TX_RESPONSE_WINDOW_GET_TTL_SECONDS, TX_RESPONSE_WINDOW_GET_MAX_TX);
+    const uint1024_t hashFirst = 111;
+    const uint64_t nFirstRequest = window.Open(TxResponseKind::GET, 500,
+        TX_RESPONSE_WINDOW_GET_TTL_SECONDS, TX_RESPONSE_WINDOW_GET_MAX_TX, hashFirst);
 
     /* Consume some budget. */
     REQUIRE(CheckAndUseTxResponseWindow(window, 501));
     REQUIRE(CheckAndUseTxResponseWindow(window, 502));
     REQUIRE(window.nTxCount == 2);
 
-    /* A second request supersedes the first — Open() replaces in place. */
-    window.Open(TxResponseKind::LIST, 600, TX_RESPONSE_WINDOW_LIST_TTL_SECONDS, TX_RESPONSE_WINDOW_LIST_MAX_TX);
+    /* A second request deliberately supersedes the first before it is queued. */
+    const uint1024_t hashTarget = 222;
+    const uint1024_t hashStop = 333;
+    const uint64_t nSecondRequest = window.Open(TxResponseKind::LIST, 600,
+        TX_RESPONSE_WINDOW_LIST_TTL_SECONDS, TX_RESPONSE_WINDOW_LIST_MAX_TX, hashTarget, hashStop);
     REQUIRE(window.IsActive());
     REQUIRE(window.eKind == TxResponseKind::LIST);
     REQUIRE(window.nOpenedAt == 600);
     REQUIRE(window.nTxCount == 0);   /* counter reset */
     REQUIRE(window.nMaxTx == TX_RESPONSE_WINDOW_LIST_MAX_TX);
     REQUIRE(window.nTTL   == TX_RESPONSE_WINDOW_LIST_TTL_SECONDS);
+    REQUIRE(window.hashTarget == hashTarget);
+    REQUIRE(window.hashStop == hashStop);
+
+    /* A failed send for the superseded request cannot roll back the newer one. */
+    REQUIRE_FALSE(RollbackTxResponseWindow(window, nFirstRequest));
+    REQUIRE(window.IsActive());
+    REQUIRE(window.nRequestId == nSecondRequest);
+
+    /* A failed send for the active request rolls it back. */
+    REQUIRE(RollbackTxResponseWindow(window, nSecondRequest));
+    REQUIRE_FALSE(window.IsActive());
+    REQUIRE(window.nTxCount == 0);
 }
