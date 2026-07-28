@@ -3173,9 +3173,11 @@ namespace LLP
                          * observed state, even if those atomics move again
                          * before the warning is formatted. Relaxed loads are
                          * intentional here: the stale-SYNC guard only needs
-                         * the currently observed values for this packet, and
-                         * the warning is diagnostic rather than a cross-atomic
-                         * consistency guarantee. */
+                         * the currently observed values for this packet, so
+                         * correctness does not depend on synchronizing another
+                         * thread's updates into a single cross-atomic view.
+                         * The warning is diagnostic rather than a consistency
+                         * guarantee across multiple atomics. */
                         const uint64_t nSyncSession =
                             TAO::Ledger::nSyncSession.load(std::memory_order_relaxed);
                         const bool fAlreadySynchronized =

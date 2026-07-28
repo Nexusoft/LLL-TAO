@@ -23,7 +23,6 @@ namespace LLP
     inline constexpr std::size_t STALE_SYNC_WARNING_MAX_ENTRIES = 256;
     inline constexpr uint64_t STALE_SYNC_WARNING_THROTTLE_SECONDS = 60;
 
-
     struct StaleSyncWarningState
     {
         uint64_t nLastWarningTime = 0;
