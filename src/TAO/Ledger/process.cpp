@@ -1432,8 +1432,9 @@ namespace TAO
                             continue;
                         }
 
-                        debug::log(1, FUNCTION, "processing ORPHAN hash=",
-                            hashOrphan.SubString(), " size=", mapOrphans.Size());
+                        if(config::nVerbose >= 1)
+                            debug::log(1, FUNCTION, "processing ORPHAN hash=",
+                                hashOrphan.SubString(), " size=", mapOrphans.Size());
 
                         /* Do NOT force full proof verification here (fForceProof=false),
                          * matching the primary Check() in the main sync path above and
