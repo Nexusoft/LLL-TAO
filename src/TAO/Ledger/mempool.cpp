@@ -681,7 +681,7 @@ namespace TAO
                 /* Add the hashes into list. */
                 uint512_t hashLastDisk = 0;
                 if(!LLD::Ledger->ReadLast(rTransaction.first, hashLastDisk))
-                    break;
+                    continue;
 
                 /* Loop through transaction by genesis. */
                 uint512_t hashLast = hashLastDisk; //we make a copy here so we can know when we reached end of chain.
@@ -720,6 +720,9 @@ namespace TAO
                             /* Begin the memory transaction. */
                             LLD::TxnBegin(FLAGS::MEMPOOL, LLD::INSTANCES::MEMORY);
 
+                            /* Track whether the LLD transaction is still active (not aborted). */
+                            bool fTxnActive = true;
+
                             /* Disconnect all transactions in reverse order. */
                             for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
                             {
@@ -742,7 +745,16 @@ namespace TAO
                                 /* Reset memory states to disk indexes. */
                                 if(!tx->Disconnect(fRoot ? FLAGS::ERASE : FLAGS::MEMPOOL))
                                 {
+                                    /* Revert any partial LLD ACID state changes. */
                                     LLD::TxnAbort(FLAGS::MEMPOOL, LLD::INSTANCES::MEMORY);
+                                    fTxnActive = false;
+
+                                    /* Force-evict this stuck orphan so it doesn't loop forever.
+                                     * TxnAbort has already reverted any partial memory changes,
+                                     * so removing it from mapLedger restores consistency. */
+                                    debug::warning(FUNCTION, "evicting unrollbackable orphan tx ",
+                                        hashTx.SubString(), " after failed Disconnect/Rollback");
+                                    Remove(hashTx);
                                     break;
                                 }
 
@@ -769,8 +781,9 @@ namespace TAO
                                     debug::notice(FUNCTION, "ROOT ORPHAN: disconnected root with FLAGS::ERASE: ", hashTx.SubString());
                             }
 
-                            /* Commit the memory transaction. */
-                            LLD::TxnCommit(FLAGS::MEMPOOL, LLD::INSTANCES::MEMORY);
+                            /* Only commit if the LLD transaction was not already aborted. */
+                            if(fTxnActive)
+                                LLD::TxnCommit(FLAGS::MEMPOOL, LLD::INSTANCES::MEMORY);
 
                             break;
                         }
