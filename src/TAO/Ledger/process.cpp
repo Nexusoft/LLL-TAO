@@ -1432,7 +1432,7 @@ namespace TAO
                             continue;
                         }
 
-                        debug::log(0, FUNCTION, "processing ORPHAN hash=",
+                        debug::log(1, FUNCTION, "processing ORPHAN hash=",
                             hashOrphan.SubString(), " size=", mapOrphans.Size());
 
                         /* Do NOT force full proof verification here (fForceProof=false),

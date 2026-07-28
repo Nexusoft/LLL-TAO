@@ -817,7 +817,7 @@ namespace TAO
                 return debug::error(FUNCTION, "disk transaction commit failed for block acceptance");
 
             /* Check for best chain. */
-            if(GetHash() == ChainState::hashBestChain.load())
+            if(GetHash() == ChainState::hashBestChain.load() && !ChainState::Synchronizing())
             {
                 /* Do a quick mempool processing check for ORPHANS. */
                 runtime::timer timer;
@@ -826,7 +826,7 @@ namespace TAO
 
                 /* Log the mempool consistency checking. */
                 uint64_t nElapsed = timer.ElapsedMilliseconds();
-                debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "Mempool Consistency Check Complete in ", nElapsed,  " ms");
+                debug::log(0, FUNCTION, "Mempool Consistency Check Complete in ", nElapsed,  " ms");
             }
 
             return true;
