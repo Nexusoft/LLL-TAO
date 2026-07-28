@@ -78,9 +78,10 @@ namespace LLP
         StaleSyncWarningState& state = it->second;
         ++state.nSuppressedBlocks;
 
-        /* If wall time moves backward, emit immediately and reset the stored
-         * timestamp so a future-valued last-warning time cannot suppress
-         * diagnostics indefinitely after the clock skew resolves. */
+        /* If wall-clock time moves backward (for example after a system-time
+         * adjustment), emit immediately and reset the stored timestamp so a
+         * future-valued last-warning time cannot suppress diagnostics
+         * indefinitely after the clock skew resolves. */
         if(!state.fHasEmittedWarning
         || nNow < state.nLastWarningTime
         || nNow - state.nLastWarningTime >= nThrottleSeconds)
