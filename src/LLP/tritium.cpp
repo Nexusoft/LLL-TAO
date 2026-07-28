@@ -1649,7 +1649,20 @@ namespace LLP
 
                         /* Check for last subscription. */
                         if(nNotifications & SUBSCRIPTION::LASTINDEX)
-                            PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), fBufferFull.load() ? stateLast.hashPrevBlock : hashStart);
+                        {
+                            /* hashStart is the hash of the last block successfully read/sent in this batch.
+                             * When fBufferFull fires the buffer was already written but back-pressure means
+                             * we can't send more right now; hashStart is still the correct last-sent hash.
+                             * Previously the code used stateLast.hashPrevBlock when fBufferFull was true,
+                             * which sent the hash one block *behind* the last sent block, causing the peer
+                             * to re-request that block every cycle (degrading batch sync to ~1 block/cycle).
+                             * Always use hashStart so the peer correctly requests only new blocks next time. */
+                            if(fBufferFull.load())
+                                debug::log(1, FUNCTION, "batch cut short by buffer pressure (",
+                                    Buffered(), " bytes buffered); LASTINDEX set to ", hashStart.SubString());
+
+                            PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), hashStart);
+                        }
 
                         break;
                     }

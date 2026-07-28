@@ -427,6 +427,7 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_Ledger_filter_binding_to_production.o \
 		   build/Tests_TAO_Ledger_accept_mined_block_tip_race.o \
 		   build/Tests_TAO_Ledger_missing_tx_soft_fail.o \
+		   build/Tests_TAO_Ledger_mempool_check_orphan_fix.o \
 		   build/Tests_TAO_Ledger_mempool.o \
 		   build/Tests_TAO_Ledger_prime.o \
 		   build/Tests_TAO_Ledger_transaction.o \
