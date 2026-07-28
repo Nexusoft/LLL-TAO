@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
+#include <LLP/include/tx_response_window.h>
 #include <LLP/packets/message.h>
 #include <LLP/templates/base_connection.h>
 #include <LLP/templates/events.h>
@@ -31,6 +32,7 @@ ________________________________________________________________________________
 
 #include <atomic>
 #include <chrono>
+#include <mutex>
 #include <thread>
 
 namespace LLP
@@ -514,6 +516,19 @@ namespace LLP
         std::map<uint512_t, Legacy::Transaction> mapLegacy;
 
 
+        /** Bounded per-peer response window that permits raw TYPES::TRANSACTION
+         *  messages when they are expected as part of a locally-initiated
+         *  SPECIFIER::TRANSACTIONS block response from this peer.
+         *
+         *  Protected by m_txRespWindowMutex because OpenTxResponseWindow() may be
+         *  called from another peer connection's DataThread (e.g. when the active
+         *  sync peer fires off a GET to a randomly-selected helper peer). **/
+        TxResponseWindow m_txRespWindow;
+
+        /** Mutex protecting m_txRespWindow against concurrent DataThread access. **/
+        std::mutex m_txRespWindowMutex;
+
+
     public:
 
         /** Mutex for connected sessions. **/
@@ -798,6 +813,25 @@ namespace LLP
          *
          **/
         void PushBlock(const uint8_t nSpecifier, const TAO::Ledger::BlockState& rBlock);
+
+
+        /** OpenTxResponseWindow
+         *
+         *  Open a bounded per-peer response window that authorises incoming raw
+         *  TYPES::TRANSACTION messages expected as part of a SPECIFIER::TRANSACTIONS
+         *  block response.  Called immediately after sending the corresponding
+         *  ACTION::GET or ACTION::LIST request to this peer.
+         *
+         *  Any previously active window on this peer is replaced.
+         *
+         *  Thread-safe: may be called from another connection's DataThread (for
+         *  example when a random helper peer is selected to serve a missing-tx
+         *  re-request).
+         *
+         *  @param[in] eKind  GET (single-block recovery) or LIST (branch recovery).
+         *
+         **/
+        void OpenTxResponseWindow(TxResponseKind eKind);
 
 
         /** NewMessage

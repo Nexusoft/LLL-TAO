@@ -615,6 +615,22 @@ namespace LLP
                         ResetStaleSyncWarningEvent(mapStaleSyncWarningStates, nCurrentSession);
                     }
 
+                    /* Close any active SPECIFIER::TRANSACTIONS response window so a
+                     * subsequent reconnection to the same address starts with a clean
+                     * state.  The window is stored per-peer so closing it here is
+                     * safe; we still hold nCurrentSession (non-zero) which aids
+                     * any diagnostic log message. */
+                    {
+                        LOCK(m_txRespWindowMutex);
+                        if(m_txRespWindow.IsActive())
+                        {
+                            debug::log(2, NODE, "tx-response-window closed: disconnect",
+                                " session=", nCurrentSession,
+                                " tx_count=", m_txRespWindow.nTxCount);
+                            m_txRespWindow.Close();
+                        }
+                    }
+
                     /* Reset session value. */
                     nCurrentSession = 0;
                 }
@@ -2582,6 +2598,21 @@ namespace LLP
                                     /* Set the last index. */
                                     hashLastIndex = hashLast;
 
+                                    /* Close any LIST-type SPECIFIER::TRANSACTIONS response window:
+                                     * LASTINDEX marks the end of the block batch, so the window has
+                                     * served its purpose.  A GET window would already be closed when
+                                     * its single block arrived. */
+                                    {
+                                        LOCK(m_txRespWindowMutex);
+                                        if(m_txRespWindow.IsActive() && m_txRespWindow.eKind == TxResponseKind::LIST)
+                                        {
+                                            debug::log(2, NODE, "tx-response-window closed: LASTINDEX received",
+                                                " session=", nCurrentSession,
+                                                " tx_count=", m_txRespWindow.nTxCount);
+                                            m_txRespWindow.Close();
+                                        }
+                                    }
+
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: LASTINDEX ", hashLast.SubString());
 
@@ -2652,6 +2683,12 @@ namespace LLP
                                         TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
                                         uint1024_t(hashBestChain)
                                     );
+
+                                    /* Open a response window so incoming TYPES::TRANSACTION
+                                    * packets that precede each block in the LIST response are
+                                    * accepted rather than force-dropped. */
+                                    if(!config::fClient.load())
+                                       OpenTxResponseWindow(TxResponseKind::LIST);
                                 }
                             }
 
@@ -2860,6 +2897,21 @@ namespace LLP
                 uint8_t nSpecifier = 0;
                 ssPacket >> nSpecifier;
 
+                /* Close any GET-type SPECIFIER::TRANSACTIONS response window: the
+                 * requested block (preceded by its inline transactions) has arrived,
+                 * so the window has served its purpose.  LIST windows stay open
+                 * until the final TYPES::LASTINDEX notification arrives. */
+                {
+                    LOCK(m_txRespWindowMutex);
+                    if(m_txRespWindow.IsActive() && m_txRespWindow.eKind == TxResponseKind::GET)
+                    {
+                        debug::log(2, NODE, "tx-response-window closed: matching-block received",
+                            " session=", nCurrentSession,
+                            " tx_count=", m_txRespWindow.nTxCount);
+                        m_txRespWindow.Close();
+                    }
+                }
+
                 /* Switch based on specifier. */
                 uint8_t nStatus = 0;
                 switch(nSpecifier)
@@ -2928,6 +2980,11 @@ namespace LLP
                                     try
                                     {
                                         pnode->PushMessage(ACTION::GET, uint8_t(SPECIFIER::TRANSACTIONS), uint8_t(TYPES::BLOCK), block.hashMissing);
+
+                                        /* Open a response window on the helper peer so it can
+                                         * deliver inline transactions without being force-dropped
+                                         * as "unsolicited data". */
+                                        pnode->OpenTxResponseWindow(TxResponseKind::GET);
                                     }
                                     catch(const std::exception& e)
                                     {
@@ -3000,6 +3057,11 @@ namespace LLP
                                                 TAO::Ledger::ChainState::hashBestChain.load()),
                                             uint1024_t(hashBestChain != 0 ? hashBestChain : hashBlock)
                                         );
+
+                                        /* Open response window so inline txs from the LIST
+                                         * batch are accepted rather than force-dropped. */
+                                        if(!config::fClient.load())
+                                            OpenTxResponseWindow(TxResponseKind::LIST);
                                     }
 
                                     break;
@@ -3056,6 +3118,11 @@ namespace LLP
                                         TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
                                         uint1024_t(hashTarget)
                                     );
+
+                                    /* Open response window so inline txs from the LIST
+                                     * batch are accepted rather than force-dropped. */
+                                    if(!config::fClient.load())
+                                        OpenTxResponseWindow(TxResponseKind::LIST);
                                 }
 
                                 /* 3. Request the full block + inline transactions from
@@ -3072,6 +3139,10 @@ namespace LLP
                                                 uint8_t(SPECIFIER::TRANSACTIONS),
                                                 uint8_t(TYPES::BLOCK),
                                                 hashBlock);
+
+                                            /* Open a response window on the helper peer so
+                                             * its inline transaction delivery is accepted. */
+                                            pRandomNode->OpenTxResponseWindow(TxResponseKind::GET);
                                         }
                                         catch(const std::exception& e)
                                         {
@@ -3352,9 +3423,42 @@ namespace LLP
             /* Handle incoming transaction. */
             case TYPES::TRANSACTION:
             {
-                /* Check for subscription. */
+                /* Check for subscription — or an active SPECIFIER::TRANSACTIONS
+                 * response window opened by a prior GET/LIST request to this peer.
+                 *
+                 * During initial sync NODE sends ACTION::GET/LIST with
+                 * SPECIFIER::TRANSACTIONS which causes the peer to send one or more
+                 * raw TYPES::TRANSACTION messages before the requested block.  The
+                 * node is NOT subscribed to SUBSCRIPTION::TRANSACTION at that time,
+                 * but those packets are expected and must not be force-dropped.
+                 *
+                 * Truly unsolicited raw transaction traffic (no active window, no
+                 * subscription) continues to be hard-dropped here. */
                 if(!(nSubscriptions & SUBSCRIPTION::TRANSACTION))
-                    return debug::drop(NODE, "TYPES::TRANSACTION: unsolicited data");
+                {
+                    bool fAuthorizedByWindow = false;
+                    {
+                        LOCK(m_txRespWindowMutex);
+                        if(m_txRespWindow.IsActive())
+                        {
+                            const uint64_t nNow = runtime::timestamp();
+                            TxResponseCloseReason eReason;
+                            fAuthorizedByWindow = CheckAndUseTxResponseWindow(m_txRespWindow, nNow, &eReason);
+                            if(!fAuthorizedByWindow)
+                            {
+                                /* Window was active but is now closed due to expiry or budget. */
+                                debug::log(2, NODE, "tx-response-window closed: ",
+                                    (eReason == TxResponseCloseReason::EXPIRED ? "expired" : "budget exhausted"),
+                                    " tx_count=", m_txRespWindow.nTxCount,
+                                    " session=", nCurrentSession,
+                                    "; treating further transactions as unsolicited");
+                            }
+                        }
+                    }
+
+                    if(!fAuthorizedByWindow)
+                        return debug::drop(NODE, "TYPES::TRANSACTION: unsolicited data");
+                }
 
                 /* Get the specifier. */
                 uint8_t nSpecifier = 0;
@@ -4350,6 +4454,30 @@ namespace LLP
         }
 
         return TRITIUM_SERVER->GetConnection(pair.first, pair.second);
+    }
+
+
+
+
+    /* Open a bounded SPECIFIER::TRANSACTIONS response window on this peer. */
+    void TritiumNode::OpenTxResponseWindow(const TxResponseKind eKind)
+    {
+        const uint64_t nNow   = runtime::timestamp();
+        const uint64_t nTTL   = (eKind == TxResponseKind::LIST)
+            ? TX_RESPONSE_WINDOW_LIST_TTL_SECONDS
+            : TX_RESPONSE_WINDOW_GET_TTL_SECONDS;
+        const uint32_t nMaxTx = (eKind == TxResponseKind::LIST)
+            ? TX_RESPONSE_WINDOW_LIST_MAX_TX
+            : TX_RESPONSE_WINDOW_GET_MAX_TX;
+
+        { LOCK(m_txRespWindowMutex);
+            m_txRespWindow.Open(eKind, nNow, nTTL, nMaxTx);
+        }
+
+        debug::log(2, NODE, "tx-response-window opened: kind=",
+            (eKind == TxResponseKind::LIST ? "LIST" : "GET"),
+            " TTL=", nTTL, "s budget=", nMaxTx,
+            " session=", nCurrentSession);
     }
 
 

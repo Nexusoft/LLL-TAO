@@ -704,6 +704,12 @@ namespace TAO
                             TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
                             uint1024_t(hashPeerBest)
                         );
+
+                        /* Open a response window so inline TYPES::TRANSACTION packets
+                         * that precede each block in the LIST response are accepted
+                         * rather than force-dropped as "unsolicited data". */
+                        if(!config::fClient.load())
+                            pSend->OpenTxResponseWindow(LLP::TxResponseKind::LIST);
                     }
                     catch(const std::exception& e)
                     {
@@ -1055,6 +1061,11 @@ namespace TAO
                                     uint1024_t(block.hashPrevBlock)
                                 );
 
+                                /* Open a response window so inline TYPES::TRANSACTION
+                                 * packets from the LIST response are not force-dropped. */
+                                if(!config::fClient.load())
+                                    pnode->OpenTxResponseWindow(LLP::TxResponseKind::LIST);
+
                                 /* Random-connection fallback: ask a second distinct
                                  * peer so the node that sent the orphan cannot also
                                  * be the sole source of the recovery path (upstream
@@ -1077,6 +1088,10 @@ namespace TAO
                                                 TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
                                                 uint1024_t(block.hashPrevBlock)
                                             );
+
+                                            /* Open window on the random peer too. */
+                                            if(!config::fClient.load())
+                                                pRandom->OpenTxResponseWindow(LLP::TxResponseKind::LIST);
                                         }
                                         catch(const std::exception& e)
                                         {

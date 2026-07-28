@@ -410,6 +410,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_test_tolerance_verification.o \
 		   build/Tests_LLP_trust_address.o \
 		   build/Tests_LLP_pr563_safeguards_tests.o \
+		   build/Tests_LLP_tx_response_window_tests.o \
 		   build/Tests_TAO_API_assets.o \
 		   build/Tests_TAO_API_credential_cache_tests.o \
 		   build/Tests_TAO_API_crypto.o \
