@@ -39,6 +39,23 @@ namespace LLP
     };
 
 
+    /** RecordStaleSyncWarningEvent
+     *
+     *  Update the per-session throttling state for one rejected stale SYNC
+     *  block and return whether the caller should emit a warning now.
+     *
+     *  - First event for a session emits immediately.
+     *  - Subsequent events inside `nThrottleSeconds` are counted and suppressed.
+     *  - The first event after the interval emits and reports the accumulated
+     *    suppressed-block count since the previous report.
+     *  - If `mapStates` is already at `nMaxEntries` when a new session arrives,
+     *    the map is cleared before inserting the new entry. This intentionally
+     *    mirrors the cheap clear-on-cap policy used by other LLP warning maps.
+     *  - If `nNow` moves backward relative to the stored timestamp, the warning
+     *    emits immediately and resets the timestamp to avoid indefinite silence.
+     *
+     *  Thread safety: this function does not lock `mapStates`; callers must
+     *  provide any synchronization required by their connection model. */
     inline StaleSyncWarningDecision RecordStaleSyncWarningEvent(
         std::map<uint64_t, StaleSyncWarningState>& mapStates,
         const uint64_t nStaleSession,
@@ -83,6 +100,15 @@ namespace LLP
     }
 
 
+    /** ResetStaleSyncWarningEvent
+     *
+     *  Remove the throttling state for `nStaleSession`, typically on disconnect
+     *  so a recycled or newly-active connection starts with a clean limiter.
+     *
+     *  @return true if an entry was present and erased, false otherwise.
+     *
+     *  Thread safety: this function does not lock `mapStates`; callers must
+     *  provide any synchronization required by their connection model. */
     inline bool ResetStaleSyncWarningEvent(
         std::map<uint64_t, StaleSyncWarningState>& mapStates,
         const uint64_t nStaleSession)
