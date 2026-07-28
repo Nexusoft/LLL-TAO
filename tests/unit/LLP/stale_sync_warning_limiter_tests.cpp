@@ -97,7 +97,7 @@ TEST_CASE("Stale sync warning limiter bounds and resets session state",
 {
     std::map<uint64_t, StaleSyncWarningState> mapStates;
 
-    for(std::size_t i = 0; i < STALE_SYNC_WARNING_MAX_ENTRIES; ++i)
+    for (std::size_t i = 0; i < STALE_SYNC_WARNING_MAX_ENTRIES; ++i)
         REQUIRE(RecordStaleSyncWarningEvent(mapStates, i + 1, 100).fEmitWarning);
 
     REQUIRE(mapStates.size() == STALE_SYNC_WARNING_MAX_ENTRIES);
@@ -114,4 +114,11 @@ TEST_CASE("Stale sync warning limiter bounds and resets session state",
     REQUIRE(ResetStaleSyncWarningEvent(mapStates,
         STALE_SYNC_WARNING_MAX_ENTRIES + 1));
     REQUIRE(mapStates.empty());
+
+    const StaleSyncWarningDecision postReset =
+        RecordStaleSyncWarningEvent(mapStates,
+            STALE_SYNC_WARNING_MAX_ENTRIES + 1, 101);
+
+    REQUIRE(postReset.fEmitWarning);
+    REQUIRE(postReset.nSuppressedBlocks == 1);
 }
