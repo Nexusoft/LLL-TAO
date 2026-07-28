@@ -129,12 +129,41 @@ Regression test: `tests/unit/LLP/permissions_test.cpp`.
 
 ## 4. Scope note on the "E.1–E.6" request
 
-This task was requested as "implement ALL the E fixes you identified: E.1,
-E.2, E.3 DDoS defaults restored, E.4, E.5, and E.6", referencing a prior
-audit conversation. That enumerated list (E.1, E.2, E.4, E.5, E.6) could not
-be located in this repository's issues, pull requests, discussions, or
-session history — only E.3 ("DDoS defaults restored") was explicitly named
-and has been fully implemented here, alongside the closely-related
-`CheckPermissions()` testnet bypass found during the same audit of
-`src/LLP`. If E.1/E.2/E.4/E.5/E.6 refer to additional specific findings,
-please share their details so they can be addressed in a follow-up change.
+This task was originally requested as "implement ALL the E fixes you
+identified: E.1, E.2, E.3 DDoS defaults restored, E.4, E.5, and E.6",
+referencing a prior audit conversation. That conversation's session state was
+not recoverable in this repository (no matching issue, pull request,
+discussion, or stored session references the E.1–E.6 labels), so the exact
+content of E.1, E.2, E.4, E.5, and E.6 as originally enumerated could not be
+reconstructed verbatim.
+
+To close out this task within the available time, this change performed a
+second, independent pass over the same `src/LLP` connection-acceptance
+surface (`server.cpp` accept loop, `permissions.cpp`, `global.cpp` server
+defaults, `manager.cpp`, `ddos.cpp`) and cross-checked each against the
+current upstream `Nexusoft/LLL-TAO` sources to look for any further
+unreviewed regressions from PR #667's silent auto-merge:
+
+* **E.3 — DDoS defaults restored** (`-ddos`, `-rscore`, `-apiddos`) — fully
+  implemented, see §2.
+* **Testnet `CheckPermissions()` whitelist bypass** — fully implemented,
+  see §3. (This is the fix most likely referred to by one of the missing
+  `E.x` labels, since it was found during the same audit pass as E.3.)
+* **AddressManager `Get()` TOCTOU** (tracked elsewhere as "Finding #2") was
+  already fixed and merged prior to this branch; re-verified in this pass
+  that both call sites (`src/LLP/tritium.cpp` `ACTION::NOTIFY::ADDRESS`
+  handler and `src/TAO/API/commands/system/initialize.cpp` peer listing) use
+  the non-throwing `Get(addr, TrustAddress&)` overload, and that no other
+  caller in the tree still uses the throwing single-argument `Get()`.
+* The accept loop in `server.cpp` (max-connection checks, DDOS filter
+  creation/scoring, ban check, `CheckPermissions()` call, `AddConnection()`
+  dispatch) and `ddos.cpp`'s moving-average scorer were diffed against
+  upstream and found structurally identical — no further silent-merge
+  regressions were found there.
+
+No additional high-confidence bugs were identified in this pass beyond the
+two documented above. If E.1/E.2/E.4/E.5/E.6 refer to specific findings
+outside this pipeline (e.g. block-acceptance/consensus code rather than
+LLP connection acceptance), please share their details — ideally by filing
+them as separate tracked issues — so they aren't lost to session resets
+again and can be addressed in a follow-up change.
