@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/manager.h>
+#include <LLP/include/stale_sync_diagnostics.h>
 #include <LLP/templates/events.h>
 
 #include <TAO/API/include/global.h>
@@ -93,6 +94,12 @@ namespace LLP
     static constexpr uint32_t CAP_WARNING_THROTTLE_MAX_ENTRIES = 256;
     static constexpr uint64_t CAP_WARNING_THROTTLE_SECONDS     = 60;
     static std::map<uint1024_t, uint64_t> mapCapWarningLastTime;
+
+    /* Per-stale-session throttled diagnostics for ignored SYNC blocks.
+     * Protected because multiple node connections can reject stale queued
+     * blocks concurrently on separate DataThread contexts. */
+    static std::mutex STALE_SYNC_WARNING_MUTEX;
+    static std::map<uint64_t, StaleSyncWarningState> mapStaleSyncWarningStates;
 
     /* Allow a small height delta so minor notification races don't block sync
      * finalization when peers are effectively at the same tip. */
@@ -601,6 +608,11 @@ namespace LLP
                         /* Free the session as long as it is not a duplicate connection that we are closing. */
                         if(mapSessions.count(nCurrentSession))
                             mapSessions.erase(nCurrentSession);
+                    }
+
+                    {
+                        std::lock_guard<std::mutex> lock(STALE_SYNC_WARNING_MUTEX);
+                        ResetStaleSyncWarningEvent(mapStaleSyncWarningStates, nCurrentSession);
                     }
 
                     /* Reset session value. */
@@ -3156,12 +3168,27 @@ namespace LLP
                             return debug::drop(NODE, "TYPES::BLOCK::SYNC: disabled in -client mode");
 
                         /* Check if this is an unsolicited sync block. */
-                        if(nCurrentSession != TAO::Ledger::nSyncSession.load() || fSynchronized.load())
+                        const uint64_t nSyncSession = TAO::Ledger::nSyncSession.load();
+                        const bool fAlreadySynchronized = fSynchronized.load();
+                        if(nCurrentSession != nSyncSession || fAlreadySynchronized)
                         {
-                            debug::warning(FUNCTION,
-                                "ignoring unsolicited sync block from session ", std::hex,
-                                nCurrentSession, " sync_session=", TAO::Ledger::nSyncSession.load(),
-                                std::dec, " synchronized=", fSynchronized.load());
+                            const uint64_t nNow = runtime::timestamp();
+                            StaleSyncWarningDecision decision;
+                            {
+                                std::lock_guard<std::mutex> lock(STALE_SYNC_WARNING_MUTEX);
+                                decision = RecordStaleSyncWarningEvent(
+                                    mapStaleSyncWarningStates, nCurrentSession, nNow);
+                            }
+
+                            if(decision.fEmitWarning)
+                            {
+                                debug::warning(FUNCTION,
+                                    "ignoring unsolicited sync block from session ", std::hex,
+                                    nCurrentSession, " sync_session=", nSyncSession,
+                                    std::dec, " synchronized=", fAlreadySynchronized,
+                                    " suppressed=", decision.nSuppressedBlocks);
+                            }
+
                             break;
                         }
 
