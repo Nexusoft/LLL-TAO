@@ -20,8 +20,8 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    static constexpr std::size_t STALE_SYNC_WARNING_MAX_ENTRIES = 256;
-    static constexpr uint64_t STALE_SYNC_WARNING_THROTTLE_SECONDS = 60;
+    inline constexpr std::size_t STALE_SYNC_WARNING_MAX_ENTRIES = 256;
+    inline constexpr uint64_t STALE_SYNC_WARNING_THROTTLE_SECONDS = 60;
 
 
     struct StaleSyncWarningState
