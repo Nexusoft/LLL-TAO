@@ -897,12 +897,19 @@ namespace TAO
                         if(nRetries > MAX_CONFLICT_STALE_RETRIES)
                         {
                             /* Budget exhausted: evict to stop consuming sweep cycles.
-                             * This is a last-resort guard — genuine DEFERRED_LOCAL_STATE
-                             * conflicts should resolve well within the budget. */
+                             * This removes only the mapConflicts entry — it does NOT
+                             * roll back the active best chain or invalidate accepted blocks.
+                             * The conflict can be re-evaluated if peers relay the tx again.
+                             * A persistent DEFERRED_LOCAL_STATE may indicate a long-idle
+                             * sigchain or a fork whose resolution stalled; worth investigating
+                             * but is not itself an active-chain rollback or corruption event. */
                             debug::warning(FUNCTION,
-                                "conflict retry budget exhausted for genesis=", hashGenesis.SubString(),
+                                "MEMPOOL_CONFLICT_EVICTED class=DEFERRED_LOCAL_STATE",
+                                " genesis=", hashGenesis.SubString(),
                                 " retries=", nRetries,
-                                " evicting — chain may require manual intervention");
+                                " action=evict_conflict_only",
+                                " active_chain_affected=false",
+                                " (mapConflicts entry removed; tx re-evaluates if relayed again)");
 
                             mapConflictRetries.erase(hashGenesis);
                             setStrandedGeneses.erase(hashGenesis);
@@ -963,12 +970,20 @@ namespace TAO
                         if(nRetries > MAX_UNKNOWN_ANCESTOR_RETRIES)
                         {
                             /* Budget exhausted: evict to stop consuming sweep cycles.
-                             * This is a last-resort guard — a sync gap this
-                             * persistent likely needs manual intervention. */
+                             * This removes only the mapConflicts entry — it does NOT
+                             * roll back the active best chain or invalidate accepted blocks.
+                             * The conflict can be re-evaluated if peers relay the tx again.
+                             * A persistent UNKNOWN ancestor may indicate a sync gap, a
+                             * missing predecessor block, or a fork the node hasn't seen;
+                             * worth investigating but is not itself an active-chain rollback. */
                             debug::warning(FUNCTION,
-                                "unknown-ancestor retry budget exhausted for genesis=", hashGenesis.SubString(),
+                                "MEMPOOL_CONFLICT_EVICTED class=UNKNOWN",
+                                " genesis=", hashGenesis.SubString(),
                                 " retries=", nRetries,
-                                " evicting — chain may require manual intervention");
+                                " reason=predecessor_not_found_on_disk",
+                                " action=evict_conflict_only",
+                                " active_chain_affected=false",
+                                " (mapConflicts entry removed; tx re-evaluates if relayed again)");
 
                             mapUnknownAncestorRetries.erase(hashGenesis);
                             setUnknownAncestorGeneses.erase(hashGenesis);

@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <thread>
 
 #include <LLC/types/uint1024.h>
+#include <LLP/include/channel_notify_result.h>
 
 namespace LLP
 {
@@ -166,16 +167,18 @@ namespace LLP
         /** BroadcastStatelessChannel
          *
          *  Send one channel notification to the stateless lane only.
+         *  Returns the notification counts for use in the per-lane summary.
          *
          **/
-        static void BroadcastStatelessChannel(uint32_t nChannel, uint32_t nHeight, uint32_t hashPrefix4);
+        static ChannelNotifyResult BroadcastStatelessChannel(uint32_t nChannel, uint32_t nHeight, uint32_t hashPrefix4);
 
         /** BroadcastLegacyChannel
          *
          *  Send one channel notification to the legacy lane only.
+         *  Returns the notification counts for use in the per-lane summary.
          *
          **/
-        static void BroadcastLegacyChannel(uint32_t nChannel, uint32_t nHeight, uint32_t hashPrefix4);
+        static ChannelNotifyResult BroadcastLegacyChannel(uint32_t nChannel, uint32_t nHeight, uint32_t hashPrefix4);
 
 
         /** DispatchStatelessPush — dispatches one accepted event to stateless lane only. **/

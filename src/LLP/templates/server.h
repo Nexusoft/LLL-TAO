@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLP/include/legacy_address.h>
 #include <LLP/include/manager.h>
 #include <LLP/include/config.h>
+#include <LLP/include/channel_notify_result.h>
 
 #include <Util/types/lock_unique_ptr.h>
 
@@ -250,13 +251,16 @@ namespace LLP
          *
          *  @param[in] nChannel    Channel that advanced (1=Prime, 2=Hash)
          *
-         *  @return Number of miners that were notified on this lane.
+         *  @return ChannelNotifyResult with notified and per-reason skip counts.
+         *          nSkippedWrongChannel is expected to be non-zero when miners on the
+         *          other channel are connected (e.g. all miners are Prime, so the Hash
+         *          broadcast skips them — this is normal, not a failure).
          *
          *  @note This method is only meaningful for StatelessMinerConnection and Miner servers.
-         *        For other protocol types, it will be a no-op that returns 0.
+         *        For other protocol types, it will be a no-op that returns {0,0,0,0}.
          *
          **/
-        uint32_t NotifyChannelMiners(uint32_t nChannel);
+        ChannelNotifyResult NotifyChannelMiners(uint32_t nChannel);
 
 
         /** GetConnectionCount
