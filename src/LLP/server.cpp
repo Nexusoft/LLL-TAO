@@ -462,6 +462,10 @@ namespace LLP
             /* Determine lane name at compile time for clear per-lane logging */
             constexpr const char* strLane =
                 std::is_same_v<ProtocolType, StatelessMinerConnection> ? "Stateless" : "Legacy";
+            /* Lower-case push label for consistent format with miner_push_dispatcher logs. */
+            constexpr const char* strPushLabel =
+                std::is_same_v<ProtocolType, StatelessMinerConnection>
+                    ? "stateless_miner_push" : "legacy_miner_push";
 
             /* Early exit if shutdown is in progress */
             if (config::fShutdown.load())
@@ -548,7 +552,7 @@ namespace LLP
             }
             
             /* Detailed per-lane per-channel result — available at high verbosity for debugging. */
-            debug::log(2, FUNCTION, "[", strLane, "_miner_push][", strChannelName, "] notified=", tResult.nNotified,
+            debug::log(2, FUNCTION, "[", strPushLabel, "][", strChannelName, "] notified=", tResult.nNotified,
                        " skipped_wrong_channel=", tResult.nSkippedWrongChannel,
                        " skipped_polling=", tResult.nSkippedPolling,
                        " skipped_disconnected=", tResult.nSkippedDisconnected);
