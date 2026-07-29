@@ -100,47 +100,60 @@ namespace LLP
     }
 
 
-    /* BroadcastStatelessChannel — send one channel notification to stateless lane. */
-    void MinerPushDispatcher::BroadcastStatelessChannel(uint32_t nChannel,
+    /* BroadcastStatelessChannel — send one channel notification to stateless lane.
+     * Returns the notification result struct for aggregation into the per-lane summary. */
+    ChannelNotifyResult MinerPushDispatcher::BroadcastStatelessChannel(uint32_t nChannel,
                                                          uint32_t nHeight,
                                                          uint32_t hashPrefix4)
     {
         const char* strChannel = (nChannel == 1) ? "Prime" : "Hash";
 
-        uint32_t nStateless = 0;
+        ChannelNotifyResult tResult;
         if(LLP::STATELESS_MINER_SERVER)
-            nStateless = LLP::STATELESS_MINER_SERVER->NotifyChannelMiners(nChannel);
+            tResult = LLP::STATELESS_MINER_SERVER->NotifyChannelMiners(nChannel);
         else
             debug::log(1, FUNCTION, "[PUSH][Stateless][", strChannel, "] Server not active");
 
-        debug::log(0, FUNCTION,
-                   "[PUSH][Stateless][", strChannel, "] height=", nHeight,
+        /* Detailed per-transport log available at high verbosity for debugging. */
+        debug::log(2, FUNCTION,
+                   "[stateless_miner_push][", strChannel, "] height=", nHeight,
                    " hash=", std::hex, hashPrefix4, std::dec,
-                   " notified=", nStateless);
+                   " notified=", tResult.nNotified,
+                   " skipped_wrong_channel=", tResult.nSkippedWrongChannel,
+                   " skipped_polling=", tResult.nSkippedPolling,
+                   " skipped_disconnected=", tResult.nSkippedDisconnected);
+        return tResult;
     }
 
 
-    /* BroadcastLegacyChannel — send one channel notification to legacy lane. */
-    void MinerPushDispatcher::BroadcastLegacyChannel(uint32_t nChannel,
+    /* BroadcastLegacyChannel — send one channel notification to legacy lane.
+     * Returns the notification result struct for aggregation into the per-lane summary. */
+    ChannelNotifyResult MinerPushDispatcher::BroadcastLegacyChannel(uint32_t nChannel,
                                                       uint32_t nHeight,
                                                       uint32_t hashPrefix4)
     {
         const char* strChannel = (nChannel == 1) ? "Prime" : "Hash";
 
-        uint32_t nLegacy = 0;
+        ChannelNotifyResult tResult;
         if(LLP::MINING_SERVER)
-            nLegacy = LLP::MINING_SERVER->NotifyChannelMiners(nChannel);
+            tResult = LLP::MINING_SERVER->NotifyChannelMiners(nChannel);
         else
             debug::log(1, FUNCTION, "[PUSH][Legacy][", strChannel, "] Server not active");
 
-        debug::log(0, FUNCTION,
-                   "[PUSH][Legacy][", strChannel, "] height=", nHeight,
+        /* Detailed per-transport log available at high verbosity for debugging. */
+        debug::log(2, FUNCTION,
+                   "[legacy_miner_push][", strChannel, "] height=", nHeight,
                    " hash=", std::hex, hashPrefix4, std::dec,
-                   " notified=", nLegacy);
+                   " notified=", tResult.nNotified,
+                   " skipped_wrong_channel=", tResult.nSkippedWrongChannel,
+                   " skipped_polling=", tResult.nSkippedPolling,
+                   " skipped_disconnected=", tResult.nSkippedDisconnected);
+        return tResult;
     }
 
 
-    /* DispatchStatelessPush — stateless lane dispatch of an already-deduped event. */
+    /* DispatchStatelessPush — stateless lane dispatch of an already-deduped event.
+     * Emits a MINER_PUSH_SUMMARY at verbose=1 after broadcasting both channels. */
     void MinerPushDispatcher::DispatchStatelessPush(const PushEvent& event)
     {
         if(config::fShutdown.load())
@@ -149,15 +162,36 @@ namespace LLP
         const uint32_t hashPrefix4 =
             static_cast<uint32_t>(event.hashBestChain.Get64(0) & 0xffffffffULL);
 
+        ChannelNotifyResult tPrime;
+        ChannelNotifyResult tHash;
+
         if(event.fPrime)
-            BroadcastStatelessChannel(1, event.nHeight, hashPrefix4);
+            tPrime = BroadcastStatelessChannel(1, event.nHeight, hashPrefix4);
 
         if(event.fHash)
-            BroadcastStatelessChannel(2, event.nHeight, hashPrefix4);
+            tHash = BroadcastStatelessChannel(2, event.nHeight, hashPrefix4);
+
+        /* MINER_PUSH_SUMMARY (stateless lane) — one log per accepted-block dispatch.
+         * Hash wrong-channel skips are expected when all connected miners are on Prime;
+         * they indicate normal channel routing, not a push failure.
+         * Enable with -verbose=1. */
+        debug::log(1, FUNCTION,
+                   "MINER_PUSH_SUMMARY [stateless] height=", event.nHeight,
+                   " block=", std::hex, hashPrefix4, std::dec,
+                   " | prime notified=", tPrime.nNotified,
+                   " wrong_channel=", tPrime.nSkippedWrongChannel,
+                   " polling=", tPrime.nSkippedPolling,
+                   " disconnected=", tPrime.nSkippedDisconnected,
+                   " | hash notified=", tHash.nNotified,
+                   " wrong_channel=", tHash.nSkippedWrongChannel,
+                   " (expected if all miners are Prime)",
+                   " polling=", tHash.nSkippedPolling,
+                   " disconnected=", tHash.nSkippedDisconnected);
     }
 
 
-    /* DispatchLegacyPush — legacy lane dispatch of an already-deduped event. */
+    /* DispatchLegacyPush — legacy lane dispatch of an already-deduped event.
+     * Emits a MINER_PUSH_SUMMARY at verbose=1 after broadcasting both channels. */
     void MinerPushDispatcher::DispatchLegacyPush(const PushEvent& event)
     {
         if(config::fShutdown.load())
@@ -166,11 +200,31 @@ namespace LLP
         const uint32_t hashPrefix4 =
             static_cast<uint32_t>(event.hashBestChain.Get64(0) & 0xffffffffULL);
 
+        ChannelNotifyResult tPrime;
+        ChannelNotifyResult tHash;
+
         if(event.fPrime)
-            BroadcastLegacyChannel(1, event.nHeight, hashPrefix4);
+            tPrime = BroadcastLegacyChannel(1, event.nHeight, hashPrefix4);
 
         if(event.fHash)
-            BroadcastLegacyChannel(2, event.nHeight, hashPrefix4);
+            tHash = BroadcastLegacyChannel(2, event.nHeight, hashPrefix4);
+
+        /* MINER_PUSH_SUMMARY (legacy lane) — one log per accepted-block dispatch.
+         * Hash wrong-channel skips are expected when all connected miners are on Prime;
+         * they indicate normal channel routing, not a push failure.
+         * Enable with -verbose=1. */
+        debug::log(1, FUNCTION,
+                   "MINER_PUSH_SUMMARY [legacy] height=", event.nHeight,
+                   " block=", std::hex, hashPrefix4, std::dec,
+                   " | prime notified=", tPrime.nNotified,
+                   " wrong_channel=", tPrime.nSkippedWrongChannel,
+                   " polling=", tPrime.nSkippedPolling,
+                   " disconnected=", tPrime.nSkippedDisconnected,
+                   " | hash notified=", tHash.nNotified,
+                   " wrong_channel=", tHash.nSkippedWrongChannel,
+                   " (expected if all miners are Prime)",
+                   " polling=", tHash.nSkippedPolling,
+                   " disconnected=", tHash.nSkippedDisconnected);
     }
 
 
