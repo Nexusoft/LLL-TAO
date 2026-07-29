@@ -233,15 +233,17 @@ namespace LLP
 
     /*  Write a single packet to the TCP stream. */
     template <class PacketType>
-    void BaseConnection<PacketType>::WritePacket(const PacketType& PACKET)
+    bool BaseConnection<PacketType>::WritePacket(const PacketType& PACKET)
     {
-        WritePacket(PACKET, false);
+        return WritePacket(PACKET, false);
     }
 
 
     template <class PacketType>
-    void BaseConnection<PacketType>::WritePacket(const PacketType& PACKET, bool fPriority)
+    bool BaseConnection<PacketType>::WritePacket(const PacketType& PACKET, bool fPriority)
     {
+        bool fQueued = false;
+
         /* Per-connection buffer limit — mining connections return a larger value
          * (5 MB by default) so push notifications are not dropped under normal
          * mining pressure.
@@ -273,6 +275,7 @@ namespace LLP
 
             /* Update packet count. */
             ++PACKETS;
+            fQueued = true;
         }
         else
         {
@@ -298,6 +301,8 @@ namespace LLP
         /* Notify condition if available. */
         if(FLUSH_CONDITION && Buffered())
             FLUSH_CONDITION->notify_all();
+
+        return fQueued;
     }
 
 

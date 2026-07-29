@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
+#include <LLP/include/tx_response_window.h>
 #include <LLP/packets/message.h>
 #include <LLP/templates/base_connection.h>
 #include <LLP/templates/events.h>
@@ -31,6 +32,7 @@ ________________________________________________________________________________
 
 #include <atomic>
 #include <chrono>
+#include <mutex>
 #include <thread>
 
 namespace LLP
@@ -514,6 +516,19 @@ namespace LLP
         std::map<uint512_t, Legacy::Transaction> mapLegacy;
 
 
+        /** Bounded per-peer response window that permits raw TYPES::TRANSACTION
+         *  messages when they are expected as part of a locally-initiated
+         *  SPECIFIER::TRANSACTIONS block response from this peer.
+         *
+         *  Protected by m_txRespWindowMutex because OpenTxResponseWindow() may be
+         *  called from another peer connection's DataThread (e.g. when the active
+         *  sync peer fires off a GET to a randomly-selected helper peer). **/
+        TxResponseWindow m_txRespWindow;
+
+        /** Mutex protecting m_txRespWindow against concurrent DataThread access. **/
+        std::mutex m_txRespWindowMutex;
+
+
     public:
 
         /** Mutex for connected sessions. **/
@@ -800,6 +815,34 @@ namespace LLP
         void PushBlock(const uint8_t nSpecifier, const TAO::Ledger::BlockState& rBlock);
 
 
+        /** OpenTxResponseWindow
+         *
+         *  Open a bounded per-peer response window that authorises incoming raw
+         *  TYPES::TRANSACTION messages expected as part of a SPECIFIER::TRANSACTIONS
+         *  block response.  Called immediately before queueing the corresponding
+         *  ACTION::GET or ACTION::LIST request to this peer.
+         *
+         *  Any previously active window on this peer is replaced.
+         *
+         *  Thread-safe: may be called from another connection's DataThread (for
+         *  example when a random helper peer is selected to serve a missing-tx
+         *  re-request).
+         *
+         *  @param[in] eKind       GET (single-block recovery) or LIST (branch recovery).
+         *  @param[in] hashTarget  GET block hash or LIST locator target.
+         *  @param[in] hashStop    LIST stop hash (zero for GET).
+         *
+         **/
+        uint64_t OpenTxResponseWindow(TxResponseKind eKind, const uint1024_t& hashTarget,
+                                      const uint1024_t& hashStop = 0);
+
+        /** Roll back an unqueueable request without cancelling a newer request. **/
+        void RollbackTxResponseWindow(uint64_t nRequestId);
+
+        /** Close a GET window only when its requested block was received. **/
+        void CloseTxResponseWindowForBlock(const uint1024_t& hashBlock);
+
+
         /** NewMessage
          *
          *  Creates a new message with a commands and data.
@@ -826,10 +869,10 @@ namespace LLP
          *  @param[in] nMsg The message type.
          *
          **/
-        void PushMessage(const uint16_t nMsg)
+        bool PushMessage(const uint16_t nMsg)
         {
             MessagePacket RESPONSE(nMsg);
-            WritePacket(RESPONSE);
+            return WritePacket(RESPONSE);
         }
 
 
@@ -839,14 +882,15 @@ namespace LLP
          *
          **/
         template<typename... Args>
-        void PushMessage(const uint16_t nMsg, Args&&... args)
+        bool PushMessage(const uint16_t nMsg, Args&&... args)
         {
             DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
             ((ssData << args), ...);
 
-            WritePacket(NewMessage(nMsg, ssData));
+            const bool fQueued = WritePacket(NewMessage(nMsg, ssData));
 
             debug::log(4, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, ssData.size(), " bytes");
+            return fQueued;
         }
 
 
