@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_CHANNEL_NOTIFY_RESULT_H
 
 #include <cstdint>
+#include <string>
 
 namespace LLP
 {
@@ -45,6 +46,42 @@ namespace LLP
         uint32_t nSkippedPolling{0};
         uint32_t nSkippedDisconnected{0};
     };
+
+
+    /** FormatHashLaneSummary
+     *
+     *  Formats the hash-lane portion of a MINER_PUSH_SUMMARY log line.
+     *
+     *  When fBroadcast is false (e.g. Hash channel suppressed by dedup), returns
+     *  " | hash not_broadcast" so operators/monitors can distinguish that case
+     *  from a real Hash broadcast that happened to observe zero wrong-channel
+     *  skips.  The "(expected if all miners are Prime)" annotation is only
+     *  appended when a Hash broadcast actually ran and recorded wrong-channel
+     *  skips.
+     *
+     *  @param[in] fBroadcast  True if the Hash channel broadcast was attempted.
+     *  @param[in] tHash       Notification counters from the Hash broadcast.
+     *
+     **/
+    inline std::string FormatHashLaneSummary(bool fBroadcast,
+                                             const ChannelNotifyResult& tHash)
+    {
+        if(!fBroadcast)
+            return " | hash not_broadcast";
+
+        std::string strSummary =
+            " | hash notified=" + std::to_string(tHash.nNotified) +
+            " wrong_channel=" + std::to_string(tHash.nSkippedWrongChannel);
+
+        if(tHash.nSkippedWrongChannel > 0)
+            strSummary += " (expected if all miners are Prime)";
+
+        strSummary +=
+            " polling=" + std::to_string(tHash.nSkippedPolling) +
+            " disconnected=" + std::to_string(tHash.nSkippedDisconnected);
+
+        return strSummary;
+    }
 
 } // namespace LLP
 
