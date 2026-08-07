@@ -137,3 +137,63 @@ TEST_CASE("ChannelNotifyResult - legacy lane, no miners", "[miner_push_summary][
     /* Legacy zero-notified is not a failure; the stateless lane handles push. */
     REQUIRE((tLegacyPrime.nNotified + tLegacyHash.nNotified) == 0);
 }
+
+
+TEST_CASE("FormatHashLaneSummary - distinguishes not_broadcast from zero skips",
+          "[miner_push_summary][llp]")
+{
+    LLP::ChannelNotifyResult tHash;
+
+    SECTION("Hash not broadcast (e.g. dedup): unambiguous not_broadcast token")
+    {
+        const std::string strSummary = LLP::FormatHashLaneSummary(false, tHash);
+
+        REQUIRE(strSummary == " | hash not_broadcast");
+        REQUIRE(strSummary.find("expected if all miners are Prime") == std::string::npos);
+        REQUIRE(strSummary.find("wrong_channel=") == std::string::npos);
+    }
+
+    SECTION("Hash broadcast with zero wrong-channel skips: no expected-note")
+    {
+        tHash.nNotified            = 1;
+        tHash.nSkippedWrongChannel = 0;
+        tHash.nSkippedPolling      = 0;
+        tHash.nSkippedDisconnected = 0;
+
+        const std::string strSummary = LLP::FormatHashLaneSummary(true, tHash);
+
+        REQUIRE(strSummary ==
+                " | hash notified=1 wrong_channel=0 polling=0 disconnected=0");
+        REQUIRE(strSummary.find("expected if all miners are Prime") == std::string::npos);
+        REQUIRE(strSummary.find("not_broadcast") == std::string::npos);
+    }
+
+    SECTION("Hash broadcast with wrong-channel skips: expected-note present")
+    {
+        tHash.nNotified            = 0;
+        tHash.nSkippedWrongChannel = 1;
+        tHash.nSkippedPolling      = 0;
+        tHash.nSkippedDisconnected = 0;
+
+        const std::string strSummary = LLP::FormatHashLaneSummary(true, tHash);
+
+        REQUIRE(strSummary ==
+                " | hash notified=0 wrong_channel=1"
+                " (expected if all miners are Prime)"
+                " polling=0 disconnected=0");
+        REQUIRE(strSummary.find("not_broadcast") == std::string::npos);
+    }
+
+    SECTION("not_broadcast zero-counters must not look like broadcast zeros")
+    {
+        /* Default-zero result with fBroadcast=false must remain distinguishable
+         * from the same counters with fBroadcast=true. */
+        const std::string strNotBroadcast = LLP::FormatHashLaneSummary(false, tHash);
+        const std::string strBroadcastZeros = LLP::FormatHashLaneSummary(true, tHash);
+
+        REQUIRE(strNotBroadcast != strBroadcastZeros);
+        REQUIRE(strNotBroadcast == " | hash not_broadcast");
+        REQUIRE(strBroadcastZeros ==
+                " | hash notified=0 wrong_channel=0 polling=0 disconnected=0");
+    }
+}

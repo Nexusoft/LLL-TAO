@@ -174,6 +174,8 @@ namespace LLP
         /* MINER_PUSH_SUMMARY (stateless lane) — one log per accepted-block dispatch.
          * Hash wrong-channel skips are expected when all connected miners are on Prime;
          * they indicate normal channel routing, not a push failure.
+         * FormatHashLaneSummary only annotates that case when Hash was actually
+         * broadcast (not when dedup suppressed it).
          * Enable with -verbose=1. */
         debug::log(1, FUNCTION,
                    "MINER_PUSH_SUMMARY [stateless] height=", event.nHeight,
@@ -182,11 +184,7 @@ namespace LLP
                    " wrong_channel=", tPrime.nSkippedWrongChannel,
                    " polling=", tPrime.nSkippedPolling,
                    " disconnected=", tPrime.nSkippedDisconnected,
-                   " | hash notified=", tHash.nNotified,
-                   " wrong_channel=", tHash.nSkippedWrongChannel,
-                   " (expected if all miners are Prime)",
-                   " polling=", tHash.nSkippedPolling,
-                   " disconnected=", tHash.nSkippedDisconnected);
+                   FormatHashLaneSummary(event.fHash, tHash));
     }
 
 
@@ -212,6 +210,8 @@ namespace LLP
         /* MINER_PUSH_SUMMARY (legacy lane) — one log per accepted-block dispatch.
          * Hash wrong-channel skips are expected when all connected miners are on Prime;
          * they indicate normal channel routing, not a push failure.
+         * FormatHashLaneSummary only annotates that case when Hash was actually
+         * broadcast (not when dedup suppressed it).
          * Enable with -verbose=1. */
         debug::log(1, FUNCTION,
                    "MINER_PUSH_SUMMARY [legacy] height=", event.nHeight,
@@ -220,11 +220,7 @@ namespace LLP
                    " wrong_channel=", tPrime.nSkippedWrongChannel,
                    " polling=", tPrime.nSkippedPolling,
                    " disconnected=", tPrime.nSkippedDisconnected,
-                   " | hash notified=", tHash.nNotified,
-                   " wrong_channel=", tHash.nSkippedWrongChannel,
-                   " (expected if all miners are Prime)",
-                   " polling=", tHash.nSkippedPolling,
-                   " disconnected=", tHash.nSkippedDisconnected);
+                   FormatHashLaneSummary(event.fHash, tHash));
     }
 
 
