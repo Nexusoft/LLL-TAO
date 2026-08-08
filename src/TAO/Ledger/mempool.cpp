@@ -571,6 +571,15 @@ namespace TAO
                                 mapConflictDependentsByIndex.erase(tx.hashPrevTx);
                                 ProcessConflictDependents(tx.hashPrevTx);
                             }
+
+                            /* Stale-marker clear may have removed the last root
+                             * for this genesis. Drop DEFERRED/UNKNOWN retry and
+                             * once-per-genesis diagnostic state so a future,
+                             * unrelated conflict does not inherit stale counters
+                             * and get evicted prematurely. */
+                            if(!mapConflictRootByGenesis.count(tx.hashGenesis))
+                                ClearGenesisConflictState(tx.hashGenesis);
+
                             /* Fall through to ReadLast / Verify path. */
                         }
                         else

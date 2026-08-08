@@ -29,6 +29,8 @@ ________________________________________________________________________________
  *   R10 Failed root re-admission drops the parked tail (does not process it).
  *   R11 Failed dependent re-admission drops the remaining tail.
  *   R12 Removing an intermediate dependent drops its complete tail.
+ *   R13 Stale-marker clear that leaves no roots for a genesis also clears that
+ *       genesis's DEFERRED/UNKNOWN retry + diagnostic state.
  *
  * Production-only wiring (not simulatable without LLD/Accept fixtures) that
  * these rules depend on remaining true in mempool.cpp:
@@ -83,6 +85,12 @@ namespace
         std::map<uint64_t, SimTx> mapDepsByIndex;       /* hash -> child */
         std::vector<uint64_t> vAdmitted;                /* resolve walk log */
         std::set<uint64_t> setFailAccept;               /* hashes whose Accept fails */
+
+        /* Per-genesis DEFERRED/UNKNOWN retry + diagnostic mirrors. */
+        std::map<uint64_t, uint32_t> mapConflictRetries;
+        std::set<uint64_t> setStrandedGeneses;
+        std::map<uint64_t, uint32_t> mapUnknownAncestorRetries;
+        std::set<uint64_t> setUnknownAncestorGeneses;
 
 
         void Bound()
@@ -277,6 +285,45 @@ namespace
                 mapDepsByIndex.erase(hash);
                 DropDependents(hash);
             }
+        }
+
+
+        void ClearGenesisConflictState(uint64_t hashGenesis)
+        {
+            mapConflictRetries.erase(hashGenesis);
+            setStrandedGeneses.erase(hashGenesis);
+            mapUnknownAncestorRetries.erase(hashGenesis);
+            setUnknownAncestorGeneses.erase(hashGenesis);
+        }
+
+
+        /* Mirror Accept()'s stale-marker clear when prev is confirmed on disk. */
+        void ClearStaleMarker(const SimTx& tx)
+        {
+            EraseRoot(tx.hash);
+            if(mapDepsByIndex.count(tx.hash))
+            {
+                const SimTx self = mapDepsByIndex[tx.hash];
+                mapDeps.erase(self.hashPrev);
+                mapDepsByIndex.erase(tx.hash);
+            }
+
+            if(mapRoots.count(tx.hashPrev))
+            {
+                EraseRoot(tx.hashPrev);
+                ProcessDependents(tx.hashPrev);
+            }
+            else if(mapDepsByIndex.count(tx.hashPrev))
+            {
+                const SimTx prevDep = mapDepsByIndex[tx.hashPrev];
+                mapDeps.erase(prevDep.hashPrev);
+                mapDepsByIndex.erase(tx.hashPrev);
+                ProcessDependents(tx.hashPrev);
+            }
+
+            /* R13: no remaining roots for this genesis → drop retry state. */
+            if(!mapRootByGenesis.count(tx.hashGenesis))
+                ClearGenesisConflictState(tx.hashGenesis);
         }
 
 
@@ -560,4 +607,64 @@ TEST_CASE("Option C DAG: remove root drops entire tree",
     REQUIRE(dag.Conflicts() == 0);
     REQUIRE(dag.Dependents() == 0);
     REQUIRE(dag.mapRootByGenesis.count(1) == 0);
+}
+
+
+TEST_CASE("Option C DAG: stale-marker clear resets genesis retry state",
+          "[mempool_conflict_dag]")
+{
+    ConflictDAG dag;
+
+    const uint64_t genesis = 7;
+    SimTx root{1, 100, genesis, 5};
+    SimTx child{2, 1, genesis, 6};
+
+    dag.AddRoot(root);
+    REQUIRE(dag.ParkDependent(child));
+
+    /* Seed DEFERRED/UNKNOWN retry + diagnostic state for this genesis. */
+    dag.mapConflictRetries[genesis] = 40;
+    dag.setStrandedGeneses.insert(genesis);
+    dag.mapUnknownAncestorRetries[genesis] = 10;
+    dag.setUnknownAncestorGeneses.insert(genesis);
+
+    /* Child Accept path: prev is a conflict node now confirmed on disk. */
+    dag.ClearStaleMarker(child);
+
+    /* R13: last root gone → retry/diagnostic state must not linger. */
+    REQUIRE(dag.Conflicts() == 0);
+    REQUIRE(dag.mapRootByGenesis.count(genesis) == 0);
+    REQUIRE(dag.mapConflictRetries.count(genesis) == 0);
+    REQUIRE(dag.setStrandedGeneses.count(genesis) == 0);
+    REQUIRE(dag.mapUnknownAncestorRetries.count(genesis) == 0);
+    REQUIRE(dag.setUnknownAncestorGeneses.count(genesis) == 0);
+}
+
+
+TEST_CASE("Option C DAG: stale-marker clear keeps retry state with other roots",
+          "[mempool_conflict_dag]")
+{
+    ConflictDAG dag;
+
+    const uint64_t genesis = 7;
+    SimTx rootA{1, 100, genesis, 5};
+    SimTx rootB{3, 200, genesis, 8};
+    SimTx child{2, 1, genesis, 6};
+
+    dag.AddRoot(rootA);
+    dag.AddRoot(rootB);
+    REQUIRE(dag.ParkDependent(child));
+
+    dag.mapConflictRetries[genesis] = 12;
+    dag.setStrandedGeneses.insert(genesis);
+
+    /* Clearing rootA via stale marker must not wipe state while rootB remains. */
+    dag.ClearStaleMarker(child);
+
+    REQUIRE(dag.Conflicts() == 1);
+    REQUIRE(dag.mapRoots.count(3) == 1);
+    REQUIRE(dag.mapRootByGenesis.count(genesis) == 1);
+    REQUIRE(dag.mapConflictRetries.count(genesis) == 1);
+    REQUIRE(dag.mapConflictRetries[genesis] == 12);
+    REQUIRE(dag.setStrandedGeneses.count(genesis) == 1);
 }
