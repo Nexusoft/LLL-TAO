@@ -1243,6 +1243,7 @@ namespace TAO
                         " height=", nHeight,
                         " hash=", hash.SubString(),
                         " mempool_conflicts=", TAO::Ledger::mempool.Conflicts(),
+                        " mempool_conflict_deps=", TAO::Ledger::mempool.ConflictDependents(),
                         " mempool_size=", TAO::Ledger::mempool.Size());
 
                 /* Set the best chain variables. */

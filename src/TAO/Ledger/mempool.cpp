@@ -36,6 +36,8 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 #include <Util/include/runtime.h>
 
+#include <limits>
+
 
 /* Global TAO namespace. */
 namespace TAO
@@ -48,18 +50,21 @@ namespace TAO
 
         /** Default Constructor. **/
         Mempool::Mempool()
-        : MUTEX              ( )
-        , mapLegacy          ( )
-        , mapLegacyConflicts ( )
-        , mapLedger          ( )
-        , mapConflicts       ( )
-        , mapOrphans         ( )
-        , mapRequestCount    ( )
-        , mapClaimed         ( )
-        , mapRejected        ( )
-        , mapInputs          ( )
-        , setOrphansByIndex  ( )
-        , mapOrphansByIndex  ( )
+        : MUTEX                       ( )
+        , mapLegacy                   ( )
+        , mapLegacyConflicts          ( )
+        , mapLedger                   ( )
+        , mapConflicts                ( )
+        , mapConflictRootByGenesis    ( )
+        , mapConflictDependents       ( )
+        , mapConflictDependentsByIndex( )
+        , mapOrphans                  ( )
+        , mapRequestCount             ( )
+        , mapClaimed                  ( )
+        , mapRejected                 ( )
+        , mapInputs                   ( )
+        , setOrphansByIndex           ( )
+        , mapOrphansByIndex           ( )
         {
         }
 
@@ -70,20 +75,226 @@ namespace TAO
         }
 
 
-        /* [Option 1] Bounds mapConflicts before inserting a new entry. */
-        void Mempool::BoundConflictsMap()
+        /* Bounds the whole conflict DAG (roots + dependents + indexes). */
+        void Mempool::BoundConflictDAG()
         {
-            /* Clear the entire map once the cap is hit rather than doing LRU
+            /* Clear the entire DAG once either cap is hit rather than doing LRU
              * eviction; matches the existing cheap DoS-guard pattern used for
              * mapLastMissing/mapCheckRejects. Any conflict still relevant will
              * simply be re-added the next time the transaction is relayed. */
-            if(mapConflicts.size() >= MAX_CONFLICTS_MAP_ENTRIES)
+            const bool fRootsFull =
+                (mapConflicts.size() >= MAX_CONFLICTS_MAP_ENTRIES);
+            const bool fDepsFull  =
+                (mapConflictDependentsByIndex.size() >= MAX_CONFLICT_DEPENDENTS);
+
+            if(fRootsFull || fDepsFull)
             {
-                debug::warning(FUNCTION, "mapConflicts reached ", MAX_CONFLICTS_MAP_ENTRIES,
-                    " entries; clearing to bound memory use");
+                debug::warning(FUNCTION,
+                    "conflict DAG cap reached (roots=", mapConflicts.size(),
+                    "/", MAX_CONFLICTS_MAP_ENTRIES,
+                    " dependents=", mapConflictDependentsByIndex.size(),
+                    "/", MAX_CONFLICT_DEPENDENTS,
+                    "); clearing DAG to bound memory use");
 
                 mapConflicts.clear();
+                mapConflictRootByGenesis.clear();
+                mapConflictDependents.clear();
+                mapConflictDependentsByIndex.clear();
+                mapConflictRetries.clear();
+                setStrandedGeneses.clear();
+                mapUnknownAncestorRetries.clear();
+                setUnknownAncestorGeneses.clear();
             }
+        }
+
+
+        /* Insert tx as a conflict ROOT and maintain per-genesis earliest index. */
+        void Mempool::AddConflictRoot(const TAO::Ledger::Transaction& tx)
+        {
+            const uint512_t hashTx = tx.GetHash();
+
+            /* Already tracked as a root — nothing to do. */
+            if(mapConflicts.count(hashTx))
+                return;
+
+            BoundConflictDAG();
+
+            mapConflicts[hashTx] = tx;
+
+            /* Maintain earliest-sequence root per genesis. */
+            const auto itGenesis = mapConflictRootByGenesis.find(tx.hashGenesis);
+            if(itGenesis == mapConflictRootByGenesis.end())
+            {
+                mapConflictRootByGenesis[tx.hashGenesis] = hashTx;
+            }
+            else
+            {
+                const auto itRoot = mapConflicts.find(itGenesis->second);
+                if(itRoot == mapConflicts.end() || tx.nSequence < itRoot->second.nSequence)
+                    itGenesis->second = hashTx;
+            }
+        }
+
+
+        /* Erase one conflict root and repair the per-genesis index. */
+        void Mempool::EraseConflictRoot(const uint512_t& hashTx)
+        {
+            const auto it = mapConflicts.find(hashTx);
+            if(it == mapConflicts.end())
+                return;
+
+            const uint256_t hashGenesis = it->second.hashGenesis;
+            mapConflicts.erase(it);
+
+            /* Repair per-genesis earliest-root index. */
+            const auto itGenesis = mapConflictRootByGenesis.find(hashGenesis);
+            if(itGenesis == mapConflictRootByGenesis.end())
+                return;
+
+            if(itGenesis->second != hashTx && mapConflicts.count(itGenesis->second))
+                return; /* index still points at a live root */
+
+            /* Re-scan remaining roots for this genesis (usually tiny). */
+            uint512_t hashBest = 0;
+            uint32_t  nBestSeq = std::numeric_limits<uint32_t>::max();
+            bool fFound = false;
+
+            for(const auto& entry : mapConflicts)
+            {
+                if(entry.second.hashGenesis != hashGenesis)
+                    continue;
+
+                if(!fFound || entry.second.nSequence < nBestSeq)
+                {
+                    fFound   = true;
+                    nBestSeq = entry.second.nSequence;
+                    hashBest = entry.first;
+                }
+            }
+
+            if(fFound)
+                itGenesis->second = hashBest;
+            else
+                mapConflictRootByGenesis.erase(itGenesis);
+        }
+
+
+        /* Drop a root and its parked dependent chain. */
+        void Mempool::DropConflictTree(const uint512_t& hashRoot)
+        {
+            EraseConflictRoot(hashRoot);
+
+            /* Walk dependent chain: parent -> child via mapConflictDependents. */
+            uint512_t hashParent = hashRoot;
+            while(mapConflictDependents.count(hashParent))
+            {
+                const TAO::Ledger::Transaction& txChild =
+                    mapConflictDependents[hashParent];
+                const uint512_t hashChild = txChild.GetHash();
+
+                mapConflictDependents.erase(hashParent);
+                mapConflictDependentsByIndex.erase(hashChild);
+
+                hashParent = hashChild;
+            }
+        }
+
+
+        /* Soft-park a descendant of a conflicted/dependent parent. */
+        bool Mempool::ParkConflictDependent(const TAO::Ledger::Transaction& tx)
+        {
+            const uint512_t hashTx = tx.GetHash();
+
+            /* Already parked by hash. */
+            if(mapConflictDependentsByIndex.count(hashTx))
+                return true;
+
+            BoundConflictDAG();
+
+            /* One child slot per parent (orphan-queue shape). Keep the
+             * earliest-sequence occupant; drop later contenders silently. */
+            const auto itParent = mapConflictDependents.find(tx.hashPrevTx);
+            if(itParent != mapConflictDependents.end())
+            {
+                if(itParent->second.GetHash() == hashTx)
+                    return true;
+
+                if(tx.nSequence >= itParent->second.nSequence)
+                {
+                    debug::log(3, FUNCTION, "drop later conflict-dependent ",
+                        hashTx.SubString(), " prev ", tx.hashPrevTx.SubString(),
+                        " (slot held by earlier seq)");
+                    return false;
+                }
+
+                /* Replace later occupant with earlier-sequence child. */
+                mapConflictDependentsByIndex.erase(itParent->second.GetHash());
+            }
+
+            mapConflictDependents[tx.hashPrevTx] = tx;
+            mapConflictDependentsByIndex[hashTx] = tx;
+
+            debug::log(2, FUNCTION, "parked conflict-dependent ",
+                hashTx.SubString(), " prev ", tx.hashPrevTx.SubString(),
+                " genesis ", tx.hashGenesis.SubString());
+
+            return true;
+        }
+
+
+        /* True when hashTx is a conflict root OR a parked dependent. */
+        bool Mempool::IsConflictNode(const uint512_t& hashTx) const
+        {
+            return mapConflicts.count(hashTx) ||
+                   mapConflictDependentsByIndex.count(hashTx);
+        }
+
+
+        /* Re-Accept parked dependents after a parent clears. */
+        void Mempool::ProcessConflictDependents(const uint512_t& hashParent)
+        {
+            uint512_t hashTx = hashParent;
+            while(mapConflictDependents.count(hashTx))
+            {
+                const TAO::Ledger::Transaction tx = mapConflictDependents[hashTx];
+                const uint512_t hashThis = tx.GetHash();
+
+                /* Detach before Accept so Accept cannot see a stale self-entry. */
+                mapConflictDependents.erase(hashTx);
+                mapConflictDependentsByIndex.erase(hashThis);
+
+                debug::log(0, FUNCTION, "PROCESSING CONFLICT-DEPENDENT tx ",
+                    hashThis.SubString());
+
+                /* Already live — continue walking any further tail. */
+                if(mapLedger.count(hashThis))
+                {
+                    hashTx = hashThis;
+                    continue;
+                }
+
+                tx.hashCache = hashThis;
+
+                if(!Accept(tx))
+                {
+                    debug::log(0, FUNCTION, "CONFLICT-DEPENDENT tx ",
+                        hashThis.SubString(), " not re-admitted: ",
+                        debug::GetLastError());
+                    return;
+                }
+
+                hashTx = hashThis;
+            }
+        }
+
+
+        /* Clear DEFERRED/UNKNOWN retry + diagnostic state for a genesis. */
+        void Mempool::ClearGenesisConflictState(const uint256_t& hashGenesis)
+        {
+            mapConflictRetries.erase(hashGenesis);
+            setStrandedGeneses.erase(hashGenesis);
+            mapUnknownAncestorRetries.erase(hashGenesis);
+            setUnknownAncestorGeneses.erase(hashGenesis);
         }
 
 
@@ -207,7 +418,8 @@ namespace TAO
                     }
 
                     /* True double-spend against a live mempool tip: another
-                     * in-pool transaction already claims this hashPrevTx. */
+                     * in-pool transaction already claims this hashPrevTx.
+                     * Option C: this is a ROOT conflict (direct tip disagreement). */
                     if(mapClaimed.count(tx.hashPrevTx))
                     {
                         /* We only need to output debug info and insert if this is a new conflict.
@@ -217,10 +429,8 @@ namespace TAO
                          * it once the fork/reorg settles instead of it becoming a silent dead end. */
                         if(!mapConflicts.count(hashTx))
                         {
-                            /* Add to conflicts map. */
                             debug::error(FUNCTION, "CONFLICT: prev tx CLAIMED ", tx.hashPrevTx.SubString());
-                            BoundConflictsMap();
-                            mapConflicts[hashTx] = tx;
+                            AddConflictRoot(tx);
 
                             /* Relay the conflict if we are running over tritium protocol. */
                             if(pnode && LLP::TRITIUM_SERVER)
@@ -237,7 +447,8 @@ namespace TAO
                         return false;
                     }
 
-                    /* Predecessor is itself sitting in mapConflicts.
+                    /* Predecessor is itself a conflict DAG node (root OR parked
+                     * dependent). Option C:
                      *
                      * Historical behavior cascaded every descendant into
                      * mapConflicts with an ERROR log + NOTIFY relay. That made a
@@ -248,36 +459,56 @@ namespace TAO
                      * Best-chain advancement is unaffected (conflicts are
                      * mempool-only), which is why operators see the node "power
                      * through" the spam while BESTCHAIN keeps moving — and why a
-                     * restart (which wipes mapConflicts) clears the symptom.
+                     * restart (which wipes the DAG) clears the symptom.
                      *
                      * Correct handling:
-                     *  1. If the conflicted predecessor is now confirmed on disk,
-                     *     drop the stale mapConflicts marker and continue Accept
-                     *     so the child can validate against ReadLast normally.
-                     *  2. Otherwise soft-reject the child WITHOUT inserting it
-                     *     into mapConflicts and WITHOUT relaying. The conflict
-                     *     roots stay in mapConflicts for Check() reconciliation;
-                     *     descendants re-evaluate when peers re-offer them after
-                     *     the root is resolved or evicted. */
-                    if(mapConflicts.count(tx.hashPrevTx))
+                     *  1. If the conflicted/dependent predecessor is now confirmed
+                     *     on disk, drop the stale DAG markers and continue Accept
+                     *     so the child can validate against ReadLast normally;
+                     *     also drain any parked dependents of that parent.
+                     *  2. Otherwise soft-park the child as a DEPENDENT (not a
+                     *     root) WITHOUT ERROR and WITHOUT relaying. Roots stay in
+                     *     mapConflicts for Check() reconciliation; dependents
+                     *     re-evaluate via ProcessConflictDependents when the
+                     *     root resolves, or when peers re-offer after eviction. */
+                    if(IsConflictNode(tx.hashPrevTx))
                     {
                         if(LLD::Ledger->HasTx(tx.hashPrevTx, FLAGS::BLOCK))
                         {
-                            debug::log(1, FUNCTION, "stale CONFLICTED marker for confirmed prev ",
+                            debug::log(1, FUNCTION, "stale CONFLICT DAG marker for confirmed prev ",
                                 tx.hashPrevTx.SubString(), "; clearing and re-evaluating");
-                            mapConflicts.erase(tx.hashPrevTx);
-                            /* A prior cascade may also have parked this tx itself
-                             * in mapConflicts. Drop that marker before fall-through
-                             * so a successful admit cannot leave hashTx in both
-                             * mapLedger and mapConflicts, and so dependents of
-                             * hashTx are not soft-rejected on a stale self-entry. */
-                            mapConflicts.erase(hashTx);
+
+                            /* Drop any stale marker for THIS tx first so the
+                             * dependent walk cannot re-enter Accept(hashTx)
+                             * while we are already accepting it. */
+                            EraseConflictRoot(hashTx);
+                            if(mapConflictDependentsByIndex.count(hashTx))
+                            {
+                                const TAO::Ledger::Transaction& txSelf =
+                                    mapConflictDependentsByIndex[hashTx];
+                                mapConflictDependents.erase(txSelf.hashPrevTx);
+                                mapConflictDependentsByIndex.erase(hashTx);
+                            }
+
+                            /* Prev may be a root or a parked dependent. */
+                            if(mapConflicts.count(tx.hashPrevTx))
+                            {
+                                EraseConflictRoot(tx.hashPrevTx);
+                                ProcessConflictDependents(tx.hashPrevTx);
+                            }
+                            else if(mapConflictDependentsByIndex.count(tx.hashPrevTx))
+                            {
+                                const TAO::Ledger::Transaction& txPrevDep =
+                                    mapConflictDependentsByIndex[tx.hashPrevTx];
+                                mapConflictDependents.erase(txPrevDep.hashPrevTx);
+                                mapConflictDependentsByIndex.erase(tx.hashPrevTx);
+                                ProcessConflictDependents(tx.hashPrevTx);
+                            }
                             /* Fall through to ReadLast / Verify path. */
                         }
                         else
                         {
-                            debug::log(2, FUNCTION, "soft-reject: prev tx CONFLICTED ",
-                                tx.hashPrevTx.SubString(), " (descendant not cascaded into mapConflicts)");
+                            ParkConflictDependent(tx);
                             return false;
                         }
                     }
@@ -287,15 +518,14 @@ namespace TAO
                     if(!LLD::Ledger->ReadLast(tx.hashGenesis, hashLast, FLAGS::MEMPOOL))
                         return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: Failed to read hash last");
 
-                    /* Check for conflicts. */
+                    /* Check for conflicts against the live tip — ROOT only. */
                     if(tx.hashPrevTx != hashLast)
                     {
                         /* We only need to output debug info and insert if this is a new conflict. [B2] */
                         if(!mapConflicts.count(hashTx))
                         {
-                            /* Add to conflicts map. */
-                            BoundConflictsMap();
-                            mapConflicts[hashTx] = tx;
+                            /* Option C: root-only insert (no descendant cascade). */
+                            AddConflictRoot(tx);
 
                             /* Relay the conflict if we are running over tritium protocol, so the
                              * genesis's canonical last-hash and the conflicted tx are both
@@ -326,13 +556,11 @@ namespace TAO
                 }
                 else if(tx.IsFirst() && LLD::Ledger->HasFirst(tx.hashGenesis))
                 {
-                    /* We only need to output debug info and insert if this is a new conflict. [B2] */
+                    /* Duplicate genesis is a ROOT conflict. [B2] */
                     if(!mapConflicts.count(hashTx))
                     {
-                        /* Add to conflicts map. */
                         debug::error(FUNCTION, "CONFLICT: duplicate genesis-id ", tx.hashGenesis.SubString());
-                        BoundConflictsMap();
-                        mapConflicts[hashTx] = tx;
+                        AddConflictRoot(tx);
                     }
 
                     return false;
@@ -478,7 +706,7 @@ namespace TAO
         {
             RECURSIVE(MUTEX);
 
-            /* Check in conflict memory. */
+            /* Check in conflict ROOT memory. */
             if(mapConflicts.count(hashTx))
             {
                 /* Get from conflicts map. */
@@ -489,6 +717,19 @@ namespace TAO
                 tx.hashCache = hashTx;
 
                 debug::log(0, FUNCTION, "CONFLICTED TRANSACTION: ", hashTx.SubString());
+
+                return true;
+            }
+
+            /* Check in parked conflict DEPENDENT memory (Option C). */
+            if(mapConflictDependentsByIndex.count(hashTx))
+            {
+                tx = mapConflictDependentsByIndex.at(hashTx);
+                fConflicted = true;
+
+                tx.hashCache = hashTx;
+
+                debug::log(2, FUNCTION, "CONFLICT-DEPENDENT TRANSACTION: ", hashTx.SubString());
 
                 return true;
             }
@@ -513,7 +754,7 @@ namespace TAO
         {
             RECURSIVE(MUTEX);
 
-            /* Check in conflict memory. */
+            /* Check in conflict ROOT memory. */
             if(mapConflicts.count(hashTx))
             {
                 /* Get from conflicts map. */
@@ -525,10 +766,18 @@ namespace TAO
                 return true;
             }
 
+            /* Check in parked conflict DEPENDENT memory (Option C). */
+            if(mapConflictDependentsByIndex.count(hashTx))
+            {
+                tx = mapConflictDependentsByIndex.at(hashTx);
+                tx.hashCache = hashTx;
+                return true;
+            }
+
             /* Check in orphans memory. */
             if(mapOrphansByIndex.count(hashTx))
             {
-                /* Get from conflicts map. */
+                /* Get from orphans map. */
                 tx = mapOrphansByIndex.at(hashTx);
 
                 /* Set our internal cached hash. */
@@ -619,7 +868,14 @@ namespace TAO
         {
             RECURSIVE(MUTEX);
 
-            return mapLedger.count(hashTx) || mapLegacy.count(hashTx) || mapConflicts.count(hashTx) || mapOrphansByIndex.count(hashTx);
+            /* Option C: include parked conflict dependents so HasTx(MEMPOOL)
+             * treats them as known (not missing orphans) while still keeping
+             * them out of the live mapLedger tip used by ReadLast/Get(genesis). */
+            return mapLedger.count(hashTx)
+                || mapLegacy.count(hashTx)
+                || mapConflicts.count(hashTx)
+                || mapConflictDependentsByIndex.count(hashTx)
+                || mapOrphansByIndex.count(hashTx);
         }
 
 
@@ -642,9 +898,22 @@ namespace TAO
         {
             RECURSIVE(MUTEX);
 
-            /* Erase from conflicted memory. */
+            /* Erase from conflict ROOT memory (repair per-genesis index). */
             if(mapConflicts.count(hashTx))
-                mapConflicts.erase(hashTx);
+                EraseConflictRoot(hashTx);
+
+            /* Erase from parked conflict DEPENDENT memory. */
+            if(mapConflictDependentsByIndex.count(hashTx))
+            {
+                const TAO::Ledger::Transaction& txDep =
+                    mapConflictDependentsByIndex[hashTx];
+                const auto itDep = mapConflictDependents.find(txDep.hashPrevTx);
+                if(itDep != mapConflictDependents.end() &&
+                   itDep->second.GetHash() == hashTx)
+                    mapConflictDependents.erase(itDep);
+
+                mapConflictDependentsByIndex.erase(hashTx);
+            }
 
             /* Erase from rejected memory. */
             if(mapRejected.count(hashTx))
@@ -955,24 +1224,25 @@ namespace TAO
                         if(nRetries > MAX_CONFLICT_STALE_RETRIES)
                         {
                             /* Budget exhausted: evict to stop consuming sweep cycles.
-                             * This removes only the mapConflicts entry — it does NOT
-                             * roll back the active best chain or invalidate accepted blocks.
-                             * The conflict can be re-evaluated if peers relay the tx again.
-                             * A persistent DEFERRED_LOCAL_STATE may indicate a long-idle
-                             * sigchain or a fork whose resolution stalled; worth investigating
-                             * but is not itself an active-chain rollback or corruption event. */
+                             * This removes the conflict DAG tree for these roots — it
+                             * does NOT roll back the active best chain or invalidate
+                             * accepted blocks. The conflict can be re-evaluated if
+                             * peers relay the tx again. A persistent
+                             * DEFERRED_LOCAL_STATE may indicate a long-idle sigchain
+                             * or a fork whose resolution stalled; worth investigating
+                             * but is not itself an active-chain rollback or corruption
+                             * event. */
                             debug::warning(FUNCTION,
                                 "MEMPOOL_CONFLICT_EVICTED class=DEFERRED_LOCAL_STATE",
                                 " genesis=", hashGenesis.SubString(),
                                 " retries=", nRetries,
-                                " action=evict_conflict_only",
+                                " action=evict_conflict_dag",
                                 " active_chain_affected=false",
-                                " (mapConflicts entry removed; tx re-evaluates if relayed again)");
+                                " (conflict roots+dependents removed; tx re-evaluates if relayed again)");
 
-                            mapConflictRetries.erase(hashGenesis);
-                            setStrandedGeneses.erase(hashGenesis);
+                            ClearGenesisConflictState(hashGenesis);
                             for(const auto& tx : vtx)
-                                mapConflicts.erase(tx.GetHash());
+                                DropConflictTree(tx.GetHash());
                         }
                         /* else: retain in mapConflicts — do not erase */
                     }
@@ -1028,25 +1298,25 @@ namespace TAO
                         if(nRetries > MAX_UNKNOWN_ANCESTOR_RETRIES)
                         {
                             /* Budget exhausted: evict to stop consuming sweep cycles.
-                             * This removes only the mapConflicts entry — it does NOT
-                             * roll back the active best chain or invalidate accepted blocks.
-                             * The conflict can be re-evaluated if peers relay the tx again.
-                             * A persistent UNKNOWN ancestor may indicate a sync gap, a
-                             * missing predecessor block, or a fork the node hasn't seen;
-                             * worth investigating but is not itself an active-chain rollback. */
+                             * This removes the conflict DAG tree for these roots — it
+                             * does NOT roll back the active best chain or invalidate
+                             * accepted blocks. The conflict can be re-evaluated if
+                             * peers relay the tx again. A persistent UNKNOWN ancestor
+                             * may indicate a sync gap, a missing predecessor block, or
+                             * a fork the node hasn't seen; worth investigating but is
+                             * not itself an active-chain rollback. */
                             debug::warning(FUNCTION,
                                 "MEMPOOL_CONFLICT_EVICTED class=UNKNOWN",
                                 " genesis=", hashGenesis.SubString(),
                                 " retries=", nRetries,
                                 " reason=predecessor_not_found_on_disk",
-                                " action=evict_conflict_only",
+                                " action=evict_conflict_dag",
                                 " active_chain_affected=false",
-                                " (mapConflicts entry removed; tx re-evaluates if relayed again)");
+                                " (conflict roots+dependents removed; tx re-evaluates if relayed again)");
 
-                            mapUnknownAncestorRetries.erase(hashGenesis);
-                            setUnknownAncestorGeneses.erase(hashGenesis);
+                            ClearGenesisConflictState(hashGenesis);
                             for(const auto& tx : vtx)
-                                mapConflicts.erase(tx.GetHash());
+                                DropConflictTree(tx.GetHash());
                         }
                         /* else: retain in mapConflicts — do not erase */
                     }
@@ -1060,13 +1330,10 @@ namespace TAO
                             " reason=", tInfo.strError.empty() ? "ancestor not on main chain" : tInfo.strError);
 
                         /* Clear any stale retry state for this genesis. */
-                        mapConflictRetries.erase(hashGenesis);
-                        setStrandedGeneses.erase(hashGenesis);
-                        mapUnknownAncestorRetries.erase(hashGenesis);
-                        setUnknownAncestorGeneses.erase(hashGenesis);
+                        ClearGenesisConflictState(hashGenesis);
 
                         for(const auto& tx : vtx)
-                            mapConflicts.erase(tx.GetHash());
+                            DropConflictTree(tx.GetHash());
                     }
                 }
 
@@ -1079,31 +1346,36 @@ namespace TAO
                  * are valid again, and they would never be re-added to the
                  * live mempool or relayed to peers. Re-run full acceptance
                  * (in sequence order) so each transaction is re-validated,
-                 * re-connected, and moved back into mapLedger. */
+                 * re-connected, and moved back into mapLedger. Option C also
+                 * drains parked dependents of each resolved root. */
                 else
                 {
                     /* Conflict has resolved: clear retry state for this genesis
                      * so stale counts don't affect a future re-conflict. */
                     const uint256_t& hashGenesis = rTransaction.first;
-                    mapConflictRetries.erase(hashGenesis);
-                    setStrandedGeneses.erase(hashGenesis);
-                    mapUnknownAncestorRetries.erase(hashGenesis);
-                    setUnknownAncestorGeneses.erase(hashGenesis);
+                    ClearGenesisConflictState(hashGenesis);
 
-                    /* Loop through our transactions in sequence order. */
+                    /* Loop through our ROOT transactions in sequence order. */
                     for(const auto& tx : vtx)
                     {
                         /* Cache the hash so we can erase before re-accepting. */
                         const uint512_t hashTx = tx.GetHash();
 
-                        /* Remove from conflicts first so Accept() doesn't see
-                         * this transaction's own prior conflicted state. */
-                        mapConflicts.erase(hashTx);
+                        /* Remove from conflict roots first so Accept() doesn't
+                         * see this transaction's own prior conflicted state. */
+                        EraseConflictRoot(hashTx);
 
                         /* Re-validate and re-admit into the live mempool. */
                         if(!Accept(tx))
+                        {
                             debug::log(0, FUNCTION, "failed to re-admit resolved conflicted tx ", hashTx.SubString(),
                                 " for genesis ", tx.hashGenesis.SubString(), ": ", debug::GetLastError());
+                            /* Still try to drain dependents — a later peer
+                             * re-offer can recover any that fail here. */
+                        }
+
+                        /* Option C: walk parked dependents of this root. */
+                        ProcessConflictDependents(hashTx);
                     }
                 }
             }
@@ -1178,9 +1450,16 @@ namespace TAO
         {
             RECURSIVE(MUTEX);
 
-            /* Collect this genesis's conflicted transactions and sort by
-             * sequence number, matching Check()'s reconciliation-pass ordering,
-             * so we compute the divergence against the earliest one. */
+            /* Option C: prefer the per-genesis earliest-root index. */
+            const auto itRoot = mapConflictRootByGenesis.find(hashGenesis);
+            if(itRoot != mapConflictRootByGenesis.end())
+            {
+                const auto itTx = mapConflicts.find(itRoot->second);
+                if(itTx != mapConflicts.end())
+                    return ComputeForkDivergence(hashGenesis, itTx->second.hashPrevTx);
+            }
+
+            /* Fallback: scan roots (index may be mid-repair). */
             std::vector<TAO::Ledger::Transaction> vtx;
             for(const auto& tx : mapConflicts)
                 if(tx.second.hashGenesis == hashGenesis)
@@ -1308,12 +1587,21 @@ namespace TAO
         }
 
 
-        /* Gets the size of the memory pool. */
+        /* Gets the size of the conflict ROOT set (excludes parked dependents). */
         uint32_t Mempool::Conflicts()
         {
             RECURSIVE(MUTEX);
 
             return static_cast<uint32_t>(mapConflicts.size() + mapLegacyConflicts.size());
+        }
+
+
+        /* Gets the number of parked conflict dependents (Option C). */
+        uint32_t Mempool::ConflictDependents()
+        {
+            RECURSIVE(MUTEX);
+
+            return static_cast<uint32_t>(mapConflictDependentsByIndex.size());
         }
 
 
