@@ -3541,7 +3541,11 @@ namespace LLP
                                 if(tx.nVersion != Legacy::TRANSACTION_CURRENT_VERSION)
                                     return debug::drop(NODE, "invalid transaction version ", tx.nVersion, ", dropping node");
 
-                                ++nConsecutiveFails;
+                                /* Only ban-score hard rejects. Soft mempool
+                                 * failures (orphan / conflict / deferred) are
+                                 * local-state results, not peer faults. */
+                                if(TAO::Ledger::mempool.Rejected(hashTx))
+                                    ++nConsecutiveFails;
                             }
                         }
 
@@ -3588,7 +3592,13 @@ namespace LLP
                                 if(!TAO::Ledger::TransactionVersionActive(tx.nTimestamp, tx.nVersion))
                                     return debug::drop(NODE, "invalid transaction version ", tx.nVersion, ", dropping node");
 
-                                ++nConsecutiveFails;
+                                /* Only ban-score hard rejects. Soft mempool
+                                 * failures (orphan / conflict / deferred) are
+                                 * local-state results, not peer faults — a
+                                 * CONFLICTED-prev cascade must not drive the
+                                 * 10000-fail ban path while BESTCHAIN continues. */
+                                if(TAO::Ledger::mempool.Rejected(hashTx))
+                                    ++nConsecutiveFails;
                             }
                         }
 

@@ -363,6 +363,7 @@ namespace TAO
             /* Number of transactions in the node's mempool*/
             jRet["txtotal"] = TAO::Ledger::mempool.Size();
             jRet["conflicts"] = TAO::Ledger::mempool.Conflicts();
+            jRet["conflict_deps"] = TAO::Ledger::mempool.ConflictDependents();
 
             /* Then check connections to the tritium server */
             if(LLP::TRITIUM_SERVER)
