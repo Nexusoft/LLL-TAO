@@ -280,6 +280,19 @@ namespace TAO
                     debug::log(0, FUNCTION, "CONFLICT-DEPENDENT tx ",
                         hashThis.SubString(), " not re-admitted: ",
                         debug::GetLastError());
+                    /* Drop any remaining parked tail under hashThis so it
+                     * cannot sit unreachable until BoundConflictDAG clears.
+                     * Peers can re-offer the chain after the root recovers. */
+                    uint512_t hashTail = hashThis;
+                    while(mapConflictDependents.count(hashTail))
+                    {
+                        const TAO::Ledger::Transaction txTail =
+                            mapConflictDependents[hashTail];
+                        const uint512_t hashNext = txTail.GetHash();
+                        mapConflictDependents.erase(hashTail);
+                        mapConflictDependentsByIndex.erase(hashNext);
+                        hashTail = hashNext;
+                    }
                     return;
                 }
 
