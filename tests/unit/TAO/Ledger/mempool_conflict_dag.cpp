@@ -24,11 +24,18 @@ ________________________________________________________________________________
  *   R5  Per-genesis earliest-root index tracks the lowest nSequence root.
  *   R6  Conflicts() counts roots only; dependents are a separate counter.
  *   R7  Resolve walk re-admits parent then drains dependents in chain order.
+ *   R8  Capacity clear refuses to park a detached dependent (no parent).
+ *   R9  Replacing a child slot drops the displaced child's entire tail.
+ *   R10 Failed root re-admission drops the parked tail (does not process it).
+ *   R11 Failed dependent re-admission drops the remaining tail.
+ *   R12 Removing an intermediate dependent drops its complete tail.
  *
  * Implemented as an inline simulator so the contract is testable without
  * LLD/Accept signature wiring. Production wiring lives in
  * src/TAO/Ledger/mempool.cpp (AddConflictRoot / ParkConflictDependent /
- * DropConflictTree / ProcessConflictDependents).
+ * DropConflictTree / DropConflictDependents / ProcessConflictDependents).
+ * The simulator mirrors those helpers 1:1 so regressions in the rules surface
+ * here even when full mempool Accept fixtures are unavailable.
  */
 
 #include <unit/catch2/catch.hpp>
@@ -54,16 +61,24 @@ namespace
 
     struct ConflictDAG
     {
+        static constexpr std::size_t MAX_ROOTS = 10000;
+        static constexpr std::size_t MAX_DEPS  = 10000;
+
+        /* Test hook: override caps to exercise Bound without 10k inserts. */
+        std::size_t nMaxRoots = MAX_ROOTS;
+        std::size_t nMaxDeps  = MAX_DEPS;
+
         std::map<uint64_t, SimTx> mapRoots;            /* hash -> tx */
         std::map<uint64_t, uint64_t> mapRootByGenesis;  /* genesis -> earliest root hash */
         std::map<uint64_t, SimTx> mapDeps;              /* hashPrev -> child */
         std::map<uint64_t, SimTx> mapDepsByIndex;       /* hash -> child */
         std::vector<uint64_t> vAdmitted;                /* resolve walk log */
+        std::set<uint64_t> setFailAccept;               /* hashes whose Accept fails */
 
 
         void Bound()
         {
-            if(mapRoots.size() >= 10000 || mapDepsByIndex.size() >= 10000)
+            if(mapRoots.size() >= nMaxRoots || mapDepsByIndex.size() >= nMaxDeps)
             {
                 mapRoots.clear();
                 mapRootByGenesis.clear();
@@ -133,18 +148,30 @@ namespace
         }
 
 
+        /* Drop children/tail hanging off hashParent (not hashParent itself). */
+        void DropDependents(uint64_t hashParent)
+        {
+            uint64_t cur = hashParent;
+            while(mapDeps.count(cur))
+            {
+                const SimTx child = mapDeps[cur];
+                mapDeps.erase(cur);
+                mapDepsByIndex.erase(child.hash);
+                cur = child.hash;
+            }
+        }
+
+
         void DropTree(uint64_t hashRoot)
         {
             EraseRoot(hashRoot);
+            DropDependents(hashRoot);
+        }
 
-            uint64_t parent = hashRoot;
-            while(mapDeps.count(parent))
-            {
-                const SimTx child = mapDeps[parent];
-                mapDeps.erase(parent);
-                mapDepsByIndex.erase(child.hash);
-                parent = child.hash;
-            }
+
+        bool IsConflictNode(uint64_t hash) const
+        {
+            return mapRoots.count(hash) || mapDepsByIndex.count(hash);
         }
 
 
@@ -155,6 +182,10 @@ namespace
 
             Bound();
 
+            /* R8: refuse detached park after capacity clear wiped the parent. */
+            if(!IsConflictNode(tx.hashPrev))
+                return false;
+
             const auto it = mapDeps.find(tx.hashPrev);
             if(it != mapDeps.end())
             {
@@ -163,7 +194,10 @@ namespace
                 if(tx.nSequence >= it->second.nSequence)
                     return false;
 
-                mapDepsByIndex.erase(it->second.hash);
+                /* R9: drop displaced child's entire tail before replacing. */
+                const uint64_t displaced = it->second.hash;
+                DropDependents(displaced);
+                mapDepsByIndex.erase(displaced);
             }
 
             mapDeps[tx.hashPrev] = tx;
@@ -172,13 +206,17 @@ namespace
         }
 
 
-        bool IsConflictNode(uint64_t hash) const
+        /* Simulate Accept: succeed unless hash is in setFailAccept. */
+        bool AcceptSim(uint64_t hash)
         {
-            return mapRoots.count(hash) || mapDepsByIndex.count(hash);
+            if(setFailAccept.count(hash))
+                return false;
+            vAdmitted.push_back(hash);
+            return true;
         }
 
 
-        /* Simulate Accept succeeding for every parked dependent. */
+        /* ProcessDependents: stop + drop tail on Accept failure (R11). */
         void ProcessDependents(uint64_t hashParent)
         {
             uint64_t cur = hashParent;
@@ -187,18 +225,49 @@ namespace
                 const SimTx child = mapDeps[cur];
                 mapDeps.erase(cur);
                 mapDepsByIndex.erase(child.hash);
-                vAdmitted.push_back(child.hash);
+
+                if(!AcceptSim(child.hash))
+                {
+                    DropDependents(child.hash);
+                    return;
+                }
+
                 cur = child.hash;
             }
         }
 
 
-        /* Resolve a root: erase, admit root, drain dependents. */
+        /* Resolve a root: erase, try admit root, drain only on success (R10). */
         void ResolveRoot(uint64_t hashRoot)
         {
             EraseRoot(hashRoot);
-            vAdmitted.push_back(hashRoot);
-            ProcessDependents(hashRoot);
+
+            if(AcceptSim(hashRoot))
+                ProcessDependents(hashRoot);
+            else
+                DropDependents(hashRoot);
+        }
+
+
+        /* Remove one node (root or dependent) and preserve DAG invariant (R12). */
+        void Remove(uint64_t hash)
+        {
+            if(mapRoots.count(hash))
+            {
+                DropTree(hash);
+                return;
+            }
+
+            if(mapDepsByIndex.count(hash))
+            {
+                const SimTx dep = mapDepsByIndex[hash];
+                const auto it = mapDeps.find(dep.hashPrev);
+                if(it != mapDeps.end() && it->second.hash == hash)
+                    mapDeps.erase(it);
+
+                mapDepsByIndex.erase(hash);
+                DropDependents(hash);
+            }
         }
 
 
@@ -346,4 +415,140 @@ TEST_CASE("Option C DAG: resolve walk admits root then dependents in order",
     REQUIRE(dag.vAdmitted[2] == 3);
     REQUIRE(dag.Conflicts() == 0);
     REQUIRE(dag.Dependents() == 0);
+}
+
+
+TEST_CASE("Option C DAG: capacity clear refuses detached dependent park",
+          "[mempool_conflict_dag]")
+{
+    ConflictDAG dag;
+    /* Keep root cap high so the first park is not wiped by a full root set;
+     * only the dependent cap triggers Bound. */
+    dag.nMaxRoots = 100;
+    dag.nMaxDeps  = 1;
+
+    dag.AddRoot(SimTx{1, 0, 1, 1});
+    REQUIRE(dag.ParkDependent(SimTx{2, 1, 1, 2}));
+    REQUIRE(dag.Conflicts() == 1);
+    REQUIRE(dag.Dependents() == 1);
+
+    /* Next park hits dep cap → Bound clears entire DAG, then parent is gone
+     * so the new child must NOT be parked detached (R8). */
+    REQUIRE_FALSE(dag.ParkDependent(SimTx{3, 1, 1, 3}));
+    REQUIRE(dag.Conflicts() == 0);
+    REQUIRE(dag.Dependents() == 0);
+    REQUIRE_FALSE(dag.IsConflictNode(3));
+}
+
+
+TEST_CASE("Option C DAG: replacing child drops displaced tail",
+          "[mempool_conflict_dag]")
+{
+    ConflictDAG dag;
+
+    dag.AddRoot(SimTx{1, 0, 1, 1});
+
+    /* late child with its own grandchild tail */
+    REQUIRE(dag.ParkDependent(SimTx{20, 1, 1, 5}));
+    REQUIRE(dag.ParkDependent(SimTx{30, 20, 1, 6}));
+    REQUIRE(dag.ParkDependent(SimTx{40, 30, 1, 7}));
+    REQUIRE(dag.Dependents() == 3);
+
+    /* earlier child replaces 20 — must drop 30 and 40 (R9). */
+    REQUIRE(dag.ParkDependent(SimTx{21, 1, 1, 3}));
+    REQUIRE(dag.Dependents() == 1);
+    REQUIRE(dag.mapDepsByIndex.count(21) == 1);
+    REQUIRE(dag.mapDepsByIndex.count(20) == 0);
+    REQUIRE(dag.mapDepsByIndex.count(30) == 0);
+    REQUIRE(dag.mapDepsByIndex.count(40) == 0);
+    REQUIRE(dag.mapDeps.count(20) == 0);
+    REQUIRE(dag.mapDeps.count(30) == 0);
+}
+
+
+TEST_CASE("Option C DAG: failed root re-admission drops parked tail",
+          "[mempool_conflict_dag]")
+{
+    ConflictDAG dag;
+
+    dag.AddRoot(SimTx{1, 100, 7, 5});
+    dag.ParkDependent(SimTx{2, 1, 7, 6});
+    dag.ParkDependent(SimTx{3, 2, 7, 7});
+
+    dag.setFailAccept.insert(1); /* root Accept fails */
+
+    /* R10 */
+    dag.ResolveRoot(1);
+
+    REQUIRE(dag.vAdmitted.empty());
+    REQUIRE(dag.Conflicts() == 0);
+    REQUIRE(dag.Dependents() == 0);
+    REQUIRE(dag.mapDeps.count(1) == 0);
+    REQUIRE(dag.mapDeps.count(2) == 0);
+}
+
+
+TEST_CASE("Option C DAG: failed dependent re-admission drops remaining tail",
+          "[mempool_conflict_dag]")
+{
+    ConflictDAG dag;
+
+    dag.AddRoot(SimTx{1, 100, 7, 5});
+    dag.ParkDependent(SimTx{2, 1, 7, 6});
+    dag.ParkDependent(SimTx{3, 2, 7, 7});
+    dag.ParkDependent(SimTx{4, 3, 7, 8});
+
+    dag.setFailAccept.insert(3); /* middle dependent fails */
+
+    /* R11 */
+    dag.ResolveRoot(1);
+
+    REQUIRE(dag.vAdmitted.size() == 2);
+    REQUIRE(dag.vAdmitted[0] == 1);
+    REQUIRE(dag.vAdmitted[1] == 2);
+    REQUIRE(dag.Conflicts() == 0);
+    REQUIRE(dag.Dependents() == 0);
+    REQUIRE(dag.mapDepsByIndex.count(3) == 0);
+    REQUIRE(dag.mapDepsByIndex.count(4) == 0);
+}
+
+
+TEST_CASE("Option C DAG: remove intermediate dependent drops complete tail",
+          "[mempool_conflict_dag]")
+{
+    ConflictDAG dag;
+
+    dag.AddRoot(SimTx{1, 0, 1, 1});
+    dag.ParkDependent(SimTx{2, 1, 1, 2});
+    dag.ParkDependent(SimTx{3, 2, 1, 3});
+    dag.ParkDependent(SimTx{4, 3, 1, 4});
+    REQUIRE(dag.Dependents() == 3);
+
+    /* R12: remove middle node 2 → drop 3 and 4; root remains. */
+    dag.Remove(2);
+
+    REQUIRE(dag.Conflicts() == 1);
+    REQUIRE(dag.Dependents() == 0);
+    REQUIRE(dag.mapRoots.count(1) == 1);
+    REQUIRE(dag.mapDepsByIndex.count(2) == 0);
+    REQUIRE(dag.mapDepsByIndex.count(3) == 0);
+    REQUIRE(dag.mapDepsByIndex.count(4) == 0);
+    REQUIRE(dag.mapDeps.count(1) == 0);
+}
+
+
+TEST_CASE("Option C DAG: remove root drops entire tree",
+          "[mempool_conflict_dag]")
+{
+    ConflictDAG dag;
+
+    dag.AddRoot(SimTx{1, 0, 1, 1});
+    dag.ParkDependent(SimTx{2, 1, 1, 2});
+    dag.ParkDependent(SimTx{3, 2, 1, 3});
+
+    dag.Remove(1);
+
+    REQUIRE(dag.Conflicts() == 0);
+    REQUIRE(dag.Dependents() == 0);
+    REQUIRE(dag.mapRootByGenesis.count(1) == 0);
 }

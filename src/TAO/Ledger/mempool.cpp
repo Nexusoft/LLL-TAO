@@ -179,24 +179,29 @@ namespace TAO
         }
 
 
+        /* Drop parked dependents hanging off hashParent (tail only). */
+        void Mempool::DropConflictDependents(const uint512_t& hashParent)
+        {
+            uint512_t hashCur = hashParent;
+            while(mapConflictDependents.count(hashCur))
+            {
+                const TAO::Ledger::Transaction txChild =
+                    mapConflictDependents[hashCur];
+                const uint512_t hashChild = txChild.GetHash();
+
+                mapConflictDependents.erase(hashCur);
+                mapConflictDependentsByIndex.erase(hashChild);
+
+                hashCur = hashChild;
+            }
+        }
+
+
         /* Drop a root and its parked dependent chain. */
         void Mempool::DropConflictTree(const uint512_t& hashRoot)
         {
             EraseConflictRoot(hashRoot);
-
-            /* Walk dependent chain: parent -> child via mapConflictDependents. */
-            uint512_t hashParent = hashRoot;
-            while(mapConflictDependents.count(hashParent))
-            {
-                const TAO::Ledger::Transaction& txChild =
-                    mapConflictDependents[hashParent];
-                const uint512_t hashChild = txChild.GetHash();
-
-                mapConflictDependents.erase(hashParent);
-                mapConflictDependentsByIndex.erase(hashChild);
-
-                hashParent = hashChild;
-            }
+            DropConflictDependents(hashRoot);
         }
 
 
@@ -210,6 +215,13 @@ namespace TAO
                 return true;
 
             BoundConflictDAG();
+
+            /* Capacity clear may have wiped the parent root/dependent that
+             * justified parking. Refuse to create a detached dependent with no
+             * Check() reconciliation trigger; peers can re-offer after the next
+             * conflict classification. */
+            if(!IsConflictNode(tx.hashPrevTx))
+                return false;
 
             /* One child slot per parent (orphan-queue shape). Keep the
              * earliest-sequence occupant; drop later contenders silently. */
@@ -227,8 +239,12 @@ namespace TAO
                     return false;
                 }
 
-                /* Replace later occupant with earlier-sequence child. */
-                mapConflictDependentsByIndex.erase(itParent->second.GetHash());
+                /* Replace later occupant with earlier-sequence child. Drop the
+                 * displaced child's entire tail first so grandchildren cannot
+                 * remain keyed under a hash that is no longer reachable. */
+                const uint512_t hashDisplaced = itParent->second.GetHash();
+                DropConflictDependents(hashDisplaced);
+                mapConflictDependentsByIndex.erase(hashDisplaced);
             }
 
             mapConflictDependents[tx.hashPrevTx] = tx;
@@ -283,16 +299,7 @@ namespace TAO
                     /* Drop any remaining parked tail under hashThis so it
                      * cannot sit unreachable until BoundConflictDAG clears.
                      * Peers can re-offer the chain after the root recovers. */
-                    uint512_t hashTail = hashThis;
-                    while(mapConflictDependents.count(hashTail))
-                    {
-                        const TAO::Ledger::Transaction txTail =
-                            mapConflictDependents[hashTail];
-                        const uint512_t hashNext = txTail.GetHash();
-                        mapConflictDependents.erase(hashTail);
-                        mapConflictDependentsByIndex.erase(hashNext);
-                        hashTail = hashNext;
-                    }
+                    DropConflictDependents(hashThis);
                     return;
                 }
 
@@ -337,6 +344,29 @@ namespace TAO
 
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
+
+            /* If Accept detaches this tx from the conflict-dependent index and
+             * then fails later, drop any tail still keyed under hashTx so it
+             * cannot remain unreachable. Disarmed on successful mapLedger
+             * insert (ProcessConflictDependents drains the tail instead). */
+            struct ConflictDepTailGuard
+            {
+                Mempool*    pPool;
+                uint512_t   hash;
+                bool        fActive;
+
+                ConflictDepTailGuard(Mempool* p, const uint512_t& h)
+                : pPool(p), hash(h), fActive(false) { }
+
+                ~ConflictDepTailGuard()
+                {
+                    if(fActive && pPool)
+                        pPool->DropConflictDependents(hash);
+                }
+
+                void Arm()   { fActive = true;  }
+                void Disarm(){ fActive = false; }
+            } depTailGuard(this, hashTx);
 
             try
             {
@@ -493,31 +523,34 @@ namespace TAO
 
                             /* Drop any stale marker for THIS tx first so the
                              * dependent walk cannot re-enter Accept(hashTx)
-                             * while we are already accepting it. */
-                            EraseConflictRoot(hashTx);
-                            if(mapConflictDependentsByIndex.count(hashTx))
-                            {
-                                const TAO::Ledger::Transaction& txSelf =
-                                    mapConflictDependentsByIndex[hashTx];
-                                mapConflictDependents.erase(txSelf.hashPrevTx);
-                                mapConflictDependentsByIndex.erase(hashTx);
-                            }
+                             * while we are already accepting it. Arm the
+                             * tail guard so a later Accept failure cannot
+                             * leave grandchildren stranded under hashTx. */
+                                                        EraseConflictRoot(hashTx);
+                                                        if(mapConflictDependentsByIndex.count(hashTx))
+                                                        {
+                               const TAO::Ledger::Transaction& txSelf =
+                                   mapConflictDependentsByIndex[hashTx];
+                               mapConflictDependents.erase(txSelf.hashPrevTx);
+                               mapConflictDependentsByIndex.erase(hashTx);
+                               depTailGuard.Arm();
+                                                        }
 
-                            /* Prev may be a root or a parked dependent. */
-                            if(mapConflicts.count(tx.hashPrevTx))
-                            {
-                                EraseConflictRoot(tx.hashPrevTx);
-                                ProcessConflictDependents(tx.hashPrevTx);
-                            }
-                            else if(mapConflictDependentsByIndex.count(tx.hashPrevTx))
-                            {
-                                const TAO::Ledger::Transaction& txPrevDep =
-                                    mapConflictDependentsByIndex[tx.hashPrevTx];
-                                mapConflictDependents.erase(txPrevDep.hashPrevTx);
-                                mapConflictDependentsByIndex.erase(tx.hashPrevTx);
-                                ProcessConflictDependents(tx.hashPrevTx);
-                            }
-                            /* Fall through to ReadLast / Verify path. */
+                                                        /* Prev may be a root or a parked dependent. */
+                                                        if(mapConflicts.count(tx.hashPrevTx))
+                                                        {
+                               EraseConflictRoot(tx.hashPrevTx);
+                               ProcessConflictDependents(tx.hashPrevTx);
+                                                        }
+                                                        else if(mapConflictDependentsByIndex.count(tx.hashPrevTx))
+                                                        {
+                               const TAO::Ledger::Transaction& txPrevDep =
+                                   mapConflictDependentsByIndex[tx.hashPrevTx];
+                               mapConflictDependents.erase(txPrevDep.hashPrevTx);
+                               mapConflictDependentsByIndex.erase(tx.hashPrevTx);
+                               ProcessConflictDependents(tx.hashPrevTx);
+                                                        }
+                                                        /* Fall through to ReadLast / Verify path. */
                         }
                         else
                         {
@@ -626,11 +659,19 @@ namespace TAO
                 if(!tx.IsFirst())
                     mapClaimed[tx.hashPrevTx] = hashTx;
 
+                /* Success path owns the tail drain; do not drop on scope exit. */
+                depTailGuard.Disarm();
+
                 /* Debug output. */
                 debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, timer.ElapsedMilliseconds(), " ms");
 
                 /* Process orphan queue. */
                 ProcessOrphans(hashTx);
+
+                /* Drain any parked conflict-dependent tail now that this tx is
+                 * live (covers intermediate dependents that Accept themselves
+                 * after a stale DAG marker was cleared). No-op when empty. */
+                ProcessConflictDependents(hashTx);
 
                 /* Relay tx if creating ourselves. */
                 if(!pnode && LLP::TRITIUM_SERVER)
@@ -911,11 +952,13 @@ namespace TAO
         {
             RECURSIVE(MUTEX);
 
-            /* Erase from conflict ROOT memory (repair per-genesis index). */
+            /* Erase from conflict ROOT memory and drop its parked tail so
+             * dependents cannot remain stranded without a Check() trigger. */
             if(mapConflicts.count(hashTx))
-                EraseConflictRoot(hashTx);
+                DropConflictTree(hashTx);
 
-            /* Erase from parked conflict DEPENDENT memory. */
+            /* Erase from parked conflict DEPENDENT memory, including any
+             * descendant chain keyed under this transaction's hash. */
             if(mapConflictDependentsByIndex.count(hashTx))
             {
                 const TAO::Ledger::Transaction& txDep =
@@ -926,6 +969,7 @@ namespace TAO
                     mapConflictDependents.erase(itDep);
 
                 mapConflictDependentsByIndex.erase(hashTx);
+                DropConflictDependents(hashTx);
             }
 
             /* Erase from rejected memory. */
@@ -1378,17 +1422,25 @@ namespace TAO
                          * see this transaction's own prior conflicted state. */
                         EraseConflictRoot(hashTx);
 
-                        /* Re-validate and re-admit into the live mempool. */
-                        if(!Accept(tx))
+                        /* Re-validate and re-admit into the live mempool. Only drain
+                         * dependents after a successful root Accept — otherwise
+                         * children evaluate without their parent in mapLedger
+                         * and the remaining tail is dropped as unreachable.
+                         * Accept() itself also drains conflict dependents on
+                         * success; the explicit call here covers the case where
+                         * Accept short-circuited because the root was already
+                         * live. On failure drop the parked tail so it cannot
+                         * sit detached after EraseConflictRoot. */
+                        if(Accept(tx))
+                        {
+                            ProcessConflictDependents(hashTx);
+                        }
+                        else
                         {
                             debug::log(0, FUNCTION, "failed to re-admit resolved conflicted tx ", hashTx.SubString(),
                                 " for genesis ", tx.hashGenesis.SubString(), ": ", debug::GetLastError());
-                            /* Still try to drain dependents — a later peer
-                             * re-offer can recover any that fail here. */
+                            DropConflictDependents(hashTx);
                         }
-
-                        /* Option C: walk parked dependents of this root. */
-                        ProcessConflictDependents(hashTx);
                     }
                 }
             }
