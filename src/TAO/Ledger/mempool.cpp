@@ -526,31 +526,31 @@ namespace TAO
                              * while we are already accepting it. Arm the
                              * tail guard so a later Accept failure cannot
                              * leave grandchildren stranded under hashTx. */
-                                                        EraseConflictRoot(hashTx);
-                                                        if(mapConflictDependentsByIndex.count(hashTx))
-                                                        {
-                               const TAO::Ledger::Transaction& txSelf =
-                                   mapConflictDependentsByIndex[hashTx];
-                               mapConflictDependents.erase(txSelf.hashPrevTx);
-                               mapConflictDependentsByIndex.erase(hashTx);
-                               depTailGuard.Arm();
-                                                        }
+                            EraseConflictRoot(hashTx);
+                            if(mapConflictDependentsByIndex.count(hashTx))
+                            {
+                                const TAO::Ledger::Transaction& txSelf =
+                                    mapConflictDependentsByIndex[hashTx];
+                                mapConflictDependents.erase(txSelf.hashPrevTx);
+                                mapConflictDependentsByIndex.erase(hashTx);
+                                depTailGuard.Arm();
+                            }
 
-                                                        /* Prev may be a root or a parked dependent. */
-                                                        if(mapConflicts.count(tx.hashPrevTx))
-                                                        {
-                               EraseConflictRoot(tx.hashPrevTx);
-                               ProcessConflictDependents(tx.hashPrevTx);
-                                                        }
-                                                        else if(mapConflictDependentsByIndex.count(tx.hashPrevTx))
-                                                        {
-                               const TAO::Ledger::Transaction& txPrevDep =
-                                   mapConflictDependentsByIndex[tx.hashPrevTx];
-                               mapConflictDependents.erase(txPrevDep.hashPrevTx);
-                               mapConflictDependentsByIndex.erase(tx.hashPrevTx);
-                               ProcessConflictDependents(tx.hashPrevTx);
-                                                        }
-                                                        /* Fall through to ReadLast / Verify path. */
+                            /* Prev may be a root or a parked dependent. */
+                            if(mapConflicts.count(tx.hashPrevTx))
+                            {
+                                EraseConflictRoot(tx.hashPrevTx);
+                                ProcessConflictDependents(tx.hashPrevTx);
+                            }
+                            else if(mapConflictDependentsByIndex.count(tx.hashPrevTx))
+                            {
+                                const TAO::Ledger::Transaction& txPrevDep =
+                                    mapConflictDependentsByIndex[tx.hashPrevTx];
+                                mapConflictDependents.erase(txPrevDep.hashPrevTx);
+                                mapConflictDependentsByIndex.erase(tx.hashPrevTx);
+                                ProcessConflictDependents(tx.hashPrevTx);
+                            }
+                            /* Fall through to ReadLast / Verify path. */
                         }
                         else
                         {

@@ -280,18 +280,18 @@ namespace TAO
             void DropConflictTree(const uint512_t& hashRoot);
 
 
-                        /** Drop the parked dependent chain hanging off hashParent (children
-             *  and further tail only — does not erase hashParent itself from
-             *  roots or dependent indexes). Preserves the DAG invariant that
-             *  every dependent is reachable from a live parent slot. **/
-                        void DropConflictDependents(const uint512_t& hashParent);
+            /** Drop the parked dependent chain hanging off hashParent (children
+              *  and further tail only — does not erase hashParent itself from
+              *  roots or dependent indexes). Preserves the DAG invariant that
+              *  every dependent is reachable from a live parent slot. **/
+            void DropConflictDependents(const uint512_t& hashParent);
 
 
-                        /** Soft-park a descendant of a conflicted/dependent parent.
-             *  Returns true if parked (or already parked). Never ERROR-logs
-             *  and never relays. Refuses to park when BoundConflictDAG wiped
-             *  the parent, so dependents cannot sit detached from any root. **/
-                        bool ParkConflictDependent(const TAO::Ledger::Transaction& tx);
+            /** Soft-park a descendant of a conflicted/dependent parent.
+              *  Returns true if parked (or already parked). Never ERROR-logs
+              *  and never relays. Refuses to park when BoundConflictDAG wiped
+              *  the parent, so dependents cannot sit detached from any root. **/
+            bool ParkConflictDependent(const TAO::Ledger::Transaction& tx);
 
 
             /** True when hashTx is a conflict root OR a parked dependent. **/
