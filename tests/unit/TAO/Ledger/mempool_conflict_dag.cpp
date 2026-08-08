@@ -301,11 +301,13 @@ namespace
         void ClearStaleMarker(const SimTx& tx)
         {
             EraseRoot(tx.hash);
-            if(mapDepsByIndex.count(tx.hash))
+
+            const auto itSelf = mapDepsByIndex.find(tx.hash);
+            if(itSelf != mapDepsByIndex.end())
             {
-                const SimTx self = mapDepsByIndex[tx.hash];
+                const SimTx self = itSelf->second;
                 mapDeps.erase(self.hashPrev);
-                mapDepsByIndex.erase(tx.hash);
+                mapDepsByIndex.erase(itSelf);
             }
 
             if(mapRoots.count(tx.hashPrev))
@@ -313,12 +315,16 @@ namespace
                 EraseRoot(tx.hashPrev);
                 ProcessDependents(tx.hashPrev);
             }
-            else if(mapDepsByIndex.count(tx.hashPrev))
+            else
             {
-                const SimTx prevDep = mapDepsByIndex[tx.hashPrev];
-                mapDeps.erase(prevDep.hashPrev);
-                mapDepsByIndex.erase(tx.hashPrev);
-                ProcessDependents(tx.hashPrev);
+                const auto itPrevDep = mapDepsByIndex.find(tx.hashPrev);
+                if(itPrevDep != mapDepsByIndex.end())
+                {
+                    const SimTx prevDep = itPrevDep->second;
+                    mapDeps.erase(prevDep.hashPrev);
+                    mapDepsByIndex.erase(itPrevDep);
+                    ProcessDependents(tx.hashPrev);
+                }
             }
 
             /* R13: no remaining roots for this genesis → drop retry state. */
