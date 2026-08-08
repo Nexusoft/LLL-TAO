@@ -101,6 +101,10 @@ namespace
                 mapRootByGenesis.clear();
                 mapDeps.clear();
                 mapDepsByIndex.clear();
+                mapConflictRetries.clear();
+                setStrandedGeneses.clear();
+                mapUnknownAncestorRetries.clear();
+                setUnknownAncestorGeneses.clear();
             }
         }
 
@@ -663,6 +667,8 @@ TEST_CASE("Option C DAG: stale-marker clear keeps retry state with other roots",
 
     dag.mapConflictRetries[genesis] = 12;
     dag.setStrandedGeneses.insert(genesis);
+    dag.mapUnknownAncestorRetries[genesis] = 7;
+    dag.setUnknownAncestorGeneses.insert(genesis);
 
     /* Clearing rootA via stale marker must not wipe state while rootB remains. */
     dag.ClearStaleMarker(child);
@@ -673,4 +679,7 @@ TEST_CASE("Option C DAG: stale-marker clear keeps retry state with other roots",
     REQUIRE(dag.mapConflictRetries.count(genesis) == 1);
     REQUIRE(dag.mapConflictRetries[genesis] == 12);
     REQUIRE(dag.setStrandedGeneses.count(genesis) == 1);
+    REQUIRE(dag.mapUnknownAncestorRetries.count(genesis) == 1);
+    REQUIRE(dag.mapUnknownAncestorRetries[genesis] == 7);
+    REQUIRE(dag.setUnknownAncestorGeneses.count(genesis) == 1);
 }
