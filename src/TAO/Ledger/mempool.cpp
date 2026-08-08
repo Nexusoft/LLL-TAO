@@ -266,6 +266,12 @@ namespace TAO
                             debug::log(1, FUNCTION, "stale CONFLICTED marker for confirmed prev ",
                                 tx.hashPrevTx.SubString(), "; clearing and re-evaluating");
                             mapConflicts.erase(tx.hashPrevTx);
+                            /* A prior cascade may also have parked this tx itself
+                             * in mapConflicts. Drop that marker before fall-through
+                             * so a successful admit cannot leave hashTx in both
+                             * mapLedger and mapConflicts, and so dependents of
+                             * hashTx are not soft-rejected on a stale self-entry. */
+                            mapConflicts.erase(hashTx);
                             /* Fall through to ReadLast / Verify path. */
                         }
                         else
@@ -1316,7 +1322,7 @@ namespace TAO
         {
             RECURSIVE(MUTEX);
 
-            return mapRejected.count(hashTx);
+            return mapRejected.find(hashTx) != mapRejected.end();
         }
     }
 }
