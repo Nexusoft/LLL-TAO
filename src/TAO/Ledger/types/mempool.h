@@ -220,19 +220,19 @@ namespace TAO
             std::map<uint512_t, TAO::Ledger::Transaction> mapConflictDependentsByIndex;
 
 
-                        /** Nesting depth of ProcessConflictDependents. Accept()'s terminal
+            /** Nesting depth of ProcessConflictDependents. Accept()'s terminal
              *  dependent drain is skipped while this is non-zero so the outer
              *  while-loop owns forward progress (O(1) stack for long tails). **/
-                        uint32_t nConflictDepDrainDepth;
+            uint32_t nConflictDepDrainDepth;
 
 
-                        /** Per-genesis count of consecutive DEFERRED_LOCAL_STATE passes in
+            /** Per-genesis count of consecutive DEFERRED_LOCAL_STATE passes in
              *  Check()'s conflict-reconciliation loop.  When the count exceeds
              *  MAX_CONFLICT_STALE_RETRIES the genesis's transactions are
              *  force-evicted from mapConflicts so they stop consuming sweep
              *  cycles.  Bounded to MAX_CONFLICTS_MAP_ENTRIES entries; cleared
              *  wholesale when the cap is hit, matching the mapConflicts pattern. **/
-                        std::map<uint256_t, uint32_t> mapConflictRetries;
+            std::map<uint256_t, uint32_t> mapConflictRetries;
 
 
             /** Genesis-ids for which a STRANDED_STATE_DETECTED warning has
@@ -309,7 +309,7 @@ namespace TAO
              *  re-run Accept() in chain order — same shape as ProcessOrphans.
              *  The walk is iterative; Accept() must not recurse back into this
              *  drain while it is active (see nConflictDepDrainDepth). **/
-                        void ProcessConflictDependents(const uint512_t& hashParent);
+            void ProcessConflictDependents(const uint512_t& hashParent);
 
 
             /** Clear DEFERRED/UNKNOWN retry + once-per-genesis diagnostic state
