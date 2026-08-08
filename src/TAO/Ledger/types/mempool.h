@@ -498,6 +498,22 @@ namespace TAO
             uint32_t Conflicts();
 
 
+            /** Rejected
+             *
+             *  True when hashTx was hard-rejected (mapRejected) during Accept.
+             *  Soft failures (orphan, conflict, deferred-local-state) do not
+             *  set this flag — LLP uses it to avoid ban-scoring peers for
+             *  offering transactions that failed only against local mempool
+             *  state rather than being intrinsically invalid.
+             *
+             *  @param[in] hashTx The transaction hash to probe.
+             *
+             *  @return true if Accept recorded a hard reject for hashTx.
+             *
+             **/
+            bool Rejected(const uint512_t& hashTx) const;
+
+
             /** ComputeForkDivergence
              *
              *  [C1] Read-only diagnostic: computes how far the best chain has

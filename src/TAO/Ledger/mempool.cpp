@@ -206,8 +206,9 @@ namespace TAO
                         return false;
                     }
 
-                    /* Check for conflicts. */
-                    if(mapClaimed.count(tx.hashPrevTx) || mapConflicts.count(tx.hashPrevTx))
+                    /* True double-spend against a live mempool tip: another
+                     * in-pool transaction already claims this hashPrevTx. */
+                    if(mapClaimed.count(tx.hashPrevTx))
                     {
                         /* We only need to output debug info and insert if this is a new conflict.
                          * [B2] Matches upstream Nexusoft/LLL-TAO: avoids repeated ERROR-level log
@@ -217,7 +218,7 @@ namespace TAO
                         if(!mapConflicts.count(hashTx))
                         {
                             /* Add to conflicts map. */
-                            debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED " : "CONFLICTED "), tx.hashPrevTx.SubString());
+                            debug::error(FUNCTION, "CONFLICT: prev tx CLAIMED ", tx.hashPrevTx.SubString());
                             BoundConflictsMap();
                             mapConflicts[hashTx] = tx;
 
@@ -234,6 +235,45 @@ namespace TAO
                         }
 
                         return false;
+                    }
+
+                    /* Predecessor is itself sitting in mapConflicts.
+                     *
+                     * Historical behavior cascaded every descendant into
+                     * mapConflicts with an ERROR log + NOTIFY relay. That made a
+                     * handful of seed conflicts (visible as mempool_conflicts=N
+                     * on BESTCHAIN while mempool_size=0) explode into a multi-
+                     * second ERROR flood when peers offered long sigchain tails,
+                     * and the relay amplified the same storm across the mesh.
+                     * Best-chain advancement is unaffected (conflicts are
+                     * mempool-only), which is why operators see the node "power
+                     * through" the spam while BESTCHAIN keeps moving — and why a
+                     * restart (which wipes mapConflicts) clears the symptom.
+                     *
+                     * Correct handling:
+                     *  1. If the conflicted predecessor is now confirmed on disk,
+                     *     drop the stale mapConflicts marker and continue Accept
+                     *     so the child can validate against ReadLast normally.
+                     *  2. Otherwise soft-reject the child WITHOUT inserting it
+                     *     into mapConflicts and WITHOUT relaying. The conflict
+                     *     roots stay in mapConflicts for Check() reconciliation;
+                     *     descendants re-evaluate when peers re-offer them after
+                     *     the root is resolved or evicted. */
+                    if(mapConflicts.count(tx.hashPrevTx))
+                    {
+                        if(LLD::Ledger->HasTx(tx.hashPrevTx, FLAGS::BLOCK))
+                        {
+                            debug::log(1, FUNCTION, "stale CONFLICTED marker for confirmed prev ",
+                                tx.hashPrevTx.SubString(), "; clearing and re-evaluating");
+                            mapConflicts.erase(tx.hashPrevTx);
+                            /* Fall through to ReadLast / Verify path. */
+                        }
+                        else
+                        {
+                            debug::log(2, FUNCTION, "soft-reject: prev tx CONFLICTED ",
+                                tx.hashPrevTx.SubString(), " (descendant not cascaded into mapConflicts)");
+                            return false;
+                        }
                     }
 
                     /* Get the last hash. */
@@ -612,9 +652,19 @@ namespace TAO
             if(setOrphansByIndex.count(hashTx))
                 setOrphansByIndex.erase(hashTx);
 
-            /* Erase from orphans index. */
+            /* Erase from orphans index. mapOrphans is keyed by hashPrevTx, so
+             * drop the prev-keyed slot only when it still points at this tx —
+             * otherwise a newer orphan sharing the same missing parent would
+             * be deleted incorrectly. */
             if(mapOrphansByIndex.count(hashTx))
+            {
+                const TAO::Ledger::Transaction& txOrphan = mapOrphansByIndex[hashTx];
+                const auto itOrphan = mapOrphans.find(txOrphan.hashPrevTx);
+                if(itOrphan != mapOrphans.end() && itOrphan->second.GetHash() == hashTx)
+                    mapOrphans.erase(itOrphan);
+
                 mapOrphansByIndex.erase(hashTx);
+            }
 
             /* Find the transaction in pool. */
             if(mapLedger.count(hashTx))
@@ -823,7 +873,9 @@ namespace TAO
                 /* Add the hashes into list. */
                 uint512_t hashLastDisk = 0;
                 if(!LLD::Ledger->ReadLast(rTransaction.first, hashLastDisk))
-                    break;
+                    continue; /* Mirror the mapLedger orphan loop: one genesis's
+                               * missing disk tip must not abort reconciliation
+                               * for every subsequent genesis in this sweep. */
 
                 /* Check if our conflict chain needs to be evicted. */
                 if(vtx[0].hashPrevTx != hashLastDisk)
@@ -1256,6 +1308,15 @@ namespace TAO
             RECURSIVE(MUTEX);
 
             return static_cast<uint32_t>(mapConflicts.size() + mapLegacyConflicts.size());
+        }
+
+
+        /* True when Accept hard-rejected hashTx into mapRejected. */
+        bool Mempool::Rejected(const uint512_t& hashTx) const
+        {
+            RECURSIVE(MUTEX);
+
+            return mapRejected.count(hashTx);
         }
     }
 }
