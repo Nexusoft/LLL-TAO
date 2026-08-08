@@ -58,6 +58,7 @@ namespace TAO
         , mapConflictRootByGenesis    ( )
         , mapConflictDependents       ( )
         , mapConflictDependentsByIndex( )
+        , nConflictDepDrainDepth      (0)
         , mapOrphans                  ( )
         , mapRequestCount             ( )
         , mapClaimed                  ( )
@@ -269,6 +270,20 @@ namespace TAO
         /* Re-Accept parked dependents after a parent clears. */
         void Mempool::ProcessConflictDependents(const uint512_t& hashParent)
         {
+            /* Mark drain active so Accept()'s terminal ProcessConflictDependents
+             * call becomes a no-op. Without this, Accept → ProcessConflictDependents
+             * → Accept nests O(N) deep on long parked sigchain tails (up to
+             * MAX_CONFLICT_DEPENDENTS), which is a production stack-overflow risk.
+             * The while-loop below is already the iterative owner of forward
+             * progress; nested stale-marker drains may still enter this function
+             * (depth > 1) and run their own iterative walk. */
+            struct DrainScope
+            {
+                uint32_t& nDepth;
+                explicit DrainScope(uint32_t& n) : nDepth(n) { ++nDepth; }
+                ~DrainScope() { --nDepth; }
+            } scope(nConflictDepDrainDepth);
+
             uint512_t hashTx = hashParent;
             while(mapConflictDependents.count(hashTx))
             {
@@ -521,11 +536,18 @@ namespace TAO
                             debug::log(1, FUNCTION, "stale CONFLICT DAG marker for confirmed prev ",
                                 tx.hashPrevTx.SubString(), "; clearing and re-evaluating");
 
+                            /* Arm unconditionally covering both root-self-clear
+                             * and dependent-self-clear. EraseConflictRoot does
+                             * not drop a parked tail, so a later Accept failure
+                             * after clearing hashTx as a root would otherwise
+                             * leave grandchildren keyed under a hash that is no
+                             * longer a live conflict node. DropConflictDependents
+                             * is a no-op when no tail exists. */
+                            depTailGuard.Arm();
+
                             /* Drop any stale marker for THIS tx first so the
                              * dependent walk cannot re-enter Accept(hashTx)
-                             * while we are already accepting it. Arm the
-                             * tail guard so a later Accept failure cannot
-                             * leave grandchildren stranded under hashTx. */
+                             * while we are already accepting it. */
                             EraseConflictRoot(hashTx);
                             if(mapConflictDependentsByIndex.count(hashTx))
                             {
@@ -533,7 +555,6 @@ namespace TAO
                                     mapConflictDependentsByIndex[hashTx];
                                 mapConflictDependents.erase(txSelf.hashPrevTx);
                                 mapConflictDependentsByIndex.erase(hashTx);
-                                depTailGuard.Arm();
                             }
 
                             /* Prev may be a root or a parked dependent. */
@@ -670,8 +691,12 @@ namespace TAO
 
                 /* Drain any parked conflict-dependent tail now that this tx is
                  * live (covers intermediate dependents that Accept themselves
-                 * after a stale DAG marker was cleared). No-op when empty. */
-                ProcessConflictDependents(hashTx);
+                 * after a stale DAG marker was cleared, and peer re-offers of a
+                 * resolved root that still has a parked tail). No-op when empty.
+                 * Skipped while ProcessConflictDependents is already active so
+                 * the outer iterative walk owns the chain (O(1) stack). */
+                if(nConflictDepDrainDepth == 0)
+                    ProcessConflictDependents(hashTx);
 
                 /* Relay tx if creating ourselves. */
                 if(!pnode && LLP::TRITIUM_SERVER)
@@ -1422,16 +1447,16 @@ namespace TAO
                          * see this transaction's own prior conflicted state. */
                         EraseConflictRoot(hashTx);
 
-                        /* Re-validate and re-admit into the live mempool. Only drain
-                         * dependents after a successful root Accept — otherwise
-                         * children evaluate without their parent in mapLedger
-                         * and the remaining tail is dropped as unreachable.
-                         * Accept() itself also drains conflict dependents on
-                         * success; the explicit call here covers the case where
-                         * Accept short-circuited because the root was already
-                         * live. On failure drop the parked tail so it cannot
-                         * sit detached after EraseConflictRoot. */
-                        if(Accept(tx))
+                        /* Re-validate and re-admit into the live mempool. Drain
+                         * dependents when the root is live after Accept — either
+                         * because Accept succeeded, or because it short-circuited
+                         * false on an already-live mapLedger entry (Accept returns
+                         * false there to prevent relay loops). Only drop the tail
+                         * on a true admission failure so it cannot sit detached
+                         * after EraseConflictRoot. Accept() also drains on success
+                         * when not already inside a dependent walk; the explicit
+                         * call here covers the already-live short-circuit. */
+                        if(Accept(tx) || mapLedger.count(hashTx))
                         {
                             ProcessConflictDependents(hashTx);
                         }

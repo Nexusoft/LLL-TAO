@@ -30,6 +30,15 @@ ________________________________________________________________________________
  *   R11 Failed dependent re-admission drops the remaining tail.
  *   R12 Removing an intermediate dependent drops its complete tail.
  *
+ * Production-only wiring (not simulatable without LLD/Accept fixtures) that
+ * these rules depend on remaining true in mempool.cpp:
+ *   F1  Stale-marker Accept path arms depTailGuard unconditionally before
+ *       clearing hashTx (root-self-clear OR dependent-self-clear), so a later
+ *       Accept failure cannot leave a tail keyed under a dead conflict node.
+ *   F2  ProcessConflictDependents owns iterative forward progress; Accept's
+ *       terminal drain is suppressed while a drain is already active so
+ *       Accept ↔ ProcessConflictDependents nesting stays O(1) stack.
+ *
  * Implemented as an inline simulator so the contract is testable without
  * LLD/Accept signature wiring. Production wiring lives in
  * src/TAO/Ledger/mempool.cpp (AddConflictRoot / ParkConflictDependent /
