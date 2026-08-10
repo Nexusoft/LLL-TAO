@@ -1108,21 +1108,33 @@ namespace TAO
                     {
                         /* Start a ACID transaction (to be disposed). */
                         LLD::TxnBegin(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
+                        bool fSanitizeTxnActive = true;
 
                         /* Check the contracts for our root transaction to make sure it's valid. */
                         bool fContractInvalid = false;
-                        for(const auto& rContract : vtx[n].Contracts())
+                        try
                         {
-                            /* Sanitize the contract. */
-                            if(!rContract.Sanitize())
+                            for(const auto& rContract : vtx[n].Contracts())
                             {
-                                fContractInvalid = true;
-                                break;
+                                /* Sanitize the contract. */
+                                if(!rContract.Sanitize())
+                                {
+                                    fContractInvalid = true;
+                                    break;
+                                }
                             }
+                        }
+                        catch(...)
+                        {
+                            if(fSanitizeTxnActive)
+                                LLD::TxnAbort(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
+
+                            throw;
                         }
 
                         /* Abort the mempool ACID transaction once the contract is sanitized */
-                        LLD::TxnAbort(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
+                        if(fSanitizeTxnActive)
+                            LLD::TxnAbort(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
 
                         /* Check that transaction is in sequence. */
                         if(vtx[n].hashPrevTx != hashLast || fContractInvalid)
@@ -1152,14 +1164,34 @@ namespace TAO
                                     break;
                                 }
 
-                                /* Debug output tx. */
-                                tx->print();
-
                                 /* Check for ending of sequence. */
                                 const bool fRoot = (n == 0);
 
+                                /* Debug output tx. Keep diagnostics outside the Disconnect
+                                 * exception boundary: malformed contracts can throw from
+                                 * print()/ToString()/IsGenesis() before Disconnect runs. */
+                                try
+                                {
+                                    tx->print();
+                                }
+                                catch(const std::exception& e)
+                                {
+                                    debug::warning(FUNCTION, "print failed for orphan tx ", hashTx.SubString(), ": ", e.what());
+                                }
+
                                 /* Reset memory states to disk indexes. */
-                                if(!tx->Disconnect(fRoot ? FLAGS::ERASE : FLAGS::MEMPOOL))
+                                bool fDisconnected = false;
+                                try
+                                {
+                                    fDisconnected = tx->Disconnect(fRoot ? FLAGS::ERASE : FLAGS::MEMPOOL);
+                                }
+                                catch(const std::exception& e)
+                                {
+                                    debug::warning(FUNCTION, "Disconnect threw for orphan tx ", hashTx.SubString(), ": ", e.what());
+                                    fDisconnected = false;
+                                }
+
+                                if(!fDisconnected)
                                 {
                                     /* Revert any partial LLD ACID state changes. */
                                     LLD::TxnAbort(FLAGS::MEMPOOL, LLD::INSTANCES::MEMORY);
