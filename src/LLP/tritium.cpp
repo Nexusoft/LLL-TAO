@@ -2650,8 +2650,10 @@ namespace LLP
                                 bool fRecovered = false;
                                 if(fKnownBest)
                                 {
-                                    fRecovered = TAO::Ledger::AttemptPeerBestChainRecovery(
-                                        hashBestChain, nCurrentHeight, NODE.c_str());
+                                    fRecovered =
+                                        TAO::Ledger::AttemptPeerBestChainRecovery(
+                                            hashBestChain, nCurrentHeight, NODE.c_str())
+                                        == TAO::Ledger::PeerBestRecoveryResult::PROGRESS;
                                 }
 
                                 /* A known hash is not sufficient for synchronization:

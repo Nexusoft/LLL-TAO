@@ -333,6 +333,23 @@ namespace TAO
         bool ShouldSendBranchSyncRequest(const uint1024_t& hashAncestor);
 
 
+        /** Outcome of AttemptPeerBestChainRecovery.
+         *
+         *  Distinguishes "fetch not appropriate / not attempted" from "fetch
+         *  already queued" and "fetch suppressed by the branch-sync throttle"
+         *  so callers with a fallback LIST path (RequestMissingTxBranchRecovery)
+         *  do not defeat ShouldSendBranchSyncRequest() by treating throttle
+         *  denial as a green light for an unthrottled second LIST.
+         **/
+        enum class PeerBestRecoveryResult : uint8_t
+        {
+            SKIPPED,          /* early-out, disabled, or no action taken      */
+            PROGRESS,         /* local best chain advanced                    */
+            FETCH_QUEUED,     /* locator LIST successfully queued             */
+            FETCH_THROTTLED,  /* would fetch, but ORPHAN_REQUEST throttle hit */
+        };
+
+
         /** AttemptPeerBestChainRecovery
          *
          *  Recovery for cases where peers advertise a different known best hash.
@@ -357,15 +374,16 @@ namespace TAO
          *                    PROCESSING_MUTEX.
          *  @param[out] pfBranchSyncQueued  Optional.  Set true when this helper
          *                    successfully queued a primary locator LIST on pnode
-         *                    (or its random fallback).  Callers that also have a
-         *                    fallback LIST path should skip it when this is true
-         *                    to avoid duplicate branch responses and response-
-         *                    window replacement on the same peer.  Return value
-         *                    remains "forward chain progress" only — a queued
-         *                    fetch still returns false.
+         *                    (or its random fallback).  Prefer the returned
+         *                    PeerBestRecoveryResult for orchestration: a false
+         *                    out-param alone cannot distinguish throttle denial
+         *                    from "fallback LIST is still appropriate".
+         *
+         *  @return PeerBestRecoveryResult describing progress / fetch / throttle.
          *
          **/
-        bool AttemptPeerBestChainRecovery(const uint1024_t& hashPeerBest,
+        PeerBestRecoveryResult AttemptPeerBestChainRecovery(
+                                          const uint1024_t& hashPeerBest,
                                           uint32_t nPeerHeight,
                                           const char* pszSource = nullptr,
                                           LLP::TritiumNode* pnode = nullptr,
@@ -380,13 +398,15 @@ namespace TAO
          *    1. Call AttemptPeerBestChainRecovery when hashPeerBest is a known
          *       foreign tip (may queue one locator LIST + TxResponseWindow on
          *       pnode).
-         *    2. If step 1 did not queue that LIST, queue the same locator LIST
-         *       on pnode as a fallback (stop hash = hashPeerBest if non-zero,
-         *       else hashBlock).
+         *    2. If step 1 was SKIPPED (not FETCH_QUEUED / FETCH_THROTTLED /
+         *       PROGRESS), queue the same locator LIST on pnode as a fallback
+         *       gated by ShouldSendBranchSyncRequest (stop hash = hashPeerBest
+         *       if non-zero, else hashBlock).
          *
          *  Extracted so unit tests can exercise the combined path and assert
-         *  that a successful recovery LIST is not followed by a duplicate
-         *  fallback LIST (which would replace the peer's TxResponseWindow).
+         *  that a successful or throttled recovery LIST is not followed by a
+         *  duplicate fallback LIST (which would replace the peer's
+         *  TxResponseWindow and defeat the three-second request throttle).
          *
          *  @param[in]  hashPeerBest  Peer's advertised best-chain hash (0 if unknown).
          *  @param[in]  hashBlock     Incomplete block that exhausted per-tx retries.
@@ -396,8 +416,7 @@ namespace TAO
          *  @param[out] pfBranchSyncQueued  Optional. Set true when either step
          *                    successfully queued a primary locator LIST on pnode.
          *
-         *  @return forward-progress result from AttemptPeerBestChainRecovery
-         *          (false when recovery was skipped or only queued a fetch).
+         *  @return true only when AttemptPeerBestChainRecovery reported PROGRESS.
          *
          **/
         bool RequestMissingTxBranchRecovery(const uint1024_t& hashPeerBest,
