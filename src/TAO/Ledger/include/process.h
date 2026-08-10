@@ -333,6 +333,23 @@ namespace TAO
         bool ShouldSendBranchSyncRequest(const uint1024_t& hashAncestor);
 
 
+        /** Outcome of AttemptPeerBestChainRecovery.
+         *
+         *  Distinguishes "fetch not appropriate / not attempted" from "fetch
+         *  already queued" and "fetch suppressed by the branch-sync throttle"
+         *  so callers with a fallback LIST path (RequestMissingTxBranchRecovery)
+         *  do not defeat ShouldSendBranchSyncRequest() by treating throttle
+         *  denial as a green light for an unthrottled second LIST.
+         **/
+        enum class PeerBestRecoveryResult : uint8_t
+        {
+            SKIPPED,          /* early-out, disabled, or no action taken      */
+            PROGRESS,         /* local best chain advanced                    */
+            FETCH_QUEUED,     /* locator LIST successfully queued             */
+            FETCH_THROTTLED,  /* would fetch, but ORPHAN_REQUEST throttle hit */
+        };
+
+
         /** AttemptPeerBestChainRecovery
          *
          *  Recovery for cases where peers advertise a different known best hash.
@@ -355,12 +372,59 @@ namespace TAO
          *                    a TRITIUM_SERVER->RandomConnection() for the
          *                    branch-sync request.  Must NOT hold
          *                    PROCESSING_MUTEX.
+         *  @param[out] pfBranchSyncQueued  Optional.  Set true when this helper
+         *                    successfully queued a primary locator LIST on pnode
+         *                    (or its random fallback).  Prefer the returned
+         *                    PeerBestRecoveryResult for orchestration: a false
+         *                    out-param alone cannot distinguish throttle denial
+         *                    from "fallback LIST is still appropriate".
+         *
+         *  @return PeerBestRecoveryResult describing progress / fetch / throttle.
          *
          **/
-        bool AttemptPeerBestChainRecovery(const uint1024_t& hashPeerBest,
+        PeerBestRecoveryResult AttemptPeerBestChainRecovery(
+                                          const uint1024_t& hashPeerBest,
                                           uint32_t nPeerHeight,
                                           const char* pszSource = nullptr,
-                                          LLP::TritiumNode* pnode = nullptr);
+                                          LLP::TritiumNode* pnode = nullptr,
+                                          bool* pfBranchSyncQueued = nullptr);
+
+
+        /** RequestMissingTxBranchRecovery
+         *
+         *  Missing-tx escalation coordination used when Process() has exhausted
+         *  per-tx retries for an incomplete block:
+         *
+         *    1. Call AttemptPeerBestChainRecovery when hashPeerBest is a known
+         *       foreign tip (may queue one locator LIST + TxResponseWindow on
+         *       pnode).
+         *    2. If step 1 was SKIPPED (not FETCH_QUEUED / FETCH_THROTTLED /
+         *       PROGRESS), queue the same locator LIST on pnode as a fallback
+         *       gated by ShouldSendBranchSyncRequest (stop hash = hashPeerBest
+         *       if non-zero, else hashBlock).
+         *
+         *  Extracted so unit tests can exercise the combined path and assert
+         *  that a successful or throttled recovery LIST is not followed by a
+         *  duplicate fallback LIST (which would replace the peer's
+         *  TxResponseWindow and defeat the three-second request throttle).
+         *
+         *  @param[in]  hashPeerBest  Peer's advertised best-chain hash (0 if unknown).
+         *  @param[in]  hashBlock     Incomplete block that exhausted per-tx retries.
+         *  @param[in]  nPeerHeight   Diagnostic peer height for recovery logs.
+         *  @param[in]  pszSource     Log source tag.
+         *  @param[in]  pnode         Peer that advertised the incomplete block.
+         *  @param[out] pfBranchSyncQueued  Optional. Set true when either step
+         *                    successfully queued a primary locator LIST on pnode.
+         *
+         *  @return true only when AttemptPeerBestChainRecovery reported PROGRESS.
+         *
+         **/
+        bool RequestMissingTxBranchRecovery(const uint1024_t& hashPeerBest,
+                                            const uint1024_t& hashBlock,
+                                            uint32_t nPeerHeight,
+                                            const char* pszSource,
+                                            LLP::TritiumNode* pnode,
+                                            bool* pfBranchSyncQueued = nullptr);
 
 
         /** IsBestChainSynchronized

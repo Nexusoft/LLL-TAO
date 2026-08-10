@@ -2650,8 +2650,10 @@ namespace LLP
                                 bool fRecovered = false;
                                 if(fKnownBest)
                                 {
-                                    fRecovered = TAO::Ledger::AttemptPeerBestChainRecovery(
-                                        hashBestChain, nCurrentHeight, NODE.c_str());
+                                    fRecovered =
+                                        TAO::Ledger::AttemptPeerBestChainRecovery(
+                                            hashBestChain, nCurrentHeight, NODE.c_str())
+                                        == TAO::Ledger::PeerBestRecoveryResult::PROGRESS;
                                 }
 
                                 /* A known hash is not sufficient for synchronization:
@@ -3108,54 +3110,14 @@ namespace LLP
                                     "/", TAO::Ledger::MAX_BRANCH_RECOVERY_ESCALATIONS,
                                     "; escalating to branch recovery");
 
-                                /* 1. Try AttemptPeerBestChainRecovery.  Now handles the
-                                 *    case where the peer's best is in the orphan pool
-                                 *    but not yet on disk: it walks the orphan graph to
-                                 *    find a connectable ancestor and feeds it through
-                                 *    Process().  Pass 'this' so the function can send
-                                 *    a locator-anchored LIST if the branch has a gap. */
-                                if(hashBestChain != 0
-                                && hashBestChain != TAO::Ledger::ChainState::hashBestChain.load())
-                                {
-                                    TAO::Ledger::AttemptPeerBestChainRecovery(
-                                        hashBestChain, nCurrentHeight, NODE.c_str(), this);
-                                }
-
-                                /* 2. Re-request the full branch from this peer via
-                                 *    locator.  Use SPECIFIER::TRANSACTIONS (not SYNC) so
-                                 *    the peer pushes inline txs then the block as TRITIUM;
-                                 *    SYNC blocks are rejected as "unsolicited" after initial
-                                 *    sync completes (fSynchronized == true). */
-                                {
-                                    const uint1024_t hashTarget =
-                                        (hashBestChain != 0) ? hashBestChain : hashBlock;
-
-                                    const uint1024_t hashLocator =
-                                        TAO::Ledger::ChainState::hashBestChain.load();
-                                    const uint64_t nWindowRequest = !config::fClient.load()
-                                        ? OpenTxResponseWindow(TxResponseKind::LIST, hashLocator, hashTarget)
-                                        : 0;
-                                    try
-                                    {
-                                    if(!PushMessage(ACTION::LIST,
-                                       config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS),
-                                        uint8_t(TYPES::BLOCK),
-                                        uint8_t(TYPES::LOCATOR),
-                                        TAO::Ledger::Locator(hashLocator),
-                                        uint1024_t(hashTarget)
-                                    ))
-                                    {
-                                        if(nWindowRequest != 0)
-                                            RollbackTxResponseWindow(nWindowRequest);
-                                    }
-                                    }
-                                    catch(...)
-                                    {
-                                        if(nWindowRequest != 0)
-                                            RollbackTxResponseWindow(nWindowRequest);
-                                        throw;
-                                    }
-                                }
+                                /* 1-2. Coordinated branch recovery + fallback LIST.  AttemptPeerBestChainRecovery
+                                 *    may already queue a locator LIST (orphan walk / far tip).  The helper
+                                 *    skips the identical fallback LIST in that case so we do not double-
+                                 *    request the branch or replace the first TxResponseWindow on this peer.
+                                 *    SPECIFIER::TRANSACTIONS (not SYNC): SYNC blocks are rejected as
+                                 *    "unsolicited" after initial sync completes (fSynchronized == true). */
+                                TAO::Ledger::RequestMissingTxBranchRecovery(
+                                    hashBestChain, hashBlock, nCurrentHeight, NODE.c_str(), this);
 
                                 /* 3. Request the full block + inline transactions from
                                  *    a different random peer whose disk/mempool state

@@ -517,11 +517,16 @@ namespace TAO
         }
 
 
-        bool AttemptPeerBestChainRecovery(const uint1024_t& hashPeerBest,
+        PeerBestRecoveryResult AttemptPeerBestChainRecovery(
+                                          const uint1024_t& hashPeerBest,
                                           uint32_t nPeerHeight,
                                           const char* pszSource,
-                                          LLP::TritiumNode* pnode)
+                                          LLP::TritiumNode* pnode,
+                                          bool* pfBranchSyncQueued)
         {
+            if(pfBranchSyncQueued)
+                *pfBranchSyncQueued = false;
+
             /* Re-entrancy guard: this function releases PROCESSING_MUTEX and
              * calls Process(), which re-acquires it.  That is safe today
              * because nothing inside Process() calls back into this function.
@@ -532,7 +537,7 @@ namespace TAO
              * a harmless no-op instead. */
             thread_local bool fInPeerBestChainRecovery = false;
             if(fInPeerBestChainRecovery)
-                return false;
+                return PeerBestRecoveryResult::SKIPPED;
 
             struct ReentrancyGuard
             {
@@ -542,10 +547,10 @@ namespace TAO
             } guard(fInPeerBestChainRecovery);
 
             if(hashPeerBest == 0 || hashPeerBest == ChainState::hashBestChain.load())
-                return false;
+                return PeerBestRecoveryResult::SKIPPED;
 
             if(!config::GetBoolArg("-peerbestchainrecovery", true))
-                return false;
+                return PeerBestRecoveryResult::SKIPPED;
 
             TAO::Ledger::BlockState statePeer;
             if(!LLD::Ledger->ReadBlock(hashPeerBest, statePeer))
@@ -639,12 +644,16 @@ namespace TAO
 
                     const bool fProgress = (nStatus & PROCESS::ACCEPTED) != 0;
                     if(fProgress)
+                    {
                         debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "=== PEER_BEST_RECOVERED ===",
                             ANSI_COLOR_RESET,
                             " best=", ChainState::hashBestChain.load().SubString(),
                             " height=", ChainState::nBestHeight.load(),
                             " source=orphan-pool-walkback");
-                    return fProgress;
+                        return PeerBestRecoveryResult::PROGRESS;
+                    }
+
+                    return PeerBestRecoveryResult::SKIPPED;
                 }
 
                 /* Active fetch path for both:
@@ -683,111 +692,122 @@ namespace TAO
                  * designed to eliminate: the drain-loop erase(hashParent) cleanup
                  * only ever clears hashPrevBlock keys.  When no orphans were
                  * present, hashDeepestAncestor still defaults to hashPeerBest. */
-                if(pSend && ShouldSendBranchSyncRequest(hashDeepestAncestor))
+                if(!pSend)
+                    return PeerBestRecoveryResult::SKIPPED;
+
+                if(!ShouldSendBranchSyncRequest(hashDeepestAncestor))
+                    return PeerBestRecoveryResult::FETCH_THROTTLED;
+
+                /* Use SPECIFIER::TRANSACTIONS (not SYNC): this is a post-sync fork-recovery
+                 * path.  SYNC blocks are rejected as "unsolicited" once fSynchronized == true;
+                 * TRANSACTIONS causes the peer to push inline txs then the block as TRITIUM,
+                 * which the receiver accepts unconditionally. */
+                bool fPrimaryQueued = false;
+                try
                 {
-                    /* Use SPECIFIER::TRANSACTIONS (not SYNC): this is a post-sync fork-recovery
-                     * path.  SYNC blocks are rejected as "unsolicited" once fSynchronized == true;
-                     * TRANSACTIONS causes the peer to push inline txs then the block as TRITIUM,
-                     * which the receiver accepts unconditionally. */
+                    const uint1024_t hashTarget = TAO::Ledger::ChainState::hashBestChain.load();
+                    const uint64_t nWindowRequest = !config::fClient.load()
+                        ? pSend->OpenTxResponseWindow(LLP::TxResponseKind::LIST,
+                            hashTarget, hashPeerBest)
+                        : 0;
                     try
                     {
-                        const uint1024_t hashTarget = TAO::Ledger::ChainState::hashBestChain.load();
-                        const uint64_t nWindowRequest = !config::fClient.load()
-                            ? pSend->OpenTxResponseWindow(LLP::TxResponseKind::LIST,
-                                hashTarget, hashPeerBest)
-                            : 0;
-                        try
-                        {
-                        if(!pSend->PushMessage(LLP::TritiumNode::ACTION::LIST,
-                            config::fClient.load()
-                                ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)
-                                : uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
-                            uint8_t(LLP::TritiumNode::TYPES::BLOCK),
-                            uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
-                            TAO::Ledger::Locator(hashTarget),
-                            uint1024_t(hashPeerBest)
-                        ))
-                        {
-                            if(nWindowRequest != 0)
-                                pSend->RollbackTxResponseWindow(nWindowRequest);
-                        }
-                        }
-                        catch(...)
-                        {
-                            if(nWindowRequest != 0)
-                                pSend->RollbackTxResponseWindow(nWindowRequest);
-                            throw;
-                        }
+                    if(!pSend->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                        config::fClient.load()
+                            ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)
+                            : uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
+                        uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                        uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
+                        TAO::Ledger::Locator(hashTarget),
+                        uint1024_t(hashPeerBest)
+                    ))
+                    {
+                        if(nWindowRequest != 0)
+                            pSend->RollbackTxResponseWindow(nWindowRequest);
+                    }
+                    else
+                        fPrimaryQueued = true;
+                    }
+                    catch(...)
+                    {
+                        if(nWindowRequest != 0)
+                            pSend->RollbackTxResponseWindow(nWindowRequest);
+                        throw;
+                    }
 
-                        /* Optional one-peer fanout: ask a second distinct peer so the
-                         * node that advertised the far tip cannot also be the sole
-                         * source of the recovery path (mirrors the orphan LIST
-                         * RandomConnection fallback). */
-                        if(LLP::TRITIUM_SERVER)
+                    if(pfBranchSyncQueued && fPrimaryQueued)
+                        *pfBranchSyncQueued = true;
+
+                    /* Optional one-peer fanout: ask a second distinct peer so the
+                     * node that advertised the far tip cannot also be the sole
+                     * source of the recovery path (mirrors the orphan LIST
+                     * RandomConnection fallback). */
+                    if(LLP::TRITIUM_SERVER)
+                    {
+                        std::shared_ptr<LLP::TritiumNode> pFanout =
+                            LLP::TRITIUM_SERVER->RandomConnection();
+                        if(pFanout && pFanout.get() != pSend)
                         {
-                            std::shared_ptr<LLP::TritiumNode> pFanout =
-                                LLP::TRITIUM_SERVER->RandomConnection();
-                            if(pFanout && pFanout.get() != pSend)
+                            try
                             {
+                                const uint64_t nFanoutWindow = !config::fClient.load()
+                                    ? pFanout->OpenTxResponseWindow(LLP::TxResponseKind::LIST,
+                                        hashTarget, hashPeerBest)
+                                    : 0;
                                 try
                                 {
-                                    const uint64_t nFanoutWindow = !config::fClient.load()
-                                        ? pFanout->OpenTxResponseWindow(LLP::TxResponseKind::LIST,
-                                            hashTarget, hashPeerBest)
-                                        : 0;
-                                    try
-                                    {
-                                        if(!pFanout->PushMessage(LLP::TritiumNode::ACTION::LIST,
-                                            config::fClient.load()
-                                                ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)
-                                                : uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
-                                            uint8_t(LLP::TritiumNode::TYPES::BLOCK),
-                                            uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
-                                            TAO::Ledger::Locator(hashTarget),
-                                            uint1024_t(hashPeerBest)
-                                        ))
-                                        {
-                                            if(nFanoutWindow != 0)
-                                                pFanout->RollbackTxResponseWindow(nFanoutWindow);
-                                        }
-                                    }
-                                    catch(...)
+                                    if(!pFanout->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                                        config::fClient.load()
+                                            ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)
+                                            : uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
+                                        uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                                        uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
+                                        TAO::Ledger::Locator(hashTarget),
+                                        uint1024_t(hashPeerBest)
+                                    ))
                                     {
                                         if(nFanoutWindow != 0)
                                             pFanout->RollbackTxResponseWindow(nFanoutWindow);
-                                        throw;
                                     }
                                 }
-                                catch(const std::exception& e)
+                                catch(...)
                                 {
-                                    debug::error(FUNCTION, e.what());
+                                    if(nFanoutWindow != 0)
+                                        pFanout->RollbackTxResponseWindow(nFanoutWindow);
+                                    throw;
                                 }
+                            }
+                            catch(const std::exception& e)
+                            {
+                                debug::error(FUNCTION, e.what());
                             }
                         }
                     }
-                    catch(const std::exception& e)
-                    {
-                        debug::error(FUNCTION, e.what());
-                    }
+                }
+                catch(const std::exception& e)
+                {
+                    debug::error(FUNCTION, e.what());
                 }
 
-                return false;
+                return fPrimaryQueued
+                    ? PeerBestRecoveryResult::FETCH_QUEUED
+                    : PeerBestRecoveryResult::SKIPPED;
             }
 
             LOCK(PROCESSING_MUTEX);
 
             const TAO::Ledger::BlockState stateBest = ChainState::tStateBest.load();
             if(hashPeerBest == stateBest.GetHash())
-                return false;
+                return PeerBestRecoveryResult::SKIPPED;
 
             if(!statePeer.IsHeavierThan(stateBest))
-                return false;
+                return PeerBestRecoveryResult::SKIPPED;
 
             TAO::Ledger::BlockState stateAncestor;
             uint32_t nConnectDepth = 0;
             uint32_t nDisconnectDepth = 0;
             if(!FindCommonAncestor(statePeer, stateBest, stateAncestor, nConnectDepth, nDisconnectDepth))
-                return false;
+                return PeerBestRecoveryResult::SKIPPED;
 
             debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "=== PEER_BEST_RECOVERY ===", ANSI_COLOR_RESET,
                 " source=", (pszSource ? pszSource : "peer"),
@@ -802,14 +822,113 @@ namespace TAO
                 " action=validated-activation");
 
             if(!ActivateCandidateBestChain(statePeer, pszSource, true))
-                return debug::error(FUNCTION, "peer best recovery candidate validation failed");
+            {
+                debug::error(FUNCTION, "peer best recovery candidate validation failed");
+                return PeerBestRecoveryResult::SKIPPED;
+            }
 
             debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "=== PEER_BEST_RECOVERED ===", ANSI_COLOR_RESET,
                 " best=", ChainState::hashBestChain.load().SubString(),
                 " height=", ChainState::nBestHeight.load(),
                 " templates=flushed");
 
-            return true;
+            return PeerBestRecoveryResult::PROGRESS;
+        }
+
+
+        bool RequestMissingTxBranchRecovery(const uint1024_t& hashPeerBest,
+                                            const uint1024_t& hashBlock,
+                                            uint32_t nPeerHeight,
+                                            const char* pszSource,
+                                            LLP::TritiumNode* pnode,
+                                            bool* pfBranchSyncQueued)
+        {
+            if(pfBranchSyncQueued)
+                *pfBranchSyncQueued = false;
+
+            bool fBranchSyncQueued = false;
+            bool fProgress = false;
+            bool fAllowFallback = true;
+
+            /* 1. Attempt peer-best recovery when the peer advertised a foreign tip.
+             *    Orchestrate on PeerBestRecoveryResult — not merely "did we queue
+             *    a LIST this call".  FETCH_THROTTLED must suppress the fallback
+             *    LIST; treating throttle denial as fBranchSyncQueued==false was
+             *    defeating ShouldSendBranchSyncRequest() on every repeated call. */
+            if(pnode
+            && hashPeerBest != 0
+            && hashPeerBest != ChainState::hashBestChain.load())
+            {
+                const PeerBestRecoveryResult result = AttemptPeerBestChainRecovery(
+                    hashPeerBest, nPeerHeight, pszSource, pnode, &fBranchSyncQueued);
+
+                switch(result)
+                {
+                    case PeerBestRecoveryResult::PROGRESS:
+                        fProgress = true;
+                        fAllowFallback = false;
+                        break;
+
+                    case PeerBestRecoveryResult::FETCH_QUEUED:
+                        fAllowFallback = false;
+                        break;
+
+                    case PeerBestRecoveryResult::FETCH_THROTTLED:
+                        fAllowFallback = false;
+                        break;
+
+                    case PeerBestRecoveryResult::SKIPPED:
+                        break;
+                }
+            }
+
+            /* 2. Fallback locator LIST only when step 1 did not already handle
+             *    the fetch (queued, throttled, or progressed).  Gate with the
+             *    same canonical throttle so repeated fallback-only calls
+             *    (unknown peer best) also respect ORPHAN_REQUEST_THROTTLE. */
+            if(pnode && fAllowFallback && !fBranchSyncQueued)
+            {
+                const uint1024_t hashTarget =
+                    (hashPeerBest != 0) ? hashPeerBest : hashBlock;
+
+                if(ShouldSendBranchSyncRequest(hashTarget))
+                {
+                    const uint1024_t hashLocator = ChainState::hashBestChain.load();
+                    const uint64_t nWindowRequest = !config::fClient.load()
+                        ? pnode->OpenTxResponseWindow(LLP::TxResponseKind::LIST,
+                            hashLocator, hashTarget)
+                        : 0;
+                    try
+                    {
+                        if(!pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                            config::fClient.load()
+                                ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)
+                                : uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
+                            uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                            uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
+                            TAO::Ledger::Locator(hashLocator),
+                            uint1024_t(hashTarget)
+                        ))
+                        {
+                            if(nWindowRequest != 0)
+                                pnode->RollbackTxResponseWindow(nWindowRequest);
+                        }
+                        else
+                            fBranchSyncQueued = true;
+                    }
+                    catch(...)
+                    {
+                        if(nWindowRequest != 0)
+                            pnode->RollbackTxResponseWindow(nWindowRequest);
+                        throw;
+                    }
+                }
+            }
+
+            if(pfBranchSyncQueued)
+                *pfBranchSyncQueued = fBranchSyncQueued;
+
+            return fProgress;
         }
 
 
