@@ -55,6 +55,12 @@ Diagram templates for PR descriptions and comprehensive Mermaid architecture dia
 10. **[architecture/riscv-mining-protocol-diagrams.md](architecture/riscv-mining-protocol-diagrams.md)** - RISC-V mining protocol architecture diagrams
 11. **[architecture/setbest-transaction-boundary.md](architecture/setbest-transaction-boundary.md)** - RC13 `SetBest()` transactional chain-transition bug chain (PRs #651–#654)
 
+## Audit / recovery coordinator diagrams (2026-08-10)
+
+- **[audit/README.md](audit/README.md)** - Index
+- **[audit/recovery-coordinator-upgrade.md](audit/recovery-coordinator-upgrade.md)** - A1/A1b peer-best + missing-tx LIST coordination (PR #690/#691)
+- **[audit/mempool-recovery-coupling.md](audit/mempool-recovery-coupling.md)** - Mempool classifier/DAG clocks vs chain fetch
+
 ## Mining Diagrams
 
 11. **[mining/degraded-mode-recovery-flow.md](mining/degraded-mode-recovery-flow.md)** - DEGRADED MODE protocol flows A–E (PR #375)

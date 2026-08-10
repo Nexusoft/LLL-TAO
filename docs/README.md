@@ -66,6 +66,7 @@ This directory contains the active Nexus node documentation. Historical notes an
 - [Mining notification diagnostics](current/mining/mining-notification-diagnostics.md)
 - [Mining server troubleshooting](current/troubleshooting/mining-server-issues.md)
 - [Node architecture index](current/node/index.md)
+- [NODE audit pack / TIP list (post #690/#691)](current/node/audit/README.md)
 - [Session container architecture](current/node/session-container-architecture.md)
 - [Recovery merge model](current/node/recovery-merge-model.md)
 - [Roadmap and upgrade path](current/node/roadmap-upgrade-path.md)

@@ -51,3 +51,6 @@ The diagrams are designed for:
 - [Node Architecture Index](../../current/node/index.md)
 - [Roadmap & Upgrade Path](../../current/node/roadmap-upgrade-path.md)
 - [Test Strategy](../../current/node/test-strategy.md)
+- [NODE Audit pack / TIP list](../../current/node/audit/README.md)
+- [Recovery coordinator upgrade diagram](../audit/recovery-coordinator-upgrade.md)
+- [Mempool ↔ recovery coupling diagram](../audit/mempool-recovery-coupling.md)

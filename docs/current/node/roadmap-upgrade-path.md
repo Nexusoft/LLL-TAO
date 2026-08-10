@@ -2,7 +2,7 @@
 
 **Section:** Node Architecture  
 **Version:** LLL-TAO 5.1.0+ (post-PR #361 / #362 / #363)  
-**Last Updated:** 2026-03-10
+**Last Updated:** 2026-08-10
 
 ---
 
@@ -40,17 +40,18 @@ Replace the ad-hoc tuple `(nSessionID, hashGenesis, strFalconKeyID)` with a sing
 ---
 
 #### R-02 · Canonical `ValidateConsistency` Call Sites
-**Status:** Partial (method exists; not all call sites added yet)  
+**Status:** Largely implemented on NODE (re-verify TIP-14) — method + major call sites present; roadmap text below refreshed 2026-08-10  
 **Diagram:** [02](../../diagrams/upgrade-path/02-canonical-validate-consistency.md)
 
 Ensure `ValidateConsistency()` is called at every security boundary:
 
 - End of `MINER_AUTH` handler ✅ (PR #363)
-- Start of `MINER_SET_REWARD` handler — **missing**
-- Start of `SUBMIT_BLOCK` handler — **missing**
+- Start of `MINER_SET_REWARD` handler ✅ (`stateless_miner.cpp` ~2002)
+- Start of `SUBMIT_BLOCK` handler ✅ (stateless path ~1779; legacy lane ~3108)
 - Recovery merge path ✅ (PR #363)
 
-**Acceptance:** All four call sites present; CI integration test verifies each path returns `AUTH_FAILED` / packet rejection on deliberate corruption.
+**Acceptance:** All four call sites present; CI integration test verifies each path returns `AUTH_FAILED` / packet rejection on deliberate corruption.  
+**Follow-up:** Confirm no bypass path remains; add negative integration tests (TIP-14 in [audit pack](audit/NODE_AUDIT_2026-08-10.md)).
 
 ---
 
