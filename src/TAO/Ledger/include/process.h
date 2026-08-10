@@ -372,6 +372,42 @@ namespace TAO
                                           bool* pfBranchSyncQueued = nullptr);
 
 
+                /** RequestMissingTxBranchRecovery
+         *
+         *  Missing-tx escalation coordination used when Process() has exhausted
+         *  per-tx retries for an incomplete block:
+         *
+         *    1. Call AttemptPeerBestChainRecovery when hashPeerBest is a known
+         *       foreign tip (may queue one locator LIST + TxResponseWindow on
+         *       pnode).
+         *    2. If step 1 did not queue that LIST, queue the same locator LIST
+         *       on pnode as a fallback (stop hash = hashPeerBest if non-zero,
+         *       else hashBlock).
+         *
+         *  Extracted so unit tests can exercise the combined path and assert
+         *  that a successful recovery LIST is not followed by a duplicate
+         *  fallback LIST (which would replace the peer's TxResponseWindow).
+         *
+         *  @param[in]  hashPeerBest  Peer's advertised best-chain hash (0 if unknown).
+         *  @param[in]  hashBlock     Incomplete block that exhausted per-tx retries.
+         *  @param[in]  nPeerHeight   Diagnostic peer height for recovery logs.
+         *  @param[in]  pszSource     Log source tag.
+         *  @param[in]  pnode         Peer that advertised the incomplete block.
+         *  @param[out] pfBranchSyncQueued  Optional. Set true when either step
+         *                    successfully queued a primary locator LIST on pnode.
+         *
+         *  @return forward-progress result from AttemptPeerBestChainRecovery
+         *          (false when recovery was skipped or only queued a fetch).
+         *
+         **/
+        bool RequestMissingTxBranchRecovery(const uint1024_t& hashPeerBest,
+                                            const uint1024_t& hashBlock,
+                                            uint32_t nPeerHeight,
+                                            const char* pszSource,
+                                            LLP::TritiumNode* pnode,
+                                            bool* pfBranchSyncQueued = nullptr);
+
+
         /** IsBestChainSynchronized
          *
          *  Returns true only when the advertised peer best is the active local

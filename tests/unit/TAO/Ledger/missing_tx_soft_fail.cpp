@@ -1515,6 +1515,133 @@ TEST_CASE("AttemptPeerBestChainRecovery requests branch sync when tip far ahead"
 }
 
 
+TEST_CASE("Missing-tx escalation queues only one LIST when recovery already did",
+    "[ledger][process][a1][missing-tx-escalation]")
+{
+    /* Regression for the tritium missing-tx escalation coordination:
+     * RequestMissingTxBranchRecovery must not follow a successful recovery LIST
+     * with an identical fallback LIST (duplicate branch traffic + TxResponseWindow
+     * replacement on the same peer).  Calling AttemptPeerBestChainRecovery alone
+     * cannot catch a removed if(!fBranchSyncQueued) guard. */
+    LedgerGuard env;
+
+    TAO::Ledger::mapOrphans.Clear();
+    TAO::Ledger::mapLastOrphanRequest.clear();
+    TAO::Ledger::mapLastMissing.clear();
+    TAO::Ledger::mapLastMissingProcessTime.clear();
+    TAO::Ledger::setUnrecoverableBlocks.clear();
+
+    const uint1024_t hashFarTip(0xA1000000000000FFULL);
+    const uint1024_t hashIncomplete(0xA100000000000100ULL);
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hashFarTip));
+    REQUIRE_FALSE(TAO::Ledger::mapOrphans.Contains(hashFarTip));
+
+#ifndef WIN32
+    int fds[2] = {-1, -1};
+    REQUIRE(socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == 0);
+    REQUIRE(fcntl(fds[1], F_SETFL, O_NONBLOCK) == 0);
+
+    LLP::TritiumNode node;
+    node.fd     = fds[1];
+    node.events = POLLIN;
+
+    const uint1024_t hashLocalBest = TAO::Ledger::ChainState::hashBestChain.load();
+    DataStream ssExpected(SER_NETWORK, LLP::MIN_PROTO_VERSION);
+    ssExpected
+        << uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS)
+        << uint8_t(LLP::TritiumNode::TYPES::BLOCK)
+        << uint8_t(LLP::TritiumNode::TYPES::LOCATOR)
+        << TAO::Ledger::Locator(hashLocalBest)
+        << uint1024_t(hashFarTip);
+    const std::vector<uint8_t> vExpected =
+        LLP::TritiumNode::NewMessage(LLP::TritiumNode::ACTION::LIST, ssExpected).GetBytes();
+
+    bool fBranchSyncQueued = false;
+    const bool fProgress = TAO::Ledger::RequestMissingTxBranchRecovery(
+        hashFarTip, hashIncomplete, /*nPeerHeight=*/9999,
+        "unit-test-missing-tx-escalation", &node, &fBranchSyncQueued);
+
+    REQUIRE_FALSE(fProgress);
+    REQUIRE(fBranchSyncQueued);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashFarTip) == 1);
+
+    while(node.Buffered() > 0)
+    {
+        if(node.Flush() <= 0)
+            break;
+    }
+
+    std::vector<uint8_t> vSent;
+    {
+        std::vector<uint8_t> buf(65536);
+        for(;;)
+        {
+            const ssize_t n = recv(fds[0], buf.data(), buf.size(), MSG_DONTWAIT);
+            if(n <= 0)
+                break;
+            vSent.insert(vSent.end(), buf.begin(), buf.begin() + n);
+        }
+    }
+
+    /* Combined path must emit exactly one LIST — not recovery+fallback. */
+    REQUIRE(vSent == vExpected);
+    REQUIRE(vSent.size() == vExpected.size());
+
+    /* Fallback-only path (unknown peer best) still queues one LIST to hashBlock. */
+    TAO::Ledger::mapLastOrphanRequest.clear();
+    DataStream ssFallback(SER_NETWORK, LLP::MIN_PROTO_VERSION);
+    ssFallback
+        << uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS)
+        << uint8_t(LLP::TritiumNode::TYPES::BLOCK)
+        << uint8_t(LLP::TritiumNode::TYPES::LOCATOR)
+        << TAO::Ledger::Locator(hashLocalBest)
+        << uint1024_t(hashIncomplete);
+    const std::vector<uint8_t> vFallbackExpected =
+        LLP::TritiumNode::NewMessage(LLP::TritiumNode::ACTION::LIST, ssFallback).GetBytes();
+
+    bool fFallbackQueued = false;
+    const bool fFallbackProgress = TAO::Ledger::RequestMissingTxBranchRecovery(
+        uint1024_t(0), hashIncomplete, /*nPeerHeight=*/0,
+        "unit-test-missing-tx-fallback", &node, &fFallbackQueued);
+    REQUIRE_FALSE(fFallbackProgress);
+    REQUIRE(fFallbackQueued);
+
+    while(node.Buffered() > 0)
+    {
+        if(node.Flush() <= 0)
+            break;
+    }
+
+    std::vector<uint8_t> vFallbackSent;
+    {
+        std::vector<uint8_t> buf(65536);
+        for(;;)
+        {
+            const ssize_t n = recv(fds[0], buf.data(), buf.size(), MSG_DONTWAIT);
+            if(n <= 0)
+                break;
+            vFallbackSent.insert(vFallbackSent.end(), buf.begin(), buf.begin() + n);
+        }
+    }
+    REQUIRE(vFallbackSent == vFallbackExpected);
+
+    node.fd = -1;
+    close(fds[0]);
+    close(fds[1]);
+#else
+    LLP::TritiumNode node;
+    bool fBranchSyncQueued = false;
+    const bool fProgress = TAO::Ledger::RequestMissingTxBranchRecovery(
+        hashFarTip, hashIncomplete, /*nPeerHeight=*/9999,
+        "unit-test-missing-tx-escalation", &node, &fBranchSyncQueued);
+    REQUIRE_FALSE(fProgress);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashFarTip) == 1);
+#endif
+
+    TAO::Ledger::mapLastOrphanRequest.clear();
+}
+
+
 TEST_CASE("Process primary path does not force PrimeCheck on IBD (source guard)",
     "[ledger][process][primecheck]")
 {

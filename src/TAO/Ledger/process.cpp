@@ -823,6 +823,75 @@ namespace TAO
         }
 
 
+        bool RequestMissingTxBranchRecovery(const uint1024_t& hashPeerBest,
+                                            const uint1024_t& hashBlock,
+                                            uint32_t nPeerHeight,
+                                            const char* pszSource,
+                                            LLP::TritiumNode* pnode,
+                                            bool* pfBranchSyncQueued)
+        {
+            if(pfBranchSyncQueued)
+                *pfBranchSyncQueued = false;
+
+            bool fBranchSyncQueued = false;
+            bool fProgress = false;
+
+            /* 1. Attempt peer-best recovery when the peer advertised a foreign tip.
+             *    When that path successfully queues a locator LIST, skip the
+             *    identical fallback LIST below so we do not double-request the
+             *    branch or replace the first TxResponseWindow on this peer. */
+            if(pnode
+            && hashPeerBest != 0
+            && hashPeerBest != ChainState::hashBestChain.load())
+            {
+                fProgress = AttemptPeerBestChainRecovery(
+                    hashPeerBest, nPeerHeight, pszSource, pnode, &fBranchSyncQueued);
+            }
+
+            /* 2. Fallback locator LIST only when step 1 did not already queue one. */
+            if(pnode && !fBranchSyncQueued)
+            {
+                const uint1024_t hashTarget =
+                    (hashPeerBest != 0) ? hashPeerBest : hashBlock;
+
+                const uint1024_t hashLocator = ChainState::hashBestChain.load();
+                const uint64_t nWindowRequest = !config::fClient.load()
+                    ? pnode->OpenTxResponseWindow(LLP::TxResponseKind::LIST,
+                        hashLocator, hashTarget)
+                    : 0;
+                try
+                {
+                    if(!pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                        config::fClient.load()
+                            ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)
+                            : uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
+                        uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                        uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
+                        TAO::Ledger::Locator(hashLocator),
+                        uint1024_t(hashTarget)
+                    ))
+                    {
+                        if(nWindowRequest != 0)
+                            pnode->RollbackTxResponseWindow(nWindowRequest);
+                    }
+                    else
+                        fBranchSyncQueued = true;
+                }
+                catch(...)
+                {
+                    if(nWindowRequest != 0)
+                        pnode->RollbackTxResponseWindow(nWindowRequest);
+                    throw;
+                }
+            }
+
+            if(pfBranchSyncQueued)
+                *pfBranchSyncQueued = fBranchSyncQueued;
+
+            return fProgress;
+        }
+
+
         bool IsBestChainSynchronized(const uint1024_t& hashPeerBest)
         {
             return hashPeerBest != 0
