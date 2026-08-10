@@ -628,8 +628,12 @@ namespace TAO::Ledger
          * comparison, the disk entry — which might be newer — was never consulted.
          *
          * Now we always check disk.  We use a separate hashDiskLast to avoid clobbering
-         * a mempool-set hashLast.  The disk entry only wins if its sequence is strictly
-         * greater than whatever txPrev already holds.
+         * a mempool-set hashLast.  The disk entry wins when its sequence is strictly
+         * greater than whatever txPrev already holds, OR when txPrev is still unset
+         * and disk has a real genesis (same Fix-1 pattern as the mempool branch).
+         * Without the unset-txPrev arm, a ledger-only genesis (sessions empty,
+         * mempool empty, disk seq=0) left hashLast=0 and fell through to IsFirst(),
+         * attempting a duplicate genesis transaction (TIP-05 hygiene).
          *
          * Skipped entirely when pKnownLast was supplied: that value is already the
          * authoritative predecessor selected from the block's vtx, and consulting disk
@@ -643,7 +647,12 @@ namespace TAO::Ledger
 
                 /* Get previous transaction */
                 TAO::Ledger::Transaction txDisk;
-                if(LLD::Ledger->ReadTx(hashDiskLast, txDisk) && txDisk.nSequence > txPrev.nSequence)
+                /* hashGenesis==0 is the unset-txPrev sentinel (mirrors mempool
+                 * Fix 1). A real seq-0 genesis has hashGenesis!=0, so the
+                 * second arm cannot overwrite an already-resolved predecessor. */
+                if(LLD::Ledger->ReadTx(hashDiskLast, txDisk)
+                && (txDisk.nSequence > txPrev.nSequence
+                    || (txPrev.hashGenesis == 0 && txDisk.hashGenesis != 0)))
                 {
                     txPrev = txDisk;
                     hashLast = hashDiskLast;

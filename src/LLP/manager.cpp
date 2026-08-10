@@ -206,7 +206,8 @@ namespace LLP
         return false;
     }
 
-    /* Gets a TrustAddress from the BaseAddress */
+    /* Gets a TrustAddress from the BaseAddress.
+     * Deprecated: throws via map::at(); use Get(addr, TrustAddress&) instead. */
     const LLP::TrustAddress& AddressManager::Get(const BaseAddress &addr) const
     {
         const uint64_t hash = addr.GetHash();

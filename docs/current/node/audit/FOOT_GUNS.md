@@ -144,7 +144,7 @@ BESTCHAIN / A1 / missing-tx   →  SPECIFIER::TRANSACTIONS   REQUIRED
 **Symptom:** Hours stuck while mempool UNKNOWN budget burns; miner extends local tip.  
 **Trap:** `not_on_disk && !orphan → return` without LIST.  
 **Rule:** Active fetch path (A1) — locator LIST + TRANSACTIONS.  
-**Fixed:** #690. Residual: BESTCHAIN path asymmetry (TIP-01/02).
+**Fixed:** #690. BESTCHAIN asymmetry closed via RequestBestChainBranchRecovery (TIP-01/02).
 
 ---
 

@@ -13,11 +13,11 @@
 | Area | Status after #690/#691 | Residual risk |
 |------|------------------------|---------------|
 | A1 far-tip silent no-op | **FIXED** (#690) | Needs production soak |
-| A1 double LIST / window replace | **FIXED** (#691) | BESTCHAIN path still separate |
+| A1 double LIST / window replace | **FIXED** (#691) | BESTCHAIN unified via RequestBestChainBranchRecovery (TIP-01/02) |
 | Ledger harness `[ledger]` segfault | **FIXED** (#690 harness) | Remaining assertion hygiene debt |
 | Mempool Option C DAG | **LANDED** (#688/#689) | UNKNOWN budget expiry still hard |
 | DDoS defaults (`-ddos`/`-rscore`) | **RESTORED** (#680 lineage) | Operator override foot-gun remains |
-| AddressManager TOCTOU | **FIXED** (#678) | Throwing `Get()` still exists unused |
+| AddressManager TOCTOU | **FIXED** (#678) | Throwing `Get()` marked `[[deprecated]]` (TIP-17) |
 | `ForceLocalChainResync` | **SPEC ONLY** | Highest-risk future work |
 | Upstream Colin isolation package | **NOT STARTED** | See TIP-12 + draft checklist |
 
@@ -95,8 +95,8 @@ Pick **one TIP per PR**. Prefer S/M before L. Severity: P0 wedge/data-loss · P1
 
 | ID | Title | Size | Why now | Primary files |
 |----|-------|------|---------|---------------|
-| **TIP-01** | Throttle BESTCHAIN branch LIST | S | BESTCHAIN notify path (`tritium.cpp` ~2663–2704) still issues unthrottled `LIST+TRANSACTIONS` every time recovery fails / tip unknown. Can spam peers and thrash `TxResponseWindow` under chatty BESTCHAIN. Missing-tx path is throttled; BESTCHAIN is not. | `src/LLP/tritium.cpp`, `ShouldSendBranchSyncRequest` |
-| **TIP-02** | Route BESTCHAIN unknown-tip through coordinator | S–M | When `!fKnownBest`, BESTCHAIN skips `AttemptPeerBestChainRecovery` and only LIST to the notifying peer — no fanout, no shared result enum. Residual asymmetry vs A1 path. | `tritium.cpp` BESTCHAIN handler |
+| **TIP-01** | Throttle BESTCHAIN branch LIST | S | **FIXED** — `RequestBestChainBranchRecovery` gates fallback LIST with `ShouldSendBranchSyncRequest` / result enum (same contract as #691). | `process.cpp`, `tritium.cpp` BESTCHAIN |
+| **TIP-02** | Route BESTCHAIN unknown-tip through coordinator | S–M | **FIXED** — BESTCHAIN always calls coordinator via `RequestBestChainBranchRecovery` (fanout + shared enum). | `process.cpp`, `tritium.cpp` |
 | **TIP-03** | Production soak checklist for A1 | S (ops) | Code-fixed; wedge family was multi-hour. Need log signatures + testnet script before declaring closed in the field. | ops runbook (this audit §5) |
 | **TIP-04** | `ForceLocalChainResync` manual RPC (spec §5) | L | After UNKNOWN budget (~40 min) expires on a true local-mined dead fork, node still cannot adopt peer chain without restart/`-revertblocks`. Spec already written. | new `fork_recovery.cpp`, `checkforkrecovery` lineage |
 
@@ -130,8 +130,8 @@ Pick **one TIP per PR**. Prefer S/M before L. Severity: P0 wedge/data-loss · P1
 
 | ID | Title | Size | Why now | Primary files |
 |----|-------|------|---------|---------------|
-| **TIP-05** | Ledger unit assertion hygiene pass | M | `[ledger]` no longer segfaults; remaining FAIL cases are separate debt and mask regressions. | `tests/unit/TAO/Ledger/*` |
-| **TIP-17** | Remove or `[[deprecated]]` throwing `AddressManager::Get()` | S | Non-throwing overload is the only live call path; throwing `at()` API is latent foot-gun. | `manager.{h,cpp}` |
+| **TIP-05** | Ledger unit assertion hygiene pass | M | **PARTIAL** — disk genesis Fix-1 arm in `CreateTransaction` + create_transaction sim; remaining 3 FAIL: `validate_vtx` MEMPOOL sim, 2× `mempool_check_orphan_fix` Primitive exception. | `create.cpp`, `tests/unit/TAO/Ledger/*` |
+| **TIP-17** | Remove or `[[deprecated]]` throwing `AddressManager::Get()` | S | **FIXED** — single-arg `Get()` marked `[[deprecated]]`; live paths use non-throwing overload. | `manager.{h,cpp}` |
 | **TIP-18** | PR #667 residual surface sample | M | ~553 clean-merge files never fully audited. Sample next tranche: permissions already done; next = time server / lookup / API DDoS / sync finalization edges. | LLP global surface |
 
 ### P1 — Upstream isolation (meta)

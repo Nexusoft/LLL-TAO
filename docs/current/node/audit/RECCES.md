@@ -62,13 +62,13 @@ AttemptPeerBestChainRecovery(peer_best)
 | Site | File:area | Passes pnode? | Uses coordinator? |
 |------|-----------|---------------|-------------------|
 | Missing-tx escalation | `tritium.cpp` ~3113 | yes (`this`) | **Yes** `RequestMissingTxBranchRecovery` |
-| BESTCHAIN notify | `tritium.cpp` ~2648–2704 | recovery call **no pnode** when known; separate unthrottled LIST | **Partial** — TIP-01/02 |
+| BESTCHAIN notify | `tritium.cpp` BESTCHAIN | `RequestBestChainBranchRecovery` (pnode + result enum) | **Yes** TIP-01/02 |
 | Process internal | `process.cpp` other LIST sites | varies | local |
 
 ### Residual recce (open)
 
-1. **BESTCHAIN unthrottled LIST** when `!fRecovered && height ok` — no `ShouldSendBranchSyncRequest` (TIP-01).
-2. **BESTCHAIN `!fKnownBest`** never enters `AttemptPeerBestChainRecovery` — no fanout (TIP-02).
+1. ~~**BESTCHAIN unthrottled LIST**~~ — closed via `RequestBestChainBranchRecovery` (TIP-01/02).
+2. ~~**BESTCHAIN `!fKnownBest`**~~ — always enters coordinator with notifying peer (TIP-02).
 3. Fanout peer selection is `RandomConnection()` — may pick disconnected; missing-tx fanout elsewhere requires `Connected()` (memory claims; verify if hardening needed).
 
 ---
@@ -147,7 +147,7 @@ ComputeForkDivergence
 | Ban check | `rSCORE.Score() > DDOS_rSCORE` | `data.cpp` ~611 |
 | GET BLOCK cost | +50 rSCORE (approx; see tritium sites) | high-volume sync foot-gun if -ddos on |
 | AddressManager safe Get | `bool Get(addr, TrustAddress&)` | used by tritium ADDRESS + system initialize |
-| Throwing Get | still compiled | `manager.cpp` ~210 `at()` — unused live path |
+| Throwing Get | `[[deprecated]]` | `manager.cpp` ~210 `at()` — unused live path (TIP-17) |
 
 ---
 

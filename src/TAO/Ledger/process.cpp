@@ -932,6 +932,130 @@ namespace TAO
         }
 
 
+        bool RequestBestChainBranchRecovery(const uint1024_t& hashPeerBest,
+                                            uint32_t nPeerHeight,
+                                            const char* pszSource,
+                                            LLP::TritiumNode* pnode,
+                                            bool* pfBranchSyncQueued)
+        {
+            if(pfBranchSyncQueued)
+                *pfBranchSyncQueued = false;
+
+            if(hashPeerBest == 0 || !pnode)
+                return false;
+
+            bool fBranchSyncQueued = false;
+            bool fProgress = false;
+            bool fAllowFallback = true;
+
+            /* Historical BESTCHAIN height gate for unknown advertised tips:
+             * only actively fetch a branch we do not have when the peer is at
+             * or ahead of local height.  Known on-disk candidates are still
+             * evaluated for heavier-chain activation even if the notifying
+             * peer's advertised height is lower.
+             *
+             * Calling AttemptPeerBestChainRecovery unconditionally for an
+             * unknown hash reaches the far-tip LIST path immediately (primary
+             * LIST + TxResponseWindow + optional fanout + throttle map) before
+             * the fallback height check can run. */
+            const bool fKnownOnDisk =
+                (LLD::Ledger && LLD::Ledger->HasBlock(hashPeerBest));
+            const uint32_t nLocalHeight = ChainState::nBestHeight.load();
+            const bool fPeerAtOrAhead   = (nPeerHeight >= nLocalHeight);
+
+            /* 1. Route through the peer-best coordinator when policy allows:
+             *    known tips always; unknown tips only from at/ahead peers. */
+            if(fKnownOnDisk || fPeerAtOrAhead)
+            {
+                const PeerBestRecoveryResult result = AttemptPeerBestChainRecovery(
+                    hashPeerBest, nPeerHeight, pszSource, pnode, &fBranchSyncQueued);
+
+                switch(result)
+                {
+                    case PeerBestRecoveryResult::PROGRESS:
+                        fProgress = true;
+                        fAllowFallback = false;
+                        break;
+
+                    case PeerBestRecoveryResult::FETCH_QUEUED:
+                    case PeerBestRecoveryResult::FETCH_THROTTLED:
+                        /* Coordinator already owns (or deliberately suppressed)
+                         * the LIST — do not second-guess with fallback. */
+                        fAllowFallback = false;
+                        break;
+
+                    case PeerBestRecoveryResult::SKIPPED:
+                        break;
+                }
+            }
+            else
+            {
+                /* Unknown tip from a behind peer: do not fetch, do not open a
+                 * TxResponseWindow, and do not consume the branch-sync throttle.
+                 * Fallback below is also height-gated; clear it explicitly. */
+                fAllowFallback = false;
+            }
+
+            /* 2. Fallback LIST for known-but-not-active side branches (or a
+             *    coordinator SKIPPED with no fetch), matching the historical
+             *    BESTCHAIN "keep requesting until local best matches" loop —
+             *    but now gated by the same 3s throttle as every other recovery
+             *    LIST path. */
+            if(fAllowFallback
+            && !fBranchSyncQueued
+            && !IsBestChainSynchronized(hashPeerBest)
+            && nPeerHeight >= nLocalHeight)
+            {
+                if(ShouldSendBranchSyncRequest(hashPeerBest))
+                {
+                    debug::log(1, (pszSource ? pszSource : ""),
+                        "BESTCHAIN differs; requesting branch ",
+                        hashPeerBest.SubString(),
+                        " known=", (LLD::Ledger && LLD::Ledger->HasBlock(hashPeerBest) ? "yes" : "no"),
+                        " peer_height=", nPeerHeight,
+                        " local_height=", ChainState::nBestHeight.load());
+
+                    /* SPECIFIER::TRANSACTIONS (not SYNC): post-sync fork recovery.
+                     * SYNC is rejected as "unsolicited" once fSynchronized==true. */
+                    const uint1024_t hashLocator = ChainState::hashBestChain.load();
+                    const uint64_t nWindowRequest = !config::fClient.load()
+                        ? pnode->OpenTxResponseWindow(LLP::TxResponseKind::LIST,
+                            hashLocator, hashPeerBest)
+                        : 0;
+                    try
+                    {
+                        if(!pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                            config::fClient.load()
+                                ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)
+                                : uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
+                            uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                            uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
+                            TAO::Ledger::Locator(hashLocator),
+                            uint1024_t(hashPeerBest)
+                        ))
+                        {
+                            if(nWindowRequest != 0)
+                                pnode->RollbackTxResponseWindow(nWindowRequest);
+                        }
+                        else
+                            fBranchSyncQueued = true;
+                    }
+                    catch(...)
+                    {
+                        if(nWindowRequest != 0)
+                            pnode->RollbackTxResponseWindow(nWindowRequest);
+                        throw;
+                    }
+                }
+            }
+
+            if(pfBranchSyncQueued)
+                *pfBranchSyncQueued = fBranchSyncQueued;
+
+            return fProgress;
+        }
+
+
         bool IsBestChainSynchronized(const uint1024_t& hashPeerBest)
         {
             return hashPeerBest != 0

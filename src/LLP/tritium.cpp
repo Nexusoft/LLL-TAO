@@ -2637,72 +2637,23 @@ namespace LLP
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::NOTIFY: BESTCHAIN ", hashBestChain.SubString());
 
-                            /* If a peer advertises a different best hash that we
-                             * already have on disk, let the ledger perform a bounded
-                             * ancestry-based recovery if that branch is actually
-                             * heavier.  If the hash is unknown but the peer is at
-                             * our height or ahead, request the branch by locator so
-                             * normal block processing can converge. */
+                            /* Route every foreign BESTCHAIN tip through the shared
+                             * recovery coordinator (TIP-01 / TIP-02):
+                             *   - known heavier tip  → validated activation
+                             *   - unknown / far tip  → throttled LIST+TRANSACTIONS
+                             *                          (+ optional fanout peer)
+                             *                          only when peer height >= local
+                             *   - known side-branch  → throttled fallback LIST until
+                             *                          local best matches
+                             * Chatty BESTCHAIN must not unthrottled-LIST or double-
+                             * open TxResponseWindow the way the pre-#691 missing-tx
+                             * path used to.  Behind peers cannot trigger unknown-
+                             * tip fetch (historical height gate). */
                             if(hashBestChain != 0
                             && hashBestChain != TAO::Ledger::ChainState::hashBestChain.load())
                             {
-                                const bool fKnownBest = LLD::Ledger->HasBlock(hashBestChain);
-                                bool fRecovered = false;
-                                if(fKnownBest)
-                                {
-                                    fRecovered =
-                                        TAO::Ledger::AttemptPeerBestChainRecovery(
-                                            hashBestChain, nCurrentHeight, NODE.c_str())
-                                        == TAO::Ledger::PeerBestRecoveryResult::PROGRESS;
-                                }
-
-                                /* A known hash is not sufficient for synchronization:
-                                 * it may be a stored side branch that failed activation.
-                                 * Keep requesting the advertised branch until recovery
-                                 * succeeds and the local best-chain pointer matches. */
-                                if(!fRecovered
-                                && !TAO::Ledger::IsBestChainSynchronized(hashBestChain)
-                                && nCurrentHeight >= TAO::Ledger::ChainState::nBestHeight.load())
-                                {
-                                    debug::log(1, NODE,
-                                        "ACTION::NOTIFY: BESTCHAIN differs; requesting branch ",
-                                        hashBestChain.SubString(),
-                                        " known=", (fKnownBest ? "yes" : "no"),
-                                        " peer_height=", nCurrentHeight,
-                                        " local_height=", TAO::Ledger::ChainState::nBestHeight.load());
-
-                                    /* Use SPECIFIER::TRANSACTIONS (not SYNC) so the peer
-                                     * returns blocks tagged SPECIFIER::TRITIUM with inline
-                                     * transactions.  SPECIFIER::SYNC is only accepted by the
-                                     * receiver during initial synchronization
-                                     * (nCurrentSession == nSyncSession && !fSynchronized);
-                                     * sending it here causes "unsolicited sync block" drops
-                                     * and DISCONNECT::FORCE on an already-synced peer. */
-                                    const uint1024_t hashTarget = TAO::Ledger::ChainState::hashBestChain.load();
-                                    const uint64_t nWindowRequest = !config::fClient.load()
-                                       ? OpenTxResponseWindow(TxResponseKind::LIST, hashTarget, hashBestChain)
-                                       : 0;
-                                    try
-                                    {
-                                    if(!PushMessage(ACTION::LIST,
-                                       config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS),
-                                       uint8_t(TYPES::BLOCK),
-                                       uint8_t(TYPES::LOCATOR),
-                                       TAO::Ledger::Locator(hashTarget),
-                                       uint1024_t(hashBestChain)
-                                    ))
-                                    {
-                                        if(nWindowRequest != 0)
-                                            RollbackTxResponseWindow(nWindowRequest);
-                                    }
-                                    }
-                                    catch(...)
-                                    {
-                                       if(nWindowRequest != 0)
-                                           RollbackTxResponseWindow(nWindowRequest);
-                                       throw;
-                                    }
-                                }
+                                TAO::Ledger::RequestBestChainBranchRecovery(
+                                    hashBestChain, nCurrentHeight, NODE.c_str(), this);
                             }
 
                             /* A sync peer is complete only when its advertised best

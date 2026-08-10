@@ -90,10 +90,13 @@ namespace
             }
         }
 
-        /* Source 3: Disk (Fix 2: unconditional — no else if) */
+        /* Source 3: Disk (Fix 2: unconditional — no else if).
+         * Also apply Fix 1's unset-txPrev arm so a ledger-only genesis
+         * (seq=0) is adopted instead of leaving hashLast=0. */
         if(pLedgerTx != nullptr)
         {
-            if(pLedgerTx->nSequence > txPrev.nSequence)
+            if(pLedgerTx->nSequence > txPrev.nSequence
+                || (txPrev.hashGenesis == 0 && pLedgerTx->hashGenesis != 0))
             {
                 hashLast = hashLedgerLast;
                 txPrev   = *pLedgerTx;
