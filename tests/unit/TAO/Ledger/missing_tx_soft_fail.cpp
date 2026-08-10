@@ -1760,6 +1760,195 @@ TEST_CASE("Missing-tx escalation second call emits no LIST while throttled",
 }
 
 
+TEST_CASE("BESTCHAIN recovery queues only one LIST for unknown tip",
+    "[ledger][process][a1][bestchain]")
+{
+    /* TIP-01 / TIP-02: RequestBestChainBranchRecovery must route unknown tips
+     * through AttemptPeerBestChainRecovery (throttled LIST + fanout-capable)
+     * and must not emit a second unthrottled fallback LIST on the same call. */
+    LedgerGuard env;
+
+    TAO::Ledger::mapOrphans.Clear();
+    TAO::Ledger::mapLastOrphanRequest.clear();
+    TAO::Ledger::mapLastMissing.clear();
+    TAO::Ledger::mapLastMissingProcessTime.clear();
+    TAO::Ledger::setUnrecoverableBlocks.clear();
+
+    const uint1024_t hashFarTip(0xBC01000000000001ULL);
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hashFarTip));
+    REQUIRE_FALSE(TAO::Ledger::mapOrphans.Contains(hashFarTip));
+
+#ifndef WIN32
+    int fds[2] = {-1, -1};
+    REQUIRE(socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == 0);
+    REQUIRE(fcntl(fds[1], F_SETFL, O_NONBLOCK) == 0);
+
+    LLP::TritiumNode node;
+    node.fd     = fds[1];
+    node.events = POLLIN;
+
+    const uint1024_t hashLocalBest = TAO::Ledger::ChainState::hashBestChain.load();
+    DataStream ssExpected(SER_NETWORK, LLP::MIN_PROTO_VERSION);
+    ssExpected
+        << uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS)
+        << uint8_t(LLP::TritiumNode::TYPES::BLOCK)
+        << uint8_t(LLP::TritiumNode::TYPES::LOCATOR)
+        << TAO::Ledger::Locator(hashLocalBest)
+        << uint1024_t(hashFarTip);
+    const std::vector<uint8_t> vExpected =
+        LLP::TritiumNode::NewMessage(LLP::TritiumNode::ACTION::LIST, ssExpected).GetBytes();
+
+    bool fQueued = false;
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+        hashFarTip, /*nPeerHeight=*/9999, "unit-test-bestchain", &node, &fQueued));
+    REQUIRE(fQueued);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashFarTip) == 1);
+
+    while(node.Buffered() > 0)
+    {
+        if(node.Flush() <= 0)
+            break;
+    }
+
+    std::vector<uint8_t> vSent;
+    {
+        std::vector<uint8_t> buf(65536);
+        for(;;)
+        {
+            const ssize_t n = recv(fds[0], buf.data(), buf.size(), MSG_DONTWAIT);
+            if(n <= 0)
+                break;
+            vSent.insert(vSent.end(), buf.begin(), buf.begin() + n);
+        }
+    }
+
+    /* Coordinator LIST only — no fallback double-LIST on the same call. */
+    REQUIRE(vSent.size() == vExpected.size());
+    REQUIRE(vSent == vExpected);
+
+    node.fd = -1;
+    close(fds[0]);
+    close(fds[1]);
+#else
+    LLP::TritiumNode node;
+    bool fQueued = false;
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+        hashFarTip, /*nPeerHeight=*/9999, "unit-test-bestchain", &node, &fQueued));
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashFarTip) == 1);
+#endif
+
+    TAO::Ledger::mapLastOrphanRequest.clear();
+}
+
+
+TEST_CASE("BESTCHAIN recovery second notify emits no LIST while throttled",
+    "[ledger][process][a1][bestchain][throttle]")
+{
+    /* TIP-01: chatty BESTCHAIN must not thrash TxResponseWindow.  Two immediate
+     * RequestBestChainBranchRecovery calls for the same unknown tip produce
+     * exactly one on-wire LIST (second call is FETCH_THROTTLED with no fallback). */
+    LedgerGuard env;
+
+    TAO::Ledger::mapOrphans.Clear();
+    TAO::Ledger::mapLastOrphanRequest.clear();
+    TAO::Ledger::mapLastMissing.clear();
+    TAO::Ledger::mapLastMissingProcessTime.clear();
+    TAO::Ledger::setUnrecoverableBlocks.clear();
+
+    const uint1024_t hashFarTip(0xBC01000000000002ULL);
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hashFarTip));
+    REQUIRE_FALSE(TAO::Ledger::mapOrphans.Contains(hashFarTip));
+
+#ifndef WIN32
+    int fds[2] = {-1, -1};
+    REQUIRE(socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == 0);
+    REQUIRE(fcntl(fds[1], F_SETFL, O_NONBLOCK) == 0);
+
+    LLP::TritiumNode node;
+    node.fd     = fds[1];
+    node.events = POLLIN;
+
+    const uint1024_t hashLocalBest = TAO::Ledger::ChainState::hashBestChain.load();
+    DataStream ssExpected(SER_NETWORK, LLP::MIN_PROTO_VERSION);
+    ssExpected
+        << uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS)
+        << uint8_t(LLP::TritiumNode::TYPES::BLOCK)
+        << uint8_t(LLP::TritiumNode::TYPES::LOCATOR)
+        << TAO::Ledger::Locator(hashLocalBest)
+        << uint1024_t(hashFarTip);
+    const std::vector<uint8_t> vExpected =
+        LLP::TritiumNode::NewMessage(LLP::TritiumNode::ACTION::LIST, ssExpected).GetBytes();
+
+    bool fQueued1 = false;
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+        hashFarTip, /*nPeerHeight=*/9999, "unit-test-bestchain-throttle-1", &node, &fQueued1));
+    REQUIRE(fQueued1);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashFarTip) == 1);
+
+    while(node.Buffered() > 0)
+    {
+        if(node.Flush() <= 0)
+            break;
+    }
+
+    std::vector<uint8_t> vSent1;
+    {
+        std::vector<uint8_t> buf(65536);
+        for(;;)
+        {
+            const ssize_t n = recv(fds[0], buf.data(), buf.size(), MSG_DONTWAIT);
+            if(n <= 0)
+                break;
+            vSent1.insert(vSent1.end(), buf.begin(), buf.begin() + n);
+        }
+    }
+    REQUIRE(vSent1 == vExpected);
+
+    bool fQueued2 = true; /* helper must clear when nothing is sent */
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+        hashFarTip, /*nPeerHeight=*/9999, "unit-test-bestchain-throttle-2", &node, &fQueued2));
+    REQUIRE_FALSE(fQueued2);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashFarTip) == 1);
+
+    while(node.Buffered() > 0)
+    {
+        if(node.Flush() <= 0)
+            break;
+    }
+
+    std::vector<uint8_t> vSent2;
+    {
+        std::vector<uint8_t> buf(65536);
+        for(;;)
+        {
+            const ssize_t n = recv(fds[0], buf.data(), buf.size(), MSG_DONTWAIT);
+            if(n <= 0)
+                break;
+            vSent2.insert(vSent2.end(), buf.begin(), buf.begin() + n);
+        }
+    }
+    REQUIRE(vSent2.empty());
+
+    node.fd = -1;
+    close(fds[0]);
+    close(fds[1]);
+#else
+    LLP::TritiumNode node;
+    bool fQueued1 = false;
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+        hashFarTip, /*nPeerHeight=*/9999, "unit-test-bestchain-throttle-1", &node, &fQueued1));
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashFarTip) == 1);
+
+    bool fQueued2 = true;
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+        hashFarTip, /*nPeerHeight=*/9999, "unit-test-bestchain-throttle-2", &node, &fQueued2));
+    REQUIRE_FALSE(fQueued2);
+#endif
+
+    TAO::Ledger::mapLastOrphanRequest.clear();
+}
+
+
 TEST_CASE("Process primary path does not force PrimeCheck on IBD (source guard)",
     "[ledger][process][primecheck]")
 {

@@ -175,11 +175,17 @@ namespace LLP
 
         /** Get
          *
-         *  Gets a TrustAddress from the BaseAddress
+         *  Gets a TrustAddress from the BaseAddress.
+         *
+         *  @deprecated Prefer the non-throwing Get(addr, TrustAddress&) overload.
+         *  This single-arg form uses map::at() and can throw std::out_of_range
+         *  under concurrent RemoveAddress()/Ban() — the latent TOCTOU foot-gun
+         *  fixed at call sites by PR #678 (TIP-17).
          *
          *  @param[in] addr The address to find.
          *
          **/
+        [[deprecated("Use non-throwing Get(addr, TrustAddress&) instead")]]
         const LLP::TrustAddress& Get(const BaseAddress &addr) const;
 
 

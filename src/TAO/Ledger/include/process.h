@@ -427,6 +427,39 @@ namespace TAO
                                             bool* pfBranchSyncQueued = nullptr);
 
 
+        /** RequestBestChainBranchRecovery
+         *
+         *  BESTCHAIN-notify coordination (TIP-01 / TIP-02):
+         *
+         *    1. Always call AttemptPeerBestChainRecovery with the notifying peer
+         *       so unknown tips get the same throttled LIST + optional fanout as
+         *       the A1 far-tip path (not a bare unthrottled LIST to one peer).
+         *    2. Fallback LIST only when step 1 returned SKIPPED, the advertised
+         *       tip is not yet the active local best, the peer is at/ahead of
+         *       local height, and ShouldSendBranchSyncRequest allows it.
+         *
+         *  FETCH_QUEUED / FETCH_THROTTLED / PROGRESS all suppress the fallback
+         *  LIST so chatty BESTCHAIN cannot thrash TxResponseWindow or defeat the
+         *  three-second branch-sync throttle (the residual asymmetry left after
+         *  #690/#691, which only hardened the missing-tx escalation path).
+         *
+         *  @param[in]  hashPeerBest  Peer's advertised best-chain hash.
+         *  @param[in]  nPeerHeight   Peer height from the BESTCHAIN notify context.
+         *  @param[in]  pszSource     Log source tag.
+         *  @param[in]  pnode         Notifying peer (required for LIST paths).
+         *  @param[out] pfBranchSyncQueued  Optional. Set true when a primary
+         *                    locator LIST was successfully queued on pnode.
+         *
+         *  @return true only when AttemptPeerBestChainRecovery reported PROGRESS.
+         *
+         **/
+        bool RequestBestChainBranchRecovery(const uint1024_t& hashPeerBest,
+                                            uint32_t nPeerHeight,
+                                            const char* pszSource,
+                                            LLP::TritiumNode* pnode,
+                                            bool* pfBranchSyncQueued = nullptr);
+
+
         /** IsBestChainSynchronized
          *
          *  Returns true only when the advertised peer best is the active local

@@ -932,6 +932,109 @@ namespace TAO
         }
 
 
+        bool RequestBestChainBranchRecovery(const uint1024_t& hashPeerBest,
+                                            uint32_t nPeerHeight,
+                                            const char* pszSource,
+                                            LLP::TritiumNode* pnode,
+                                            bool* pfBranchSyncQueued)
+        {
+            if(pfBranchSyncQueued)
+                *pfBranchSyncQueued = false;
+
+            if(hashPeerBest == 0 || !pnode)
+                return false;
+
+            bool fBranchSyncQueued = false;
+            bool fProgress = false;
+            bool fAllowFallback = true;
+
+            /* 1. Always route through the peer-best coordinator.  Unknown tips
+             *    previously skipped this path and issued an unthrottled LIST to
+             *    only the notifying peer (no fanout, no shared result enum). */
+            {
+                const PeerBestRecoveryResult result = AttemptPeerBestChainRecovery(
+                    hashPeerBest, nPeerHeight, pszSource, pnode, &fBranchSyncQueued);
+
+                switch(result)
+                {
+                    case PeerBestRecoveryResult::PROGRESS:
+                        fProgress = true;
+                        fAllowFallback = false;
+                        break;
+
+                    case PeerBestRecoveryResult::FETCH_QUEUED:
+                        fAllowFallback = false;
+                        break;
+
+                    case PeerBestRecoveryResult::FETCH_THROTTLED:
+                        fAllowFallback = false;
+                        break;
+
+                    case PeerBestRecoveryResult::SKIPPED:
+                        break;
+                }
+            }
+
+            /* 2. Fallback LIST for known-but-not-active side branches (or a
+             *    coordinator SKIPPED with no fetch), matching the historical
+             *    BESTCHAIN "keep requesting until local best matches" loop —
+             *    but now gated by the same 3s throttle as every other recovery
+             *    LIST path. */
+            if(fAllowFallback
+            && !fBranchSyncQueued
+            && !IsBestChainSynchronized(hashPeerBest)
+            && nPeerHeight >= ChainState::nBestHeight.load())
+            {
+                if(ShouldSendBranchSyncRequest(hashPeerBest))
+                {
+                    debug::log(1, (pszSource ? pszSource : ""),
+                        "BESTCHAIN differs; requesting branch ",
+                        hashPeerBest.SubString(),
+                        " known=", (LLD::Ledger && LLD::Ledger->HasBlock(hashPeerBest) ? "yes" : "no"),
+                        " peer_height=", nPeerHeight,
+                        " local_height=", ChainState::nBestHeight.load());
+
+                    /* SPECIFIER::TRANSACTIONS (not SYNC): post-sync fork recovery.
+                     * SYNC is rejected as "unsolicited" once fSynchronized==true. */
+                    const uint1024_t hashLocator = ChainState::hashBestChain.load();
+                    const uint64_t nWindowRequest = !config::fClient.load()
+                        ? pnode->OpenTxResponseWindow(LLP::TxResponseKind::LIST,
+                            hashLocator, hashPeerBest)
+                        : 0;
+                    try
+                    {
+                        if(!pnode->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                            config::fClient.load()
+                                ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)
+                                : uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
+                            uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                            uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
+                            TAO::Ledger::Locator(hashLocator),
+                            uint1024_t(hashPeerBest)
+                        ))
+                        {
+                            if(nWindowRequest != 0)
+                                pnode->RollbackTxResponseWindow(nWindowRequest);
+                        }
+                        else
+                            fBranchSyncQueued = true;
+                    }
+                    catch(...)
+                    {
+                        if(nWindowRequest != 0)
+                            pnode->RollbackTxResponseWindow(nWindowRequest);
+                        throw;
+                    }
+                }
+            }
+
+            if(pfBranchSyncQueued)
+                *pfBranchSyncQueued = fBranchSyncQueued;
+
+            return fProgress;
+        }
+
+
         bool IsBestChainSynchronized(const uint1024_t& hashPeerBest)
         {
             return hashPeerBest != 0
