@@ -69,8 +69,8 @@ sequenceDiagram
     Mempool->>Mempool: evict conflicting tx permanently (pre-#664 bug)
     Process->>Peer: AttemptPeerBestChainRecovery(peer_best, ...)
     Peer-->>Process: peer_best not on disk, not in orphan pool
-    Process->>Process: "not_on_disk=true" -> logs only, no fetch issued
-    Miner->>Miner: keeps mining on the same stuck local tip
+    Process->>Peer: throttled LIST+TRANSACTIONS (locator branch sync + fanout)
+    Note over Process,Peer: Previously logged only (block-not-yet-received) with no fetch
 ```
 
 - `ComputeForkDivergence()` (`mempool.cpp:912-944` pre-#664 / current) reads
@@ -79,16 +79,17 @@ sequenceDiagram
   ancestor genuinely isn't part of any chain we'll ever have" — and the
   pre-#664 code treated both as the latter, permanently discarding the
   correct chain's data.
-- `AttemptPeerBestChainRecovery` (`process.cpp:530+`) logs
+- `AttemptPeerBestChainRecovery` (`process.cpp`) previously logged
   `not_on_disk=true`/`in_orphan_pool=no`/`action=block-not-yet-received` and
-  **returns without issuing any fetch** when the peer's tip is ~230 blocks
-  ahead (too far to be in the orphan pool). The only active fetch path in
-  that function is the orphan-walkback/locator-branch-sync path, which
-  requires at least a partial local chain of orphans — a ~230-block gap with
-  zero orphans received never reaches it.
-- The node's own miner (still running) keeps producing new blocks on top of
-  the same stuck local tip, which is what makes it look like "the chain is
-  only being extended by my own miner."
+  **returned without issuing any fetch** when the peer's tip was far ahead
+  (too far to be in the orphan pool). **Fixed (option 1-A):** that path now
+  issues the same throttled locator-anchored `LIST` + `SPECIFIER::TRANSACTIONS`
+  (with optional one-peer fanout) used for the orphan-gap case. Stop hash is
+  `hashPeerBest`; throttle key is `hashDeepestAncestor` (defaults to the tip
+  when no orphans were walked).
+- Historically the node's own miner kept producing new blocks on top of the
+  stuck local tip, which is what made it look like "the chain is only being
+  extended by my own miner."
 
 ---
 
@@ -137,10 +138,9 @@ minutes of retention before falling back to eviction.
 `MAX_UNKNOWN_ANCESTOR_RETRIES` (80 × the 30s sweep ≈ 40 minutes) is exhausted
 before block-level sync catches up, the transaction is still evicted — the
 underlying "no single authoritative resync path" problem from the original
-analysis remains. It also does nothing to fix
-`AttemptPeerBestChainRecovery`'s silent no-op when the peer's tip is too far
-ahead to be in the orphan pool (§2) — that's a separate, still-open gap in
-the block-sync layer, not the mempool-conflict layer.
+analysis remains. The block-sync half of that wedge (`AttemptPeerBestChainRecovery`
+silent no-op when the tip is far ahead) is addressed separately by the
+option 1-A active-fetch path (see §6 step 2).
 
 ---
 
@@ -263,12 +263,10 @@ Low, largest change, highest regression risk).
 
 1. ~~Fix the `UNKNOWN` vs `INVALID_ABSOLUTE` misclassification.~~ **Done —
    PR #664.**
-2. Give `AttemptPeerBestChainRecovery` an active fetch path for the
-   "not on disk, not in orphan pool" case (§2) instead of only logging —
-   this is the other half of why the wedge could persist for hours: even
-   with #664's larger retry budget, if block-level sync never starts
-   because the gap is too large for the orphan-pool walkback, the 40-minute
-   budget will still eventually expire.
+2. ~~Give `AttemptPeerBestChainRecovery` an active fetch path for the
+   "not on disk, not in orphan pool" case (§2).~~ **Done — option 1-A:**
+   throttled locator `LIST` + `SPECIFIER::TRANSACTIONS` with optional
+   one-peer fanout (same path as orphan-gap recovery).
 3. Only after (1) and (2) are proven in production: consider the
    consolidated fork-recovery state machine (§4) and the
    `ForceLocalChainResync` helper (§5), each as its own separately reviewed

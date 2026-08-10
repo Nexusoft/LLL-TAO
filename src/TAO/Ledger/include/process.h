@@ -339,14 +339,17 @@ namespace TAO
          *  The advertised height is diagnostic only; activation requires a
          *  complete, fully checked, strictly heavier candidate branch.
          *
-         *  When the peer's tip is not on disk but IS present in the orphan pool
-         *  the function walks the orphan graph backwards (capped at
-         *  MAX_BLOCK_ORPHANS depth) to find the deepest ancestor whose own
-         *  hashPrevBlock is on disk.  If a connectable ancestor is found it is
-         *  fed through Process() so the existing BFS drain can connect the
-         *  chain forward.  If no connectable ancestor exists a throttled
-         *  locator-anchored branch-sync LIST is issued via pnode (or a random
-         *  connection if pnode is nullptr).
+         *  When the peer's tip is not on disk:
+         *    - If it IS in the orphan pool, walk the orphan graph backwards
+         *      (capped at MAX_BLOCK_ORPHANS depth) to find the deepest ancestor
+         *      whose own hashPrevBlock is on disk.  If a connectable ancestor is
+         *      found it is fed through Process() so the existing BFS drain can
+         *      connect the chain forward.
+         *    - If it is NOT in the orphan pool (large gap), OR the orphan walk
+         *      finds no connectable ancestor, a throttled locator-anchored
+         *      branch-sync LIST (SPECIFIER::TRANSACTIONS) is issued via pnode
+         *      (or a random connection if pnode is nullptr), with a one-peer
+         *      fanout to a second distinct peer when available.
          *
          *  @param[in] pnode  Optional sending node.  If nullptr, falls back to
          *                    a TRITIUM_SERVER->RandomConnection() for the

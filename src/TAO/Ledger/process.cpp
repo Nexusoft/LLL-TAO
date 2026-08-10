@@ -620,18 +620,6 @@ namespace TAO
                 /* PROCESSING_MUTEX is released here — safe to call Process()
                  * or PushMessage below. */
 
-                if(!fInOrphanPool)
-                {
-                    debug::log(0, FUNCTION,
-                        ANSI_COLOR_BRIGHT_YELLOW, "=== PEER_BEST_RECOVERY ===", ANSI_COLOR_RESET,
-                        " source=", (pszSource ? pszSource : "peer"),
-                        " peer_best=", hashPeerBest.SubString(),
-                        " peer_height=", nPeerHeight,
-                        " not_on_disk=true in_orphan_pool=no",
-                        " action=block-not-yet-received");
-                    return false;
-                }
-
                 if(pConnectable)
                 {
                     /* A connectable ancestor was found: feed it through the
@@ -659,34 +647,42 @@ namespace TAO
                     return fProgress;
                 }
 
-                /* Gap in the orphan branch — we have some blocks in memory but not
-                 * a contiguous path to disk.  Issue a throttled locator-anchored
-                 * LIST so the missing segment can be downloaded, using hashPeerBest
-                 * as the stop hash and SPECIFIER::TRANSACTIONS so the peer pushes
-                 * inline txs then the block tagged SPECIFIER::TRITIUM.  SYNC would
-                 * be rejected as "unsolicited" on an already-synced receiver. */
+                /* Active fetch path for both:
+                 *   1) peer tip not on disk AND not in the orphan pool (large gap
+                 *      — previously a silent no-op that left the node stuck on its
+                 *      local tip while mempool UNKNOWN retries burned for ~40 min)
+                 *   2) orphan-pool gap (partial branch in memory, missing link to disk)
+                 *
+                 * Issue a throttled locator-anchored LIST so the missing segment can
+                 * be downloaded, using hashPeerBest as the stop hash and
+                 * SPECIFIER::TRANSACTIONS so the peer pushes inline txs then the
+                 * block tagged SPECIFIER::TRITIUM.  SYNC would be rejected as
+                 * "unsolicited" on an already-synced receiver. */
                 debug::warning(FUNCTION,
                     ANSI_COLOR_BRIGHT_YELLOW, "=== PEER_BEST_RECOVERY ===", ANSI_COLOR_RESET,
                     " source=", (pszSource ? pszSource : "peer"),
                     " peer_best=", hashPeerBest.SubString(),
                     " peer_height=", nPeerHeight,
-                    " not_on_disk=true in_orphan_pool=yes has_gap=true",
+                    " not_on_disk=true",
+                    " in_orphan_pool=", (fInOrphanPool ? "yes has_gap=true" : "no"),
                     " action=locator-branch-sync-request");
 
                 /* Use the calling node; fall back to a random connection. */
                 LLP::TritiumNode* pSend = pnode;
-                std::shared_ptr<LLP::TritiumNode> pRandom;
+                std::shared_ptr<LLP::TritiumNode> pPrimaryRandom;
                 if(!pSend && LLP::TRITIUM_SERVER)
                 {
-                    pRandom = LLP::TRITIUM_SERVER->RandomConnection();
-                    pSend = pRandom.get();
+                    pPrimaryRandom = LLP::TRITIUM_SERVER->RandomConnection();
+                    pSend = pPrimaryRandom.get();
                 }
 
                 /* Throttle keyed on the deepest walked ancestor's hashPrevBlock
-                 * (the missing ancestor), not hashPeerBest — hashPeerBest is the
-                 * branch tip and keying on it would reintroduce the two-namespace
-                 * collision this helper was designed to eliminate: the drain-loop
-                 * erase(hashParent) cleanup only ever clears hashPrevBlock keys. */
+                 * (the missing ancestor), not hashPeerBest when an orphan walk
+                 * occurred — hashPeerBest is the branch tip and keying on it
+                 * would reintroduce the two-namespace collision this helper was
+                 * designed to eliminate: the drain-loop erase(hashParent) cleanup
+                 * only ever clears hashPrevBlock keys.  When no orphans were
+                 * present, hashDeepestAncestor still defaults to hashPeerBest. */
                 if(pSend && ShouldSendBranchSyncRequest(hashDeepestAncestor))
                 {
                     /* Use SPECIFIER::TRANSACTIONS (not SYNC): this is a post-sync fork-recovery
@@ -721,6 +717,52 @@ namespace TAO
                             if(nWindowRequest != 0)
                                 pSend->RollbackTxResponseWindow(nWindowRequest);
                             throw;
+                        }
+
+                        /* Optional one-peer fanout: ask a second distinct peer so the
+                         * node that advertised the far tip cannot also be the sole
+                         * source of the recovery path (mirrors the orphan LIST
+                         * RandomConnection fallback). */
+                        if(LLP::TRITIUM_SERVER)
+                        {
+                            std::shared_ptr<LLP::TritiumNode> pFanout =
+                                LLP::TRITIUM_SERVER->RandomConnection();
+                            if(pFanout && pFanout.get() != pSend)
+                            {
+                                try
+                                {
+                                    const uint64_t nFanoutWindow = !config::fClient.load()
+                                        ? pFanout->OpenTxResponseWindow(LLP::TxResponseKind::LIST,
+                                            hashTarget, hashPeerBest)
+                                        : 0;
+                                    try
+                                    {
+                                        if(!pFanout->PushMessage(LLP::TritiumNode::ACTION::LIST,
+                                            config::fClient.load()
+                                                ? uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)
+                                                : uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS),
+                                            uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                                            uint8_t(LLP::TritiumNode::TYPES::LOCATOR),
+                                            TAO::Ledger::Locator(hashTarget),
+                                            uint1024_t(hashPeerBest)
+                                        ))
+                                        {
+                                            if(nFanoutWindow != 0)
+                                                pFanout->RollbackTxResponseWindow(nFanoutWindow);
+                                        }
+                                    }
+                                    catch(...)
+                                    {
+                                        if(nFanoutWindow != 0)
+                                            pFanout->RollbackTxResponseWindow(nFanoutWindow);
+                                        throw;
+                                    }
+                                }
+                                catch(const std::exception& e)
+                                {
+                                    debug::error(FUNCTION, e.what());
+                                }
+                            }
                         }
                     }
                     catch(const std::exception& e)
