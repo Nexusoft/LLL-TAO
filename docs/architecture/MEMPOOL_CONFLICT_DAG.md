@@ -223,3 +223,13 @@ BESTCHAIN log (non-sync):
 - Legacy `mapLegacyConflicts` shape (unchanged).
 - Changing DEFERRED_LOCAL_STATE / UNKNOWN retry budgets.
 - Sigchain producer sequencing in `CreateTransaction` (separate NSEQ work).
+
+---
+
+## 7. Living audit links (2026-08-10)
+
+Post-#688/#689/#690/#691 scoreboard, residual TIPs (including retry-map cap
+fairness), and mempool↔recovery coupling diagram:
+
+- [`docs/current/node/audit/NODE_AUDIT_2026-08-10.md`](../current/node/audit/NODE_AUDIT_2026-08-10.md)
+- [`docs/diagrams/audit/mempool-recovery-coupling.md`](../diagrams/audit/mempool-recovery-coupling.md)

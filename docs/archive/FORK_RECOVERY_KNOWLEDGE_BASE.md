@@ -272,6 +272,11 @@ Low, largest change, highest regression risk).
    `ForceLocalChainResync` helper (§5), each as its own separately reviewed
    change.
 
+**Living follow-up (2026-08-10):** post-#690/#691 scoreboard, chooser **TIP
+list**, updated recces, foot-gun catalog, and upstream isolation checklist
+are in [`docs/current/node/audit/`](../current/node/audit/README.md). This
+archive page stays as the historical wedge autopsy — do not delete it.
+
 ---
 
 ## 7. Where to look next time (avoid re-deriving)

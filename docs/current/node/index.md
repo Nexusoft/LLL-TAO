@@ -1,9 +1,11 @@
 # Node Architecture — Section Index
 
 **Version:** LLL-TAO 5.1.0+  
-**Last Updated:** 2026-03-10
+**Last Updated:** 2026-08-10
 
 This section documents the stateless mining node's internal architecture, session-container model, recovery mechanics, refactor roadmap, and test strategy.  It is the authoritative reference for the C++ refactor series that began with **PR #361** (session containerisation) and continues through the items listed in [Roadmap & Upgrade Path](roadmap-upgrade-path.md).
+
+Post-#690/#691 ledger/P2P recovery audits and chooser TIP lists live under **[audit/](audit/)**.
 
 ---
 
@@ -11,6 +13,7 @@ This section documents the stateless mining node's internal architecture, sessio
 
 | Document | Purpose |
 |---|---|
+| **[Audit pack (TIP list)](audit/README.md)** | Post-#690/#691 NODE audit, recces, foot-guns, upstream checklist |
 | **[Session Container Architecture](session-container-architecture.md)** | Per-miner authoritative container model, indexing, and ownership rules |
 | **[Recovery Merge Model](recovery-merge-model.md)** | How the node recovers, validates, and merges session state after reconnects |
 | **[Roadmap & Upgrade Path](roadmap-upgrade-path.md)** | Remaining refactor items and their priority ordering |
