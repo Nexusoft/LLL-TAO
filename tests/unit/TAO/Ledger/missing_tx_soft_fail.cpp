@@ -1420,6 +1420,20 @@ TEST_CASE("AttemptPeerBestChainRecovery requests branch sync when tip far ahead"
     node.fd     = fds[1];
     node.events = POLLIN;
 
+    /* Capture locator target before recovery so the expected packet matches
+     * the LIST payload that was actually queued (hashBestChain is read once
+     * inside the helper at send time). */
+    const uint1024_t hashLocalBest = TAO::Ledger::ChainState::hashBestChain.load();
+    DataStream ssExpected(SER_NETWORK, LLP::MIN_PROTO_VERSION);
+    ssExpected
+        << uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS)
+        << uint8_t(LLP::TritiumNode::TYPES::BLOCK)
+        << uint8_t(LLP::TritiumNode::TYPES::LOCATOR)
+        << TAO::Ledger::Locator(hashLocalBest)
+        << uint1024_t(hashFarTip);
+    const std::vector<uint8_t> vExpected =
+        LLP::TritiumNode::NewMessage(LLP::TritiumNode::ACTION::LIST, ssExpected).GetBytes();
+
     bool fBranchSyncQueued = false;
     const bool fRecovered = TAO::Ledger::AttemptPeerBestChainRecovery(
         hashFarTip, /*nPeerHeight=*/9999, "unit-test-a1", &node, &fBranchSyncQueued);
@@ -1449,18 +1463,6 @@ TEST_CASE("AttemptPeerBestChainRecovery requests branch sync when tip far ahead"
             vSent.insert(vSent.end(), buf.begin(), buf.begin() + n);
         }
     }
-
-    /* Canonical LIST + TRANSACTIONS + BLOCK + LOCATOR packet the helper must emit. */
-    const uint1024_t hashLocalBest = TAO::Ledger::ChainState::hashBestChain.load();
-    DataStream ssExpected(SER_NETWORK, LLP::MIN_PROTO_VERSION);
-    ssExpected
-        << uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS)
-        << uint8_t(LLP::TritiumNode::TYPES::BLOCK)
-        << uint8_t(LLP::TritiumNode::TYPES::LOCATOR)
-        << TAO::Ledger::Locator(hashLocalBest)
-        << uint1024_t(hashFarTip);
-    const std::vector<uint8_t> vExpected =
-        LLP::TritiumNode::NewMessage(LLP::TritiumNode::ACTION::LIST, ssExpected).GetBytes();
 
     REQUIRE(vSent == vExpected);
 
@@ -1492,8 +1494,11 @@ TEST_CASE("AttemptPeerBestChainRecovery requests branch sync when tip far ahead"
     }
     REQUIRE(vSent2.empty());
 
+    /* BaseConnection only Close()s when fCONNECTED; we never connected, so
+     * own both ends of the socketpair and clear node.fd before destruction. */
+    node.fd = -1;
     close(fds[0]);
-    /* node destructor closes fds[1]. */
+    close(fds[1]);
 #else
     /* WIN32: no socketpair — still verify throttle recording with a bare node. */
     LLP::TritiumNode node;
