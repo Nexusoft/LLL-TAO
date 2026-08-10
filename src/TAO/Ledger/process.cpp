@@ -936,7 +936,8 @@ namespace TAO
                                             uint32_t nPeerHeight,
                                             const char* pszSource,
                                             LLP::TritiumNode* pnode,
-                                            bool* pfBranchSyncQueued)
+                                            bool* pfBranchSyncQueued,
+                                            bool fMatchingBlockInventoryGet)
         {
             if(pfBranchSyncQueued)
                 *pfBranchSyncQueued = false;
@@ -964,9 +965,13 @@ namespace TAO
              * nCurrentHeight while the BLOCK inventory path has already queued
              * a GET for the same hash.  Peer height equal to local (or only
              * BESTCHAIN_NEAR_TIP_HEIGHT_SLACK ahead) is the common tip-advance
-             * race, not an A1 far-tip gap — skip coordinator and fallback so
-             * every subscribed peer does not emit PEER_BEST_RECOVERY WARNING +
-             * locator LIST + fanout for a block about to land. */
+             * race only when that matching GET is outstanding — skip
+             * coordinator and fallback so every subscribed peer does not emit
+             * PEER_BEST_RECOVERY WARNING + locator LIST + fanout for a block
+             * about to land.  Without a matching BLOCK inventory GET (Sync()
+             * does not subscribe to BLOCK; relay filtering can deliver
+             * BESTCHAIN alone), still recover so the node cannot stall one
+             * block behind. */
             const bool fKnownOnDisk =
                 (LLD::Ledger && LLD::Ledger->HasBlock(hashPeerBest));
             const uint32_t nLocalHeight = ChainState::nBestHeight.load();
@@ -976,7 +981,8 @@ namespace TAO
                 : 0;
             const bool fNearTipUnknown = !fKnownOnDisk
                 && fPeerAtOrAhead
-                && nHeightDelta <= BESTCHAIN_NEAR_TIP_HEIGHT_SLACK;
+                && nHeightDelta <= BESTCHAIN_NEAR_TIP_HEIGHT_SLACK
+                && fMatchingBlockInventoryGet;
 
             if(fNearTipUnknown)
             {

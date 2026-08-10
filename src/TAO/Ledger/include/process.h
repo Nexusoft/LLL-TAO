@@ -60,10 +60,13 @@ namespace TAO
         /** BESTCHAIN near-tip race slack (heights).
          *
          *  Unknown tips advertised only this many heights ahead of local best
-         *  are treated as the normal block-propagation race (BESTCHAIN notify
-         *  arrives before / with the BLOCK body), not as an A1 far-tip gap.
-         *  RequestBestChainBranchRecovery skips coordinator LIST + fanout for
-         *  those tips; ordinary BLOCK inventory GET delivers the block.
+         *  may be the normal block-propagation race (BESTCHAIN notify arrives
+         *  with a matching BLOCK inventory entry that already queued a GET),
+         *  not an A1 far-tip gap.  RequestBestChainBranchRecovery skips
+         *  coordinator LIST + fanout for those tips only when the caller
+         *  confirms a matching BLOCK GET was queued; otherwise ordinary
+         *  recovery still runs (Sync() subscribes without BLOCK, and relay
+         *  filtering can deliver BESTCHAIN independently of BLOCK).
          **/
         static const uint32_t BESTCHAIN_NEAR_TIP_HEIGHT_SLACK = 1;
 
@@ -446,17 +449,19 @@ namespace TAO
          *       - known on-disk tips are always evaluated for heavier-chain
          *         activation (peer height is not a gate for that path);
          *       - unknown tips are fetched only when the peer is at or ahead
-         *         of local height (historical BESTCHAIN height gate) AND the
-         *         peer is more than BESTCHAIN_NEAR_TIP_HEIGHT_SLACK heights
-         *         ahead.  Equal-height / +1 unknown tips are the normal
-         *         tip-advance race (BLOCK inventory already GETs the body;
-         *         BESTHEIGHT in the same NOTIFY often still lags by one), so
-         *         they must not enter the A1 far-tip WARNING + locator LIST +
-         *         TxResponseWindow + fanout path.
+         *         of local height (historical BESTCHAIN height gate).  Equal-
+         *         height / +1 unknown tips may be the normal tip-advance race
+         *         (BLOCK inventory already GETs the body; BESTHEIGHT in the
+         *         same NOTIFY often still lags by one), but that shortcut is
+         *         taken only when fMatchingBlockInventoryGet is true — i.e.
+         *         the caller's NOTIFY handler already queued a GET for this
+         *         hash.  Without a matching GET, near-tip unknown tips still
+         *         enter recovery so Sync()-time / BLOCK-unsubscribed peers
+         *         cannot stall one block behind.
          *    2. Fallback LIST only when step 1 returned SKIPPED, the advertised
          *       tip is not yet the active local best, the peer is at/ahead of
-         *       local height by more than the near-tip slack, and
-         *       ShouldSendBranchSyncRequest allows it.
+         *       local height, and ShouldSendBranchSyncRequest allows it
+         *       (near-tip inventory-owned races already returned above).
          *
          *  FETCH_QUEUED / FETCH_THROTTLED / PROGRESS all suppress the fallback
          *  LIST so chatty BESTCHAIN cannot thrash TxResponseWindow or defeat the
@@ -469,6 +474,10 @@ namespace TAO
          *  @param[in]  pnode         Notifying peer (required for LIST paths).
          *  @param[out] pfBranchSyncQueued  Optional. Set true when a primary
          *                    locator LIST was successfully queued on pnode.
+         *  @param[in]  fMatchingBlockInventoryGet  True when this NOTIFY already
+         *                    queued an ACTION::GET for hashPeerBest from a
+         *                    TYPES::BLOCK inventory entry.  Required to treat
+         *                    a near-tip unknown tip as inventory-owned.
          *
          *  @return true only when AttemptPeerBestChainRecovery reported PROGRESS.
          *
@@ -477,7 +486,8 @@ namespace TAO
                                             uint32_t nPeerHeight,
                                             const char* pszSource,
                                             LLP::TritiumNode* pnode,
-                                            bool* pfBranchSyncQueued = nullptr);
+                                            bool* pfBranchSyncQueued = nullptr,
+                                            bool fMatchingBlockInventoryGet = false);
 
 
         /** IsBestChainSynchronized

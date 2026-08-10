@@ -67,6 +67,7 @@ ________________________________________________________________________________
 #include <iomanip>
 #include <bitset>
 #include <optional>
+#include <set>
 
 namespace LLP
 {
@@ -2270,6 +2271,11 @@ namespace LLP
                 /* Create response data stream. */
                 DataStream ssResponse(SER_NETWORK, PROTOCOL_VERSION);
 
+                /* Block hashes from this NOTIFY that already queued an
+                 * ACTION::GET.  BESTCHAIN near-tip skip is inventory-owned
+                 * only when the matching tip hash is present here. */
+                std::set<uint1024_t> setBlockInventoryGets;
+
                 /* Set our max limits to 100 notifications per packet. */
                 uint32_t nLimits = 0;
                 while(!ssPacket.End())
@@ -2316,7 +2322,10 @@ namespace LLP
                             {
                                 /* Check the database for the block. */
                                 if(!LLD::Client->HasBlock(hashBlock))
+                                {
                                     ssResponse << uint8_t(SPECIFIER::CLIENT) << uint8_t(TYPES::BLOCK) << hashBlock;
+                                    setBlockInventoryGets.insert(hashBlock);
+                                }
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::NOTIFY: CLIENT BLOCK ", hashBlock.SubString());
@@ -2325,7 +2334,10 @@ namespace LLP
                             {
                                 /* Check the database for the block. */
                                 if(!LLD::Ledger->HasBlock(hashBlock))
+                                {
                                     ssResponse << uint8_t(TYPES::BLOCK) << hashBlock;
+                                    setBlockInventoryGets.insert(hashBlock);
+                                }
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::NOTIFY: BLOCK ", hashBlock.SubString());
@@ -2643,10 +2655,11 @@ namespace LLP
                              *   - unknown / far tip  → throttled LIST+TRANSACTIONS
                              *                          (+ optional fanout peer)
                              *                          only when peer height is
-                             *                          materially ahead of local
-                             *                          (near-tip +0/+1 races skip;
-                             *                          BLOCK inventory GET handles
-                             *                          ordinary tip advance)
+                             *                          at/ahead of local
+                             *                          (near-tip +0/+1 races skip
+                             *                          only when a matching BLOCK
+                             *                          inventory GET was queued
+                             *                          in this NOTIFY)
                              *   - known side-branch  → throttled fallback LIST until
                              *                          local best matches
                              * Chatty BESTCHAIN must not unthrottled-LIST or double-
@@ -2656,8 +2669,11 @@ namespace LLP
                             if(hashBestChain != 0
                             && hashBestChain != TAO::Ledger::ChainState::hashBestChain.load())
                             {
+                                const bool fMatchingBlockGet =
+                                    (setBlockInventoryGets.count(hashBestChain) != 0);
                                 TAO::Ledger::RequestBestChainBranchRecovery(
-                                    hashBestChain, nCurrentHeight, NODE.c_str(), this);
+                                    hashBestChain, nCurrentHeight, NODE.c_str(), this,
+                                    /*pfBranchSyncQueued=*/nullptr, fMatchingBlockGet);
                             }
 
                             /* A sync peer is complete only when its advertised best
