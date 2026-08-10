@@ -140,6 +140,9 @@ namespace
  *     to return false.  This causes Disconnect() to return false — exactly
  *     the same failure mode as a CREDIT whose referenced DEBIT is only in
  *     memory and not on disk.
+ *   • Note: print()/ToString()/IsGenesis() can also throw on this fixture, but
+ *     production keeps that diagnostic outside the Disconnect try/catch so the
+ *     failure path exercised here is Disconnect() returning false.
  *   • ReadLast for G returns a hash that differs from T.hashPrevTx so that
  *     the orphan check fires (T.hashPrevTx != hashLastDisk).
  *
@@ -151,7 +154,7 @@ namespace
  *   • TxnAbort was called but Remove() was never reached because break only
  *     exited the inner reverse loop; T survived every Check() sweep forever.
  */
-TEST_CASE("Mempool::Check force-evicts unrollbackable orphan when Disconnect throws",
+TEST_CASE("Mempool::Check force-evicts unrollbackable orphan when Disconnect fails",
     "[mempool_orphan][ledger]")
 {
     LedgerGuard env;
@@ -189,8 +192,9 @@ TEST_CASE("Mempool::Check force-evicts unrollbackable orphan when Disconnect thr
     REQUIRE(TAO::Ledger::mempool.Has(hashOrphan));
 
     /* Run the consistency sweep — this is the code under test.
-     * Regression target: malformed contract can make Disconnect throw from
-     * Contract::Primitive(); Check() must still force-evict and not escape. */
+     * Regression target: Disconnect() returns false for the unrollbackable
+     * orphan (Rollback catches the empty-stream exception); Check() must
+     * still force-evict and not leave the tx stuck in mapLedger. */
     CHECK_NOTHROW(TAO::Ledger::mempool.Check());
 
     /* The fix: the transaction must be removed even though Disconnect failed.

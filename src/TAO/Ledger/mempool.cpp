@@ -1167,13 +1167,22 @@ namespace TAO
                                 /* Check for ending of sequence. */
                                 const bool fRoot = (n == 0);
 
+                                /* Debug output tx. Keep diagnostics outside the Disconnect
+                                 * exception boundary: malformed contracts can throw from
+                                 * print()/ToString()/IsGenesis() before Disconnect runs. */
+                                try
+                                {
+                                    tx->print();
+                                }
+                                catch(const std::exception& e)
+                                {
+                                    debug::warning(FUNCTION, "print failed for orphan tx ", hashTx.SubString(), ": ", e.what());
+                                }
+
                                 /* Reset memory states to disk indexes. */
                                 bool fDisconnected = false;
                                 try
                                 {
-                                    /* Debug output tx. */
-                                    tx->print();
-
                                     fDisconnected = tx->Disconnect(fRoot ? FLAGS::ERASE : FLAGS::MEMPOOL);
                                 }
                                 catch(const std::exception& e)
