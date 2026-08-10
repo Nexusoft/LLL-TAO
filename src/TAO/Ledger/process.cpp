@@ -948,9 +948,24 @@ namespace TAO
             bool fProgress = false;
             bool fAllowFallback = true;
 
-            /* 1. Always route through the peer-best coordinator.  Unknown tips
-             *    previously skipped this path and issued an unthrottled LIST to
-             *    only the notifying peer (no fanout, no shared result enum). */
+            /* Historical BESTCHAIN height gate for unknown advertised tips:
+             * only actively fetch a branch we do not have when the peer is at
+             * or ahead of local height.  Known on-disk candidates are still
+             * evaluated for heavier-chain activation even if the notifying
+             * peer's advertised height is lower.
+             *
+             * Calling AttemptPeerBestChainRecovery unconditionally for an
+             * unknown hash reaches the far-tip LIST path immediately (primary
+             * LIST + TxResponseWindow + optional fanout + throttle map) before
+             * the fallback height check can run. */
+            const bool fKnownOnDisk =
+                (LLD::Ledger && LLD::Ledger->HasBlock(hashPeerBest));
+            const uint32_t nLocalHeight = ChainState::nBestHeight.load();
+            const bool fPeerAtOrAhead   = (nPeerHeight >= nLocalHeight);
+
+            /* 1. Route through the peer-best coordinator when policy allows:
+             *    known tips always; unknown tips only from at/ahead peers. */
+            if(fKnownOnDisk || fPeerAtOrAhead)
             {
                 const PeerBestRecoveryResult result = AttemptPeerBestChainRecovery(
                     hashPeerBest, nPeerHeight, pszSource, pnode, &fBranchSyncQueued);
@@ -973,6 +988,13 @@ namespace TAO
                         break;
                 }
             }
+            else
+            {
+                /* Unknown tip from a behind peer: do not fetch, do not open a
+                 * TxResponseWindow, and do not consume the branch-sync throttle.
+                 * Fallback below is also height-gated; clear it explicitly. */
+                fAllowFallback = false;
+            }
 
             /* 2. Fallback LIST for known-but-not-active side branches (or a
              *    coordinator SKIPPED with no fetch), matching the historical
@@ -982,7 +1004,7 @@ namespace TAO
             if(fAllowFallback
             && !fBranchSyncQueued
             && !IsBestChainSynchronized(hashPeerBest)
-            && nPeerHeight >= ChainState::nBestHeight.load())
+            && nPeerHeight >= nLocalHeight)
             {
                 if(ShouldSendBranchSyncRequest(hashPeerBest))
                 {

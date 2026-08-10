@@ -431,9 +431,14 @@ namespace TAO
          *
          *  BESTCHAIN-notify coordination (TIP-01 / TIP-02):
          *
-         *    1. Always call AttemptPeerBestChainRecovery with the notifying peer
-         *       so unknown tips get the same throttled LIST + optional fanout as
-         *       the A1 far-tip path (not a bare unthrottled LIST to one peer).
+         *    1. Call AttemptPeerBestChainRecovery when policy allows:
+         *       - known on-disk tips are always evaluated for heavier-chain
+         *         activation (peer height is not a gate for that path);
+         *       - unknown tips are fetched only when the peer is at or ahead
+         *         of local height (historical BESTCHAIN height gate).  This
+         *         prevents a behind peer's unknown hash from queuing LIST +
+         *         TxResponseWindow + fanout + throttle before the fallback
+         *         height check can run.
          *    2. Fallback LIST only when step 1 returned SKIPPED, the advertised
          *       tip is not yet the active local best, the peer is at/ahead of
          *       local height, and ShouldSendBranchSyncRequest allows it.

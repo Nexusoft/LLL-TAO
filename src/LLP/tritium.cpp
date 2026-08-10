@@ -2642,11 +2642,13 @@ namespace LLP
                              *   - known heavier tip  → validated activation
                              *   - unknown / far tip  → throttled LIST+TRANSACTIONS
                              *                          (+ optional fanout peer)
+                             *                          only when peer height >= local
                              *   - known side-branch  → throttled fallback LIST until
                              *                          local best matches
                              * Chatty BESTCHAIN must not unthrottled-LIST or double-
                              * open TxResponseWindow the way the pre-#691 missing-tx
-                             * path used to. */
+                             * path used to.  Behind peers cannot trigger unknown-
+                             * tip fetch (historical height gate). */
                             if(hashBestChain != 0
                             && hashBestChain != TAO::Ledger::ChainState::hashBestChain.load())
                             {

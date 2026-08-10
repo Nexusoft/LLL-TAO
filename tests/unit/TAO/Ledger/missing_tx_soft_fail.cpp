@@ -1949,8 +1949,83 @@ TEST_CASE("BESTCHAIN recovery second notify emits no LIST while throttled",
 }
 
 
+TEST_CASE("BESTCHAIN recovery ignores unknown tip from behind peer",
+"[ledger][process][a1][bestchain][height-gate]")
+{
+/* Historical BESTCHAIN height gate: an unknown tip advertised by a peer
+ * whose height is below local best must not queue LIST, open a
+ * TxResponseWindow, or consume mapLastOrphanRequest throttle. */
+LedgerGuard env;
+
+TAO::Ledger::mapOrphans.Clear();
+TAO::Ledger::mapLastOrphanRequest.clear();
+TAO::Ledger::mapLastMissing.clear();
+TAO::Ledger::mapLastMissingProcessTime.clear();
+TAO::Ledger::setUnrecoverableBlocks.clear();
+
+const uint1024_t hashUnknownTip(0xBC01000000000003ULL);
+REQUIRE_FALSE(LLD::Ledger->HasBlock(hashUnknownTip));
+REQUIRE_FALSE(TAO::Ledger::mapOrphans.Contains(hashUnknownTip));
+
+const uint32_t nSavedBestHeight = TAO::Ledger::ChainState::nBestHeight.load();
+TAO::Ledger::ChainState::nBestHeight.store(1000);
+
+#ifndef WIN32
+int fds[2] = {-1, -1};
+REQUIRE(socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == 0);
+REQUIRE(fcntl(fds[1], F_SETFL, O_NONBLOCK) == 0);
+
+LLP::TritiumNode node;
+node.fd     = fds[1];
+node.events = POLLIN;
+
+bool fQueued = true; /* helper must clear when nothing is sent */
+REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+    hashUnknownTip, /*nPeerHeight=*/500, "unit-test-bestchain-behind",
+    &node, &fQueued));
+REQUIRE_FALSE(fQueued);
+REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashUnknownTip) == 0);
+REQUIRE(TAO::Ledger::mapLastOrphanRequest.empty());
+
+while(node.Buffered() > 0)
+{
+    if(node.Flush() <= 0)
+        break;
+}
+
+std::vector<uint8_t> vSent;
+{
+    std::vector<uint8_t> buf(65536);
+    for(;;)
+    {
+        const ssize_t n = recv(fds[0], buf.data(), buf.size(), MSG_DONTWAIT);
+        if(n <= 0)
+            break;
+        vSent.insert(vSent.end(), buf.begin(), buf.begin() + n);
+    }
+}
+REQUIRE(vSent.empty());
+
+node.fd = -1;
+close(fds[0]);
+close(fds[1]);
+#else
+LLP::TritiumNode node;
+bool fQueued = true;
+REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+    hashUnknownTip, /*nPeerHeight=*/500, "unit-test-bestchain-behind",
+    &node, &fQueued));
+REQUIRE_FALSE(fQueued);
+REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashUnknownTip) == 0);
+#endif
+
+TAO::Ledger::ChainState::nBestHeight.store(nSavedBestHeight);
+TAO::Ledger::mapLastOrphanRequest.clear();
+}
+
+
 TEST_CASE("Process primary path does not force PrimeCheck on IBD (source guard)",
-    "[ledger][process][primecheck]")
+"[ledger][process][primecheck]")
 {
     /* Regression guard for the multi-day sync collapse: the primary
      * Process() ingestion path must call block.Check() with the default
