@@ -2024,6 +2024,150 @@ TAO::Ledger::mapLastOrphanRequest.clear();
 }
 
 
+TEST_CASE("BESTCHAIN recovery skips near-tip unknown race",
+    "[ledger][process][a1][bestchain][near-tip]")
+{
+    /* Post-#694 regression: an unknown tip at peer_height == local (or only
+     * BESTCHAIN_NEAR_TIP_HEIGHT_SLACK ahead) is the normal tip-advance race —
+     * BLOCK inventory already GETs the body, and every subscribed peer would
+     * otherwise spam PEER_BEST_RECOVERY WARNING + locator LIST + fanout.
+     * Far tips (delta > slack) must still queue recovery (covered above). */
+    LedgerGuard env;
+
+    TAO::Ledger::mapOrphans.Clear();
+    TAO::Ledger::mapLastOrphanRequest.clear();
+    TAO::Ledger::mapLastMissing.clear();
+    TAO::Ledger::mapLastMissingProcessTime.clear();
+    TAO::Ledger::setUnrecoverableBlocks.clear();
+
+    const uint1024_t hashNearTip(0xBC01000000000004ULL);
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hashNearTip));
+    REQUIRE_FALSE(TAO::Ledger::mapOrphans.Contains(hashNearTip));
+
+    const uint32_t nSavedBestHeight = TAO::Ledger::ChainState::nBestHeight.load();
+    const uint32_t nLocalHeight = 1000;
+    TAO::Ledger::ChainState::nBestHeight.store(nLocalHeight);
+
+#ifndef WIN32
+    int fds[2] = {-1, -1};
+    REQUIRE(socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == 0);
+    REQUIRE(fcntl(fds[1], F_SETFL, O_NONBLOCK) == 0);
+
+    LLP::TritiumNode node;
+    node.fd     = fds[1];
+    node.events = POLLIN;
+
+    /* Equal height: classic race (stale nCurrentHeight before BESTHEIGHT). */
+    bool fQueuedEqual = true;
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+        hashNearTip, /*nPeerHeight=*/nLocalHeight, "unit-test-bestchain-near-eq",
+        &node, &fQueuedEqual));
+    REQUIRE_FALSE(fQueuedEqual);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashNearTip) == 0);
+
+    /* +1 height: still within near-tip slack. */
+    bool fQueuedPlusOne = true;
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+        hashNearTip,
+        /*nPeerHeight=*/nLocalHeight + TAO::Ledger::BESTCHAIN_NEAR_TIP_HEIGHT_SLACK,
+        "unit-test-bestchain-near-plus1", &node, &fQueuedPlusOne));
+    REQUIRE_FALSE(fQueuedPlusOne);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashNearTip) == 0);
+
+    while(node.Buffered() > 0)
+    {
+        if(node.Flush() <= 0)
+            break;
+    }
+
+    std::vector<uint8_t> vSent;
+    {
+        std::vector<uint8_t> buf(65536);
+        for(;;)
+        {
+            const ssize_t n = recv(fds[0], buf.data(), buf.size(), MSG_DONTWAIT);
+            if(n <= 0)
+                break;
+            vSent.insert(vSent.end(), buf.begin(), buf.begin() + n);
+        }
+    }
+    REQUIRE(vSent.empty());
+
+    /* +2 heights: material gap — coordinator must still fetch. */
+    const uint1024_t hashGapTip(0xBC01000000000005ULL);
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hashGapTip));
+
+    const uint1024_t hashLocalBest = TAO::Ledger::ChainState::hashBestChain.load();
+    DataStream ssExpected(SER_NETWORK, LLP::MIN_PROTO_VERSION);
+    ssExpected
+        << uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS)
+        << uint8_t(LLP::TritiumNode::TYPES::BLOCK)
+        << uint8_t(LLP::TritiumNode::TYPES::LOCATOR)
+        << TAO::Ledger::Locator(hashLocalBest)
+        << uint1024_t(hashGapTip);
+    const std::vector<uint8_t> vExpected =
+        LLP::TritiumNode::NewMessage(LLP::TritiumNode::ACTION::LIST, ssExpected).GetBytes();
+
+    bool fQueuedGap = false;
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+        hashGapTip,
+        /*nPeerHeight=*/nLocalHeight + TAO::Ledger::BESTCHAIN_NEAR_TIP_HEIGHT_SLACK + 1,
+        "unit-test-bestchain-gap", &node, &fQueuedGap));
+    REQUIRE(fQueuedGap);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashGapTip) == 1);
+
+    while(node.Buffered() > 0)
+    {
+        if(node.Flush() <= 0)
+            break;
+    }
+
+    std::vector<uint8_t> vGapSent;
+    {
+        std::vector<uint8_t> buf(65536);
+        for(;;)
+        {
+            const ssize_t n = recv(fds[0], buf.data(), buf.size(), MSG_DONTWAIT);
+            if(n <= 0)
+                break;
+            vGapSent.insert(vGapSent.end(), buf.begin(), buf.begin() + n);
+        }
+    }
+    REQUIRE(vGapSent == vExpected);
+
+    node.fd = -1;
+    close(fds[0]);
+    close(fds[1]);
+#else
+    LLP::TritiumNode node;
+    bool fQueuedEqual = true;
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+        hashNearTip, /*nPeerHeight=*/nLocalHeight, "unit-test-bestchain-near-eq",
+        &node, &fQueuedEqual));
+    REQUIRE_FALSE(fQueuedEqual);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashNearTip) == 0);
+
+    bool fQueuedPlusOne = true;
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+        hashNearTip,
+        /*nPeerHeight=*/nLocalHeight + TAO::Ledger::BESTCHAIN_NEAR_TIP_HEIGHT_SLACK,
+        "unit-test-bestchain-near-plus1", &node, &fQueuedPlusOne));
+    REQUIRE_FALSE(fQueuedPlusOne);
+
+    const uint1024_t hashGapTip(0xBC01000000000005ULL);
+    bool fQueuedGap = false;
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+        hashGapTip,
+        /*nPeerHeight=*/nLocalHeight + TAO::Ledger::BESTCHAIN_NEAR_TIP_HEIGHT_SLACK + 1,
+        "unit-test-bestchain-gap", &node, &fQueuedGap));
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashGapTip) == 1);
+#endif
+
+    TAO::Ledger::ChainState::nBestHeight.store(nSavedBestHeight);
+    TAO::Ledger::mapLastOrphanRequest.clear();
+}
+
+
 TEST_CASE("Process primary path does not force PrimeCheck on IBD (source guard)",
 "[ledger][process][primecheck]")
 {

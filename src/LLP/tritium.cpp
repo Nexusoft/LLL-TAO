@@ -2642,7 +2642,11 @@ namespace LLP
                              *   - known heavier tip  → validated activation
                              *   - unknown / far tip  → throttled LIST+TRANSACTIONS
                              *                          (+ optional fanout peer)
-                             *                          only when peer height >= local
+                             *                          only when peer height is
+                             *                          materially ahead of local
+                             *                          (near-tip +0/+1 races skip;
+                             *                          BLOCK inventory GET handles
+                             *                          ordinary tip advance)
                              *   - known side-branch  → throttled fallback LIST until
                              *                          local best matches
                              * Chatty BESTCHAIN must not unthrottled-LIST or double-

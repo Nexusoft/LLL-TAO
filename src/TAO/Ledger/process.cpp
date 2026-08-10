@@ -957,11 +957,37 @@ namespace TAO
              * Calling AttemptPeerBestChainRecovery unconditionally for an
              * unknown hash reaches the far-tip LIST path immediately (primary
              * LIST + TxResponseWindow + optional fanout + throttle map) before
-             * the fallback height check can run. */
+             * the fallback height check can run.
+             *
+             * Near-tip race (post-#694): dispatch relays BLOCK + BESTCHAIN +
+             * BESTHEIGHT in that order, so BESTCHAIN is handled with a stale
+             * nCurrentHeight while the BLOCK inventory path has already queued
+             * a GET for the same hash.  Peer height equal to local (or only
+             * BESTCHAIN_NEAR_TIP_HEIGHT_SLACK ahead) is the common tip-advance
+             * race, not an A1 far-tip gap — skip coordinator and fallback so
+             * every subscribed peer does not emit PEER_BEST_RECOVERY WARNING +
+             * locator LIST + fanout for a block about to land. */
             const bool fKnownOnDisk =
                 (LLD::Ledger && LLD::Ledger->HasBlock(hashPeerBest));
             const uint32_t nLocalHeight = ChainState::nBestHeight.load();
             const bool fPeerAtOrAhead   = (nPeerHeight >= nLocalHeight);
+            const uint32_t nHeightDelta = (nPeerHeight > nLocalHeight)
+                ? (nPeerHeight - nLocalHeight)
+                : 0;
+            const bool fNearTipUnknown = !fKnownOnDisk
+                && fPeerAtOrAhead
+                && nHeightDelta <= BESTCHAIN_NEAR_TIP_HEIGHT_SLACK;
+
+            if(fNearTipUnknown)
+            {
+                debug::log(2, (pszSource ? pszSource : ""),
+                    "BESTCHAIN near-tip race; deferring recovery to block inventory ",
+                    hashPeerBest.SubString(),
+                    " peer_height=", nPeerHeight,
+                    " local_height=", nLocalHeight,
+                    " slack=", BESTCHAIN_NEAR_TIP_HEIGHT_SLACK);
+                return false;
+            }
 
             /* 1. Route through the peer-best coordinator when policy allows:
              *    known tips always; unknown tips only from at/ahead peers. */
@@ -1000,7 +1026,7 @@ namespace TAO
              *    coordinator SKIPPED with no fetch), matching the historical
              *    BESTCHAIN "keep requesting until local best matches" loop —
              *    but now gated by the same 3s throttle as every other recovery
-             *    LIST path. */
+             *    LIST path.  Near-tip unknown tips already returned above. */
             if(fAllowFallback
             && !fBranchSyncQueued
             && !IsBestChainSynchronized(hashPeerBest)

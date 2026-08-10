@@ -57,6 +57,17 @@ namespace TAO
         static const uint64_t MAX_BLOCK_ORPHANS = 10000;
 
 
+        /** BESTCHAIN near-tip race slack (heights).
+         *
+         *  Unknown tips advertised only this many heights ahead of local best
+         *  are treated as the normal block-propagation race (BESTCHAIN notify
+         *  arrives before / with the BLOCK body), not as an A1 far-tip gap.
+         *  RequestBestChainBranchRecovery skips coordinator LIST + fanout for
+         *  those tips; ordinary BLOCK inventory GET delivers the block.
+         **/
+        static const uint32_t BESTCHAIN_NEAR_TIP_HEIGHT_SLACK = 1;
+
+
         /** OrphanPool
          *
          *  Bounded block-orphan graph indexed by both the orphan's own hash and
@@ -435,13 +446,17 @@ namespace TAO
          *       - known on-disk tips are always evaluated for heavier-chain
          *         activation (peer height is not a gate for that path);
          *       - unknown tips are fetched only when the peer is at or ahead
-         *         of local height (historical BESTCHAIN height gate).  This
-         *         prevents a behind peer's unknown hash from queuing LIST +
-         *         TxResponseWindow + fanout + throttle before the fallback
-         *         height check can run.
+         *         of local height (historical BESTCHAIN height gate) AND the
+         *         peer is more than BESTCHAIN_NEAR_TIP_HEIGHT_SLACK heights
+         *         ahead.  Equal-height / +1 unknown tips are the normal
+         *         tip-advance race (BLOCK inventory already GETs the body;
+         *         BESTHEIGHT in the same NOTIFY often still lags by one), so
+         *         they must not enter the A1 far-tip WARNING + locator LIST +
+         *         TxResponseWindow + fanout path.
          *    2. Fallback LIST only when step 1 returned SKIPPED, the advertised
          *       tip is not yet the active local best, the peer is at/ahead of
-         *       local height, and ShouldSendBranchSyncRequest allows it.
+         *       local height by more than the near-tip slack, and
+         *       ShouldSendBranchSyncRequest allows it.
          *
          *  FETCH_QUEUED / FETCH_THROTTLED / PROGRESS all suppress the fallback
          *  LIST so chatty BESTCHAIN cannot thrash TxResponseWindow or defeat the
