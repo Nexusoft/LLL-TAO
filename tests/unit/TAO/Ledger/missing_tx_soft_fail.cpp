@@ -1584,8 +1584,8 @@ TEST_CASE("Missing-tx escalation queues only one LIST when recovery already did"
     }
 
     /* Combined path must emit exactly one LIST — not recovery+fallback. */
-    REQUIRE(vSent == vExpected);
     REQUIRE(vSent.size() == vExpected.size());
+    REQUIRE(vSent == vExpected);
 
     /* Fallback-only path (unknown peer best) still queues one LIST to hashBlock. */
     TAO::Ledger::mapLastOrphanRequest.clear();

@@ -372,7 +372,7 @@ namespace TAO
                                           bool* pfBranchSyncQueued = nullptr);
 
 
-                /** RequestMissingTxBranchRecovery
+        /** RequestMissingTxBranchRecovery
          *
          *  Missing-tx escalation coordination used when Process() has exhausted
          *  per-tx retries for an incomplete block:
