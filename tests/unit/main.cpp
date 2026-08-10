@@ -64,7 +64,6 @@ namespace
 
         /* To simplify the API testing we will always use multiuser mode */
         config::fMultiuser = true;
-        config::mapArgs["-private"] = "1";
         config::mapArgs["-verbose"] = "3";
         config::fHybrid    = true;
 
