@@ -36,6 +36,10 @@ ________________________________________________________________________________
 #include <Util/include/filesystem.h>
 #include <Util/include/runtime.h>
 
+#include <fstream>
+#include <sstream>
+#include <string>
+
 #include <unit/catch2/catch.hpp>
 
 #include <algorithm>
@@ -1369,6 +1373,93 @@ TEST_CASE("AttemptPeerBestChainRecovery walks orphan pool for connectable ancest
     LLD::Ledger->EraseBlock(hashA);
     LLD::Ledger->EraseBlock(hashB);
     LLD::Ledger->EraseBlock(hashRoot);
+}
+
+
+TEST_CASE("AttemptPeerBestChainRecovery requests branch sync when tip far ahead",
+    "[ledger][process][a1]")
+{
+    /* A1 regression: peer tip not on disk AND not in the orphan pool must
+     * no longer be a silent no-op.  Without a live Tritium peer the LIST
+     * cannot be pushed, but the path must still:
+     *   1. Return false (no chain progress yet — only a fetch was attempted)
+     *   2. Not throw / not leave orphan-pool state corrupted
+     *   3. Leave mapOrphans empty (we never inserted anything)
+     *
+     * The production fix issues a throttled locator LIST + TRANSACTIONS
+     * (with optional one-peer fanout) on this path — same helper used for
+     * the orphan-gap case. */
+    LedgerGuard env;
+
+    TAO::Ledger::mapOrphans.Clear();
+    TAO::Ledger::mapLastOrphanRequest.clear();
+    TAO::Ledger::mapLastMissing.clear();
+    TAO::Ledger::mapLastMissingProcessTime.clear();
+    TAO::Ledger::setUnrecoverableBlocks.clear();
+
+    const uint1024_t hashFarTip(0xA1000000000000FEULL);
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hashFarTip));
+    REQUIRE_FALSE(TAO::Ledger::mapOrphans.Contains(hashFarTip));
+
+    const bool fRecovered = TAO::Ledger::AttemptPeerBestChainRecovery(
+        hashFarTip, /*nPeerHeight=*/9999, "unit-test-a1", nullptr);
+
+    REQUIRE_FALSE(fRecovered);
+    REQUIRE(TAO::Ledger::mapOrphans.Empty());
+
+    /* Clean up any throttle residue keyed on the far tip. */
+    TAO::Ledger::mapLastOrphanRequest.clear();
+}
+
+
+TEST_CASE("Process primary path does not force PrimeCheck on IBD (source guard)",
+    "[ledger][process][primecheck]")
+{
+    /* Regression guard for the multi-day sync collapse: the primary
+     * Process() ingestion path must call block.Check() with the default
+     * fForceProof=false so Synchronizing() can skip full PrimeCheck.
+     * The recovery retry may still use Check(true). */
+    const char* vCandidates[] = {
+        "src/TAO/Ledger/process.cpp",
+        "./src/TAO/Ledger/process.cpp",
+        "../src/TAO/Ledger/process.cpp",
+        "../../src/TAO/Ledger/process.cpp",
+    };
+
+    std::string strSource;
+    for(const char* psz : vCandidates)
+    {
+        std::ifstream f(psz, std::ios::in | std::ios::binary);
+        if(!f.is_open())
+            continue;
+        std::ostringstream ss;
+        ss << f.rdbuf();
+        strSource = ss.str();
+        if(!strSource.empty())
+            break;
+    }
+
+    if(strSource.empty())
+    {
+        WARN("process.cpp not reachable from CWD; skipping source guard");
+        SUCCEED();
+        return;
+    }
+
+    /* Primary path must use default Check() (no forced proof). */
+    REQUIRE(strSource.find("if(!fSkipCheck && !block.Check())") != std::string::npos);
+
+    /* Must NOT reintroduce a forced-proof primary call of the form
+     * if(!fSkipCheck && !block.Check(true)). */
+    REQUIRE(strSource.find("if(!fSkipCheck && !block.Check(true))") == std::string::npos);
+
+    /* Recovery retry is allowed to force proof. */
+    REQUIRE(strSource.find("if(block.Check(true))") != std::string::npos);
+
+    /* A1: far-tip path must issue locator branch sync, not only log
+     * block-not-yet-received and return. */
+    REQUIRE(strSource.find("action=locator-branch-sync-request") != std::string::npos);
+    REQUIRE(strSource.find("action=block-not-yet-received") == std::string::npos);
 }
 
 
