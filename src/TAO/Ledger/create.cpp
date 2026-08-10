@@ -647,6 +647,9 @@ namespace TAO::Ledger
 
                 /* Get previous transaction */
                 TAO::Ledger::Transaction txDisk;
+                /* hashGenesis==0 is the unset-txPrev sentinel (mirrors mempool
+                 * Fix 1). A real seq-0 genesis has hashGenesis!=0, so the
+                 * second arm cannot overwrite an already-resolved predecessor. */
                 if(LLD::Ledger->ReadTx(hashDiskLast, txDisk)
                 && (txDisk.nSequence > txPrev.nSequence
                     || (txPrev.hashGenesis == 0 && txDisk.hashGenesis != 0)))

@@ -963,10 +963,9 @@ namespace TAO
                         break;
 
                     case PeerBestRecoveryResult::FETCH_QUEUED:
-                        fAllowFallback = false;
-                        break;
-
                     case PeerBestRecoveryResult::FETCH_THROTTLED:
+                        /* Coordinator already owns (or deliberately suppressed)
+                         * the LIST — do not second-guess with fallback. */
                         fAllowFallback = false;
                         break;
 
