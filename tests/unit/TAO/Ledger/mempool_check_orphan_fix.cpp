@@ -151,7 +151,7 @@ namespace
  *   • TxnAbort was called but Remove() was never reached because break only
  *     exited the inner reverse loop; T survived every Check() sweep forever.
  */
-TEST_CASE("Mempool::Check force-evicts unrollbackable orphan after failed Disconnect",
+TEST_CASE("Mempool::Check force-evicts unrollbackable orphan when Disconnect throws",
     "[mempool_orphan][ledger]")
 {
     LedgerGuard env;
@@ -188,8 +188,10 @@ TEST_CASE("Mempool::Check force-evicts unrollbackable orphan after failed Discon
     REQUIRE(TAO::Ledger::mempool.AddUnchecked(txOrphan));
     REQUIRE(TAO::Ledger::mempool.Has(hashOrphan));
 
-    /* Run the consistency sweep — this is the code under test. */
-    TAO::Ledger::mempool.Check();
+    /* Run the consistency sweep — this is the code under test.
+     * Regression target: malformed contract can make Disconnect throw from
+     * Contract::Primitive(); Check() must still force-evict and not escape. */
+    CHECK_NOTHROW(TAO::Ledger::mempool.Check());
 
     /* The fix: the transaction must be removed even though Disconnect failed.
      * Without the fix it would remain in mapLedger and re-trigger the same
@@ -199,6 +201,7 @@ TEST_CASE("Mempool::Check force-evicts unrollbackable orphan after failed Discon
 
     /* Clean-up (guard in case the tx survived due to a regression). */
     TAO::Ledger::mempool.Remove(hashOrphan);
+    LLD::Ledger->EraseLast(hashGenesis);
 }
 
 
@@ -265,7 +268,7 @@ TEST_CASE("Mempool::Check continues to next genesis after ReadLast failure",
     REQUIRE(TAO::Ledger::mempool.Has(hashTxB));
 
     /* Run the consistency sweep. */
-    TAO::Ledger::mempool.Check();
+    CHECK_NOTHROW(TAO::Ledger::mempool.Check());
 
     /* T_B should be removed: its orphan was detected because Check() continued
      * past genesis A's ReadLast failure (continue, not break).
@@ -279,4 +282,6 @@ TEST_CASE("Mempool::Check continues to next genesis after ReadLast failure",
     /* Clean-up. */
     TAO::Ledger::mempool.Remove(hashTxA);
     TAO::Ledger::mempool.Remove(hashTxB);
+    LLD::Ledger->EraseLast(hashGenesis_A);
+    LLD::Ledger->EraseLast(hashGenesis_B);
 }
