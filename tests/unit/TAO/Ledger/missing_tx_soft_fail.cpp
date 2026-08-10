@@ -1364,11 +1364,11 @@ TEST_CASE("AttemptPeerBestChainRecovery walks orphan pool for connectable ancest
      *   1. ReadBlock(hashB) fails (not on disk).
      *   2. Walk back: hashB → hashA (connectable, prev=hashRoot is on disk).
      *   3. Process(blockA) → ACCEPTED → BFS drain picks up blockB.
-     *   4. Return true (forward progress made). */
-    const bool fRecovered = TAO::Ledger::AttemptPeerBestChainRecovery(
+     *   4. Return PROGRESS (forward progress made). */
+    const auto result = TAO::Ledger::AttemptPeerBestChainRecovery(
         hashB, 202, "unit-test", nullptr);
 
-    REQUIRE(fRecovered);
+    REQUIRE(result == TAO::Ledger::PeerBestRecoveryResult::PROGRESS);
 
     /* Both blockA and blockB must have been walked through Accept() (the
      * mock PassBlock::Accept() does not itself persist to disk, so this is
