@@ -3113,19 +3113,26 @@ namespace LLP
                                  *    but not yet on disk: it walks the orphan graph to
                                  *    find a connectable ancestor and feeds it through
                                  *    Process().  Pass 'this' so the function can send
-                                 *    a locator-anchored LIST if the branch has a gap. */
+                                 *    a locator-anchored LIST if the branch has a gap.
+                                 *    When that LIST is queued, skip the identical fallback
+                                 *    LIST below so we do not double-request the branch or
+                                 *    replace the first TxResponseWindow on this peer. */
+                                bool fBranchSyncQueued = false;
                                 if(hashBestChain != 0
                                 && hashBestChain != TAO::Ledger::ChainState::hashBestChain.load())
                                 {
                                     TAO::Ledger::AttemptPeerBestChainRecovery(
-                                        hashBestChain, nCurrentHeight, NODE.c_str(), this);
+                                        hashBestChain, nCurrentHeight, NODE.c_str(), this,
+                                        &fBranchSyncQueued);
                                 }
 
                                 /* 2. Re-request the full branch from this peer via
                                  *    locator.  Use SPECIFIER::TRANSACTIONS (not SYNC) so
                                  *    the peer pushes inline txs then the block as TRITIUM;
                                  *    SYNC blocks are rejected as "unsolicited" after initial
-                                 *    sync completes (fSynchronized == true). */
+                                 *    sync completes (fSynchronized == true).  Skip when
+                                 *    step 1 already queued the same locator LIST. */
+                                if(!fBranchSyncQueued)
                                 {
                                     const uint1024_t hashTarget =
                                         (hashBestChain != 0) ? hashBestChain : hashBlock;

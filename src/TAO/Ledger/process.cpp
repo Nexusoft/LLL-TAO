@@ -520,8 +520,12 @@ namespace TAO
         bool AttemptPeerBestChainRecovery(const uint1024_t& hashPeerBest,
                                           uint32_t nPeerHeight,
                                           const char* pszSource,
-                                          LLP::TritiumNode* pnode)
+                                          LLP::TritiumNode* pnode,
+                                          bool* pfBranchSyncQueued)
         {
+            if(pfBranchSyncQueued)
+                *pfBranchSyncQueued = false;
+
             /* Re-entrancy guard: this function releases PROCESSING_MUTEX and
              * calls Process(), which re-acquires it.  That is safe today
              * because nothing inside Process() calls back into this function.
@@ -696,6 +700,7 @@ namespace TAO
                             ? pSend->OpenTxResponseWindow(LLP::TxResponseKind::LIST,
                                 hashTarget, hashPeerBest)
                             : 0;
+                        bool fPrimaryQueued = false;
                         try
                         {
                         if(!pSend->PushMessage(LLP::TritiumNode::ACTION::LIST,
@@ -711,6 +716,8 @@ namespace TAO
                             if(nWindowRequest != 0)
                                 pSend->RollbackTxResponseWindow(nWindowRequest);
                         }
+                        else
+                            fPrimaryQueued = true;
                         }
                         catch(...)
                         {
@@ -718,6 +725,9 @@ namespace TAO
                                 pSend->RollbackTxResponseWindow(nWindowRequest);
                             throw;
                         }
+
+                        if(pfBranchSyncQueued && fPrimaryQueued)
+                            *pfBranchSyncQueued = true;
 
                         /* Optional one-peer fanout: ask a second distinct peer so the
                          * node that advertised the far tip cannot also be the sole

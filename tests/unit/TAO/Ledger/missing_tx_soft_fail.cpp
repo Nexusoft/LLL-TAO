@@ -16,6 +16,9 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <LLP/types/tritium.h>
+#include <LLP/include/version.h>
+#include <LLP/templates/socket.h>
+#include <LLP/include/base_address.h>
 
 #include <TAO/Ledger/include/admissibility.h>
 #include <TAO/Ledger/include/process.h>
@@ -26,6 +29,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/credentials.h>
+#include <TAO/Ledger/types/locator.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -35,14 +39,25 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 #include <Util/include/filesystem.h>
 #include <Util/include/runtime.h>
+#include <Util/templates/datastream.h>
 
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <vector>
+#include <cstdint>
+#include <cstring>
 
 #include <unit/catch2/catch.hpp>
 
 #include <algorithm>
+
+#ifndef WIN32
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <fcntl.h>
+#endif
 
 
 namespace
@@ -1380,15 +1395,10 @@ TEST_CASE("AttemptPeerBestChainRecovery requests branch sync when tip far ahead"
     "[ledger][process][a1]")
 {
     /* A1 regression: peer tip not on disk AND not in the orphan pool must
-     * no longer be a silent no-op.  Without a live Tritium peer the LIST
-     * cannot be pushed, but the path must still:
-     *   1. Return false (no chain progress yet — only a fetch was attempted)
-     *   2. Not throw / not leave orphan-pool state corrupted
-     *   3. Leave mapOrphans empty (we never inserted anything)
-     *
-     * The production fix issues a throttled locator LIST + TRANSACTIONS
-     * (with optional one-peer fanout) on this path — same helper used for
-     * the orphan-gap case. */
+     * issue a throttled locator LIST + SPECIFIER::TRANSACTIONS (not a silent
+     * no-op).  Exercise the path with an injectable TritiumNode backed by a
+     * socketpair so we can assert the on-wire message, throttle key, and the
+     * pfBranchSyncQueued out-parameter used by callers to skip duplicate LIST. */
     LedgerGuard env;
 
     TAO::Ledger::mapOrphans.Clear();
@@ -1401,11 +1411,99 @@ TEST_CASE("AttemptPeerBestChainRecovery requests branch sync when tip far ahead"
     REQUIRE_FALSE(LLD::Ledger->HasBlock(hashFarTip));
     REQUIRE_FALSE(TAO::Ledger::mapOrphans.Contains(hashFarTip));
 
+#ifndef WIN32
+    int fds[2] = {-1, -1};
+    REQUIRE(socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == 0);
+    REQUIRE(fcntl(fds[1], F_SETFL, O_NONBLOCK) == 0);
+
+    LLP::TritiumNode node;
+    node.fd     = fds[1];
+    node.events = POLLIN;
+
+    bool fBranchSyncQueued = false;
     const bool fRecovered = TAO::Ledger::AttemptPeerBestChainRecovery(
-        hashFarTip, /*nPeerHeight=*/9999, "unit-test-a1", nullptr);
+        hashFarTip, /*nPeerHeight=*/9999, "unit-test-a1", &node, &fBranchSyncQueued);
 
     REQUIRE_FALSE(fRecovered);
+    REQUIRE(fBranchSyncQueued);
     REQUIRE(TAO::Ledger::mapOrphans.Empty());
+
+    /* Throttle key is the far tip itself when no orphan walk occurred. */
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashFarTip) == 1);
+
+    /* Flush any overflow-buffered remainder, then drain the peer read end. */
+    while(node.Buffered() > 0)
+    {
+        if(node.Flush() <= 0)
+            break;
+    }
+
+    std::vector<uint8_t> vSent;
+    {
+        std::vector<uint8_t> buf(65536);
+        for(;;)
+        {
+            const ssize_t n = recv(fds[0], buf.data(), buf.size(), MSG_DONTWAIT);
+            if(n <= 0)
+                break;
+            vSent.insert(vSent.end(), buf.begin(), buf.begin() + n);
+        }
+    }
+
+    /* Canonical LIST + TRANSACTIONS + BLOCK + LOCATOR packet the helper must emit. */
+    const uint1024_t hashLocalBest = TAO::Ledger::ChainState::hashBestChain.load();
+    DataStream ssExpected(SER_NETWORK, LLP::MIN_PROTO_VERSION);
+    ssExpected
+        << uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS)
+        << uint8_t(LLP::TritiumNode::TYPES::BLOCK)
+        << uint8_t(LLP::TritiumNode::TYPES::LOCATOR)
+        << TAO::Ledger::Locator(hashLocalBest)
+        << uint1024_t(hashFarTip);
+    const std::vector<uint8_t> vExpected =
+        LLP::TritiumNode::NewMessage(LLP::TritiumNode::ACTION::LIST, ssExpected).GetBytes();
+
+    REQUIRE(vSent == vExpected);
+
+    /* Immediate second call must be throttled: no new LIST, out-param false. */
+    bool fBranchSyncQueued2 = true; /* helper must clear this */
+    const bool fRecovered2 = TAO::Ledger::AttemptPeerBestChainRecovery(
+        hashFarTip, /*nPeerHeight=*/9999, "unit-test-a1-throttle", &node,
+        &fBranchSyncQueued2);
+    REQUIRE_FALSE(fRecovered2);
+    REQUIRE_FALSE(fBranchSyncQueued2);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashFarTip) == 1);
+
+    while(node.Buffered() > 0)
+    {
+        if(node.Flush() <= 0)
+            break;
+    }
+
+    std::vector<uint8_t> vSent2;
+    {
+        std::vector<uint8_t> buf(65536);
+        for(;;)
+        {
+            const ssize_t n = recv(fds[0], buf.data(), buf.size(), MSG_DONTWAIT);
+            if(n <= 0)
+                break;
+            vSent2.insert(vSent2.end(), buf.begin(), buf.begin() + n);
+        }
+    }
+    REQUIRE(vSent2.empty());
+
+    close(fds[0]);
+    /* node destructor closes fds[1]. */
+#else
+    /* WIN32: no socketpair — still verify throttle recording with a bare node. */
+    LLP::TritiumNode node;
+    bool fBranchSyncQueued = false;
+    const bool fRecovered = TAO::Ledger::AttemptPeerBestChainRecovery(
+        hashFarTip, /*nPeerHeight=*/9999, "unit-test-a1", &node, &fBranchSyncQueued);
+    REQUIRE_FALSE(fRecovered);
+    REQUIRE(TAO::Ledger::mapOrphans.Empty());
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashFarTip) == 1);
+#endif
 
     /* Clean up any throttle residue keyed on the far tip. */
     TAO::Ledger::mapLastOrphanRequest.clear();

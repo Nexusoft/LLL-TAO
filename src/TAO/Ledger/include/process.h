@@ -355,12 +355,21 @@ namespace TAO
          *                    a TRITIUM_SERVER->RandomConnection() for the
          *                    branch-sync request.  Must NOT hold
          *                    PROCESSING_MUTEX.
+         *  @param[out] pfBranchSyncQueued  Optional.  Set true when this helper
+         *                    successfully queued a primary locator LIST on pnode
+         *                    (or its random fallback).  Callers that also have a
+         *                    fallback LIST path should skip it when this is true
+         *                    to avoid duplicate branch responses and response-
+         *                    window replacement on the same peer.  Return value
+         *                    remains "forward chain progress" only — a queued
+         *                    fetch still returns false.
          *
          **/
         bool AttemptPeerBestChainRecovery(const uint1024_t& hashPeerBest,
                                           uint32_t nPeerHeight,
                                           const char* pszSource = nullptr,
-                                          LLP::TritiumNode* pnode = nullptr);
+                                          LLP::TritiumNode* pnode = nullptr,
+                                          bool* pfBranchSyncQueued = nullptr);
 
 
         /** IsBestChainSynchronized
