@@ -1,0 +1,12 @@
+05. PackageCompiler App Build Flow
+
+project env
+   │
+   ▼
+PackageCompiler.create_app
+   │
+   ▼
+local app artifact
+   │
+   ▼
+smoke test + fixture verification

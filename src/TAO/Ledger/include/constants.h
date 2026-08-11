@@ -172,6 +172,27 @@ namespace TAO::Ledger
     const uint32_t MAINNET_MINIMUM_INTERVAL = 60;
 
 
+    /** Default minter-side wall-clock floor (in seconds) enforced between stake blocks from the same
+     *  signature chain, in addition to the height-based MinStakeInterval(). This exists purely as a local
+     *  self-restraint applied by the stake minter before submitting a block; it is not a consensus rule, so
+     *  it cannot by itself cause a fork. It guards against the height-based interval being bypassed when
+     *  block height advances unusually fast in real time (for example during a multi-channel reorg/orphan
+     *  burst), which could otherwise let the same trust account chain stake blocks in rapid real-time
+     *  succession. Configurable via -minstakeintervalseconds. **/
+    const uint32_t DEFAULT_MINIMUM_STAKE_INTERVAL_SECONDS = 10;
+
+
+    /** Number of seconds without a stake-minter heartbeat/progress update before the minter is considered
+     *  stalled by IsStalled(), even though IsStarted() may still report true. Chosen well above the longest
+     *  routine per-iteration sleep the minter uses (5 seconds while waiting on interval/mempool conditions)
+     *  so normal waiting is never mistaken for a stall. **/
+    const uint32_t STAKE_MINTER_STALL_THRESHOLD = 120;
+
+
+    /** Cadence in seconds for watchdog heartbeat refresh while HashBlock() is actively running. **/
+    const uint32_t STAKE_MINTER_HEARTBEAT_INTERVAL_SECONDS = 4;
+
+
     /** NXS token default digits. **/
     const uint8_t NXS_DIGITS = 6;
 

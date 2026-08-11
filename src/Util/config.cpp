@@ -37,16 +37,74 @@ namespace config
         std::string line;
         while(std::getline(streamConfig, line))
         {
-            size_t i = line.find('=');
+            /* Trim leading whitespace */
+            size_t start = line.find_first_not_of(" \t");
+            if(start == std::string::npos)
+                continue; /* Empty line */
+            
+            /* Check for comment at start of line */
+            if(line[start] == '#')
+                continue;
+            
+            /* Find the equals sign */
+            size_t i = line.find('=', start);
             if(i == std::string::npos)
                 continue;
-
-            size_t l = line.find('#');
-            if(l != std::string::npos)
-                continue;
-
-            std::string strKey = std::string("-") + std::string(line, 0, i);
-            std::string strVal = std::string(line, i + 1, line.size() - i - 1);
+            
+            /* Extract key (before =) */
+            std::string strKey = std::string("-") + std::string(line, start, i - start);
+            
+            /* Trim trailing whitespace from key */
+            size_t keyEnd = strKey.find_last_not_of(" \t");
+            if(keyEnd != std::string::npos)
+                strKey = strKey.substr(0, keyEnd + 1);
+            
+            /* Extract value (after =) */
+            std::string strVal = std::string(line, i + 1);
+            
+            /* Trim leading whitespace from value */
+            size_t valStart = strVal.find_first_not_of(" \t");
+            if(valStart != std::string::npos)
+                strVal = strVal.substr(valStart);
+            else
+                strVal = "";
+            
+            /* Handle quoted values */
+            if(!strVal.empty() && (strVal[0] == '"' || strVal[0] == '\''))
+            {
+                char quote = strVal[0];
+                size_t endQuote = strVal.find(quote, 1);
+                if(endQuote != std::string::npos)
+                {
+                    strVal = strVal.substr(1, endQuote - 1);
+                }
+                else
+                {
+                    /* No closing quote - treat rest of line as value */
+                    strVal = strVal.substr(1);
+                }
+            }
+            else
+            {
+                /* For unquoted values, check for inline comment (# after whitespace) */
+                size_t commentPos = strVal.find('#');
+                while(commentPos != std::string::npos)
+                {
+                    /* Only treat as comment if preceded by whitespace */
+                    if(commentPos > 0 && (strVal[commentPos - 1] == ' ' || strVal[commentPos - 1] == '\t'))
+                    {
+                        strVal = strVal.substr(0, commentPos);
+                        break;
+                    }
+                    /* Otherwise, # is part of the value - keep looking */
+                    commentPos = strVal.find('#', commentPos + 1);
+                }
+                
+                /* Trim trailing whitespace from value */
+                size_t valEnd = strVal.find_last_not_of(" \t\r");
+                if(valEnd != std::string::npos)
+                    strVal = strVal.substr(0, valEnd + 1);
+            }
 
             if(mapSettingsRet.count(strKey) == 0)
             {

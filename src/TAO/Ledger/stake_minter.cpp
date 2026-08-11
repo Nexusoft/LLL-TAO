@@ -52,6 +52,7 @@ namespace TAO
         /* Initialize static variables */
         std::atomic<bool> StakeMinter::fStarted(false);
         std::atomic<bool> StakeMinter::fStop(false);
+        std::atomic<uint64_t> StakeMinter::nLastActive(0);
 
 
         /* Retrieves the stake minter instance to use for staking. */
@@ -146,6 +147,40 @@ namespace TAO
                 return 0;
 
             return nWaitTime.load();
+        }
+
+
+        /* Retrieves the unix timestamp of the last watchdog heartbeat from the stake minter thread. */
+        uint64_t StakeMinter::GetLastActiveTime() const
+        {
+            return nLastActive.load();
+        }
+
+
+        /* Checks whether the stake minter thread appears to be stalled. */
+        bool StakeMinter::IsStalled() const
+        {
+            /* Not stalled if it was never started, or is not currently marked started. */
+            if(!fStarted.load())
+                return false;
+
+            /* Not stalled if the minter has not yet published its first heartbeat. */
+            const uint64_t nActive = nLastActive.load();
+            if(nActive == 0)
+                return false;
+
+            const uint64_t nNow = runtime::unifiedtimestamp();
+            if(nNow <= nActive)
+                return false;
+
+            return (nNow - nActive) > STAKE_MINTER_STALL_THRESHOLD;
+        }
+
+
+        /* Records the current time as the last watchdog heartbeat / progress timestamp for the stake minter. */
+        void StakeMinter::UpdateLastActive()
+        {
+            nLastActive.store(runtime::unifiedtimestamp());
         }
 
 
@@ -453,8 +488,14 @@ namespace TAO
         /* Verify whether or not a signature chain has met the interval requirement */
         bool StakeMinter::CheckInterval()
         {
-            static uint32_t nCounter = 0; //Prevents log spam during wait period
-            static const uint32_t nMinInterval = MinStakeInterval(block);
+            static uint32_t nCounter = 0;            //Prevents log spam during wait period
+            static uint32_t nNegativeArgCounter = 0; //Prevents log spam on invalid config
+            static constexpr uint32_t nLogThrottleInterval = 100;
+
+            /* Recomputed every call (not cached) since it depends on the candidate block's version, which
+             * can change across a network upgrade while this process keeps running (for example, a v8->v9
+             * activation that changes the pooled-staking interval requirement). */
+            const uint32_t nMinInterval = MinStakeInterval(block);
 
             /* Check the block interval for trust transactions. */
             if(!fGenesis)
@@ -467,7 +508,7 @@ namespace TAO
                     nSleepTime = 5000; //5 second wait is reset below (can't sleep too long or will hang until wakes up on shutdown)
 
                     /* Update log every 100 iterations */
-                    if((nCounter % 100) == 0)
+                    if((nCounter % nLogThrottleInterval) == 0)
                         debug::log(0, FUNCTION, "Too soon after last stake block. ",
                                    (nMinInterval - nInterval + 1), " blocks remaining until staking available.");
 
@@ -475,7 +516,52 @@ namespace TAO
 
                     return false;
                 }
-                else if(nSleepTime == 5000)
+
+                /* Minter-side wall-clock floor, in addition to the height-based interval above. This is a
+                 * local self-restraint only (not a consensus rule), so it cannot fork the chain by itself.
+                 * It guards against the height-based interval being bypassed when block height advances
+                 * unusually fast in real time relative to block time -- for example during a multi-channel
+                 * reorg/orphan burst -- which could otherwise let this trust account chain stake blocks in
+                 * rapid real-time succession despite satisfying the height requirement. */
+                const int64_t nMinSecondsArg =
+                    config::GetArg("-minstakeintervalseconds", TAO::Ledger::DEFAULT_MINIMUM_STAKE_INTERVAL_SECONDS);
+
+                if(nMinSecondsArg < 0)
+                {
+                    if((nNegativeArgCounter % nLogThrottleInterval) == 0)
+                        debug::log(0, FUNCTION, "Ignoring negative -minstakeintervalseconds value (", nMinSecondsArg,
+                                   "). Local wall-clock floor disabled for this run.");
+
+                    ++nNegativeArgCounter;
+                }
+                else if(nMinSecondsArg > 0)
+                {
+                    nNegativeArgCounter = 0;
+
+                    const uint64_t nMinSeconds = static_cast<uint64_t>(nMinSecondsArg);
+                    const uint64_t nBlockTimeLast = stateLast.GetBlockTime();
+                    const uint64_t nNow           = runtime::unifiedtimestamp();
+                    const uint64_t nElapsed       = (nNow > nBlockTimeLast) ? (nNow - nBlockTimeLast) : 0;
+
+                    if(nElapsed < nMinSeconds)
+                    {
+                        nSleepTime = 5000;
+
+                        if((nCounter % nLogThrottleInterval) == 0)
+                            debug::log(0, FUNCTION, "Too soon after last stake block for local wall-clock floor. ",
+                                       (nMinSeconds - nElapsed), " seconds remaining until staking available.");
+
+                        ++nCounter;
+
+                        return false;
+                    }
+                }
+                else
+                {
+                    nNegativeArgCounter = 0;
+                }
+
+                if(nSleepTime == 5000)
                 {
                     /* Reset sleep time after interval requirement met */
                     nSleepTime = 1000;
@@ -522,6 +608,7 @@ namespace TAO
         bool StakeMinter::HashBlock(const cv::softdouble nRequired)
         {
             uint64_t nTimeStart = 0;
+            uint64_t nHeartbeatLast = 0;
 
             /* Calculate the target value based on difficulty. */
             LLC::CBigNum bnTarget;
@@ -534,6 +621,15 @@ namespace TAO
             while(!StakeMinter::fStop.load() && !config::fShutdown.load()
                 && hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load())
             {
+                const uint64_t nHeartbeatNow = runtime::unifiedtimestamp();
+                if(nHeartbeatLast == 0
+                || (nHeartbeatNow > nHeartbeatLast
+                    && (nHeartbeatNow - nHeartbeatLast) >= TAO::Ledger::STAKE_MINTER_HEARTBEAT_INTERVAL_SECONDS))
+                {
+                    nLastActive.store(nHeartbeatNow);
+                    nHeartbeatLast = nHeartbeatNow;
+                }
+
                 /* Check that the producer(s) won't orphan any new transaction from the same hashGenesis. */
                 if(CheckStale())
                 {

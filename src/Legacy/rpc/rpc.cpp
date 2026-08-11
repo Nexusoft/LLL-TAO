@@ -30,6 +30,7 @@ namespace Legacy
         mapFunctions["stop"] = TAO::API::Function(std::bind(&RPC::Stop, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["getinfo"] = TAO::API::Function(std::bind(&RPC::GetInfo, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["getmininginfo"] = TAO::API::Function(std::bind(&RPC::GetMiningInfo, this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["checkforkrecovery"] = TAO::API::Function(std::bind(&RPC::CheckForkRecovery, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["getconnectioncount"] = TAO::API::Function(std::bind(&RPC::GetConnectionCount, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["getnewaddress"] = TAO::API::Function(std::bind(&RPC::GetNewAddress, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["getaccountaddress"] = TAO::API::Function(std::bind(&RPC::GetAccountAddress, this, std::placeholders::_1, std::placeholders::_2));

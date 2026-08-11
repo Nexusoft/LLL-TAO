@@ -1,0 +1,49 @@
+09. Falcon Quantum Tunnel Vector — 4-Bucket Swap Engine
+        (Laser Quantum Encryption / Data Routing Model)
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  FALCON-1024 PRIVKEY PAYLOAD  (2305 bytes)                         │
+│                                                                     │
+│  partition into 4 near-equal immutable buckets                      │
+└───────────────┬───────────────────────┬─────────────────────────────┘
+                │                       │
+                ▼                       ▼
+      ┌─────────────────┐    ┌─────────────────┐
+      │ bucket 1        │    │ bucket 2        │
+      │ bytes   1-577   │    │ bytes 578-1153  │
+      │ tag = SHA-512   │    │ tag = SHA-512   │
+      └────────┬────────┘    └────────┬────────┘
+               │                      │
+               ├──────────────┬───────┤
+               │              │       │
+               ▼              ▼       ▼
+      ┌─────────────────┐    ┌─────────────────┐
+      │ bucket 3        │    │ bucket 4        │
+      │ bytes 1154-1729 │    │ bytes 1730-2305 │
+      │ tag = SHA-512   │    │ tag = SHA-512   │
+      └────────┬────────┘    └────────┬────────┘
+               │                      │
+               └──────────────┬───────┘
+                              ▼
+                 seeded MersenneTwister permutation
+                              │
+                              ▼
+                  swap active slot with target slot
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  WORKING VECTOR                                                     │
+│  active_bucket_payload XOR SHA-512 chained keystream                │
+│                                                                     │
+│  epoch 0 -> bucket A in working vector                              │
+│  epoch 1 -> swap bucket B into slot 1                               │
+│  epoch 2 -> swap bucket D into slot 1                               │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  APPEND-ONLY SWAP LOG                                               │
+│  [epoch, from_bucket, to_bucket, target_slot, permutation]          │
+│                                                                     │
+│  reproducible for a fixed seed and fixture payload                  │
+└─────────────────────────────────────────────────────────────────────┘

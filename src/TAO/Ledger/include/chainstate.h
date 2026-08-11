@@ -41,6 +41,15 @@ namespace TAO
             extern std::atomic<uint32_t> nBestHeight;
 
 
+            /** The highest block height advertised by any connected peer.
+             *  Updated by TritiumNode when it receives an ACTION::NOTIFY
+             *  BESTHEIGHT message.  Used to distinguish a locally-stale node
+             *  (behind peers) from a node that is genuinely up-to-date, so
+             *  local-state-dependent invalidity can be classified correctly.
+             *  Never used for consensus decisions; diagnostic and deferral only. **/
+            extern std::atomic<uint32_t> nMaxPeerHeight;
+
+
             /** The best trust in the chain. **/
             extern std::atomic<uint64_t> nBestChainTrust;
 
@@ -107,6 +116,24 @@ namespace TAO
 
             /** The best block in the chain. **/
             extern BlockState tStateGenesis;
+
+
+            /** RepairCheckpointIfStale
+             *
+             *  Attempt to repair the in-memory checkpoint state when it has drifted from
+             *  the on-disk best-chain state.  The in-memory gate (tStateBest.hashCheckpoint
+             *  vs hashCheckpoint) is checked first to avoid disk I/O when no repair is
+             *  needed; only a confirmed mismatch triggers the ReadBlock() disk read.
+             *
+             *  On success the in-memory hashCheckpoint and nCheckpointHeight are updated
+             *  to match the on-disk best state, and the caller should retry IsDescendant().
+             *
+             *  @return true  if the checkpoint was successfully repaired
+             *  @return false if the in-memory state was already consistent (no repair
+             *                needed), or if the repair could not be completed
+             *
+             **/
+            bool RepairCheckpointIfStale();
 
         }
     }

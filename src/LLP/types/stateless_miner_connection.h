@@ -1,0 +1,727 @@
+/*__________________________________________________________________________________________
+
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
+
+            (c) Copyright The Nexus Developers 2014 - 2025
+
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+            "ad vocem populi" - To the Voice of the People
+
+____________________________________________________________________________________________*/
+
+#pragma once
+#ifndef NEXUS_LLP_TYPES_STATELESS_MINER_CONNECTION_H
+#define NEXUS_LLP_TYPES_STATELESS_MINER_CONNECTION_H
+
+#include <LLP/templates/stateless_connection.h>
+#include <LLP/include/graceful_shutdown.h>
+#include <LLP/include/stateless_miner.h>
+#include <LLP/include/stateless_lane_handler.h>
+#include <LLP/include/channel_state_manager.h>
+#include <LLP/include/auto_cooldown.h>
+#include <LLP/include/get_block_policy.h>
+#include <LLP/include/mining_constants.h>
+#include <LLP/include/mining_template_delivery.h>
+#include <TAO/API/include/credential_cache.h>
+#include <TAO/Ledger/types/block.h>
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <deque>
+#include <mutex>
+#include <map>
+#include <memory>
+#include <thread>
+#include <vector>
+
+namespace LLP
+{
+    /** StatelessMinerConnection
+     *
+     *  Phase 2 stateless miner connection handler.
+     *  Wraps the pure functional StatelessMiner processor in a Connection class.
+     *
+     *  This is the dedicated stateless miner LLP connection type for miningport.
+     *  It uses MiningContext for immutable state management and routes all packets
+     *  through StatelessMiner::ProcessPacket for pure functional processing.
+     *
+     *  PROTOCOL DESIGN:
+     *  - Uses 16-bit stateless packet framing (HEADER + LENGTH + DATA)
+     *  - Falcon authentication is mandatory before any mining operations
+     *  - All state is managed through immutable MiningContext objects
+     *  - Packet processing is stateless and returns ProcessResult with updated context
+     *  - Compatible with NexusMiner Phase 2 protocol
+     *
+     **/
+    class StatelessMinerConnection : public StatelessConnection
+    {
+    private:
+        /* ═══════════════════════════════════════════════════════════════════════
+         * LOCK ORDERING — acquire in this order, never reverse.
+         *
+         *   1. MUTEX                   — per-connection context and mapBlocks.
+         *                                 Each opcode handler acquires its own
+         *                                 scoped { LOCK(MUTEX); } block for the
+         *                                 specific fields it needs (per-opcode
+         *                                 isolation, not a single broad lock).
+         *
+         *   2. SESSION_MUTEX           — session key map (mapSessionKeys).
+         *                                 Only nested inside the fallthrough
+         *                                 MINER_AUTH_RESPONSE handler under MUTEX.
+         *
+         *   3. TEMPLATE_CREATE_MUTEX   — template creation coordination.
+         *                                 Acquired by new_block() which is always
+         *                                 called OUTSIDE of MUTEX (MUTEX is
+         *                                 non-recursive; new_block() acquires
+         *                                 MUTEX internally for mapBlocks access).
+         *
+         * Cross-component locks (independent, never nested with the above):
+         *   - StatelessMinerManager::MUTEX  — global miner registry
+         *   - SOCKET_MUTEX                  — socket I/O (acquired by WritePacket)
+         * ═══════════════════════════════════════════════════════════════════════ */
+
+        /** The current mining context (immutable snapshot) **/
+        MiningContext context;
+
+        /** Mutex for thread-safe context updates **/
+        std::mutex MUTEX;
+
+        /** Atomic mirror of context.fAuthenticated for lock-free reads by DataThread.
+         *
+         *  The DataThread calls IsTimeoutExempt() from its polling loop on every
+         *  iteration — taking the MUTEX there would serialize all timeout checks
+         *  against packet processing.  This atomic bool is updated under MUTEX
+         *  whenever context.fAuthenticated transitions false → true, and is read
+         *  lock-free by IsTimeoutExempt().  Because authentication is write-once
+         *  (set to true, never cleared), a relaxed store / relaxed load is safe. **/
+        std::atomic<bool> fAuthenticatedAtomic{false};
+
+        /** Tracks a stateless Falcon handshake after AUTH_INIT succeeds and before
+         *  AUTH_RESPONSE either authenticates the miner or fails.
+         *
+         *  This closes the pre-auth timeout gap where a miner has begun the
+         *  handshake but has not yet flipped fAuthenticatedAtomic, so the
+         *  DataThread would otherwise treat it like an ordinary unauthenticated
+         *  connection and aggressively disconnect on spurious POLLIN/POLL_EMPTY. **/
+        std::atomic<bool> fHandshakeInProgressAtomic{false};
+
+        /** The map to hold the list of blocks that are being mined with metadata. 
+         *  Updated in PR #131 to track template metadata for staleness detection. **/
+        std::map<uint512_t, TemplateMetadata> mapBlocks;
+
+        /** Used as an ID iterator for generating unique hashes from same block transactions. **/
+        static std::atomic<uint32_t> nBlockIterator;
+
+        /** Map of session ID -> Falcon public key for signature verification **/
+        std::map<uint32_t, std::vector<uint8_t>> mapSessionKeys;
+
+        /** Mutex for thread-safe session key access **/
+        mutable std::mutex SESSION_MUTEX;
+
+        /** Channel state managers for fork-aware mining (PR #136) **/
+        std::unique_ptr<PrimeStateManager> m_pPrimeState;
+        std::unique_ptr<HashStateManager> m_pHashState;
+
+        /** Per-session in-flight template guard for CreateBlockForStatelessMining().
+         *  Concurrent requests wait and reuse the just-created template pointer. */
+        std::mutex TEMPLATE_CREATE_MUTEX;
+        std::condition_variable TEMPLATE_CREATE_CV;
+        bool m_template_create_in_flight{false};
+        TAO::Ledger::Block* m_last_created_template{nullptr};
+
+    public:
+        /** Async BLOCK_DATA worker for push/GET_ROUND recovery.
+         *  Coalesces multiple "fresh template" requests into one background job so
+         *  the read path only schedules work instead of building templates inline. */
+        enum class TemplateWorkReason : uint8_t
+        {
+            PUSH_NOTIFICATION,
+            GET_ROUND_RECOVERY
+        };
+
+    private:
+        std::mutex m_template_work_mutex;
+        std::condition_variable m_template_work_cv;
+        std::thread m_template_work_thread;
+
+        /* Option D: lifecycle/state booleans are std::atomic<bool> so callers
+         * that only need a fast lock-free read (telemetry, debug logging,
+         * lifecycle gate from another thread) can observe them without
+         * acquiring m_template_work_mutex.  Writes that mutate them in
+         * concert with other (non-atomic) members are still performed under
+         * the mutex to keep the bool-and-uint1024-tuple consistent. */
+        std::atomic<bool> m_template_worker_running{false};
+        std::atomic<bool> m_template_work_pending{false};
+        std::atomic<bool> m_template_work_in_flight{false};
+        TemplateWorkReason m_template_work_reason{TemplateWorkReason::PUSH_NOTIFICATION};
+        uint1024_t m_template_work_expected_tip;
+        uint1024_t m_template_work_in_flight_tip;
+        bool m_template_work_validate_expected_tip{false};
+        uint32_t m_template_work_channel{0};
+        uint32_t m_template_work_in_flight_channel{0};
+        std::chrono::steady_clock::time_point m_template_work_scheduled_at;
+
+        /* Option E: bounded queue of pending work requests.
+         * Replaces the previous single-slot pending state so cross-channel
+         * (or otherwise non-coalescable) schedules cannot silently overwrite
+         * an earlier pending request.  Capped at TEMPLATE_WORK_QUEUE_MAX;
+         * drop-oldest with telemetry counter on overflow. */
+        struct TemplateWorkRequest
+        {
+            TemplateWorkReason eReason{TemplateWorkReason::PUSH_NOTIFICATION};
+            uint1024_t hashExpectedTip{};
+            bool fValidateExpectedTip{false};
+            uint32_t nChannel{0};
+            std::chrono::steady_clock::time_point tScheduledAt{};
+        };
+        static constexpr std::size_t TEMPLATE_WORK_QUEUE_MAX = 4;
+        std::deque<TemplateWorkRequest> m_template_work_queue;
+        std::atomic<uint64_t> m_template_work_dropped_total{0};
+
+        /** Timestamp of the last template push (SendStatelessTemplate / SendChannelNotification).
+         *
+         *  Used by the push throttle guard to prevent flooding miners with full
+         *  228-byte templates during a fork-resolution burst (multiple SetBest()
+         *  events firing in < 100 ms).  Protected by MUTEX.
+         **/
+        std::chrono::steady_clock::time_point m_last_template_push_time;
+
+        /** When true, the next call to SendChannelNotification() or SendStatelessTemplate()
+         *  bypasses the push throttle entirely.  Used for explicit recovery paths
+         *  such as SESSION_STATUS degraded recovery and post-submit refresh.
+         *  Protected by MUTEX.
+         **/
+        bool m_force_next_push{false};
+
+        /** Best-chain hash of the last tip delivered on the stateless push path.
+         *  Protected by MUTEX.  Retained for diagnostic logging (the
+         *  push-throttle bypass decision is made against m_pushedTipHistory
+         *  below, which is a time-windowed ring that closes the
+         *  fork-storm pre-poison hole that a single-slot field cannot). */
+        uint1024_t m_hashLastPushedChain;
+
+        /** Time-windowed ring of recently delivered tips (Option B).
+         *  Protected by MUTEX.  See PushedTipHistory for full rationale —
+         *  briefly: a fork-resolution storm can cycle through tips that
+         *  later recur via SetBest; with a single-slot last-pushed field
+         *  the throttle's hash bypass would falsely fire on the recurrence
+         *  and then silently strand the miner.  The ring records every
+         *  delivered tip for PushedTipHistory::TTL_MS so recurrence is
+         *  correctly time-gated while genuinely new tips bypass immediately. */
+        PushedTipHistory m_pushedTipHistory;
+
+        /** [Bug 1] Height of the SUBMIT_BLOCK currently being accepted by AcceptMinedBlock().
+         *
+         *  Set (to pTritium->nHeight) immediately before AcceptMinedBlock() is called.
+         *  Cleared (to 0) after STATELESS_BLOCK_ACCEPTED or STATELESS_BLOCK_REJECTED is queued.
+         *
+         *  Read lock-free by QueueCurrentBlockDataTemplate() on the template-worker thread.
+         *  If non-zero and the about-to-be-served template targets the same height, the push
+         *  is suppressed — preventing the miner from restarting workers on a block that is
+         *  already being committed (burst-block same-height template blindspot).
+         *  Atomic: written under MUTEX on the data thread, read without MUTEX on the worker. **/
+        std::atomic<uint32_t> m_nPendingSubmitHeight{0};
+
+        /** [Bug 2] Per-connection extra-nonce cache for same-tip GET_BLOCK stability.
+         *
+         *  The global nBlockIterator was previously incremented on every new_block() call,
+         *  causing CachedMiningTemplateRequiresProducerFinalization() to return true on
+         *  every GET_BLOCK and triggering an expensive CreateProducer() sigchain key
+         *  operation 4-6 times per minute.
+         *
+         *  Fix: nBlockIterator is only incremented when hashBestChain changes; same-tip
+         *  calls reuse m_nCachedExtraNonce so the producer cache is valid and
+         *  CreateProducer() is skipped (~99% reduction in steady-state key ops).
+         *
+         *  Protected by TEMPLATE_CREATE_MUTEX (serializes new_block() calls). **/
+        uint64_t   m_nCachedExtraNonce{0};
+        uint1024_t m_hashLastExtraNonceTip;
+        TAO::API::CredentialCache m_miningCredentialCache;
+
+        /** 1-second rate-limit floor for GET_BLOCK fallback polling.
+         *
+         *  With the event-driven push model the miner should almost never poll.
+         *  This 1-second floor prevents rapid-fire polling abuse.
+         *  The cooldown is NOT Reset() after serving a GET_BLOCK — it naturally
+         *  expires, allowing miners to retry every 1 second during recovery.
+         *  MINER_READY reassigns it to the "never triggered" state so the first
+         *  recovery GET_BLOCK is served immediately.
+         *  Protected by MUTEX.
+         **/
+        AutoCoolDown m_get_block_cooldown{std::chrono::seconds(MiningConstants::GET_BLOCK_COOLDOWN_SECONDS)};
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // AUTOMATED RATE LIMITING (Layer 2 Protection)
+        // ═══════════════════════════════════════════════════════════════════════
+        // 
+        // SECURITY PRINCIPLES:
+        // - Fully automated: NO manual ban capability
+        // - Transparent: Clear rules, logged violations
+        // - Fair: Only verified bad behavior triggers penalties
+        // - Reversible: Temp cooldowns only, auto-expire
+        // - Non-invasive: Cannot steal work or target good miners
+        // 
+        // CONFIGURATION: See src/LLP/include/mining_constants.h for DEBUG vs PRODUCTION
+        // ═══════════════════════════════════════════════════════════════════════
+        
+        struct RateLimitConfig {
+            // Session-scoped rolling limit (authoritative, from get_block_policy.h)
+            static constexpr uint32_t MAX_GET_BLOCK_PER_MINUTE = static_cast<uint32_t>(GET_BLOCK_ROLLING_LIMIT_PER_MINUTE);
+            static_assert(MAX_GET_BLOCK_PER_MINUTE == 25,
+                "MAX_GET_BLOCK_PER_MINUTE must equal GET_BLOCK_ROLLING_LIMIT_PER_MINUTE (25). "
+                "Update get_block_policy.h if the rolling limit changes.");
+            
+            // Minimum intervals between consecutive requests of the same type
+            static constexpr uint32_t MIN_GET_ROUND_INTERVAL_MS = 2000;   // 2 seconds (lowered from 5s)
+            static constexpr uint32_t MIN_SUBMIT_BLOCK_INTERVAL_MS = 1000; // 1 second (lenient)
+            
+            // Violation thresholds
+            static constexpr uint32_t VIOLATIONS_BEFORE_STRIKE = 3;
+            static constexpr uint32_t VIOLATIONS_BEFORE_THROTTLE = 6;
+            static constexpr uint32_t VIOLATIONS_BEFORE_DISCONNECT = 10;
+
+            // Throttle hysteresis: throttle activates at VIOLATIONS_BEFORE_THROTTLE (high water)
+            // and deactivates only when violations drop to THROTTLE_LOW_WATER (low water).
+            // This prevents yo-yo behavior for borderline miners.
+            static constexpr uint32_t THROTTLE_LOW_WATER = 3;
+
+            /** After this many consecutive GET_BLOCK rate-limit violations with no
+             *  successful request between them, the connection is closed with a
+             *  diagnostic message to prevent the tight-loop self-DDoS. */
+            static constexpr uint32_t MAX_CONSECUTIVE_RATE_LIMIT_STRIKES =
+                MiningConstants::RATE_LIMIT_STRIKE_THRESHOLD;
+            
+            // Cooldown duration (NOT a ban - auto-expires)
+            static constexpr uint32_t COOLDOWN_DURATION_SECONDS = 300;  // 5 minutes
+            
+            // Throttle delay when in throttle mode
+            static constexpr uint32_t THROTTLE_DELAY_MS = 10000;  // 10 seconds forced delay
+        };
+        
+        struct RateLimitState {
+            // Last request timestamps (used for minimum-interval enforcement)
+            std::chrono::steady_clock::time_point tLastGetRound;
+            std::chrono::steady_clock::time_point tLastGetBlock;
+            std::chrono::steady_clock::time_point tLastSubmitBlock;
+            
+            // Violation tracking
+            uint32_t nViolationCount = 0;
+            uint32_t nStrikeCount = 0;
+            bool fThrottleMode = false;
+
+            /** Consecutive GET_BLOCK rate-limit counter.
+             *
+             *  Incremented each time GET_BLOCK is rejected with RATE_LIMIT_EXCEEDED.
+             *  Reset to 0 whenever a GET_BLOCK request succeeds.  When it reaches
+             *  RateLimitConfig::MAX_CONSECUTIVE_RATE_LIMIT_STRIKES the connection is
+             *  closed to stop the tight-loop self-DDoS. */
+            uint32_t nConsecutiveRateLimitStrikes = 0;
+
+            /** ResetViolationState
+             *
+             *  @brief Clear throttle/violation counters on clean re-authentication.
+             *  The session-scoped rolling window limiter (GetBlockRollingLimiter)
+             *  is keyed by session and self-manages its own window expiry.
+             *
+             **/
+            void ResetViolationState()
+            {
+                fThrottleMode  = false;
+                nViolationCount = 0;
+                nStrikeCount   = 0;
+                nConsecutiveRateLimitStrikes = 0;
+            }
+        };
+        
+        RateLimitState m_rateLimit;
+
+        /** Per-connection GET_BLOCK rolling rate limiter (25/60s).
+         *  Each stateless connection has its own independent rate limit. **/
+        GetBlockRollingLimiter m_getBlockRateLimiter;
+
+        /** Track whether NODE_SHUTDOWN was already sent on this connection. **/
+        GracefulShutdown::NotificationState m_nodeShutdownNotification;
+
+        /** Per-opcode handler dispatch for auth/session/config opcodes.
+         *  Each handler has its own mutex, eliminating contention between
+         *  opcode services (e.g., auth doesn't block keepalive). **/
+        StatelessLaneHandler m_laneHandler;
+
+    public:
+        /** Default Constructor **/
+        StatelessMinerConnection();
+
+        /** Constructor **/
+        StatelessMinerConnection(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn = false);
+
+        /** Constructor **/
+        StatelessMinerConnection(DDOS_Filter* DDOS_IN, bool fDDOSIn = false);
+
+        /** Default Destructor **/
+        ~StatelessMinerConnection();
+
+        /** Name
+         *
+         *  Returns a string for the name of this type of Node.
+         *
+         **/
+        static std::string Name()
+        {
+            return "StatelessMiner";
+        }
+
+        /** Event
+         *
+         *  Virtual Functions to Determine Behavior of Message LLP.
+         *
+         *  @param[in] EVENT The byte header of the event type.
+         *  @param[in] LENGTH The size of bytes read on packet read events.
+         *
+         */
+        void Event(uint8_t EVENT, uint32_t LENGTH = 0) final;
+
+        /** ProcessPacket
+         *
+         *  Main message handler once a packet is received.
+         *
+         *  @return True if no errors, false otherwise.
+         *
+         **/
+        bool ProcessPacket() final;
+
+        /** IsTimeoutExempt
+         *
+         *  Authenticated stateless mining connections bypass aggressive
+         *  POLL_EMPTY and TIMEOUT_WRITE checks.  They are still subject to
+         *  a finite read-idle timeout via GetReadTimeout().
+         *
+         *  @return true if miner is authenticated or is in the auth handshake.
+         *
+         **/
+        bool IsTimeoutExempt() const final;
+
+        /** GetReadTimeout
+         *
+         *  Authenticated stateless miners use a long but finite read-idle
+         *  timeout sourced from the shared MiningConstants helpers.  The runtime
+         *  override is clamped so it cannot fall below the safety floor
+         *  required for the 24-hour mining liveness contract.
+         *
+         *  @return read-idle timeout in milliseconds, or 0 for default.
+         *
+         **/
+        uint32_t GetReadTimeout() const final;
+
+        /** GetWriteTimeout
+         *
+         *  Authenticated stateless miners use a longer write-stall timeout
+         *  (30s default, configurable via -miningwritetimeout) because the
+         *  miner's TCP receive window may temporarily close during CPU-intensive
+         *  proof-of-work computation.
+         *
+         *  @return write-stall timeout in milliseconds.
+         *
+         **/
+        uint32_t GetWriteTimeout() const final;
+
+        /** GetMaxSendBuffer
+         *
+         *  Authenticated stateless mining connections use a larger send buffer
+         *  (5 MB default, configurable via -miningmaxsendbuffer) because push
+         *  notifications are the primary delivery mechanism for fresh work.
+         *  A slow-reading miner must not be killed with DISCONNECT::BUFFER
+         *  merely because it is busy hashing.
+         *
+         *  Unauthenticated connections return the default 3 MB limit.
+         *
+         *  @return maximum send buffer size in bytes for this connection.
+         *
+         **/
+        uint64_t GetMaxSendBuffer() const final;
+
+        /** GetContext
+         *
+         *  Get the current mining context (for server-level operations like notifications).
+         *  Returns a copy under mutex protection to prevent data races.
+         *
+         *  @return Copy of the current mining context
+         *
+         **/
+        MiningContext GetContext();
+
+        /** SendChannelNotification
+         *
+         *  Send a channel-specific push notification to this miner.
+         *  Called from server broadcast when blockchain advances.
+         *
+         *  Updates context with notification statistics after sending.
+         *
+         **/
+        void SendChannelNotification();
+
+
+        /** SendStatelessTemplate
+         *
+         *  Send a complete mining template using mirrored GET_BLOCK opcode 0xD081
+         *  (Mirror(0x81) / STATELESS_GET_BLOCK).
+         *  This is used by the stateless mining protocol for NexusMiner.
+         *
+         *  Packet format (228 bytes total):
+         *  - Opcode: 0xD081 (2 bytes, big-endian)
+         *  - Metadata (12 bytes, big-endian):
+         *    - Unified height (4 bytes)
+         *    - Channel height (4 bytes)
+         *    - Difficulty (4 bytes)
+         *  - Block template (216 bytes): Serialized Tritium block
+         *
+         *  Called after miner sends STATELESS_MINER_READY (0xD007).
+         *
+         **/
+        void SendStatelessTemplate();
+
+        /** TryAttachBlockTemplate
+         *
+         *  Best-effort template tag-along with PUSH notification.
+         *  Creates a block template and sends it as BLOCK_DATA immediately after
+         *  the push notification.  If template creation fails, the notification was
+         *  already sent and the miner will fall back to GET_BLOCK or GET_ROUND.
+         *
+         **/
+        void TryAttachBlockTemplate(const uint1024_t& hashExpectedTip);
+
+        /** SendNodeShutdown
+         *
+         *  Send a NODE_SHUTDOWN (0xD0FF) packet to notify the miner of graceful shutdown.
+         *  The miner should stop its workers cleanly and wait before reconnecting.
+         *
+         *  @param[in] nReasonCode  Shutdown reason: 1=GRACEFUL, 2=MAINTENANCE
+         *
+         **/
+        void SendNodeShutdown(uint32_t nReasonCode = GracefulShutdown::REASON_GRACEFUL);
+
+        /** Check whether NODE_SHUTDOWN was already attempted on this connection. **/
+        bool NodeShutdownSent() const
+        {
+            return m_nodeShutdownNotification.Sent();
+        }
+        
+        // ═══════════════════════════════════════════════════════════════════════
+        // DIFFICULTY CACHING (Performance Optimization)
+        // ═══════════════════════════════════════════════════════════════════════
+
+        /** Per-channel difficulty cache entry — each channel carries its own
+         *  difficulty value AND its own freshness timestamp.  Using a single
+         *  shared timestamp (the old design) allowed a write to channel 2 to
+         *  mark channel 1's stale-or-zero value as fresh, producing the
+         *  "nBits = 0" template bug.  The struct is cache-line-padded to
+         *  prevent false sharing between channels.
+         **/
+        struct alignas(64) PaddedDifficultyCache {
+            std::atomic<uint32_t> nDifficulty{0};
+            std::atomic<uint64_t> nCacheTime{0};
+        };
+        static PaddedDifficultyCache nDiffCacheValue[3];  // Per channel [0=PoS, 1=Prime, 2=Hash]
+        
+        /** GetCachedDifficulty
+         *
+         *  @brief Get difficulty with 1-second TTL cache
+         *  
+         *  Reduces expensive GetNextTargetRequired() calls during high mining activity.
+         *  Cache is shared across all miner connections for consistency.
+         * 
+         *  @param[in] nChannel Mining channel (0=PoS, 1=Prime, 2=Hash)
+         *  @return Target difficulty bits for the channel
+         *
+         **/
+        static uint32_t GetCachedDifficulty(uint32_t nChannel);
+
+    private:
+        /** respond
+         *
+         *  Sends a stateless packet response.
+         *
+         *  @param[in] packet The stateless packet to send.
+         *
+         **/
+        void respond(const StatelessPacket& packet);
+
+        /** ForceFreshTemplatePush
+         *
+         *  [Option A] Anti-doom-loop hardening for SUBMIT_BLOCK staleness rejections.
+         *
+         *  Any SUBMIT_BLOCK rejection that stems from the template being stale
+         *  (hashPrevBlock mismatch, committed/stale vtx, stale producer sigchain,
+         *  or a failed AcceptMinedBlock() ledger write) means the miner is now
+         *  sitting on dead work and depends entirely on its own poll/backoff
+         *  timers to notice.  On a weak network that round-trip can be slow
+         *  enough that the miner declares a degraded/stopped state before a
+         *  fresh template arrives.
+         *
+         *  Invalidates the stale cached template (if any), arms
+         *  m_force_next_push + m_get_block_cooldown, and immediately calls
+         *  SendStatelessTemplate() so the miner receives a valid template right
+         *  after rejection instead of waiting out its own recovery timers.
+         *
+         *  Mirrors the pattern already proven for the AcceptMinedBlock()
+         *  failure path; this generalizes it to every staleness-rooted
+         *  SUBMIT_BLOCK rejection.
+         *
+         *  @param[in] hashMerkleStale Merkle root of the rejected/stale cached
+         *                             template to invalidate; pass 0 to skip
+         *                             cache invalidation (e.g. unknown template).
+         *
+         *  Note: SendStatelessTemplate() is best-effort and returns void (matching
+         *  its existing signature used elsewhere in this class); if template
+         *  creation transiently fails, the miner falls back to its own GET_BLOCK
+         *  poll/backoff exactly as it would have without this proactive push, so
+         *  no additional error handling is required here.
+         *
+         **/
+        void ForceFreshTemplatePush(const uint512_t& hashMerkleStale = uint512_t(0));
+
+        /** new_block
+         *
+         *  Adds a new block to the map.
+         *
+         *  @return Pointer to newly created block, or nullptr on failure.
+         *
+         **/
+        TAO::Ledger::Block* new_block(const uint1024_t& hashExpectedTip = uint1024_t(0),
+                                      bool fValidateExpectedTip = false);
+
+        /** find_block
+         *
+         *  Determines if the block exists.
+         *
+         *  @param[in] hashMerkleRoot The merkle root to search for.
+         *
+         *  @return True if block exists, false otherwise.
+         *
+         **/
+        bool find_block(const uint512_t& hashMerkleRoot);
+
+        /** sign_block
+         *
+         *  Signs the block to seal the proof of work.
+         *
+         *  @param[in] nNonce The nonce secret for the block proof.
+         *  @param[in] hashMerkleRoot The root hash of the merkle tree.
+         *  @param[in] vOffsets Prime offsets (empty for Hash channel).
+         *  @param[in] pBlock Pre-resolved block pointer (captured under MUTEX).
+         *  @param[in] nTemplateCreationTime Template creation timestamp for staleness check.
+         *  @param[in] nTemplateChannel Template channel for staleness check.
+         *  @param[in] nTemplateChannelHeight Template channel height for staleness check.
+         *
+         *  @return True if block is valid, false otherwise.
+         *
+         **/
+        bool sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot, const std::vector<uint8_t>& vOffsets,
+                        TAO::Ledger::Block* pBlock, uint64_t nTemplateCreationTime,
+                        uint32_t nTemplateChannel, uint32_t nTemplateChannelHeight);
+
+        /** clear_map
+         *
+         *  Clear the blocks map.
+         *
+         **/
+        void clear_map();
+
+        /** CleanupStaleTemplates
+         *
+         *  Remove templates that are no longer valid due to height changes or age.
+         *  This is called automatically when blockchain height changes or periodically
+         *  to prevent miners from working on stale templates.
+         *
+         *  @param[in] nCurrentHeight Current blockchain height (templates for other heights are removed)
+         *
+         **/
+        void CleanupStaleTemplates(uint32_t nCurrentHeight);
+
+        /** Start/stop the async BLOCK_DATA worker. */
+        void StartTemplateWorker();
+        void StopTemplateWorker();
+
+        /** Queue one coalesced BLOCK_DATA build/send request. */
+        void ScheduleTemplateWork(TemplateWorkReason eReason,
+                                  const uint1024_t& hashExpectedTip = uint1024_t(0),
+                                  bool fValidateExpectedTip = false,
+                                  uint32_t nChannel = 0);
+
+        /** Main loop for the async BLOCK_DATA worker. */
+        void TemplateWorkerLoop();
+
+        /** Build and queue the latest BLOCK_DATA payload from the worker thread. */
+        bool QueueCurrentBlockDataTemplate(TemplateWorkReason eReason,
+                                           const uint1024_t& hashExpectedTip,
+                                           bool fValidateExpectedTip,
+                                           uint32_t nChannel,
+                                           const std::chrono::steady_clock::time_point& tScheduledAt);
+
+        /** GetChannelManager (PR #136: Fork-Aware Channel State Management)
+         *
+         *  Get the appropriate channel state manager for a given channel.
+         *  
+         *  @param[in] nChannel Mining channel (1=Prime, 2=Hash)
+         *  @return Pointer to channel manager, or nullptr if invalid channel
+         *
+         **/
+        ChannelStateManager* GetChannelManager(uint32_t nChannel);
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // RATE LIMIT METHODS
+        // ═══════════════════════════════════════════════════════════════════════
+        
+        /** CheckRateLimit
+         *
+         *  @brief Check if request is allowed under rate limits
+         * 
+         *  AUTOMATED: No manual override possible
+         *  TRANSPARENT: Logs all violations with clear reasons
+         *  FAIR: Same rules for all connections
+         * 
+         *  @param[in] nRequestType The request type being checked (16-bit opcode)
+         *  @return true if allowed, false if rate limited
+         *
+         **/
+        bool CheckRateLimit(uint16_t nRequestType, uint32_t* pnRetryAfterMs = nullptr);
+        
+        /** RecordViolation
+         *
+         *  @brief Record a rate limit violation
+         * 
+         *  Graduated response:
+         *  - Violations 1-3: Warning only
+         *  - Violations 4-6: Add strike
+         *  - Violations 7-10: Enable throttle mode
+         *  - Violations 11+: Disconnect + cooldown
+         * 
+         *  @param[in] strReason Human-readable reason for the violation
+         *
+         **/
+        void RecordViolation(const std::string& strReason);
+
+        /** Build per-session/lane limiter key for GET_BLOCK rolling policy. **/
+        std::string GetBlockRateKey() const;
+
+        /** Send explicit machine-readable control response for non-success GET_BLOCK outcomes. **/
+        void SendGetBlockControlResponse(GetBlockPolicyReason eReason, uint32_t nRetryAfterMs, bool fAuthenticatedPath);
+
+        /** Send BLOCK_DATA and enforce authenticated-path non-empty payload invariant. **/
+        void SendGetBlockDataResponse(const std::vector<uint8_t>& vPayload, bool fAuthenticatedPath);
+
+        /** Centralized session/auth/channel gate for post-auth mining opcodes. **/
+        bool PreflightSessionGate(const StatelessPacket& PACKET, const MiningContext& ctxSnap);
+
+        /** IsThrottled
+         *
+         *  @brief Check if connection should be in throttle mode
+         *  @return true if requests should be delayed
+         *
+         **/
+        bool IsThrottled() const { return m_rateLimit.fThrottleMode; }
+    };
+}
+
+#endif

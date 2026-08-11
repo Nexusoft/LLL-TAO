@@ -142,6 +142,123 @@ namespace TAO
                 )
             );
 
+
+            /* Handle for get/mininginfo */
+            mapFunctions["get/mininginfo"] = Function
+            (
+                std::bind
+                (
+                    &System::GetMiningInfo,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for set/mining */
+            mapFunctions["set/mining"] = Function
+            (
+                std::bind
+                (
+                    &System::SetMining,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for list/miners */
+            mapFunctions["list/miners"] = Function
+            (
+                std::bind
+                (
+                    &System::ListMiners,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for get/minerstatus */
+            mapFunctions["get/minerstatus"] = Function
+            (
+                std::bind
+                (
+                    &System::GetMinerStatus,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for disconnect/miner */
+            mapFunctions["disconnect/miner"] = Function
+            (
+                std::bind
+                (
+                    &System::DisconnectMiner,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for generate/falconkey */
+            mapFunctions["generate/falconkey"] = Function
+            (
+                std::bind
+                (
+                    &System::GenerateFalconKey,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for list/falconkeys */
+            mapFunctions["list/falconkeys"] = Function
+            (
+                std::bind
+                (
+                    &System::ListFalconKeys,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for test/falconauth */
+            mapFunctions["test/falconauth"] = Function
+            (
+                std::bind
+                (
+                    &System::TestFalconAuth,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
+
+            /* Handle for bind/falconkey */
+            mapFunctions["bind/falconkey"] = Function
+            (
+                std::bind
+                (
+                    &System::BindFalconKey,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+            );
+
         }
 
 
@@ -246,6 +363,7 @@ namespace TAO
             /* Number of transactions in the node's mempool*/
             jRet["txtotal"] = TAO::Ledger::mempool.Size();
             jRet["conflicts"] = TAO::Ledger::mempool.Conflicts();
+            jRet["conflict_deps"] = TAO::Ledger::mempool.ConflictDependents();
 
             /* Then check connections to the tritium server */
             if(LLP::TRITIUM_SERVER)
@@ -307,24 +425,24 @@ namespace TAO
                     /* Unix timestamp of the last time this node had any communications with the peer */
                     obj["lastseen"] = connection.get()->nLastPing.load();
 
-                    /* See if the connection is in the address manager */
+                    /* See if the connection is in the address manager. Use the atomic
+                     * Get() overload so a concurrent removal/ban between a separate
+                     * Has()/Get() pair can't throw std::out_of_range. */
+                    LLP::TrustAddress addrInfo;
                     if(LLP::TRITIUM_SERVER->GetAddressManager() != nullptr
-                    && LLP::TRITIUM_SERVER->GetAddressManager()->Has(connection.get()->addr))
+                    && LLP::TRITIUM_SERVER->GetAddressManager()->Get(connection.get()->addr, addrInfo))
                     {
-                        /* Get the trust address from the address manager */
-                        const LLP::TrustAddress& trustAddress = LLP::TRITIUM_SERVER->GetAddressManager()->Get(connection.get()->addr);
-
                         /* The number of connections successfully established with this peer since this node started */
-                        obj["connects"] = trustAddress.nConnected;
+                        obj["connects"] = addrInfo.nConnected;
 
                         /* The number of connections dropped with this peer since this node started */
-                        obj["drops"]    = trustAddress.nDropped;
+                        obj["drops"]    = addrInfo.nDropped;
 
                         /* The number of failed connection attempts to this peer since this node started */
-                        obj["fails"]    = trustAddress.nFailed;
+                        obj["fails"]    = addrInfo.nFailed;
 
                         /* The score value assigned to this peer based on latency and other connection statistics.   */
-                        obj["score"]    = trustAddress.Score();
+                        obj["score"]    = addrInfo.Score();
                     }
 
                     jRet.push_back(obj);

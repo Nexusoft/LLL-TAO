@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
+#include <LLP/include/tx_response_window.h>
 #include <LLP/packets/message.h>
 #include <LLP/templates/base_connection.h>
 #include <LLP/templates/events.h>
@@ -29,8 +30,230 @@ ________________________________________________________________________________
 
 #include <Util/include/memory.h>
 
+#include <atomic>
+#include <chrono>
+#include <mutex>
+#include <thread>
+
 namespace LLP
 {
+
+    /** GetRequestRateTracker
+     *
+     *  Per-connection rolling-window rate tracker for ACTION::GET flood prevention.
+     *  Limits the number of GET::BLOCK and GET::TRANSACTION requests a single peer
+     *  can issue within a configurable time window, and yields the CPU when a per-
+     *  second score threshold is exceeded so the mining notification path is not
+     *  starved.
+     *
+     **/
+    struct GetRequestRateTracker
+    {
+        /** Number of ACTION::GET BLOCK requests counted in the current window. **/
+        std::atomic<uint32_t> nGetBlockCount{0};
+
+        /** Number of ACTION::GET TRANSACTION requests counted in the current window. **/
+        std::atomic<uint32_t> nGetTxCount{0};
+
+        /** Cumulative score accumulated within the current one-second slice.
+         *  Used to decide when to yield() to other threads. **/
+        std::atomic<uint32_t> nGetScorePerSecond{0};
+
+        /** Start of the current 60-second rolling window. **/
+        std::chrono::steady_clock::time_point tWindowStart{std::chrono::steady_clock::now()};
+
+        /** Start of the current one-second slice for yield scoring. **/
+        std::chrono::steady_clock::time_point tSecondStart{std::chrono::steady_clock::now()};
+
+        /** Length of the rolling window in seconds.
+         *  60 seconds matches the DDOS subsystem's default moving-average timespan
+         *  (-timespan) so the two rate-limiting mechanisms operate on the same
+         *  time scale without requiring separate configuration. **/
+        static constexpr uint32_t WINDOW_SECONDS = 60;
+
+        /** Maximum ACTION::GET BLOCK requests per connection per window.
+         *  Lowered from 500 to 100 to reduce SECTOR_MUTEX contention with mining.
+         *  Configurable via -maxgetblocks (default 100). **/
+        static constexpr uint32_t DEFAULT_MAX_GET_BLOCKS = 100;
+
+        /** Maximum ACTION::GET TRANSACTION requests per connection per window.
+         *  Configurable via -maxgettx (default 2000). **/
+        static constexpr uint32_t DEFAULT_MAX_GET_TX = 2000;
+
+        /** Cumulative score per second above which the data thread yields to give
+         *  the mining notification path CPU time.
+         *  Configurable via -getyieldthreshold (default 200). **/
+        static constexpr uint32_t DEFAULT_YIELD_SCORE = 200;
+
+
+        /** MaybeResetWindow
+         *
+         *  Resets window counters when the 60-second window has expired.
+         *  Must be called at the start of every ACTION::GET iteration.
+         *
+         **/
+        void MaybeResetWindow()
+        {
+            const auto tNow = std::chrono::steady_clock::now();
+
+            /* Reset the rolling 60-second window if expired. */
+            if(std::chrono::duration_cast<std::chrono::seconds>(tNow - tWindowStart).count()
+               >= static_cast<int64_t>(WINDOW_SECONDS))
+            {
+                nGetBlockCount.store(0, std::memory_order_relaxed);
+                nGetTxCount.store(0, std::memory_order_relaxed);
+                tWindowStart = tNow;
+            }
+
+            /* Reset the per-second yield score if the second has turned over. */
+            if(std::chrono::duration_cast<std::chrono::seconds>(tNow - tSecondStart).count() >= 1)
+            {
+                nGetScorePerSecond.store(0, std::memory_order_relaxed);
+                tSecondStart = tNow;
+            }
+        }
+
+
+        /** ShouldThrottleBlock
+         *
+         *  Returns true when this connection has exceeded the per-window GET BLOCK limit.
+         *
+         *  @param[in] nMaxBlocks  Window limit (from -maxgetblocks).
+         *
+         **/
+        bool ShouldThrottleBlock(const uint32_t nMaxBlocks = DEFAULT_MAX_GET_BLOCKS) const
+        {
+            return nGetBlockCount.load(std::memory_order_relaxed) >= nMaxBlocks;
+        }
+
+
+        /** ShouldThrottleTx
+         *
+         *  Returns true when this connection has exceeded the per-window GET TRANSACTION limit.
+         *
+         *  @param[in] nMaxTx  Window limit (from -maxgettx).
+         *
+         **/
+        bool ShouldThrottleTx(const uint32_t nMaxTx = DEFAULT_MAX_GET_TX) const
+        {
+            return nGetTxCount.load(std::memory_order_relaxed) >= nMaxTx;
+        }
+
+
+        /** RecordGetBlock
+         *
+         *  Increments the block counter and the per-second score.
+         *  Returns true when the per-second score has exceeded the yield threshold,
+         *  signalling the caller to std::this_thread::yield().
+         *
+         *  Block requests contribute 50 points to the per-second yield score,
+         *  matching the weight used by the DDOS subsystem (DDOS->rSCORE += 50).
+         *
+         *  @param[in] nYieldThreshold  Yield threshold (from -getyieldthreshold).
+         *
+         **/
+        bool RecordGetBlock(const uint32_t nYieldThreshold = DEFAULT_YIELD_SCORE)
+        {
+            nGetBlockCount.fetch_add(1, std::memory_order_relaxed);
+            return nGetScorePerSecond.fetch_add(50, std::memory_order_relaxed) + 50 >= nYieldThreshold;
+        }
+
+
+        /** RecordGetTx
+         *
+         *  Increments the transaction counter and the per-second score.
+         *  Returns true when the per-second score has exceeded the yield threshold.
+         *
+         *  Transaction requests contribute 15 points to the per-second yield score,
+         *  matching the weight used by the DDOS subsystem (DDOS->rSCORE += 15).
+         *
+         *  @param[in] nYieldThreshold  Yield threshold (from -getyieldthreshold).
+         *
+         **/
+        bool RecordGetTx(const uint32_t nYieldThreshold = DEFAULT_YIELD_SCORE)
+        {
+            nGetTxCount.fetch_add(1, std::memory_order_relaxed);
+            return nGetScorePerSecond.fetch_add(15, std::memory_order_relaxed) + 15 >= nYieldThreshold;
+        }
+    };
+
+
+    /** GlobalGetBlockLimiter
+     *
+     *  Process-wide (global) rate limiter for ACTION::GET BLOCK serving.
+     *
+     *  Prevents aggregate P2P block sync traffic from monopolising shared
+     *  LLD database I/O, which would starve mining template creation
+     *  (new_block() calls from the DataThread and FLUSH_THREAD).
+     *
+     *  Per-connection GetRequestRateTracker limits each peer individually,
+     *  but with 20+ peers each allowed 500 blocks / 60 s the aggregate
+     *  I/O can reach ~167 reads/s.  This global cap provides a hard ceiling
+     *  that applies across all connections combined.
+     *
+     *  Configurable via -maxglobalgetblocks (default 100 / second).
+     *
+     **/
+    struct GlobalGetBlockLimiter
+    {
+        /** Rolling count of blocks served in the current 1-second window. **/
+        static std::atomic<uint32_t> nGlobalBlockCount;
+
+        /** Start of the current 1-second window (ms since epoch). **/
+        static std::atomic<uint64_t> nWindowStartMs;
+
+        /** Default cap: 100 ACTION::GET BLOCK responses per second across all peers. **/
+        static constexpr uint32_t DEFAULT_MAX_GLOBAL_GET_BLOCKS_PER_SEC = 100;
+
+        /** Window length in milliseconds. **/
+        static constexpr uint64_t WINDOW_MS = 1000;
+
+
+        /** ShouldThrottle
+         *
+         *  Returns true when the global block-serve rate has exceeded the cap.
+         *  Resets the window counter when the window has expired.
+         *  Thread-safe via atomic CAS on the window start.
+         *
+         *  @param[in] nMaxPerSec  Cap from -maxglobalgetblocks.
+         *
+         *  @return true if the caller should skip serving this block.
+         *
+         **/
+        static bool ShouldThrottle(uint32_t nMaxPerSec = DEFAULT_MAX_GLOBAL_GET_BLOCKS_PER_SEC)
+        {
+            const uint64_t tNowMs = static_cast<uint64_t>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now().time_since_epoch()).count());
+
+            uint64_t tWindowMs = nWindowStartMs.load(std::memory_order_relaxed);
+
+            if(tNowMs - tWindowMs >= WINDOW_MS)
+            {
+                /* Try to reset: only the first thread to win the CAS resets the counter. */
+                if(nWindowStartMs.compare_exchange_strong(tWindowMs, tNowMs,
+                       std::memory_order_acq_rel, std::memory_order_relaxed))
+                {
+                    nGlobalBlockCount.store(0, std::memory_order_release);
+                }
+            }
+
+            return nGlobalBlockCount.load(std::memory_order_acquire) >= nMaxPerSec;
+        }
+
+
+        /** RecordServed
+         *
+         *  Increments the global block-serve counter.
+         *  Call after ShouldThrottle() returns false (i.e., we are about to serve).
+         *
+         **/
+        static void RecordServed()
+        {
+            nGlobalBlockCount.fetch_add(1, std::memory_order_relaxed);
+        }
+    };
+
 
     /** TritiumNode
      *
@@ -114,8 +337,10 @@ namespace LLP
         /** Actions invoke behavior in remote node. **/
         struct ACTION
         {
-            /** Limit for maximum items that can be requested per packet. **/
-            static const uint32_t GET_MAX_ITEMS = 100;
+            /** Limit for maximum items that can be requested per packet.
+             *  Lowered from 100 to 10 to prevent a single burst from
+             *  exhausting the per-connection budget in one packet. **/
+            static const uint32_t GET_MAX_ITEMS = 10;
 
 
             /** Limit for maximum notifications that can be broadcast per packet. **/
@@ -130,8 +355,15 @@ namespace LLP
             static const uint32_t SUBSCRIBE_MAX_ITEMS = 100;
 
 
-            /** Limit for the maximum consecutive retries for missing transactions issue. **/
+            /** Limit for the maximum consecutive retries for the missing
+             *  transactions issue before we stop re-requesting a block's missing
+             *  transactions so a permanently unresolvable transaction can't wedge
+             *  the node. **/
             static const uint32_t MAX_MISSING_TRANSACTIONS_RETRIES = 50;
+
+            /** Number of distinct peers to fan out per-transaction missing-hash
+             *  recovery requests to when branch recovery escalates. **/
+            static const uint32_t MISSING_TX_RECOVERY_PEER_FANOUT = 3;
 
 
             /* Message enumeration values. */
@@ -245,6 +477,10 @@ namespace LLP
     private:
 
 
+        /** Per-connection rate tracker for ACTION::GET flood prevention. **/
+        GetRequestRateTracker m_getTracker;
+
+
         /** State of if this node has logged in to remote node. **/
         std::atomic<bool> fLoggedIn;
 
@@ -278,6 +514,19 @@ namespace LLP
 
         /** Used for a transaction record for a node synchronizing with us. **/
         std::map<uint512_t, Legacy::Transaction> mapLegacy;
+
+
+        /** Bounded per-peer response window that permits raw TYPES::TRANSACTION
+         *  messages when they are expected as part of a locally-initiated
+         *  SPECIFIER::TRANSACTIONS block response from this peer.
+         *
+         *  Protected by m_txRespWindowMutex because OpenTxResponseWindow() may be
+         *  called from another peer connection's DataThread (e.g. when the active
+         *  sync peer fires off a GET to a randomly-selected helper peer). **/
+        TxResponseWindow m_txRespWindow;
+
+        /** Mutex protecting m_txRespWindow against concurrent DataThread access. **/
+        std::mutex m_txRespWindowMutex;
 
 
     public:
@@ -388,6 +637,11 @@ namespace LLP
 
         /** This node's current last index. **/
         uint1024_t hashLastIndex;
+
+
+        /** Counter for consecutive identical LASTINDEX notifications.
+         *  Tolerates a few repeats before triggering a node switch. **/
+        uint32_t nConsecutiveLastIndex;
 
 
         /** Counter of total orphans. **/
@@ -561,6 +815,34 @@ namespace LLP
         void PushBlock(const uint8_t nSpecifier, const TAO::Ledger::BlockState& rBlock);
 
 
+        /** OpenTxResponseWindow
+         *
+         *  Open a bounded per-peer response window that authorises incoming raw
+         *  TYPES::TRANSACTION messages expected as part of a SPECIFIER::TRANSACTIONS
+         *  block response.  Called immediately before queueing the corresponding
+         *  ACTION::GET or ACTION::LIST request to this peer.
+         *
+         *  Any previously active window on this peer is replaced.
+         *
+         *  Thread-safe: may be called from another connection's DataThread (for
+         *  example when a random helper peer is selected to serve a missing-tx
+         *  re-request).
+         *
+         *  @param[in] eKind       GET (single-block recovery) or LIST (branch recovery).
+         *  @param[in] hashTarget  GET block hash or LIST locator target.
+         *  @param[in] hashStop    LIST stop hash (zero for GET).
+         *
+         **/
+        uint64_t OpenTxResponseWindow(TxResponseKind eKind, const uint1024_t& hashTarget,
+                                      const uint1024_t& hashStop = 0);
+
+        /** Roll back an unqueueable request without cancelling a newer request. **/
+        void RollbackTxResponseWindow(uint64_t nRequestId);
+
+        /** Close a GET window only when its requested block was received. **/
+        void CloseTxResponseWindowForBlock(const uint1024_t& hashBlock);
+
+
         /** NewMessage
          *
          *  Creates a new message with a commands and data.
@@ -587,10 +869,10 @@ namespace LLP
          *  @param[in] nMsg The message type.
          *
          **/
-        void PushMessage(const uint16_t nMsg)
+        bool PushMessage(const uint16_t nMsg)
         {
             MessagePacket RESPONSE(nMsg);
-            WritePacket(RESPONSE);
+            return WritePacket(RESPONSE);
         }
 
 
@@ -600,14 +882,15 @@ namespace LLP
          *
          **/
         template<typename... Args>
-        void PushMessage(const uint16_t nMsg, Args&&... args)
+        bool PushMessage(const uint16_t nMsg, Args&&... args)
         {
             DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
             ((ssData << args), ...);
 
-            WritePacket(NewMessage(nMsg, ssData));
+            const bool fQueued = WritePacket(NewMessage(nMsg, ssData));
 
             debug::log(4, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, ssData.size(), " bytes");
+            return fQueued;
         }
 
 

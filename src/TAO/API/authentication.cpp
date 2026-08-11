@@ -40,6 +40,10 @@ namespace TAO::API
     std::vector<std::recursive_mutex> Authentication::vLocks;
 
 
+    /* Static initialize of the global authentication epoch counter. */
+    std::atomic<uint64_t> Authentication::nEpoch{0};
+
+
     /* Initializes the current authentication systems. */
     void Authentication::Initialize()
     {
@@ -55,6 +59,9 @@ namespace TAO::API
 
         /* Add the new session to sessions map. */
         mapSessions.insert(std::make_pair(hashSession, std::move(rSession)));
+
+        /* Advertise the credential-store mutation to lock-free cache readers. */
+        bump_epoch();
 
         /* Handle auto-tx feature. */
         if(config::GetBoolArg("-autotx", false))
@@ -594,6 +601,9 @@ namespace TAO::API
 
             /* Update our internal session. */
             rSession.Update(strNewPIN, nUpdatedActions);
+
+            /* Lock-action / PIN change is a cache-invalidating event. */
+            bump_epoch();
         }
     }
 
@@ -621,6 +631,9 @@ namespace TAO::API
 
             /* Update our internal session. */
             rSession.Update(strPassword);
+
+            /* Password change invalidates any cached credential handle. */
+            bump_epoch();
         }
     }
 
@@ -728,6 +741,9 @@ namespace TAO::API
 
         /* Erase the session from map. */
         mapSessions.erase(hashSession);
+
+        /* Advertise the credential-store mutation to lock-free cache readers. */
+        bump_epoch();
     }
 
 

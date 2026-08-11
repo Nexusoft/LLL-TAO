@@ -50,8 +50,12 @@ namespace LLD
                         77773,
                         nRegisterCacheSize * 1024 * 1024);
 
-        /* Create the ledger database instance. */
-        const uint32_t nLedgerCacheSize = config::GetArg("-ledgercache", 2);
+        /* Create the ledger database instance.
+         * Default cache raised to 64 MB for mining node workloads.
+         * Blocks average 216 bytes, so 64 MB holds ~300K typical blocks in
+         * BinaryLRU cache, dramatically reducing SECTOR_MUTEX contention
+         * between P2P block-serving and mining template creation. */
+        const uint32_t nLedgerCacheSize = config::GetArg("-ledgercache", 64);
         Ledger    = new LedgerDB(
                         FLAGS::CREATE | FLAGS::FORCE,
                         config::fClient.load() ? 77773 : (256 * 256 * 64),
@@ -273,6 +277,30 @@ namespace LLD
 
 
     /* Global handler for all LLD instances. */
+    bool HasOpenTransaction(const uint8_t nFlags, const uint16_t nInstances)
+    {
+        /* Memory-only flag modes do not use physical SectorDatabase transactions. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER || nFlags == TAO::Ledger::FLAGS::SANITIZE)
+            return false;
+
+        /* Check each database instance that would be opened by TxnBegin(nFlags, nInstances).
+         * Any single instance having pTransaction != nullptr means a transaction is open. */
+        if(Ledger   && (nInstances & INSTANCES::LEDGER)   && Ledger->HasTransaction())
+            return true;
+        if(Contract && (nInstances & INSTANCES::CONTRACT) && Contract->HasTransaction())
+            return true;
+        if(Register && (nInstances & INSTANCES::REGISTER) && Register->HasTransaction())
+            return true;
+        if(Trust    && (nInstances & INSTANCES::TRUST)    && Trust->HasTransaction())
+            return true;
+        if(Legacy   && (nInstances & INSTANCES::LEGACY)   && Legacy->HasTransaction())
+            return true;
+
+        return false;
+    }
+
+
+    /* Global handler for all LLD instances. */
     void TxnBegin(const uint8_t nFlags, const uint16_t nInstances)
     {
         /* Start the contract DB transaction. */
@@ -371,11 +399,12 @@ namespace LLD
 
 
     /* Global handler for all LLD instances. */
-    void TxnCommit(const uint8_t nFlags, const uint16_t nInstances)
+    bool TxnCommit(const uint8_t nFlags, const uint16_t nInstances)
     {
-        /* Special check if using MINER or SANITIZE flags. */
+        /* Special check if using MINER or SANITIZE flags — intentional short-circuit,
+         * not a failure: callers use these flags to prevent accidental commits. */
         if(nFlags == TAO::Ledger::FLAGS::MINER || nFlags == TAO::Ledger::FLAGS::SANITIZE)
-            return; //we want to abort in case this is called accidentally. We don't want to commit these states to internal memory
+            return true;
 
         /* Commit the contract DB transaction. */
         if(Contract && (nInstances & INSTANCES::CONTRACT))
@@ -389,9 +418,9 @@ namespace LLD
         if(Ledger && (nInstances & INSTANCES::LEDGER))
             Ledger->MemoryCommit();
 
-        /* Handle memory commits if in memory mode. */
+        /* Handle memory commits if in memory mode — intentional short-circuit, not a failure. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-            return;
+            return true;
 
         /* Set a checkpoint for Logical DB. */
         if(Logical && (nInstances & INSTANCES::LOGICAL))
@@ -422,61 +451,121 @@ namespace LLD
             Legacy->TxnCheckpoint();
 
 
+        /* Aggregate the per-instance TxnCommit() results.  All selected
+         * instances are attempted regardless of individual failures — do NOT
+         * short-circuit on the first failure, so that state doesn't diverge
+         * further than necessary if one instance fails. */
+        bool fAllSucceeded = true;
+
         /* Commit Logical DB transaction. */
         if(Logical && (nInstances & INSTANCES::LOGICAL))
-            Logical->TxnCommit();
+        {
+            if(!Logical->TxnCommit())
+            {
+                debug::error(FUNCTION, "Logical DB commit failed");
+                fAllSucceeded = false;
+            }
+        }
 
         /* Commit contract DB transaction. */
         if(Contract && (nInstances & INSTANCES::CONTRACT))
-            Contract->TxnCommit();
+        {
+            if(!Contract->TxnCommit())
+            {
+                debug::error(FUNCTION, "Contract DB commit failed");
+                fAllSucceeded = false;
+            }
+        }
 
         /* Commit register DB transaction. */
         if(Register && (nInstances & INSTANCES::REGISTER))
-            Register->TxnCommit();
+        {
+            if(!Register->TxnCommit())
+            {
+                debug::error(FUNCTION, "Register DB commit failed");
+                fAllSucceeded = false;
+            }
+        }
 
-        /* Commit legacy DB transaction. */
+        /* Commit ledger DB transaction. */
         if(Ledger && (nInstances & INSTANCES::LEDGER))
-            Ledger->TxnCommit();
+        {
+            if(!Ledger->TxnCommit())
+            {
+                debug::error(FUNCTION, "Ledger DB commit failed");
+                fAllSucceeded = false;
+            }
+        }
 
         /* Commit the client DB transaction. */
         if(Client && (nInstances & INSTANCES::CLIENT))
-            Client->TxnCommit();
+        {
+            if(!Client->TxnCommit())
+            {
+                debug::error(FUNCTION, "Client DB commit failed");
+                fAllSucceeded = false;
+            }
+        }
 
         /* Commit the trust DB transaction. */
         if(Trust && (nInstances & INSTANCES::TRUST))
-            Trust->TxnCommit();
+        {
+            if(!Trust->TxnCommit())
+            {
+                debug::error(FUNCTION, "Trust DB commit failed");
+                fAllSucceeded = false;
+            }
+        }
 
         /* Commit the legacy DB transaction. */
         if(Legacy && (nInstances & INSTANCES::LEGACY))
-            Legacy->TxnCommit();
+        {
+            if(!Legacy->TxnCommit())
+            {
+                debug::error(FUNCTION, "Legacy DB commit failed");
+                fAllSucceeded = false;
+            }
+        }
 
 
-        /* Abort the Logical DB transaction. */
+        /* Release the checkpoint markers for all selected instances.
+         * TxnRelease runs unconditionally after TxnCommit, regardless of commit
+         * outcome.  On success, SectorDatabase::TxnCommit() already nulled
+         * pTransaction; on failure it may still be set and TxnRelease will clean
+         * it up here.  Leaving a failed transaction intact for retry is not
+         * supported at the LLD layer — callers that receive false should abort
+         * their higher-level operation and rebuild rather than retrying the same
+         * transaction object.
+         *
+         * Note: TxnRelease is called for every selected instance below,
+         * regardless of whether that instance's TxnCommit succeeded or failed. */
         if(Logical && (nInstances & INSTANCES::LOGICAL))
             Logical->TxnRelease();
 
-        /* Abort the contract DB transaction. */
+        /* Release the contract DB transaction. */
         if(Contract && (nInstances & INSTANCES::CONTRACT))
             Contract->TxnRelease();
 
-        /* Abort the register DB transaction. */
+        /* Release the register DB transaction. */
         if(Register && (nInstances & INSTANCES::REGISTER))
             Register->TxnRelease();
 
-        /* Abort the ledger DB transaction. */
+        /* Release the ledger DB transaction. */
         if(Ledger && (nInstances & INSTANCES::LEDGER))
             Ledger->TxnRelease();
 
-        /* Abort the client DB transaction. */
+        /* Release the client DB transaction. */
         if(Client && (nInstances & INSTANCES::CLIENT))
             Client->TxnRelease();
 
-        /* Abort the trust DB transaction. */
+        /* Release the trust DB transaction. */
         if(Trust && (nInstances & INSTANCES::TRUST))
             Trust->TxnRelease();
 
-        /* Abort the legacy DB transaction. */
+        /* Release the legacy DB transaction. */
         if(Legacy && (nInstances & INSTANCES::LEGACY))
             Legacy->TxnRelease();
+
+        return fAllSucceeded;
     }
 }

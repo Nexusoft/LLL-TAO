@@ -19,10 +19,12 @@ ________________________________________________________________________________
 #include <LLP/templates/trigger.h>
 #include <LLP/include/version.h>
 
+#include <Util/include/args.h>
 #include <Util/include/mutex.h>
 #include <Util/templates/datastream.h>
 
 #include <vector>
+#include <queue>
 #include <condition_variable>
 
 namespace LLP
@@ -76,6 +78,94 @@ namespace LLP
 
     public:
 
+        /** IsTimeoutExempt
+         *
+         *  Virtual method to determine if this connection should be exempted from
+         *  the aggressive POLL_EMPTY and TIMEOUT_WRITE checks in the DataThread
+         *  polling loop.
+         *
+         *  Mining connections override this to return true when the miner has
+         *  completed Falcon authentication.  Authenticated miners are still
+         *  subject to a longer, finite read-idle timeout returned by
+         *  GetReadTimeout() — they are NOT exempt from read-idle timeout
+         *  entirely.  This prevents shadow-ban scenarios where a stalled read
+         *  pipeline would leave a connection alive indefinitely while server-
+         *  initiated PUSH notifications continue to succeed.
+         *
+         *  @return true if connection should bypass aggressive socket checks.
+         *
+         **/
+        virtual bool IsTimeoutExempt() const { return false; }
+
+
+        /** GetReadTimeout
+         *
+         *  Virtual method to return the maximum read-idle timeout in
+         *  milliseconds.  The DataThread uses this instead of the fixed
+         *  TIMEOUT * 1000 value when a connection is timeout-exempt
+         *  (authenticated mining connections).
+         *
+         *  The default returns 0, which means "use the DataThread TIMEOUT".
+         *  Mining connections override this to return a long but finite value
+         *  (default 600 000 ms = 10 minutes, configurable via
+         *  -miningreadtimeout) so that a stalled read pipeline is eventually
+         *  cleaned up rather than persisting indefinitely.
+         *
+         *  @return read-idle timeout in milliseconds, or 0 to use the default.
+         *
+         **/
+        virtual uint32_t GetReadTimeout() const { return 0; }
+
+
+        /** GetWriteTimeout
+         *
+         *  Virtual method to return the write-stall timeout in milliseconds.
+         *  The DataThread uses this to decide when to disconnect a connection
+         *  whose send buffer has pending data but no successful Flush() has
+         *  completed within the timeout period (DISCONNECT::TIMEOUT_WRITE).
+         *
+         *  The default is 5 000 ms (5 seconds), suitable for P2P connections.
+         *
+         *  Mining connections override this to return a longer timeout
+         *  (default 30 000 ms) because miners may temporarily stop reading
+         *  during CPU-intensive proof-of-work computation, causing the TCP
+         *  receive window to close.  A 5-second write stall is normal during
+         *  heavy hashing or fork resolution bursts.
+         *
+         *  @return write-stall timeout in milliseconds.
+         *
+         **/
+        virtual uint32_t GetWriteTimeout() const
+        {
+            return config::GetArg("-writetimeout", 5000);
+        }
+
+
+        /** GetMaxSendBuffer
+         *
+         *  Virtual method to return the maximum send buffer size for this
+         *  connection.  The DataThread uses this to decide when to disconnect
+         *  a connection whose send buffer has overflowed, and WritePacket()
+         *  uses it to decide when to drop outgoing packets.
+         *
+         *  Mining connections override this to return a much larger limit
+         *  (5 MB default) when the miner is authenticated, because push
+         *  notifications are the primary — not advisory — mechanism for
+         *  delivering fresh work to miners.  A slow reader must not trigger
+         *  DISCONNECT::BUFFER merely because it is busy hashing.
+         *
+         *  Unauthenticated connections inherit the default (3 MB) to prevent
+         *  resource abuse before Falcon authentication completes.
+         *
+         *  @return maximum send buffer size in bytes for this connection.
+         *
+         **/
+        virtual uint64_t GetMaxSendBuffer() const
+        {
+            return config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER);
+        }
+
+
         /** Incoming Packet Being Built. **/
         PacketType     INCOMING;
 
@@ -100,6 +190,10 @@ namespace LLP
         std::atomic<bool> fCONNECTED;
 
 
+        /** Count consecutive authenticated POLL_EMPTY near-misses. **/
+        std::atomic<uint32_t> nConsecutivePollEmptyStrikes;
+
+
         /** Index for the current data thread processing. **/
         int32_t nDataThread;
 
@@ -110,6 +204,119 @@ namespace LLP
 
         /** Condition variable pointer from data thread. **/
         std::condition_variable* FLUSH_CONDITION;
+
+
+        /** QueuePacket
+         *
+         *  Enqueues a pre-built packet for deferred sending by the write-service
+         *  path.
+         *  This decouples the caller (e.g., SendChannelNotification on the
+         *  block-acceptance notification thread) from SOCKET_MUTEX contention.
+         *  The caller builds the packet and enqueues it lock-free (relative to
+         *  the socket); FLUSH_THREAD drains the queue on its next iteration,
+         *  performing the actual WritePacket() buffering without blocking the
+         *  notification thread or the DataThread's ReadPacket() path.  On
+         *  Linux mining connections, EPOLLOUT-assisted DataThread service then
+         *  handles kernel-facing drain of buffered bytes.
+         *
+         *  @param[in] PACKET The packet to enqueue for deferred sending.
+         *
+         **/
+        void QueuePacket(const PacketType& PACKET)
+        {
+            {
+                LOCK(OUTGOING_MUTEX);
+                OUTGOING_QUEUE.push(PACKET);
+            }
+
+            /* Set atomic flag so HasQueuedPackets() can check lock-free. */
+            fHasOutgoing.store(true, std::memory_order_release);
+
+            /* Wake FLUSH_THREAD to drain the queue. */
+            if(FLUSH_CONDITION)
+                FLUSH_CONDITION->notify_all();
+        }
+
+
+        /** DrainOutgoingQueue
+         *
+         *  Called by FLUSH_THREAD to drain all queued outgoing packets into the
+         *  socket write path.
+         *  Each packet is written via WritePacket() which serializes it
+         *  and hands it to Socket::Write().
+         *
+         *  @return the number of packets drained.
+         *
+         **/
+        uint32_t DrainOutgoingQueue()
+        {
+            uint32_t nDrained = 0;
+
+            /* Grab all packets under lock, then release lock before writing.
+             * This minimizes contention between QueuePacket() callers and
+             * the FLUSH_THREAD drain path.  Use move-assignment to transfer
+             * ownership of queue contents efficiently. */
+            std::queue<PacketType> qLocal;
+            {
+                LOCK(OUTGOING_MUTEX);
+                qLocal = std::move(OUTGOING_QUEUE);
+
+                /* Reset the underlying queue to a clean empty state after move. */
+                OUTGOING_QUEUE = std::queue<PacketType>();
+            }
+
+            /* Clear atomic flag now that the queue is empty under lock.
+             * A concurrent QueuePacket() may re-set it immediately, which
+             * is correct — the next FLUSH_THREAD iteration will drain it. */
+            fHasOutgoing.store(false, std::memory_order_release);
+
+            /* Write each packet — WritePacket() handles buffering and
+             * SOCKET_MUTEX acquisition internally. */
+            while(!qLocal.empty())
+            {
+                WritePacket(qLocal.front());
+                qLocal.pop();
+                ++nDrained;
+            }
+
+            return nDrained;
+        }
+
+
+        /** HasQueuedPackets
+         *
+         *  Lock-free check for queued outgoing packets.
+         *  Uses an atomic flag updated by QueuePacket() and DrainOutgoingQueue()
+         *  to avoid mutex contention in the FLUSH_THREAD wait predicate
+         *  (which evaluates for every connection on every wakeup).
+         *
+         *  @return true if the outgoing queue is likely non-empty.
+         *
+         **/
+        bool HasQueuedPackets() const
+        {
+            return fHasOutgoing.load(std::memory_order_acquire);
+        }
+
+
+        /** NeedsWriteService
+         *
+         *  Semantic helper for pending outbound work on this connection.
+         *  True means the connection still needs write-side service from the
+         *  runtime, either because packets are still queued in memory or
+         *  because bytes are already buffered for socket delivery.
+         *
+         *  Linux mining DataThreads use this to decide when EPOLLOUT should be
+         *  armed without exposing the lower-level buffer and queue details to
+         *  the epoll coordination logic.
+         *
+         *  @return true if this connection still needs write-side service.
+         *
+         **/
+        bool NeedsWriteService() const
+        {
+            return HasQueuedPackets() || Buffered() > 0;
+        }
 
 
         /** Total incoming packets. **/
@@ -148,6 +355,22 @@ namespace LLP
 
         /** Special foreign triggers for connection. **/
         std::map<message_t, Trigger*> TRIGGERS;
+
+
+        /** Mutex to protect the outgoing packet queue. **/
+        std::mutex OUTGOING_MUTEX;
+
+
+        /** Queue of packets enqueued by QueuePacket() for deferred
+         *  sending by FLUSH_THREAD via DrainOutgoingQueue(). **/
+        std::queue<PacketType> OUTGOING_QUEUE;
+
+
+        /** Lock-free flag for HasQueuedPackets() — avoids mutex contention
+         *  in the FLUSH_THREAD wait predicate (evaluated for every connection
+         *  on every wakeup; with 500+ connections this saves ~500 mutex
+         *  acquisitions per predicate evaluation). **/
+        std::atomic<bool> fHasOutgoing{false};
 
 
     public:
@@ -296,7 +519,8 @@ namespace LLP
          *  @param[in] PACKET The packet of type PacketType to write.
          *
          **/
-        void WritePacket(const PacketType& PACKET);
+        bool WritePacket(const PacketType& PACKET);
+        bool WritePacket(const PacketType& PACKET, bool fPriority);
 
 
         /** ReadPacket

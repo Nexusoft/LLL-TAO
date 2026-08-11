@@ -1,0 +1,77 @@
+name: Release Windows Node
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch, tag, or commit to build"
+        required: false
+        default: ""
+      version:
+        description: "Version string for the portable ZIP name"
+        required: false
+        default: ""
+
+jobs:
+  build-windows-node:
+    name: Build nexus.exe portable ZIP
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Set up MSYS2 MinGW64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            base-devel
+            git
+            make
+            zip
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-openssl
+            mingw-w64-x86_64-db
+            mingw-w64-x86_64-miniupnpc
+            mingw-w64-x86_64-zlib
+
+      - name: Build nexus.exe
+        run: |
+          make -f makefile.cli clean || true
+          make -f makefile.cli -j"$(nproc)" \
+            OPENSSL_LIB_PATH=/mingw64/lib \
+            OPENSSL_INCLUDE_PATH=/mingw64/include \
+            BDB_LIB_PATH=/mingw64/lib \
+            BDB_INCLUDE_PATH=/mingw64/include \
+            MINIUPNPC_LIB_PATH=/mingw64/lib \
+            MINIUPNPC_INCLUDE_PATH=/mingw64/include
+
+      - name: Inspect runtime dependencies
+        run: |
+          test -f release/nexus.exe
+          ldd release/nexus.exe || true
+
+      - name: Package portable ZIP
+        env:
+          VERSION: ${{ inputs.version }}
+        run: scripts/package-windows-node-release.sh release/nexus.exe
+
+      - name: Upload portable ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-node-windows
+          path: |
+            dist/nexus-node-windows-x86_64-*.zip
+            dist/nexus-node-windows-x86_64-*.zip.sha256
+          if-no-files-found: error

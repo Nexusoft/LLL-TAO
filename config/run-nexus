@@ -17,7 +17,7 @@ DATA_DIR="/hostOS$HOSTOS_HOME/.Nexus_Core_Data_BETA"
 # nexus.conif into /root/.Nexus.
 #
 if [ -z "$HOSTOS_HOME" ]; then
-    mkdir /root/.Nexus
+    mkdir -p /root/.Nexus
 fi
 
 #

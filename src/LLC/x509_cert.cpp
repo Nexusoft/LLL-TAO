@@ -56,8 +56,14 @@ namespace LLC
         /* Store the CA Bundle path as this is only used for verification */
         strCertBundle = strCABundle;
 
-        /* Read the private key PEM file from the key path. */
+        /* Read the private key PEM file from the key path.
+         * The "e" flag (glibc extension) sets O_CLOEXEC to prevent the fd
+         * from leaking private key material into child processes. */
+#ifdef __linux__
+        FILE *pFile = fopen(strKey.c_str(), "rbe");
+#else
         FILE *pFile = fopen(strKey.c_str(), "rb");
+#endif
         if(!pFile)
             return debug::error(FUNCTION, "X509Cert : Unable to open certificate key file: ", strKey);
 
@@ -70,7 +76,11 @@ namespace LLC
         debug::log(0, "Loading external SSL certificate: ", strCert);
 
         /* Read the certificate PEM file from the certificate path. */
+#ifdef __linux__
+        pFile = fopen(strCert.c_str(), "rbe");
+#else
         pFile = fopen(strCert.c_str(), "rb");
+#endif
         if(!pFile)
             return debug::error(FUNCTION, "X509Cert : Unable to open cert file: ", strCert);
 
@@ -105,8 +115,14 @@ namespace LLC
         std::string strKeyPath = strFolder + "key.pem";
         std::string strCertPath = strFolder + "cert.pem";
 
-        /* Write the private key PEM file to the key path. */
+        /* Write the private key PEM file to the key path.
+         * The "e" flag (glibc extension) sets O_CLOEXEC to prevent the fd
+         * from leaking private key material into child processes. */
+#ifdef __linux__
+        FILE *pFile = fopen(strKeyPath.c_str(), "wbe");
+#else
         FILE *pFile = fopen(strKeyPath.c_str(), "wb");
+#endif
         if(!pFile)
             return debug::error(FUNCTION, "X509Cert : Unable to open key file.");
         bool ret = PEM_write_PrivateKey(pFile, pkey, nullptr, nullptr, 0, nullptr, nullptr);
@@ -115,7 +131,11 @@ namespace LLC
             return debug::error(FUNCTION, "X509Cert : Unable to write key file.");
 
         /* Write the certificate PEM file to the certificate path. */
+#ifdef __linux__
+        pFile = fopen(strCertPath.c_str(), "wbe");
+#else
         pFile = fopen(strCertPath.c_str(), "wb");
+#endif
         if(!pFile)
             return debug::error(FUNCTION, "X509Cert : Unable to open cert file.");
         ret = PEM_write_X509(pFile, px509);

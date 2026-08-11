@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <stdio.h>
 
 #include <LLP/include/network.h>
+#include <LLP/include/tcp_keepalive.h>
 #include <LLP/templates/socket.h>
 
 #include <Util/include/runtime.h>
@@ -43,6 +44,9 @@ namespace LLP
     , nLastRecv          (0)
     , nError             (0)
     , vBuffer            ( )
+    , m_nFlushOffset     (0)
+    , vPriorityBuffer    ( )
+    , m_nPriorityFlushOffset(0)
     , nBufferSize        (0)
     , fBufferFull        (false)
     , nConsecutiveErrors (0)
@@ -66,6 +70,9 @@ namespace LLP
     , nLastRecv          (socket.nLastRecv.load())
     , nError             (socket.nError.load())
     , vBuffer            (socket.vBuffer)
+    , m_nFlushOffset     (socket.m_nFlushOffset)
+    , vPriorityBuffer    (socket.vPriorityBuffer)
+    , m_nPriorityFlushOffset(socket.m_nPriorityFlushOffset)
     , nBufferSize        (socket.nBufferSize.load())
     , fBufferFull        (socket.fBufferFull.load())
     , nConsecutiveErrors (socket.nConsecutiveErrors.load())
@@ -101,6 +108,9 @@ namespace LLP
     , nLastRecv          (0)
     , nError             (0)
     , vBuffer            ( )
+    , m_nFlushOffset     (0)
+    , vPriorityBuffer    ( )
+    , m_nPriorityFlushOffset(0)
     , nBufferSize        (0)
     , fBufferFull        (false)
     , nConsecutiveErrors (0)
@@ -255,6 +265,9 @@ namespace LLP
     , nLastRecv          (0)
     , nError             (0)
     , vBuffer            ( )
+    , m_nFlushOffset     (0)
+    , vPriorityBuffer    ( )
+    , m_nPriorityFlushOffset(0)
     , nBufferSize        (0)
     , fBufferFull        (false)
     , nConsecutiveErrors (0)
@@ -311,19 +324,33 @@ namespace LLP
 
         bool fConnected = false;
 
-        /* Create the Socket Object (Streaming TCP/IP). */
+        /* Create the Socket Object (Streaming TCP/IP).
+         * SOCK_CLOEXEC prevents the fd from leaking into child processes
+         * spawned by std::system() (e.g. -blocknotify). */
         {
             LOCK(ADDRESS_MUTEX);
 
+#ifdef SOCK_CLOEXEC
+            if(addrDest.IsIPv4())
+                fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
+            else
+                fd = socket(AF_INET6, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
+#else
             if(addrDest.IsIPv4())
                 fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
             else
                 fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+#endif
 
             /* Catch failure if socket couldn't be initialized. */
             if (fd == INVALID_SOCKET)
                 return false;
         }
+
+#if !defined(SOCK_CLOEXEC) && !defined(WIN32)
+        /* Fallback: set close-on-exec via fcntl when SOCK_CLOEXEC is unavailable (e.g. macOS). */
+        fcntl(fd, F_SETFD, FD_CLOEXEC);
+#endif
 
         /* Set the socket to non blocking. */
     #ifdef WIN32
@@ -344,6 +371,11 @@ namespace LLP
             //return false;
         }
 #endif
+
+        /* Enable TCP keepalive to detect dead connections before NAT/firewall
+         * idle timers silently drop the path (typically 30–60 minutes).
+         * Default: first probe at 120 s, then every 30 s, give up after 3. */
+        TcpKeepalive::ApplyKeepalive(fd);
 
         /* Open the socket connection for IPv4 / IPv6. */
         if(addrDest.IsIPv4())
@@ -829,26 +861,79 @@ namespace LLP
     /* Write data into the socket buffer non-blocking */
     int32_t Socket::Write(const std::vector<uint8_t>& vData, size_t nBytes)
     {
+        return Write(vData, nBytes, false);
+    }
+
+
+    /* Write data into the socket buffer non-blocking */
+    int32_t Socket::Write(const std::vector<uint8_t>& vData, size_t nBytes, bool fPriority)
+    {
         int32_t nSent = 0;
 
-        /* Check overflow buffer. */
-        if(nBufferSize.load() > 0)
+        /* Single critical section covering both the overflow-buffer check and
+         * the direct-send path.  The previous design used two separate
+         * RECURSIVE(SOCKET_MUTEX) acquisitions, creating a window where
+         * Flush() could drain vBuffer between the first unlock and the second
+         * lock acquisition, potentially reordering new data ahead of buffered
+         * data.  TCP ordering preserves correctness for the TCP case, but the
+         * single-section approach is safer for any future transport and removes
+         * a redundant lock acquisition on the common (empty buffer) path. */
         {
             RECURSIVE(SOCKET_MUTEX);
 
-            /* Insert data into the buffer. */
-            vBuffer.insert(vBuffer.end(), vData.begin(), vData.end());
+            /* Must be called only while holding SOCKET_MUTEX. */
+            auto bufferedBytes = [this]() -> size_t
+            {
+                return (vPriorityBuffer.size() - m_nPriorityFlushOffset)
+                    + (vBuffer.size() - m_nFlushOffset);
+            };
 
-            /* Set our atomic with size of vector. */
-            nBufferSize.store(vBuffer.size());
+            auto clearStaleFullLatch = [this, &bufferedBytes]()
+            {
+                if(bufferedBytes() == 0 && fBufferFull.load())
+                {
+                    bool expected = true;
+                    fBufferFull.compare_exchange_strong(expected, false);
+                }
+            };
 
-            return static_cast<int32_t>(nBytes);
-        }
+            auto appendBuffered = [this, &vData, &bufferedBytes](std::vector<uint8_t>& vTarget)
+            {
+                vTarget.insert(vTarget.end(), vData.begin(), vData.end());
+                nBufferSize.store(bufferedBytes());
+            };
 
-        /* Write the packet. */
-        {
-            RECURSIVE(SOCKET_MUTEX);
+            /* Clear stale fBufferFull latch under the lock.  If the buffer
+             * has drained to zero since the last Write() but fBufferFull is
+             * still set (Flush() returned early on an empty buffer, or a race
+             * between nBufferSize.store(0) and fBufferFull.store(false)),
+             * reset it now so subsequent Flush() calls don't spin unnecessarily.
+             * Use compare_exchange to avoid clobbering a concurrent
+             * fBufferFull.store(true) from WritePacket() on another thread. */
+            clearStaleFullLatch();
 
+            const size_t nPriorityUnsent = vPriorityBuffer.size() - m_nPriorityFlushOffset;
+            const size_t nUnsent = vBuffer.size() - m_nFlushOffset;
+
+            /* Priority writes join the control-plane buffer whenever any
+             * high-priority bytes are already pending, or when a low-priority
+             * backlog exists and we want to overtake it in user space. */
+            if(fPriority && (nPriorityUnsent > 0 || nUnsent > 0))
+            {
+                appendBuffered(vPriorityBuffer);
+                return static_cast<int32_t>(nBytes);
+            }
+
+            /* Low-priority writes append behind any existing buffered data to
+             * preserve in-class FIFO order and allow the flush path to drain
+             * control traffic first. */
+            if(!fPriority && (nPriorityUnsent > 0 || nUnsent > 0))
+            {
+                appendBuffered(vBuffer);
+                return static_cast<int32_t>(nBytes);
+            }
+
+            /* No outstanding data — attempt a direct non-blocking send. */
             if(pSSL)
                 nSent = static_cast<int32_t>(SSL_write(pSSL, (int8_t*)&vData[0], nBytes));
             else
@@ -859,103 +944,238 @@ namespace LLP
                 nSent = static_cast<int32_t>(send(fd, (int8_t*)&vData[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
             #endif
             }
+
+            /* Handle for error state.  If the socket is only back-pressured
+             * (EWOULDBLOCK / WANT_WRITE), preserve the full payload in the
+             * overflow buffer so the write-service path can retry it later
+             * instead of dropping the packet. */
+            if(nSent < 0)
+            {
+                if(pSSL)
+                    nError = SSL_get_error(pSSL, nSent);
+                else
+                    nError = WSAGetLastError();
+
+                if(!Errors())
+                {
+                    std::vector<uint8_t>& vTarget = fPriority ? vPriorityBuffer : vBuffer;
+                    size_t& nTargetOffset = fPriority ? m_nPriorityFlushOffset : m_nFlushOffset;
+
+                    if(nTargetOffset == vTarget.size())
+                    {
+                        vTarget.clear();
+                        nTargetOffset = 0;
+                    }
+
+                    vTarget.insert(vTarget.end(), vData.begin(), vData.end());
+                    nBufferSize.store(bufferedBytes());
+
+                    return static_cast<int32_t>(nBytes);
+                }
+                return nSent;
+            }
+
+            /* If not all data was sent non-blocking, buffer the remainder. */
+            if(nSent != static_cast<int32_t>(vData.size()))
+            {
+                /* Insert remaining data into the buffer (after any existing bytes,
+                 * but since nUnsent == 0 the vector may also be cleared first to
+                 * reclaim the space consumed by m_nFlushOffset). */
+                std::vector<uint8_t>& vTarget = fPriority ? vPriorityBuffer : vBuffer;
+                size_t& nTargetOffset = fPriority ? m_nPriorityFlushOffset : m_nFlushOffset;
+
+                if(nTargetOffset == vTarget.size())
+                {
+                    vTarget.clear();
+                    nTargetOffset = 0;
+                }
+                vTarget.insert(vTarget.end(), vData.begin() + nSent, vData.end());
+                nBufferSize.store(bufferedBytes());
+
+                /* Update last sent time — partial writes still represent forward
+                 * progress.  Without this update, DISCONNECT::TIMEOUT_WRITE can
+                 * fire spuriously when large mining templates are being sent in
+                 * multiple chunks.  nLastSend must reflect any successful send()
+                 * to prevent the DataThread from killing the connection. */
+                if(nSent > 0)
+                    nLastSend = runtime::timestamp(true);
+
+                return nSent;
+            }
         }
 
-
-        /* Handle for error state. */
-        if(nSent < 0)
-        {
-            if(pSSL)
-                nError = SSL_get_error(pSSL, nSent);
-            else
-                nError = WSAGetLastError();
-        }
-
-        /* If not all data was sent non-blocking, recurse until it is complete. */
-        else if(nSent != vData.size())
-        {
-            RECURSIVE(SOCKET_MUTEX);
-
-            /* Insert remaining data into the buffer. */
-            vBuffer.insert(vBuffer.end(), vData.begin() + nSent, vData.end());
-
-            /* Set our atomic with size of vector. */
-            nBufferSize.store(vBuffer.size());
-        }
-        else //don't update last sent unless all the data was written to the buffer
-            nLastSend = runtime::timestamp(true);
-
+        /* All data was written to the kernel buffer in one shot. */
+        nLastSend = runtime::timestamp(true);
         return nSent;
     }
 
 
-    /* Flushes data out of the overflow buffer */
+    /* Flushes data out of the overflow buffer.
+     *
+     * Drains the buffer in a bounded loop, sending up to MTU bytes per
+     * iteration, for at most MAX_FLUSH_CHUNKS iterations (default 4).
+     * This caps the maximum time Flush() holds SOCKET_MUTEX, preventing
+     * write-side monopolization that starves the DataThread's ReadPacket()
+     * path on the same connection.
+     *
+     * With 4 × 16 KB chunks = 64 KB per Flush() call, a 2 MB buffer
+     * requires ~32 Flush() calls.  FLUSH_THREAD wakes on each
+     * FLUSH_CONDITION notify and drains incrementally.  Between calls,
+     * SOCKET_MUTEX is released, giving ReadPacket() a window to acquire
+     * the mutex and process inbound data.
+     *
+     * The chunk limit is configurable via -maxflushchunks (min 1, max 64).
+     *
+     * Performance note: instead of erasing sent bytes from the front of
+     * vBuffer (O(n) memmove), Flush() advances m_nFlushOffset past sent
+     * bytes.  The vector is cleared (and the offset reset) only when all
+     * bytes have been consumed.  This makes every Flush() iteration O(1)
+     * for the common case and eliminates the per-chunk memmove that was
+     * previously O(n) relative to the total buffered size.
+     *
+     * Returns total bytes sent (≥ 0) or the last send() error (< 0). */
     int Socket::Flush()
     {
-        int32_t nSent   = 0;
-        uint32_t nBytes = 0;
-        uint32_t nSize  =
-            static_cast<uint32_t>(nBufferSize.load());
+        int32_t nTotalSent = 0;
 
-        /* Don't flush if buffer doesn't have any data. */
-        if(nSize == 0)
+        /* Don't flush if buffer doesn't have any data.
+         * Clear any stale fBufferFull flag — the buffer has fully drained so the
+         * latch is no longer meaningful.  Without this, a previous overflow can
+         * leave fBufferFull permanently set after the buffer empties, causing
+         * respond() and other callers to perform unnecessary flush attempts. */
+        if(nBufferSize.load() == 0)
+        {
+            /* Use compare_exchange to avoid clobbering a concurrent
+             * fBufferFull.store(true) from WritePacket(). */
+            bool expected = true;
+            fBufferFull.compare_exchange_strong(expected, false);
             return 0;
+        }
 
         /* maximum transmission unit. */
         const uint32_t MTU = 16384;
+        const uint32_t nMaxChunk = std::min((uint32_t)config::GetArg("-maxsendsize", MTU), MTU);
 
-        /* Set the maximum bytes to flush to 2^16 or maximum socket buffers. */
-        nBytes = std::min(nSize, std::min((uint32_t)config::GetArg("-maxsendsize", MTU), MTU));
+        /* Configurable bounds for per-call chunk limit. */
+        static constexpr int64_t MIN_FLUSH_CHUNKS = 1;
+        static constexpr int64_t MAX_FLUSH_CHUNKS_LIMIT = 64;
+        static constexpr int64_t DEFAULT_FLUSH_CHUNKS = 4;
 
-        /* If there were any errors, handle them gracefully. */
+        /* Maximum chunks per Flush() call — bounds SOCKET_MUTEX hold time.
+         * 4 chunks × 16 KB = 64 KB per call.  Remaining data is drained on
+         * subsequent FLUSH_THREAD iterations, giving ReadPacket() a window
+         * to acquire the mutex between calls. */
+        const uint32_t MAX_FLUSH_CHUNKS = static_cast<uint32_t>(
+            std::max(MIN_FLUSH_CHUNKS,
+                std::min(MAX_FLUSH_CHUNKS_LIMIT,
+                    config::GetArg("-maxflushchunks", DEFAULT_FLUSH_CHUNKS))));
+
+        uint32_t nChunksSent = 0;
+
+        /* Bounded-drain loop: send MTU-sized chunks until the buffer is empty,
+         * the kernel TCP send buffer is full, or the chunk limit is reached. */
+        while(nBufferSize.load() > 0 && nChunksSent < MAX_FLUSH_CHUNKS)
         {
-            RECURSIVE(SOCKET_MUTEX);
+            int32_t  nSent  = 0;
+            uint32_t nBytes = 0;
+            bool fPriorityChunk = false;
 
-            if(pSSL)
-                nSent = static_cast<int32_t>(SSL_write(pSSL, (int8_t *)&vBuffer[0], nBytes));
-            else
-            {
-            #ifdef WIN32
-                nSent = static_cast<int32_t>(send(fd, (char*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
-            #else
-                nSent = static_cast<int32_t>(send(fd, (int8_t*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
-            #endif
-            }
-        }
-
-        /* Handle errors on flush. */
-        if(nSent < 0)
-        {
-            if(pSSL)
-                nError = SSL_get_error(pSSL, nSent);
-            else
-                nError = WSAGetLastError();
-
-            ++nConsecutiveErrors;
-        }
-
-        /* If not all data was sent non-blocking, recurse until it is complete. */
-        else if(nSent > 0)
-        {
+            /* Send one chunk starting from the current read offset. */
             {
                 RECURSIVE(SOCKET_MUTEX);
 
-                /* Erase from current buffer. */
-                vBuffer.erase(vBuffer.begin(), vBuffer.begin() + nSent);
+                const size_t nPriorityUnsent = vPriorityBuffer.size() - m_nPriorityFlushOffset;
+                const size_t nLowUnsent      = vBuffer.size() - m_nFlushOffset;
 
-                /* Set our atomic with size of vector. */
-                nBufferSize.store(vBuffer.size());
+                if(nPriorityUnsent > 0)
+                {
+                    fPriorityChunk = true;
+                    nBytes = std::min<uint32_t>(static_cast<uint32_t>(nPriorityUnsent), nMaxChunk);
+                }
+                else if(nLowUnsent > 0)
+                {
+                    nBytes = std::min<uint32_t>(static_cast<uint32_t>(nLowUnsent), nMaxChunk);
+                }
+                else
+                {
+                    nBufferSize.store(0);
+                    break;
+                }
+
+                const std::vector<uint8_t>& vTarget = fPriorityChunk ? vPriorityBuffer : vBuffer;
+                const size_t nOffset = fPriorityChunk ? m_nPriorityFlushOffset : m_nFlushOffset;
+
+                if(pSSL)
+                    nSent = static_cast<int32_t>(SSL_write(pSSL, (int8_t *)&vTarget[nOffset], nBytes));
+                else
+                {
+                #ifdef WIN32
+                    nSent = static_cast<int32_t>(send(fd, (char*)&vTarget[nOffset], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
+                #else
+                    nSent = static_cast<int32_t>(send(fd, (int8_t*)&vTarget[nOffset], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
+                #endif
+                }
             }
 
-            /* Update socket timers. */
+            /* Handle errors on flush — stop draining. */
+            if(nSent < 0)
+            {
+                if(pSSL)
+                    nError.store(SSL_get_error(pSSL, nSent));
+                else
+                    nError.store(WSAGetLastError());
+
+                ++nConsecutiveErrors;
+
+                /* Return error on first chunk, otherwise return bytes sent so far. */
+                return (nTotalSent > 0) ? nTotalSent : nSent;
+            }
+
+            /* send() returned 0 — kernel buffer is full, stop draining. */
+            if(nSent == 0)
+                break;
+
+            /* Successful send — advance the read offset instead of erasing.
+             * Erasing from the front of a std::vector is O(n) because it
+             * memmoves all remaining elements leftward.  Advancing an offset
+             * is O(1).  When the offset reaches the end of the vector all
+             * bytes have been consumed; at that point we clear the vector and
+             * reset the offset in one shot to reclaim memory. */
+            {
+                RECURSIVE(SOCKET_MUTEX);
+
+                std::vector<uint8_t>& vTarget = fPriorityChunk ? vPriorityBuffer : vBuffer;
+                size_t& nTargetOffset = fPriorityChunk ? m_nPriorityFlushOffset : m_nFlushOffset;
+                nTargetOffset += static_cast<size_t>(nSent);
+
+                if(nTargetOffset >= vTarget.size())
+                {
+                    /* All bytes sent — compact the vector to reclaim memory. */
+                    vTarget.clear();
+                    nTargetOffset = 0;
+                }
+
+                const size_t nBuffered =
+                    (vPriorityBuffer.size() - m_nPriorityFlushOffset)
+                    + (vBuffer.size() - m_nFlushOffset);
+                nBufferSize.store(nBuffered);
+
+                if(nBuffered == 0)
+                {
+                    /* Clear fBufferFull now that the buffers are fully drained. */
+                    bool expected = true;
+                    fBufferFull.compare_exchange_strong(expected, false);
+                }
+            }
+
+            /* Accumulate total sent and update timers. */
+            nTotalSent        += nSent;
             nLastSend          = runtime::timestamp(true);
             nConsecutiveErrors = 0;
-
-            /* Reset that buffers are full. */
-            fBufferFull.store(false);
+            ++nChunksSent;
         }
 
-        return nSent;
+        return nTotalSent;
     }
 
 
@@ -993,6 +1213,35 @@ namespace LLP
     bool Socket::Errors() const
     {
         return error_code() != 0;
+    }
+
+
+    /* Query the kernel for any pending socket error and cache it locally. */
+    int32_t Socket::RefreshSocketError()
+    {
+        RECURSIVE(SOCKET_MUTEX);
+
+        if(fd == INVALID_SOCKET)
+            return 0;
+
+        int32_t nPendingError = 0;
+        socklen_t nLength = sizeof(nPendingError);
+
+    #ifdef WIN32
+        if(getsockopt(fd, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&nPendingError), &nLength) != 0)
+    #else
+        if(getsockopt(fd, SOL_SOCKET, SO_ERROR, &nPendingError, &nLength) != 0)
+    #endif
+        {
+            const int32_t nGetsockoptError = WSAGetLastError();
+            nError = nGetsockoptError;
+            return nGetsockoptError;
+        }
+
+        if(nPendingError != 0)
+            nError = nPendingError;
+
+        return nPendingError;
     }
 
 

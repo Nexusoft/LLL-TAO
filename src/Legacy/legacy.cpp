@@ -288,7 +288,7 @@ namespace Legacy
 
 
     /* Checks if a block is valid if not connected to chain. */
-    bool LegacyBlock::Check() const
+    bool LegacyBlock::Check(bool fForceProof) const
     {
         /* Read ledger DB for duplicate block. */
         if(LLD::Ledger->HasBlock(GetHash()))
@@ -346,8 +346,9 @@ namespace Legacy
             if(vtx.empty() || !vtx[0].IsCoinBase())
                 return debug::error(FUNCTION, "first tx is not coinbase for proof of work");
 
-            /* Check the Proof of Work Claims. */
-            if(!TAO::Ledger::ChainState::Synchronizing() && !VerifyWork())
+            /* Check the Proof of Work Claims.  fForceProof bypasses the
+             * Synchronizing() fast-path for unconditional verification. */
+            if((fForceProof || !TAO::Ledger::ChainState::Synchronizing()) && !VerifyWork(fForceProof))
                 return debug::error(FUNCTION, "invalid proof of work");
         }
 
@@ -498,9 +499,35 @@ namespace Legacy
         if(nBlockTime <= statePrev.GetBlockTime())
             return debug::error(FUNCTION, "block's timestamp too early Block: ", nBlockTime, " Prev: ", statePrev.GetBlockTime());
 
-        /* Check that Block is Descendant of Hardened Checkpoints. */
+        /* Check that Block is Descendant of Hardened Checkpoints.
+         *
+         * NOTE: IsDescendant() itself is opt-in (gated by "-checkpoints", matching
+         * upstream Nexusoft/LLL-TAO default of disabled) for live, post-sync blocks.
+         * There is deliberately no unconditional "block height <= checkpoint height"
+         * early-out here (unlike a prior version of this fork): that check has no
+         * upstream equivalent and made any legitimately valid block that arrived late
+         * (e.g. delayed by mempool/sigchain self-healing) permanently unacceptable
+         * the moment the checkpoint hardened past its height, with no recovery path
+         * short of -revertblocks. */
         if(!TAO::Ledger::IsDescendant(statePrev))
-            return debug::error(FUNCTION, "not descendant of last checkpoint");
+        {
+            /* In-memory gate: only attempt disk repair when tStateBest.hashCheckpoint
+             * disagrees with the standalone hashCheckpoint atomic.  This avoids the
+             * I/O amplification vector where a remote sender spams blocks to trigger
+             * ReadBlock() on every IsDescendant() failure. */
+            if(TAO::Ledger::ChainState::RepairCheckpointIfStale())
+            {
+                /* Retry the descendant check with repaired checkpoint. */
+                if(!TAO::Ledger::IsDescendant(statePrev))
+                    return debug::error(FUNCTION, "not descendant of last checkpoint (even after repair)");
+
+                debug::log(0, FUNCTION, "Checkpoint repair SUCCESS — block passes descendant check after repair");
+            }
+            else
+            {
+                return debug::error(FUNCTION, "not descendant of last checkpoint");
+            }
+        }
 
         /* Check the block proof of work rewards. */
         if(IsProofOfWork() && nVersion != 2 && nHeight != 2061881 && nHeight != 2191756)
@@ -588,8 +615,16 @@ namespace Legacy
             return false;
         }
 
-        /* Commit the transaction to database. */
-        LLD::TxnCommit();
+        /* Commit the transaction to database.
+         * Case A (block became new best chain): SetBest() committed the
+         * transaction internally via Index() → ActivateCandidateBestChain().
+         * HasOpenTransaction() returns false — skip the outer commit to avoid
+         * treating the expected no-op return value of false as a real error.
+         * Case B (block accepted but did not become best chain): the outer
+         * transaction is still open and must be committed here; a false return
+         * from TxnCommit() is a genuine failure signal in this path. */
+        if(LLD::HasOpenTransaction() && !LLD::TxnCommit())
+            return debug::error(FUNCTION, "disk transaction commit failed for block acceptance");
 
         return true;
     }

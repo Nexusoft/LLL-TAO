@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLP/packets/message.h>
 #include <LLP/include/global.h>
 #include <LLP/include/inv.h>
+#include <LLP/include/falcon_constants.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -323,10 +324,24 @@ namespace TAO
 
 
         /* Checks if a block is valid if not connected to chain. */
-        bool TritiumBlock::Check() const
+        bool TritiumBlock::Check(bool fForceProof) const
+        {
+            return CheckInternal(fForceProof, false);
+        }
+
+
+        /* Checks a block reconstructed from persisted block state. */
+        bool TritiumBlock::CheckStored(bool fForceProof) const
+        {
+            return CheckInternal(fForceProof, true);
+        }
+
+
+        /* Shared validation for incoming and persisted blocks. */
+        bool TritiumBlock::CheckInternal(bool fForceProof, bool fStored) const
         {
             /* Read ledger DB for duplicate block. */
-            if(LLD::Ledger->HasBlock(GetHash()))
+            if(!fStored && LLD::Ledger->HasBlock(GetHash()))
                 return false;
 
             /* Check the Size limits of the Current Block. */
@@ -384,8 +399,10 @@ namespace TAO
                 if(producer.nTimestamp > GetBlockTime())
                     return debug::error(FUNCTION, "coinstake timestamp is after block timestamp");
 
-                /* Check the Proof of Stake Claims. */
-                if(!TAO::Ledger::ChainState::Synchronizing() && !VerifyWork())
+                /* Check the Proof of Stake Claims.  fForceProof bypasses the
+                 * Synchronizing() fast-path so mined/submitted blocks are always
+                 * fully verified. */
+                if((fForceProof || !TAO::Ledger::ChainState::Synchronizing()) && !VerifyWork(fForceProof))
                     return debug::error(FUNCTION, "invalid proof of stake");
             }
 
@@ -404,8 +421,11 @@ namespace TAO
                 if(GetChannel() != CHANNEL::PRIME && !vOffsets.empty())
                     return debug::error(FUNCTION, "offsets included in non prime block");
 
-                /* Check the Proof of Work Claims. */
-                if(!TAO::Ledger::ChainState::Synchronizing() && !VerifyWork())
+                /* Check the Proof of Work Claims.  fForceProof bypasses the
+                 * Synchronizing() fast-path so mined/submitted blocks are always
+                 * fully verified (closes both the Check() gate and the inner
+                 * GetPrimeBits() primality gate via VerifyWork(fForceProof)). */
+                if((fForceProof || !TAO::Ledger::ChainState::Synchronizing()) && !VerifyWork(fForceProof))
                     return debug::error(FUNCTION, "invalid proof of work");
             }
 
@@ -441,6 +461,43 @@ namespace TAO
             /* Get list of producer transactions. */
             std::map<uint256_t, uint512_t> mapLast;
 
+            /* [Option B] Track, per genesis, whether the cached predecessor in
+             * mapLast came from a conflicted mempool read (fHasConflict). A
+             * conflicted mempool entry can be stale relative to disk (e.g. the
+             * mempool's own conflict-reconciliation pass hasn't run yet), which
+             * would otherwise cause a legitimate block's producer/tx sequencing
+             * check to fail permanently even though the real on-disk sigchain
+             * state is consistent with this block. This is used to scope a
+             * narrow, disk-backed self-heal to only the specific genesis(es)
+             * that came from a known-conflicted mempool read, so a genuinely
+             * out-of-sequence (malicious or buggy) block is never masked. */
+            std::map<uint256_t, bool> mapLastConflicted;
+
+            /* [Option B] Narrow, disk-backed self-heal helper for a sequencing
+             * mismatch. Only re-derives the true predecessor from disk (bypassing
+             * the mempool cache) when the cached mapLast entry for this genesis
+             * came from a known-conflicted mempool read; otherwise a genuinely
+             * out-of-sequence (malicious or buggy) transaction/producer is never
+             * masked. */
+            auto fSelfHealSequencing = [](const uint256_t& hashGenesis, const uint512_t& hashPrevTx,
+                const std::map<uint256_t, bool>& mapConflictedIn, const char* strEntity) -> bool
+            {
+                const auto it = mapConflictedIn.find(hashGenesis);
+                if(it == mapConflictedIn.end() || !it->second)
+                    return false;
+
+                uint512_t hashLastDisk = 0;
+                if(LLD::Ledger->ReadLast(hashGenesis, hashLastDisk) && hashPrevTx == hashLastDisk)
+                {
+                    debug::log(1, FUNCTION, "self-healed ", strEntity, " sequencing for genesis ",
+                        hashGenesis.SubString(), " via disk ReadLast");
+
+                    return true;
+                }
+
+                return false;
+            };
+
             /* Get the signature operations for legacy tx's. */
             uint32_t nSize = (uint32_t)vtx.size();
             for(uint32_t i = 0; i < nSize; ++i)
@@ -457,7 +514,8 @@ namespace TAO
 
                     /* Check the memory pool. */
                     Legacy::Transaction tx;
-                    if(!LLD::Legacy->ReadTx(vtx[i].second, tx, fHasConflict, FLAGS::MEMPOOL))
+                    if(!LLD::Legacy->ReadTx(vtx[i].second, tx, fHasConflict,
+                        fStored ? FLAGS::BLOCK : FLAGS::MEMPOOL))
                     {
                         vMissing.push_back(vtx[i]);
                         continue;
@@ -492,7 +550,8 @@ namespace TAO
 
                     /* Check the memory pool. */
                     TAO::Ledger::Transaction tx;
-                    if(!LLD::Ledger->ReadTx(vtx[i].second, tx, fHasConflict, FLAGS::MEMPOOL))
+                    if(!LLD::Ledger->ReadTx(vtx[i].second, tx, fHasConflict,
+                        fStored ? FLAGS::BLOCK : FLAGS::MEMPOOL))
                     {
                         vMissing.push_back(vtx[i]);
                         continue;
@@ -507,18 +566,21 @@ namespace TAO
                         return debug::error(FUNCTION, "cannot have non-producer coinbase / coinstake transaction");
 
                     /* Check the sequencing. */
-                    if(mapLast.count(tx.hashGenesis) && tx.hashPrevTx != mapLast[tx.hashGenesis])
+                    if(mapLast.count(tx.hashGenesis) && tx.hashPrevTx != mapLast[tx.hashGenesis]
+                    && !fSelfHealSequencing(tx.hashGenesis, tx.hashPrevTx, mapLastConflicted, "sigchain"))
                         return debug::error(FUNCTION, "transaction in sigchain out of sequence");
 
                     /* Set the last hash for given genesis. */
-                    mapLast[tx.hashGenesis] = tx.GetHash();
+                    mapLast[tx.hashGenesis]           = tx.GetHash();
+                    mapLastConflicted[tx.hashGenesis]  = fHasConflict;
                 }
                 else
                     return debug::error(FUNCTION, "unknown transaction type");
             }
 
             /* Check producer */
-            if(mapLast.count(producer.hashGenesis) && producer.hashPrevTx != mapLast[producer.hashGenesis])
+            if(mapLast.count(producer.hashGenesis) && producer.hashPrevTx != mapLast[producer.hashGenesis]
+            && !fSelfHealSequencing(producer.hashGenesis, producer.hashPrevTx, mapLastConflicted, "producer"))
                 return debug::error(FUNCTION, "producer transaction out of sequence");
 
             /* Get producer hash. */
@@ -527,6 +589,13 @@ namespace TAO
             /* Add producer to merkle tree list. */
             vHashes.push_back(hashProducer);
             setUnique.insert(hashProducer);
+
+            /* NOTE: we deliberately do not hard-fail Check() when vMissing is
+             * non-empty.  Missing transactions are a temporary "incomplete"
+             * condition handled as a soft-fail in TAO::Ledger::Process(); the
+             * transactions are re-requested and the block re-processed once they
+             * arrive.  Failing Check() here would treat a recoverable block as a
+             * permanently invalid one. */
 
             /* Check for duplicate txid's. */
             if(setUnique.size() != vHashes.size())
@@ -614,10 +683,36 @@ namespace TAO
             if(GetBlockTime() <= statePrev.GetBlockTime())
                 return debug::error(FUNCTION, "block's timestamp too early");
 
-            /* Check that Block is Descendant of Hardened Checkpoints. */
+            /* Check that Block is Descendant of Hardened Checkpoints.
+             *
+             * NOTE: IsDescendant() itself is opt-in (gated by "-checkpoints", matching
+             * upstream Nexusoft/LLL-TAO default of disabled) for live, post-sync blocks.
+             * There is deliberately no unconditional "block height <= checkpoint height"
+             * early-out here (unlike a prior version of this fork): that check has no
+             * upstream equivalent and made any legitimately valid block that arrived late
+             * (e.g. delayed by mempool/sigchain self-healing) permanently unacceptable
+             * the moment the checkpoint hardened past its height, with no recovery path
+             * short of -revertblocks. */
             #ifndef UNIT_TESTS
-            if(config::GetBoolArg("-checkpoints", false) && !ChainState::Synchronizing() && !IsDescendant(statePrev))
-                return debug::error(FUNCTION, "not descendant of last checkpoint");
+            if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
+            {
+                /* In-memory gate: only attempt disk repair when tStateBest.hashCheckpoint
+                 * disagrees with the standalone hashCheckpoint atomic.  This avoids the
+                 * I/O amplification vector where a remote sender spams blocks to trigger
+                 * ReadBlock() on every IsDescendant() failure. */
+                if(ChainState::RepairCheckpointIfStale())
+                {
+                    /* Retry the descendant check with repaired checkpoint. */
+                    if(!IsDescendant(statePrev))
+                        return debug::error(FUNCTION, "not descendant of last checkpoint (even after repair)");
+
+                    debug::log(0, FUNCTION, "Checkpoint repair SUCCESS — block passes descendant check after repair");
+                }
+                else
+                {
+                    return debug::error(FUNCTION, "not descendant of last checkpoint");
+                }
+            }
             #endif
 
             /* Validate proof of stake. */
@@ -710,11 +805,19 @@ namespace TAO
                 return false;
             }
 
-            /* Commit the transaction to database. */
-            LLD::TxnCommit();
+            /* Commit the transaction to database.
+             * Case A (block became new best chain): SetBest() committed the
+             * transaction internally via Index() → ActivateCandidateBestChain().
+             * HasOpenTransaction() returns false — skip the outer commit to avoid
+             * treating the expected no-op return value of false as a real error.
+             * Case B (block accepted but did not become best chain): the outer
+             * transaction is still open and must be committed here; a false return
+             * from TxnCommit() is a genuine failure signal in this path. */
+            if(LLD::HasOpenTransaction() && !LLD::TxnCommit())
+                return debug::error(FUNCTION, "disk transaction commit failed for block acceptance");
 
             /* Check for best chain. */
-            if(GetHash() == ChainState::hashBestChain.load())
+            if(GetHash() == ChainState::hashBestChain.load() && !ChainState::Synchronizing())
             {
                 /* Do a quick mempool processing check for ORPHANS. */
                 runtime::timer timer;
@@ -723,7 +826,7 @@ namespace TAO
 
                 /* Log the mempool consistency checking. */
                 uint64_t nElapsed = timer.ElapsedMilliseconds();
-                debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "Mempool Consistency Check Complete in ", nElapsed,  " ms");
+                debug::log(0, FUNCTION, "Mempool Consistency Check Complete in ", nElapsed,  " ms");
             }
 
             return true;
@@ -761,7 +864,7 @@ namespace TAO
 
 
         /* Verify the Proof of Work satisfies network requirements. */
-        bool TritiumBlock::VerifyWork() const
+        bool TritiumBlock::VerifyWork(bool fForceVerify) const
         {
             /* This override adds support for verifying the stake hash on the staking channel */
             if(nChannel == 0)
@@ -779,7 +882,7 @@ namespace TAO
                 return true;
             }
 
-            return Block::VerifyWork();
+            return Block::VerifyWork(fForceVerify);
         }
 
 

@@ -14,10 +14,14 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/state.h>
 
 #include <string>
+#include <unordered_set>
 
 #include <LLD/include/global.h>
 #include <LLP/include/global.h>
 #include <LLP/include/inv.h>
+#include <LLP/include/channel_state_manager.h>
+#include <LLP/include/miner_push_dispatcher.h>
+#include <LLP/include/template_prewarmer.h>
 
 #include <Legacy/types/legacy.h>
 #include <Legacy/wallet/wallet.h>
@@ -40,6 +44,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/dispatch.h>
 #include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/stake_change.h>
 #include <TAO/Ledger/include/supply.h>
@@ -51,7 +56,11 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/client.h>
 
+#include <Util/include/args.h>
+#include <Util/include/runtime.h>
 #include <Util/include/softfloat.h>
+
+#include <map>
 
 
 /* Global TAO namespace. */
@@ -61,7 +70,6 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-
         /* Get the block state object. */
         bool GetLastState(BlockState &state, uint32_t nChannel)
         {
@@ -752,75 +760,59 @@ namespace TAO
             if(!LLD::Ledger->WriteBlock(GetHash(), *this))
                 return debug::error(FUNCTION, "block state failed to write");
 
-            /* Signal to set the best chain. */
-            if(nVersion >= 7 && !IsHybrid())
+            /* Signal to set the best chain through the shared fork-choice and
+             * candidate-validation path. */
+            if(IsHeavierThan(ChainState::tStateBest.load()))
             {
-                /* Set the chain trust. */
-                uint8_t nEquals  = 0;
-                uint8_t nGreater = 0;
-
-                /* Check to best state. */
-                for(uint32_t n = 0; n < 3; ++n)
-                {
-                    /* Check each weight. */
-                    if(nChannelWeight[n] == ChainState::tStateBest.load().nChannelWeight[n])
-                        ++nEquals;
-
-                    /* Check each weight. */
-                    if(nChannelWeight[n] > ChainState::tStateBest.load().nChannelWeight[n])
-                        ++nGreater;
-                }
-
-                /* Check for better height if it is a battle between two channels. */
-                if(nHeight > ChainState::nBestHeight.load() + 1 && (nEquals == 1 && nGreater == 1))
-                    ++nGreater;
-
-                /* Log the weights. */
-                debug::log(2, FUNCTION, "WEIGHTS [", uint32_t(nGreater), "]",
-                    " Prime ", nChannelWeight[1].Get64(),
-                    " Hash ",  nChannelWeight[2].Get64(),
-                    " Stake ", nChannelWeight[0].Get64());
-
-                /* Check for conflicted blocks. */
                 if(fConflicted)
                 {
                     debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "CONFLICTED BLOCK: ", ANSI_COLOR_RESET, GetHash().SubString());
-
                     return true;
                 }
 
-                /* Handle single channel having higher weight. */
-                else if((nEquals == 2 && nGreater == 1) || nGreater > 1)
+                if(!ActivateCandidateBestChain(*this, "block acceptance", false))
                 {
-                    /* Set the best chain. */
-                    if(!SetBest())
-                    {
-                        /* If we fail at all here, we want to reset our reorg head. */
-                        ChainState::fChainReorg.store(false);
-
-                        return debug::error(FUNCTION, "failed to set best chain");
-                    }
+                    ChainState::fChainReorg.store(false);
+                    return debug::error(FUNCTION, "failed to activate best chain");
                 }
-            }
-            else if(nChainTrust > ChainState::nBestChainTrust.load())
-            {
-                /* Check for conflicted blocks. */
-                if(fConflicted)
-                {
-                    debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "CONFLICTED BLOCK: ", ANSI_COLOR_RESET, GetHash().SubString());
-
-                    return true;
-                }
-
-                /* Attempt to set the best chain. */
-                if(!SetBest())
-                    return debug::error(FUNCTION, "failed to set best chain");
             }
 
             /* Debug output. */
             debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "ACCEPTED");
 
             return true;
+        }
+
+
+        bool BlockState::IsHeavierThan(const BlockState& state) const
+        {
+            if(GetHash() == state.GetHash())
+                return false;
+
+            if(nVersion >= 7 && !IsHybrid())
+            {
+                uint8_t nEquals = 0;
+                uint8_t nGreater = 0;
+                for(uint32_t n = 0; n < 3; ++n)
+                {
+                    if(nChannelWeight[n] == state.nChannelWeight[n])
+                        ++nEquals;
+                    if(nChannelWeight[n] > state.nChannelWeight[n])
+                        ++nGreater;
+                }
+
+                if(nHeight > state.nHeight + 1 && nEquals == 1 && nGreater == 1)
+                    ++nGreater;
+
+                debug::log(2, FUNCTION, "WEIGHTS [", uint32_t(nGreater), "]",
+                    " Prime ", nChannelWeight[1].Get64(),
+                    " Hash ", nChannelWeight[2].Get64(),
+                    " Stake ", nChannelWeight[0].Get64());
+
+                return ((nEquals == 2 && nGreater == 1) || nGreater > 1);
+            }
+
+            return nChainTrust > state.nChainTrust;
         }
 
 
@@ -855,6 +847,15 @@ namespace TAO
             }
             else
             {
+                /* Self-contained transaction boundary: open our own TxnBegin only when the
+                 * caller has not already opened one (call sites #1/#2 in legacy.cpp/tritium.cpp
+                 * and #3-#5 in chainstate.cpp all open a TxnBegin before calling SetBest()).
+                 * A future caller that forgets to open a transaction is self-healed here
+                 * instead of silently hitting TxnCommit with no active transaction. */
+                const bool fOwnedTxn = !LLD::HasOpenTransaction(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
+                if(fOwnedTxn)
+                    LLD::TxnBegin(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
+
                 /* Get initial block states. */
                 BlockState fork   = ChainState::tStateBest.load();
                 BlockState longer = *this;
@@ -873,7 +874,10 @@ namespace TAO
                         /* Iterate backwards in chain. */
                         longer = longer.Prev();
                         if(!longer)
+                        {
+                            LLD::TxnAbort(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
                             return debug::error(FUNCTION, "failed to find longer ancestor block");
+                        }
                     }
 
                     /* Break if found. */
@@ -886,12 +890,20 @@ namespace TAO
                     /* Iterate to previous block. */
                     fork = fork.Prev();
                     if(!fork)
+                    {
+                        LLD::TxnAbort(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
                         return debug::error(FUNCTION, "failed to find ancestor fork block");
+                    }
                 }
+
+                /* Track whether this SetBest() call is performing an actual chain reorganization
+                 * (as opposed to a routine tip extension), used below to gate reorg-only logging
+                 * and the [B1] tripwire timer/warning. */
+                const bool fReorgOccurring = (vDisconnect.size() > 0);
 
                 /* Log if there are blocks to disconnect. */
                 uint32_t nTotalDisconnect = 0;
-                if(vDisconnect.size() > 0)
+                if(fReorgOccurring)
                 {
                     debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET,
                         " Disconnect ", vDisconnect.size(), " blocks; ", fork.GetHash().SubString(),
@@ -911,6 +923,18 @@ namespace TAO
                     ChainState::fChainReorg.store(true);
                 }
 
+                /* [B1] Tripwire timer for the reorg critical section (disconnect + resurrect +
+                 * connect below). This entire section runs synchronously while the caller holds
+                 * PROCESSING_MUTEX, with no bound or yield point, so a large/deep reorg can stall
+                 * all other block/mining processing for as long as it takes to finish. We
+                 * deliberately don't try to bound or interrupt the work here (that would require a
+                 * larger concurrency redesign), but we start a timer now so a prominent warning can
+                 * be logged below if this reorg is unusually expensive, making such incidents
+                 * diagnosable after the fact. */
+                runtime::timer reorgTimer;
+                if(fReorgOccurring)
+                    reorgTimer.Start();
+
                 /* Keep track of mempool transactions to delete. */
                 std::vector<std::pair<uint8_t, uint512_t>> vResurrect;
 
@@ -927,7 +951,15 @@ namespace TAO
 
                     /* Disconnect the block. */
                     if(!state.Disconnect())
+                    {
+                        LLD::TxnAbort(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
                         return debug::error(FUNCTION, "failed to disconnect ", state.GetHash().SubString());
+                    }
+
+                    /* If this disconnect orphaned a locally accepted mined block,
+                     * emit a prominent diagnostic before continuing the normal
+                     * SetBest() reorg path. */
+                    TAO::Ledger::MarkLocalMinedBlockDisconnected(state, *this);
 
                     /* Erase block if not connecting anything. */
                     if(vConnect.empty())
@@ -966,7 +998,10 @@ namespace TAO
                                 /* Make sure the transaction is on disk. */
                                 TAO::Ledger::Transaction tx;
                                 if(!LLD::Ledger->ReadTx(hash, tx))
+                                {
+                                    LLD::TxnAbort(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
                                     return debug::error(FUNCTION, "transaction not on disk");
+                                }
 
                                 /* Get a copy of our transaction if debugging reorgs. */
                                 const encoding::json jRet =
@@ -982,48 +1017,6 @@ namespace TAO
                         vResurrect.insert(vResurrect.end(), state.vtx.rbegin(), state.vtx.rend());
                 }
 
-                /* Iterate forward through our transactions to resurrect in ascending order. */
-                for(auto proof = vResurrect.rbegin(); proof != vResurrect.rend(); ++proof)
-                {
-                    /* Check for tritium transctions. */
-                    if(proof->first == TRANSACTION::TRITIUM)
-                    {
-                        /* Make sure the transaction is on disk. */
-                        TAO::Ledger::Transaction tx;
-                        if(!LLD::Ledger->ReadTx(proof->second, tx))
-                            return debug::error(FUNCTION, "transaction not on disk");
-
-                        /* Check for producer transaction. */
-                        if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
-                            continue;
-
-                        /* Add back into memory pool. */
-                        mempool.Accept(tx);
-
-                        /* Print transaction on verbose 3. */
-                        if(config::nVerbose >= 3)
-                            tx.print();
-                    }
-                    else if(proof->first == TRANSACTION::LEGACY)
-                    {
-                        /* Make sure the transaction is on disk. */
-                        Legacy::Transaction tx;
-                        if(!LLD::Legacy->ReadTx(proof->second, tx))
-                            return debug::error(FUNCTION, "transaction not on disk");
-
-                        /* Check for producer transaction. */
-                        if(tx.IsCoinBase() || tx.IsCoinStake())
-                            continue;
-
-                        /* Add back into memory pool. */
-                        mempool.Accept(tx);
-
-                        /* Print transaction on verbose 3. */
-                        if(config::nVerbose >= 3)
-                            tx.print();
-                    }
-                }
-
                 /* Keep track of mempool transactions to delete. */
                 std::vector<std::pair<uint8_t, uint512_t>> vDelete;
 
@@ -1036,11 +1029,24 @@ namespace TAO
 
                     /* Connect the block. */
                     if(!state->Connect())
+                    {
+                        LLD::TxnAbort(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
                         return debug::error(FUNCTION, "failed to connect ", state->GetHash().SubString());
+                    }
 
                     /* Harden a checkpoint if there is any. */
                     #ifndef UNIT_TESTS
-                    HardenCheckpoint(Prev());
+                    {
+                        const uint1024_t hashCheckpointBefore = ChainState::hashCheckpoint.load();
+                        HardenCheckpoint(Prev());
+                        const uint1024_t hashCheckpointAfter = ChainState::hashCheckpoint.load();
+                        if(hashCheckpointBefore != hashCheckpointAfter)
+                        {
+                            debug::log(0, FUNCTION, "Checkpoint hardened: ",
+                                hashCheckpointBefore.SubString(), " -> ", hashCheckpointAfter.SubString(),
+                                " at height ", ChainState::nCheckpointHeight.load());
+                        }
+                    }
                     #endif
 
                     /* Debug output if we are debugging reorgs */
@@ -1061,7 +1067,10 @@ namespace TAO
                                 /* Make sure the transaction is on disk. */
                                 TAO::Ledger::Transaction tx;
                                 if(!LLD::Ledger->ReadTx(hash, tx))
+                                {
+                                    LLD::TxnAbort(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
                                     return debug::error(FUNCTION, "transaction not on disk");
+                                }
 
                                 /* Get a copy of our transaction if debugging reorgs. */
                                 const encoding::json jRet =
@@ -1076,13 +1085,132 @@ namespace TAO
                     vDelete.insert(vDelete.end(), state->vtx.begin(), state->vtx.end());
                 }
 
+                /* Calculate the total transactions connected. Each connected block contributes
+                 * exactly one producer transaction plus its regular transactions to vDelete, and
+                 * vConnect.size() is the number of connected blocks, so subtracting removes the
+                 * producer transactions and leaves only the non-producer transaction count
+                 * (mirrors how nTotalDisconnect is tallied above for the disconnect side). */
+                const uint32_t nTotalConnected =
+                    (vDelete.size() - vConnect.size());
+
+                /* [B1] Emit a prominent, easily greppable tripwire warning if the reorg critical
+                 * section above (disconnect + connect, all held under the caller's PROCESSING_MUTEX
+                 * with no yield point) took longer than -reorgwarnms or processed more than
+                 * -reorgwarntx transactions. Mempool mutations are deferred to after TxnCommit
+                 * and are not included in the timer window. Uses nTotalConnected (non-producer
+                 * transactions connected) rather than vDelete.size() directly to avoid conflating
+                 * producer transactions with the transaction-volume metric. Reorgs are rare events,
+                 * so the -reorgwarnms/-reorgwarntx config lookups are not cached; this keeps the
+                 * code simple and avoids any ambiguity around static local initialization order. */
+                if(fReorgOccurring)
+                {
+                    const uint64_t nReorgWarnMs    = config::GetArg("-reorgwarnms", 1000);
+                    const uint64_t nReorgWarnTx    = config::GetArg("-reorgwarntx", 1000);
+                    const uint64_t nReorgElapsedMs = reorgTimer.ElapsedMilliseconds();
+                    const uint64_t nReorgTotalTx    =
+                        uint64_t(nTotalDisconnect) + uint64_t(vResurrect.size()) + uint64_t(nTotalConnected);
+
+                    if(nReorgElapsedMs >= nReorgWarnMs || nReorgTotalTx >= nReorgWarnTx)
+                        debug::warning(FUNCTION, ANSI_COLOR_BRIGHT_RED, "REORG TRIPWIRE:", ANSI_COLOR_RESET,
+                            " reorg critical section held the processing lock for ", nReorgElapsedMs, " ms",
+                            " while disconnecting ", vDisconnect.size(), " and connecting ", vConnect.size(),
+                            " block(s) (", nReorgTotalTx, " transactions); other block/mining processing",
+                            " was blocked for the duration");
+                }
+
+                /* All disk writes (disconnect + connect) are complete. Commit the transaction
+                 * durably before touching mempool or in-memory ChainState atomics.  This is the
+                 * transactional boundary: everything above is rollback-safe; everything below is
+                 * in-memory-only and runs only after the durable commit succeeds.
+                 *
+                 * Self-containment: when fOwnedTxn=true SetBest() opened this transaction itself
+                 * (the caller had no active transaction).  When fOwnedTxn=false an outer caller
+                 * (legacy.cpp/tritium.cpp Accept(), or chainstate.cpp) already opened TxnBegin()
+                 * before calling SetBest(); that outer transaction — which may also include vtx
+                 * writes made before Index() was called — is committed atomically here together
+                 * with the full disconnect/connect transition.  The caller's subsequent
+                 * TxnCommit() call is a harmless no-op (pTransaction is null once committed).
+                 * TxnCommit aggregates per-instance results; a false return means at least one
+                 * instance's commit failed, so the chain transition is aborted. */
+                if(!LLD::TxnCommit(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS))
+                    return debug::error(FUNCTION, "disk transaction commit failed; aborting chain transition");
+
+                /* -- POST-COMMIT: mempool mutations (safe now that disk is durable) -- */
+
+                /* Track sigchains whose head resurrect transaction has already conflicted in this
+                 * batch. Mempool::Accept() rejects any transaction whose hashPrevTx is itself
+                 * conflicted, so once a genesis conflicts every remaining descendant of that
+                 * sigchain in vResurrect is guaranteed to conflict as well. Skipping them here
+                 * avoids hundreds of pointless mutex-holding disk reads and ERROR log spam during
+                 * a reorg. */
+                std::unordered_set<uint256_t> setConflictedGenesis;
+
+                /* Iterate forward through our transactions to resurrect in ascending order.
+                 * Disk is committed at this point; do not return false on ReadTx errors because
+                 * the chain transition has already been durably committed.  Log and continue. */
+                for(auto proof = vResurrect.rbegin(); proof != vResurrect.rend(); ++proof)
+                {
+                    /* Check for tritium transctions. */
+                    if(proof->first == TRANSACTION::TRITIUM)
+                    {
+                        /* Make sure the transaction is on disk. */
+                        TAO::Ledger::Transaction tx;
+                        if(!LLD::Ledger->ReadTx(proof->second, tx))
+                        {
+                            debug::error(FUNCTION, "resurrect: transaction not on disk (post-commit): ",
+                                proof->second.SubString());
+                            continue;
+                        }
+
+                        /* Check for producer transaction. */
+                        if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
+                            continue;
+
+                        /* Skip descendants of a sigchain that has already conflicted in this
+                         * resurrect batch, since they are guaranteed to conflict too. */
+                        if(setConflictedGenesis.count(tx.hashGenesis))
+                            continue;
+
+                        /* Add back into memory pool. Mempool::Accept() inserts rejected
+                         * transactions into mapConflicts (checked by Has()) only when they
+                         * conflict on hashPrevTx or a duplicate genesis-id; orphaned or otherwise
+                         * invalid transactions are tracked elsewhere and are not conflicts, so
+                         * Has() returning true here specifically identifies a real conflict. Track
+                         * the genesis so we can short-circuit its remaining descendants above. */
+                        if(!mempool.Accept(tx) && mempool.Has(tx.GetHash()))
+                            setConflictedGenesis.insert(tx.hashGenesis);
+
+                        /* Print transaction on verbose 3. */
+                        if(config::nVerbose >= 3)
+                            tx.print();
+                    }
+                    else if(proof->first == TRANSACTION::LEGACY)
+                    {
+                        /* Make sure the transaction is on disk. */
+                        Legacy::Transaction tx;
+                        if(!LLD::Legacy->ReadTx(proof->second, tx))
+                        {
+                            debug::error(FUNCTION, "resurrect: legacy transaction not on disk (post-commit): ",
+                                proof->second.SubString());
+                            continue;
+                        }
+
+                        /* Check for producer transaction. */
+                        if(tx.IsCoinBase() || tx.IsCoinStake())
+                            continue;
+
+                        /* Add back into memory pool. */
+                        mempool.Accept(tx);
+
+                        /* Print transaction on verbose 3. */
+                        if(config::nVerbose >= 3)
+                            tx.print();
+                    }
+                }
+
                 /* Iterate forward through our transactions to remove in ascending order. */
                 for(auto proof = vDelete.begin(); proof != vDelete.end(); ++proof)
                     mempool.Remove(proof->second);
-
-                /* Calculate the total transactions connected. */
-                const uint32_t nTotalConnected =
-                    (vDelete.size() - vConnect.size());
 
                 /* Debug output about the best chain. */
                 uint64_t nElapsed      = (GetBlockTime() - ChainState::tStateBest.load().GetBlockTime());
@@ -1090,8 +1218,9 @@ namespace TAO
                 uint64_t nInputsTime   = swScript.ElapsedMicroseconds();
 
                 /* Only output best chain data when not syncing. */
-                if(config::nVerbose >= TAO::Ledger::ChainState::Synchronizing() ? 1 : 0)
-                    debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
+                const uint32_t nBestChainLogLevel = ChainState::Synchronizing() ? 1 : 0;
+                if(config::nVerbose >= nBestChainLogLevel)
+                    debug::log(0, FUNCTION,
                         "New Best Block hash=", hash.SubString(),
                         " height=", nHeight,
                         " trust=", nChainTrust,
@@ -1101,11 +1230,34 @@ namespace TAO
                         " | ", (nTotalInputs * 1000000.0) / (nInputsTime + 1), " script/s]",
                         " [", std::setw(3), (::GetSerializeSize(*this, SER_LLD, nVersion) / 1024.0), " kb]");
 
+                /* [Prominent BESTCHAIN log] A single, easily greppable line
+                 * ("=== BESTCHAIN ===") emitted every time our own tip advances,
+                 * so this node's actual height/hash/mempool-conflict state can be
+                 * spotted quickly amid dense peer/NOTIFY/GET log noise -- useful
+                 * for confirming whether this node is tracking the network tip
+                 * or stuck on a stalled/forked chain. Suppressed during initial
+                 * sync (same gate as the detailed log above) to avoid spamming
+                 * one line per block during IBD. */
+                if(!TAO::Ledger::ChainState::Synchronizing())
+                    debug::log(0, ANSI_COLOR_BRIGHT_GREEN, "=== BESTCHAIN ===", ANSI_COLOR_RESET,
+                        " height=", nHeight,
+                        " hash=", hash.SubString(),
+                        " mempool_conflicts=", TAO::Ledger::mempool.Conflicts(),
+                        " mempool_conflict_deps=", TAO::Ledger::mempool.ConflictDependents(),
+                        " mempool_size=", TAO::Ledger::mempool.Size());
+
                 /* Set the best chain variables. */
                 ChainState::tStateBest          = *this; //XXX: we are not getting all the data from connect, consider using pointer
                 ChainState::hashBestChain      = hash;
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;
+
+                /* Capture whether this SetBest invocation was completing a chain reorganization.
+                 * Must be read before fChainReorg is cleared so the value is preserved for the
+                 * reorg-recovery diagnostic emitted after the push event is enqueued below. */
+                #ifndef UNIT_TESTS
+                const bool fWasReorg = ChainState::fChainReorg.load();
+                #endif
 
                 /* Reset our reorg block now. */
                 ChainState::fChainReorg.store(false);
@@ -1130,6 +1282,102 @@ namespace TAO
                 if(!ChainState::Synchronizing())
                     Dispatch::Instance().PushRelay(ChainState::hashBestChain.load());
                 #endif
+
+                /* PUSH NOTIFICATIONS: Universal tip push to both PoW channels on every unified tip advance.
+                 * Any channel (0=Stake, 1=Prime, 2=Hash) can advance the unified best tip.  When this
+                 * happens, PoW templates anchored to the previous tip become stale.  Notify ALL Prime and
+                 * Hash subscribers so miners immediately fetch fresh templates regardless of which channel
+                 * produced the winning block. */
+                #ifndef UNIT_TESTS
+                if(!ChainState::Synchronizing())
+                {
+                    if(config::fShutdown.load())
+                    {
+                        debug::log(1, FUNCTION, "Shutdown requested; skipping miner notifications");
+                    }
+                    else
+                    {
+                        /* Diagnostic log: compute per-channel state only when verbosity warrants it
+                         * (GetLastState and GetNextTargetRequired can involve disk I/O) */
+                        if(config::nVerbose >= 2)
+                        {
+                            BlockState statePrime = *this;
+                            BlockState stateHash  = *this;
+                            uint32_t nPrimeBits = 0;
+                            uint32_t nHashBits  = 0;
+                            if(GetLastState(statePrime, 1))
+                                nPrimeBits = GetNextTargetRequired(statePrime, 1, false);
+                            if(GetLastState(stateHash, 2))
+                                nHashBits = GetNextTargetRequired(stateHash, 2, false);
+
+                            debug::log(2, FUNCTION, "Universal tip push: best=", hash.SubString(),
+                                       " unified=", nHeight,
+                                       " | Prime ch=", statePrime.nChannelHeight,
+                                       " nBits=0x", std::hex, nPrimeBits, std::dec,
+                                       " | Hash ch=", stateHash.nChannelHeight,
+                                       " nBits=0x", std::hex, nHashBits, std::dec,
+                                       " (block_ch=", GetChannel(), ")");
+                        }
+
+                        /* Pre-warm the per-channel template cache for every
+                         * recently seen (channel, reward) tuple now that the
+                         * blockchain tip has advanced.  The warmer runs on its
+                         * own background thread so the SetBest critical path is
+                         * not slowed down.
+                         *
+                         * Ordering matters: fire prewarmer FIRST, then enqueue
+                         * PUSH notifications. This gives prewarmer a small head
+                         * start; combined with create.cpp singleflight coalescing,
+                         * per-connection workers are more likely to join an
+                         * existing in-flight build instead of duplicating Falcon
+                         * CreateProducer signing work. */
+                        LLP::MiningTemplatePrewarmer::Instance().NotifyTipAdvance(nHeight, hash);
+
+                        /* MinerPushDispatcher — canonical unified pathway for all
+                         * miner push notifications. Broadcasts to BOTH lanes
+                         * (Stateless + Legacy) for BOTH channels (Prime + Hash),
+                         * with deduplication to prevent double-sends from
+                         * accidental re-entry. EnqueuePushEvent() returns
+                         * immediately after queueing. */
+                        LLP::MinerPushDispatcher::EnqueuePushEvent(nHeight, hash);
+
+                        /* Only Prime and Hash are listed here because external
+                         * miner templates are served for PoW channels. Proof-of-Stake
+                         * (channel 0) is intentionally excluded because stake minting
+                         * does not consume LLP mining templates. */
+                        debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_GREEN,
+                            "=== MINING_TEMPLATES_FLUSHED ===", ANSI_COLOR_RESET,
+                            " best=", hash.SubString(),
+                            " height=", nHeight,
+                            " channels=PRIME,HASH");
+
+                        /* Reorg-recovery diagnostic: if this SetBest completed a chain reorganization,
+                         * log that the push was enqueued so operators can trace reorg-recovery behavior.
+                         * During large reorgs the miner's LLP poll timeout may fire while SetBest() is
+                         * still processing, causing a disconnect.  This entry confirms the push was
+                         * sent regardless of how many miners were connected at enqueue time. */
+                        if(fWasReorg)
+                            debug::log(0, FUNCTION, "Reorg-recovery push enqueued at height ", nHeight,
+                                       " (disconnect=", vDisconnect.size(), " connect=", vConnect.size(), ")");
+                    }
+                }
+                #endif
+
+                /* Verify unified height consistency using existing ChannelStateManager infrastructure */
+                if(!ChainState::Synchronizing())
+                {
+                    const uint32_t nVerifyInterval = config::GetArg("-verifyunified", 10);
+                    if(nVerifyInterval > 0 && !LLP::ChannelStateManager::VerifyAllChannels(nVerifyInterval))
+                    {
+                        debug::warning(FUNCTION, "Unified height verification failed at height ", nHeight);
+                        debug::warning(FUNCTION, "Chain may be in inconsistent state - fork callbacks triggered");
+                        /* Don't reject SetBest - block is already committed */
+                        /* Fork callbacks have been triggered on all channel managers */
+                    }
+                }
+
+                if(!ChainState::Synchronizing())
+                    TAO::Ledger::FinalizeLocalMinedTrackingAfterSetBest(*this);
             }
 
             return true;

@@ -26,6 +26,16 @@ endif
 ifndef STATIC
 	override STATIC=0
 endif
+
+# Configurable C++ language standard.
+# Default to c++20 (the codebase compiles cleanly under C++20). Opt in to
+# newer standards (e.g. c++23, c++2c) for beta validation via
+# `make -f makefile.cli STD=c++23`. Applied uniformly across all platform
+# sections below (Linux, macOS, iPhone, Android, Windows).
+ifndef STD
+	override STD=c++20
+endif
+
 ifeq (${STATIC}, 1)
 	DEFS+= -DSTATIC
 	ifeq (${detected_OS},Linux)
@@ -33,7 +43,7 @@ ifeq (${STATIC}, 1)
 	endif
 endif
 
-#Configure for x86(32BIT)/x64(64BIT) and ARM32/64
+#Configure for x86(32BIT)/x64(64BIT), ARM32/64, and RISC-V
 ifndef 32BIT
 	override 32BIT= 0
 
@@ -49,6 +59,19 @@ else ifeq (${ARM64}, 1)
 else ifeq (${ARM32}, 1)
         BUILD_ARCH=arm
 	CXXFLAGS+= -march=native -mtune=native
+
+else ifeq (${RISCV64}, 1)
+        BUILD_ARCH=riscv64
+        # RV64GC baseline: General-purpose registers + Compressed instructions
+        # -march=rv64gc includes: RV64I (base), M (multiply), A (atomic), F/D (float/double), C (compressed)
+        # For hardware crypto acceleration (Zbkb/Zbkc), OpenSSL auto-detects at runtime
+        CXXFLAGS+= -march=rv64gc -mtune=rocket
+        # Optional: Enable RISC-V Vector extension (RVV) if RISCV_VECTOR=1
+        ifdef RISCV_VECTOR
+                CXXFLAGS+= -march=rv64gcv
+                DEFS+= -DRISCV_VECTOR
+        endif
+
 else
 	BUILD_ARCH=x64
 	CXXFLAGS+= -m64
@@ -73,8 +96,11 @@ ifndef OPENSSL_LIB_PATH
 		#Arch Linux Fix
 		ifeq ($(shell uname -r | grep -o ....$), ARCH)
 			OPENSSL_LIB_PATH= /usr/lib/openssl-1.0
+		else ifeq (${RISCV64}, 1)
+			# RISC-V 64-bit library path (Debian/Ubuntu convention)
+			OPENSSL_LIB_PATH= /usr/lib/riscv64-linux-gnu
 		else
-		OPENSSL_LIB_PATH= /usr/lib/x86_64-linux-gnu
+			OPENSSL_LIB_PATH= /usr/lib/x86_64-linux-gnu
 		endif
 	endif
 endif
@@ -96,6 +122,7 @@ ifndef OPENSSL_INCLUDE_PATH
 		ifeq ($(shell uname -r | grep -o ....$), ARCH)
 			OPENSSL_INCLUDE_PATH= /usr/include/openssl-1.0
 		else
+			# OpenSSL headers are typically in standard /usr/include/openssl for all architectures
 			OPENSSL_INCLUDE_PATH= /usr/include/openssl
 		endif
 	endif
@@ -110,7 +137,12 @@ ifndef NO_WALLET
 			BDB_LIB_PATH= /usr/local/opt/db/lib
 		endif
 		ifeq ($(detected_OS),Linux)
-			BDB_LIB_PATH= /usr/lib/x86_64-linux-gnu
+			ifeq (${RISCV64}, 1)
+				# RISC-V 64-bit library path
+				BDB_LIB_PATH= /usr/lib/riscv64-linux-gnu
+			else
+				BDB_LIB_PATH= /usr/lib/x86_64-linux-gnu
+			endif
 		endif
 	endif
 	ifndef BDB_INCLUDE_PATH
@@ -297,39 +329,141 @@ ifdef UNIT_TESTS
 		   build/Tests_Legacy_utxo.o \
 		   build/Tests_Legacy_mempool.o \
 		   build/Tests_LLC_aes.o \
+		   build/Tests_LLC_argon2.o \
+		   build/Tests_LLC_chacha20_helpers.o \
+		   build/Tests_LLC_chacha20_poly1305.o \
+		   build/Tests_LLC_falcon_qtv_parity_test.o \
+		   build/Tests_LLC_falcon_version_test.o \
+		   build/Tests_LLC_fermat.o \
+		   build/Tests_LLC_mining_session_keys.o \
+		   build/Tests_LLC_qtv_hook_bridge_test.o \
+		   build/Tests_LLC_test_genesis_endianness.o \
+		   build/Tests_LLC_uint1024.o \
+		   build/Tests_LLP_async_push_worker_tests.o \
+		   build/Tests_LLP_template_prewarmer_tests.o \
 		   build/Tests_LLP_base_address.o \
+		   build/Tests_LLP_canonical_chain_state_tests.o \
+		   build/Tests_LLP_channel_state_manager_tests.o \
+		   build/Tests_LLP_coinbase_contract_size_tests.o \
+		   build/Tests_LLP_concurrency_testing.o \
+		   build/Tests_LLP_context_immutability_comprehensive.o \
+		   build/Tests_LLP_dual_connection_manager_tests.o \
+		   build/Tests_LLP_dual_identity_comprehensive.o \
+		   build/Tests_LLP_encryption_context_test.o \
+		   build/Tests_LLP_error_handling_comprehensive.o \
+		   build/Tests_LLP_falcon_1024_auth_test.o \
+		   build/Tests_LLP_falcon_1024_detection_test.o \
+		   build/Tests_LLP_falcon_auth_stress.o \
+		   build/Tests_LLP_falcon_endianness.o \
+		   build/Tests_LLP_falcon_full_block_format.o \
+		   build/Tests_LLP_falcon_handshake.o \
+		   build/Tests_LLP_falcon_protocol_integration.o \
+		   build/Tests_LLP_falcon_verify_test.o \
+		   build/Tests_LLP_genesis_validation.o \
+		   build/Tests_LLP_graceful_shutdown_tests.o \
+		   build/Tests_LLP_hash_sign_finalization_tests.o \
+		   build/Tests_LLP_integration_comprehensive.o \
+		   build/Tests_LLP_keepalive_v2_tests.o \
+		   build/Tests_LLP_legacy_template_registry_tests.o \
+		   build/Tests_LLP_legacy_opcode_policy_tests.o \
+		   build/Tests_LLP_llp_lane_enforcement_test.o \
+		   build/Tests_LLP_miner_protocol.o \
+		   build/Tests_LLP_miner_push_summary_tests.o \
+		   build/Tests_LLP_mining_config.o \
+		   build/Tests_LLP_mining_server_factory_test.o \
+		   build/Tests_LLP_mining_template_integration.o \
+		   build/Tests_LLP_node_cache.o \
+		   build/Tests_LLP_node_integration_hardening.o \
+		   build/Tests_LLP_node_session_registry_tests.o \
+		   build/Tests_LLP_opcode_alias.o \
+		   build/Tests_LLP_packet_data_payload.o \
+		   build/Tests_LLP_packet_length_validation_test.o \
+		   build/Tests_LLP_packet_processing_comprehensive.o \
+		   build/Tests_LLP_packet_round_response.o \
+		   build/Tests_LLP_permissions_test.o \
+		   build/Tests_LLP_prime_sign_finalization_tests.o \
+		   build/Tests_LLP_push_notification_tests.o \
+		   build/Tests_LLP_push_throttle_test.o \
+		   build/Tests_LLP_burst_mode_push_notification_test.o \
+		   build/Tests_LLP_rate_limiting_tests.o \
+		   build/Tests_LLP_reward_address_protocol.o \
+		   build/Tests_LLP_reward_binding_payload_test.o \
+		   build/Tests_LLP_reward_routing.o \
+		   build/Tests_LLP_rewards_payout_verification.o \
+		   build/Tests_LLP_session_management_comprehensive.o \
+		   build/Tests_LLP_session_status_tests.o \
+		   build/Tests_LLP_session_store_tests.o \
+		   build/Tests_LLP_socket_buffer_tests.o \
+		   build/Tests_LLP_shared_template_payload_tests.o \
+		   build/Tests_LLP_stale_sync_warning_limiter_tests.o \
+		   build/Tests_LLP_stateless_miner.o \
+		   build/Tests_LLP_submit_block_format_test.o \
+		   build/Tests_LLP_template_metadata_channel_height.o \
+		   build/Tests_LLP_test_cleanup_stale_templates.o \
+		   build/Tests_LLP_test_get_block_response_contract.o \
+		   build/Tests_LLP_test_get_round_schema.o \
+		   build/Tests_LLP_test_heartbeat_refresh.o \
+		   build/Tests_LLP_test_protocol_lane.o \
+		   build/Tests_LLP_test_respond_auto.o \
+		   build/Tests_LLP_test_simlink_session_rate_limiter.o \
+		   build/Tests_LLP_test_stateless_miner_crypto.o \
+		   build/Tests_LLP_test_template_staleness.o \
+		   build/Tests_LLP_test_tolerance_verification.o \
+		   build/Tests_LLP_trust_address.o \
+		   build/Tests_LLP_pr563_safeguards_tests.o \
+		   build/Tests_LLP_tx_response_window_tests.o \
 		   build/Tests_TAO_API_assets.o \
+		   build/Tests_TAO_API_credential_cache_tests.o \
+		   build/Tests_TAO_API_crypto.o \
 		   build/Tests_TAO_API_finance.o \
 		   build/Tests_TAO_API_names.o \
 		   build/Tests_TAO_API_supply.o \
 		   build/Tests_TAO_API_tokens.o \
+		   build/Tests_TAO_API_users.o \
 		   build/Tests_TAO_API_util.o \
 		   build/Tests_TAO_Ledger_block.o \
+		   build/Tests_TAO_Ledger_channel_height.o \
+		   build/Tests_TAO_Ledger_create_transaction.o \
+		   build/Tests_TAO_Ledger_stake_sequence.o \
+		   build/Tests_TAO_Ledger_stakepool.o \
+		   build/Tests_TAO_Ledger_validate_vtx_consistency.o \
+		   build/Tests_TAO_Ledger_filter_mempool_only_predecessor.o \
+		   build/Tests_TAO_Ledger_filter_binding_to_production.o \
+		   build/Tests_TAO_Ledger_accept_mined_block_tip_race.o \
+		   build/Tests_TAO_Ledger_missing_tx_soft_fail.o \
+		   build/Tests_TAO_Ledger_mempool_check_orphan_fix.o \
+		   build/Tests_TAO_Ledger_mempool_conflict_dag.o \
 		   build/Tests_TAO_Ledger_mempool.o \
-           build/Tests_TAO_Ledger_transaction.o \
+		   build/Tests_TAO_Ledger_prime.o \
+		   build/Tests_TAO_Ledger_transaction.o \
 		   build/Tests_TAO_Ledger_sigchain.o \
 		   build/Tests_TAO_Ledger_stake.o \
+		   build/Tests_TAO_Ledger_mining_template_cache_tests.o \
+		   build/Tests_TAO_Ledger_setbest_txn_ordering.o \
 		   build/Tests_TAO_Register_objects.o \
 		   build/Tests_TAO_Register_rollback.o \
 		   build/Tests_TAO_Register_testvm.o \
 		   build/Tests_TAO_Operation_conditions.o \
 		   build/Tests_TAO_Operation_contract.o \
 		   build/Tests_TAO_Operation_debit.o \
-           build/Tests_TAO_Operation_credit.o \
+		   build/Tests_TAO_Operation_credit.o \
 		   build/Tests_TAO_Operation_erase.o \
 		   build/Tests_TAO_Operation_fees.o \
 		   build/Tests_TAO_Operation_migrate.o \
 		   build/Tests_TAO_Operation_names.o \
 		   build/Tests_TAO_Operation_register.o \
 		   build/Tests_TAO_Operation_transfer.o \
-           build/Tests_TAO_Operation_claim.o \
+		   build/Tests_TAO_Operation_claim.o \
 		   build/Tests_TAO_Operation_trust.o \
 		   build/Tests_TAO_Operation_validate.o \
 		   build/Tests_TAO_Operation_write.o \
+		   build/Tests_Util_concurrent_hashmap.o \
+		   build/Tests_Util_config.o \
 		   build/Tests_Util_hex.o \
-		   build/Tests_Util_math.o
+		   build/Tests_Util_math.o \
+		   build/Tests_Util_nexus_conf_settings.o
 
-	DEFS += -DUNIT_TESTS
+	DEFS += -DUNIT_TESTS -DCATCH_CONFIG_NO_POSIX_SIGNALS
 
 #Run benchmarks on subsystems
 else ifdef BENCHMARKS
@@ -409,6 +543,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_connection.o \
     	build/LLP_httpnode.o \
 		build/LLP_apinode.o \
+		build/LLP_auto_cooldown_manager.o \
 		build/LLP_filenode.o \
 		build/LLP_data.o \
 		build/LLP_ddos.o \
@@ -428,6 +563,30 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_time.o \
 		build/LLP_tritium.o \
 		build/LLP_trust_address.o \
+		build/LLP_stateless_miner.o \
+		build/LLP_stateless_connection.o \
+		build/LLP_stateless_manager.o \
+		build/LLP_genesis_constants.o \
+		build/LLP_stateless_miner_connection.o \
+		build/LLP_stateless_get_block_handler.o \
+		build/LLP_legacy_get_block_handler.o \
+		build/LLP_node_pool_health_monitor.o \
+		build/LLP_channel_state_manager.o \
+		build/LLP_falcon_auth.o \
+		build/LLP_disposable_falcon.o \
+		build/LLP_mining_config.o \
+		build/LLP_node_sync.o \
+		build/LLP_node_cache.o \
+		build/LLP_node_session_registry.o \
+		build/LLP_falcon_handshake.o \
+		build/LLP_falcon_verify.o \
+		build/LLP_opcode_utility.o \
+		build/LLP_push_notification.o \
+		build/LLP_colin_mining_agent.o \
+		build/LLP_failover_connection_tracker.o \
+		build/LLP_miner_push_dispatcher.o \
+		build/LLP_template_prewarmer.o \
+		build/LLP_session_store.o \
 		build/API_commands_assets_initialize.o \
 		build/API_commands_assets_json.o \
 		build/API_commands_assets_partial.o \
@@ -509,6 +668,9 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_system_initialize.o \
 		build/API_commands_system_metrics.o \
 		build/API_commands_system_validate.o \
+		build/API_commands_system_mining_control.o \
+		build/API_commands_system_getmininginfo.o \
+		build/API_commands_system_setmining.o \
 		build/API_commands_templates_claim.o \
 		build/API_commands_templates_create.o \
 		build/API_commands_templates_get.o \
@@ -605,6 +767,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_stake_change.o \
 		build/Ledger_stake_minter.o \
 		build/Ledger_state.o \
+		build/Ledger_stateless_block_utility.o \
 		build/Ledger_supply.o \
 		build/Ledger_syncblock.o \
 		build/Ledger_timelocks.o \
@@ -726,7 +889,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++17
+CXXFLAGS+=-std=$(STD)
 CXXFLAGS+= $(CXXWARNINGS)
 
 
@@ -981,7 +1144,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++17
+CXXFLAGS+=-std=$(STD)
 CXXFLAGS+= $(CXXWARNINGS)
 
 #OS Specific Targets and instructions
@@ -1049,7 +1212,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++17
+CXXFLAGS+=-std=$(STD)
 CXXFLAGS+= $(CXXWARNINGS)
 
 #OS Specific Targets and instructions
@@ -1120,7 +1283,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++17
+CXXFLAGS+=-std=$(STD)
 CXXFLAGS+= $(CXXWARNINGS)
 
 #OS Specific Targets and instructions
@@ -1207,7 +1370,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++17
+CXXFLAGS+=-std=$(STD)
 CXXFLAGS+= $(CXXWARNINGS)
 
 
@@ -1575,7 +1738,7 @@ build/Tests_LLD_%.o: tests/unit/LLD/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/Tests_LLP_%.o: tests/unit/LLP/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	$(CXX) -c $(CXXFLAGS) -I$(CURDIR)/tests/unit/LLP -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \

@@ -42,8 +42,8 @@ typedef uint64_t tKeccakLane;
 #elif defined(UseSHLD)
     #define ROL64(x,N) (\
     { \
-    register uint64_t __out; \
-    register uint64_t __in = x; \
+    uint64_t __out; \
+    uint64_t __in = x; \
     __asm__ ("shld %2,%0,%0" : "=r"(__out) : "0"(__in), "i"(N)); \
     __out; \
     })

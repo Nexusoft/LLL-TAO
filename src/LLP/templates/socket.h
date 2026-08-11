@@ -68,11 +68,35 @@ namespace LLP
         std::atomic<int32_t> nError;
 
 
-        /** Oversize buffer for large packets. **/
+        /** Oversize buffer for low-priority packets (templates / pushes). **/
         std::vector<uint8_t> vBuffer;
 
 
-        /** Keep track of the buffer with an atomic. */
+        /** Read offset into vBuffer.
+         *
+         *  Instead of erasing sent bytes from the front of vBuffer (O(n) memmove),
+         *  Flush() advances this offset past the bytes it has sent.  vBuffer is
+         *  compacted (cleared and offset reset) only when all bytes have been
+         *  consumed, keeping every Flush() iteration O(1) for the common case.
+         *
+         *  Protected by SOCKET_MUTEX (same as vBuffer).
+         *  Always satisfies: m_nFlushOffset <= vBuffer.size(). **/
+        size_t m_nFlushOffset;
+
+        /** Oversize buffer for high-priority control packets (ACKs / round replies). **/
+        std::vector<uint8_t> vPriorityBuffer;
+
+
+        /** Read offset into vPriorityBuffer.
+         *
+         *  Mirrors m_nFlushOffset for the high-priority control-plane buffer.
+         *  Protected by SOCKET_MUTEX and always satisfies:
+         *  m_nPriorityFlushOffset <= vPriorityBuffer.size().
+         **/
+        size_t m_nPriorityFlushOffset;
+
+
+        /** Keep track of total buffered bytes across both priority classes. */
         std::atomic<uint64_t> nBufferSize;
 
 
@@ -208,6 +232,8 @@ namespace LLP
          **/
         int32_t Write(const std::vector<uint8_t>& vData, size_t nBytes);
 
+        int32_t Write(const std::vector<uint8_t>& vData, size_t nBytes, bool fPriority);
+
 
         /** Flush
          *
@@ -247,11 +273,23 @@ namespace LLP
 
 
         /** Errors
+          *
+          *  Checks for any flags in the Error Handle.
+          *
+          **/
+        bool Errors() const;
+
+
+        /** RefreshSocketError
          *
-         *  Checks for any flags in the Error Handle.
+         *  Query the kernel's pending SO_ERROR state for this socket and cache
+         *  any non-zero result into nError so the DataThread can remove the
+         *  connection on its next pass.
+         *
+         *  @return the pending socket error code, or 0 if none is pending.
          *
          **/
-        bool Errors() const;
+        int32_t RefreshSocketError();
 
 
         /** Error

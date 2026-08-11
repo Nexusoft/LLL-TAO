@@ -35,6 +35,10 @@ namespace TAO
         std::atomic<uint32_t> ChainState::nBestHeight;
 
 
+        /* The highest block height advertised by any connected peer. */
+        std::atomic<uint32_t> ChainState::nMaxPeerHeight(0);
+
+
         /* The best trust in the chain. */
         std::atomic<uint64_t> ChainState::nBestChainTrust;
 
@@ -240,8 +244,20 @@ namespace TAO
 
                             /* Set the best to older block. */
                             LLD::TxnBegin();
-                            stateAncestor.SetBest();
-                            LLD::TxnCommit();
+
+                            /* Bug fix (call site #4): check return value before committing.
+                             * A failed SetBest() must abort the transaction to avoid committing
+                             * partial / inconsistent disk writes. */
+                            if(!stateAncestor.SetBest())
+                            {
+                                debug::error(FUNCTION, "failed to revert to hardcoded ancestor checkpoint");
+                                LLD::TxnAbort();
+                            }
+                            /* SetBest() commits the transaction internally when it succeeds.
+                             * Guard with HasOpenTransaction() so that the now-closed outer
+                             * transaction is not misreported as a commit failure. */
+                            else if(LLD::HasOpenTransaction() && !LLD::TxnCommit())
+                                debug::error(FUNCTION, "disk commit failed after reverting to hardcoded ancestor checkpoint");
 
                             break;
                         }
@@ -281,7 +297,11 @@ namespace TAO
                 {
                     /* Debug Output. */
                     debug::log(0, FUNCTION, "-revertblocks=XXX requested removal of ", nRevertBlocks, " blocks");
-                    LLD::TxnCommit();
+                    /* SetBest() commits the transaction internally when it succeeds.
+                     * Guard with HasOpenTransaction() so that the now-closed outer
+                     * transaction is not misreported as a commit failure. */
+                    if(LLD::HasOpenTransaction() && !LLD::TxnCommit())
+                        debug::error(FUNCTION, "disk commit failed after -revertblocks rewind");
                 }
             }
 
@@ -471,6 +491,68 @@ namespace TAO
         uint1024_t ChainState::Genesis()
         {
             return (config::fHybrid.load() ? TAO::Ledger::hashGenesisHybrid : config::fTestNet.load() ? TAO::Ledger::hashGenesisTestnet : (config::fClient.load() ? TAO::Ledger::hashTritium : TAO::Ledger::hashGenesis));
+        }
+
+
+        /* Repair in-memory checkpoint state when it drifts from the on-disk best-chain state. */
+        bool ChainState::RepairCheckpointIfStale()
+        {
+            /* In-memory gate: compare tStateBest.hashCheckpoint (the checkpoint embedded
+             * in the best block state struct) against the standalone hashCheckpoint atomic.
+             * If they are consistent there is nothing to repair — avoid disk I/O entirely.
+             * This eliminates the I/O amplification DoS vector where a remote peer could
+             * trigger repeated ReadBlock() calls by spamming blocks with bad checkpoints. */
+            const uint1024_t hashMemCheckpoint  = ChainState::hashCheckpoint.load();
+            const uint1024_t hashBestCheckpoint = ChainState::tStateBest.load().hashCheckpoint;
+
+            if(hashMemCheckpoint == hashBestCheckpoint)
+            {
+                /* In-memory state is consistent — no repair needed. */
+                return false;
+            }
+
+            /* In-memory mismatch detected: repair from on-disk best state. */
+            debug::error(FUNCTION, "CHECKPOINT STALE: in-memory=", hashMemCheckpoint.SubString(),
+                " tStateBest.hashCheckpoint=", hashBestCheckpoint.SubString(),
+                " — repairing");
+
+            /* Read the on-disk best-chain block to get the authoritative checkpoint hash. */
+            BlockState stateBestDisk;
+            if(!LLD::Ledger->ReadBlock(ChainState::hashBestChain.load(), stateBestDisk))
+            {
+                debug::error(FUNCTION, "repair failed: could not read best block from disk");
+                return false;
+            }
+
+            /* Double-check disk matches in-memory tStateBest expectation. */
+            if(stateBestDisk.hashCheckpoint != hashBestCheckpoint)
+            {
+                debug::error(FUNCTION, "repair aborted: disk checkpoint=",
+                    stateBestDisk.hashCheckpoint.SubString(),
+                    " does not match tStateBest.hashCheckpoint=", hashBestCheckpoint.SubString());
+                return false;
+            }
+
+            /* Read the checkpoint block so we can update nCheckpointHeight. */
+            const uint1024_t hashCheckpointOld = hashMemCheckpoint;
+            ChainState::hashCheckpoint = stateBestDisk.hashCheckpoint;
+
+            BlockState stateCheckpoint;
+            if(!LLD::Ledger->ReadBlock(stateBestDisk.hashCheckpoint, stateCheckpoint))
+            {
+                /* Restore old checkpoint to avoid a partial update. */
+                ChainState::hashCheckpoint = hashCheckpointOld;
+                debug::error(FUNCTION, "repair failed: could not read checkpoint block");
+                return false;
+            }
+
+            ChainState::nCheckpointHeight = stateCheckpoint.nHeight;
+
+            debug::log(0, FUNCTION, "Checkpoint repair SUCCESS: hash=",
+                ChainState::hashCheckpoint.load().SubString(),
+                " height=", ChainState::nCheckpointHeight.load());
+
+            return true;
         }
     }
 }

@@ -1,0 +1,14 @@
+08. RISC-V Kernel Experiment Feedback Loop
+
+RISC-V observation
+      │
+      ▼
+Julia kernel experiment
+      │
+      ▼
+fixture + benchmark capture
+      │
+      ▼
+C++ feasibility review
+      │
+      └──────────────► feed results back into docs

@@ -40,6 +40,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/ambassador.h>
+#include <TAO/Ledger/include/admissibility.h>
 #include <TAO/Ledger/include/developer.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -51,12 +52,34 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/merkle.h>
 #include <TAO/Ledger/types/mempool.h>
 
+#include <Util/include/args.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 
 /* Global TAO namespace. */
 namespace TAO
 {
+    namespace
+    {
+        bool SequenceDiagnosticsEnabled()
+        {
+            return config::GetBoolArg("-nseqdiag", false);
+        }
+
+        const char* SequenceDiagFlagToString(const uint8_t nFlags)
+        {
+            switch(nFlags)
+            {
+                case TAO::Ledger::FLAGS::BLOCK:   return "BLOCK";
+                case TAO::Ledger::FLAGS::MINER:   return "MINER";
+                case TAO::Ledger::FLAGS::MEMPOOL: return "MEMPOOL";
+                case TAO::Ledger::FLAGS::LOOKUP:  return "LOOKUP";
+                case TAO::Ledger::FLAGS::ERASE:   return "ERASE";
+                default:                          return "OTHER";
+            }
+        }
+    }
+
 
     /* Ledger Layer namespace. */
     namespace Ledger
@@ -876,6 +899,12 @@ namespace TAO
         /* Connect a transaction object to the main chain. */
         bool Transaction::Connect(const uint8_t nFlags, const BlockState* pblock) const
         {
+            /* Reset the thread-local admissibility classification at entry so a
+             * DEFERRED_LOCAL_STATE left over from an earlier, unrelated Connect()
+             * call on this thread cannot be misread by a caller that checks it
+             * after this call fails for a completely different reason. */
+            SetLastConnectClass(AdmissibilityClass::UNKNOWN);
+
             /* Get the transaction's hash. */
             const uint512_t hash = GetHash();
 
@@ -935,14 +964,45 @@ namespace TAO
                 /* We want this to trigger for times not in -client mode. */
                 if(!config::fClient.load() || (TAO::API::Authentication::Active(hashGenesis) && nFlags != FLAGS::LOOKUP))
                 {
+                    const bool fSeqDiag = SequenceDiagnosticsEnabled();
+
                     /* Make sure the previous transaction is on disk or mempool. */
                     TAO::Ledger::Transaction txPrev;
                     if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
                         return debug::error(FUNCTION, "prev transaction not on disk ", hashPrevTx.SubString());
 
+                    if(fSeqDiag)
+                    {
+                        debug::log(0, FUNCTION,
+                            "[NSEQ_DIAG][Transaction::Check]"
+                            " genesis=", hashGenesis.SubString(),
+                            " context=", SequenceDiagFlagToString(nFlags),
+                            " current.hashPrevTx=", hashPrevTx.SubString(),
+                            " prev.hash=", txPrev.GetHash().SubString(),
+                            " prev.nSequence=", txPrev.nSequence,
+                            " prev.nTimestamp=", txPrev.nTimestamp,
+                            " current.nSequence=", nSequence,
+                            " current.nTimestamp=", nTimestamp,
+                            " expected.nSequence=", txPrev.nSequence + 1);
+                    }
+
                     /* Double check sequence numbers here. */
                     if(txPrev.nSequence + 1 != nSequence)
+                    {
+                        if(fSeqDiag)
+                        {
+                            debug::log(0, FUNCTION,
+                                "[NSEQ_DIAG][Transaction::Check][MISMATCH]"
+                                " genesis=", hashGenesis.SubString(),
+                                " context=", SequenceDiagFlagToString(nFlags),
+                                " prev.hash=", txPrev.GetHash().SubString(),
+                                " prev.nSequence=", txPrev.nSequence,
+                                " current.nSequence=", nSequence,
+                                " expected.nSequence=", txPrev.nSequence + 1);
+                        }
+
                         return debug::error(FUNCTION, "prev transaction incorrect sequence");
+                    }
 
                     /* Check timestamp to previous transaction. */
                     if(nTimestamp < txPrev.nTimestamp)
@@ -1002,9 +1062,51 @@ namespace TAO
                             if(!LLD::Ledger->ReadConfirmations(hashPrev, nConfirms, pblock))
                                 return debug::error(FUNCTION, "failed to read confirmations for coinbase");
 
-                            /* Check that the previous TX has reached sig chain maturity */
-                            if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::tStateBest.load())))
+                            /* Check that the previous TX has reached sig chain maturity.
+                             *
+                             * CONSENSUS CONSTRAINT: when pblock != nullptr (block-connect
+                             * validation), this check is unchanged — reject immediately.
+                             *
+                             * MEMPOOL ADMISSION (pblock == nullptr): if the coinbase
+                             * appears immature at local height but would be mature at the
+                             * best height advertised by any connected peer, the node is
+                             * merely stale (1-2 blocks behind).  Classify as
+                             * DEFERRED_LOCAL_STATE so Mempool::Accept() retains the
+                             * transaction instead of permanently blacklisting it — the
+                             * immature-coinbase feedback loop that wedges the node at a
+                             * fixed height is broken by this path.  The block-connect
+                             * path (pblock != nullptr) still enforces maturity
+                             * unconditionally, preserving consensus semantics. */
+                            const uint32_t nMaturity =
+                                MaturityCoinBase((pblock ? *pblock : ChainState::tStateBest.load()));
+                            if(nConfirms + 1 < nMaturity)
+                            {
+                                if(!pblock)
+                                {
+                                    /* Compute what confirmation count would be at the
+                                     * highest peer-advertised height.  A non-zero
+                                     * nMaxPeerHeight only makes the check MORE lenient;
+                                     * if no peer height has been observed yet (== 0),
+                                     * fall through to the unconditional rejection below. */
+                                    const uint32_t nPeerHeight  = ChainState::nMaxPeerHeight.load();
+                                    const uint32_t nLocalHeight = ChainState::nBestHeight.load();
+                                    if(nPeerHeight > nLocalHeight)
+                                    {
+                                        const uint32_t nPeerConfs = nConfirms + (nPeerHeight - nLocalHeight);
+                                        if(nPeerConfs + 1 >= nMaturity)
+                                        {
+                                            /* Mark this as a local-state-dependent failure
+                                             * so Accept() knows not to permanently reject. */
+                                            TAO::Ledger::SetLastConnectClass(
+                                                TAO::Ledger::AdmissibilityClass::DEFERRED_LOCAL_STATE);
+                                            return debug::error(FUNCTION,
+                                                "coinbase is immature ", nConfirms,
+                                                " (DEFERRED: mature at peer height ", nPeerHeight, ")");
+                                        }
+                                    }
+                                }
                                 return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
+                            }
 
                             break;
                         }

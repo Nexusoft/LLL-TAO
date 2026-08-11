@@ -1,0 +1,8 @@
+07. Julia Testing and Parity Gates
+
+prototype ready?
+   │
+   ├── no correctness tests  -> stop
+   ├── no C++ parity tests   -> stop
+   ├── no benchmark metadata -> stop
+   └── all evidence present  -> continue
