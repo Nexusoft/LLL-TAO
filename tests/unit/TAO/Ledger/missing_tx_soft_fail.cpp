@@ -2293,6 +2293,7 @@ TEST_CASE("BESTCHAIN recovery skips near-tip unknown race",
         hashOrphanNearTip, /*nPeerHeight=*/nLocalHeight,
         "unit-test-bestchain-near-orphan", &node, &fQueuedOrphan,
         /*fMatchingBlockInventoryGet=*/true));
+    REQUIRE(fQueuedOrphan);
     REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashOrphanAncestor) == 1);
 #endif
 
