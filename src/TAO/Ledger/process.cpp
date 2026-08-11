@@ -962,16 +962,17 @@ namespace TAO
              *
              * Near-tip race (post-#694): dispatch relays BLOCK + BESTCHAIN +
              * BESTHEIGHT in that order, so BESTCHAIN is handled with a stale
-             * nCurrentHeight while the BLOCK inventory path has already queued
-             * a GET for the same hash.  Peer height equal to local (or only
-             * BESTCHAIN_NEAR_TIP_HEIGHT_SLACK ahead) is the common tip-advance
-             * race only when that matching GET is outstanding — skip
-             * coordinator and fallback so every subscribed peer does not emit
-             * PEER_BEST_RECOVERY WARNING + locator LIST + fanout for a block
-             * about to land.  Without a matching BLOCK inventory GET (Sync()
-             * does not subscribe to BLOCK; relay filtering can deliver
-             * BESTCHAIN alone), still recover so the node cannot stall one
-             * block behind.
+             * nCurrentHeight while the BLOCK inventory path may already have
+             * successfully queued a GET for the same hash.  Peer height equal
+             * to local (or only BESTCHAIN_NEAR_TIP_HEIGHT_SLACK ahead) is the
+             * common tip-advance race only when that matching GET is
+             * outstanding — skip coordinator and fallback so every subscribed
+             * peer does not emit PEER_BEST_RECOVERY WARNING + locator LIST +
+             * fanout for a block about to land.  Without a matching BLOCK
+             * inventory GET that was actually written (Sync() does not
+             * subscribe to BLOCK; relay filtering can deliver BESTCHAIN alone;
+             * WritePacket drops when the send buffer is full), still recover
+             * so the node cannot stall one block behind.
              *
              * Orphan-pool exclusion: a tip already held in mapOrphans is not an
              * inventory-owned race.  A duplicate BLOCK GET for that hash returns

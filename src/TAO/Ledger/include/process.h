@@ -458,13 +458,13 @@ namespace TAO
          *         same NOTIFY often still lags by one), but that shortcut is
          *         taken only when fMatchingBlockInventoryGet is true AND the
          *         tip is not already in mapOrphans — i.e. the caller's NOTIFY
-         *         handler already queued a GET for this hash and the body is
-         *         not sitting as an orphan whose recovery request may have
-         *         been lost.  Without a matching GET, or when the tip is in
-         *         the orphan pool, near-tip unknown tips still enter recovery
-         *         so Sync()-time / BLOCK-unsubscribed peers cannot stall one
-         *         block behind and orphan ancestry walkback / missing-branch
-         *         LIST still run.
+         *         handler successfully queued a GET for this hash (not merely
+         *         staged it) and the body is not sitting as an orphan whose
+         *         recovery request may have been lost.  Without a matching
+         *         GET, or when the tip is in the orphan pool, near-tip unknown
+         *         tips still enter recovery so Sync()-time / BLOCK-unsubscribed
+         *         peers cannot stall one block behind and orphan ancestry
+         *         walkback / missing-branch LIST still run.
          *    2. Fallback LIST only when step 1 returned SKIPPED, the advertised
          *       tip is not yet the active local best, the peer is at/ahead of
          *       local height, and ShouldSendBranchSyncRequest allows it
@@ -481,11 +481,14 @@ namespace TAO
          *  @param[in]  pnode         Notifying peer (required for LIST paths).
          *  @param[out] pfBranchSyncQueued  Optional. Set true when a primary
          *                    locator LIST was successfully queued on pnode.
-         *  @param[in]  fMatchingBlockInventoryGet  True when this NOTIFY already
-         *                    queued an ACTION::GET for hashPeerBest from a
-         *                    TYPES::BLOCK inventory entry.  Required (with the
-         *                    tip not in mapOrphans) to treat a near-tip unknown
-         *                    tip as inventory-owned.
+         *  @param[in]  fMatchingBlockInventoryGet  True when this NOTIFY successfully
+         *                    queued (WritePacket returned true) an ACTION::GET
+         *                    for hashPeerBest from a TYPES::BLOCK inventory
+         *                    entry.  Required (with the tip not in mapOrphans)
+         *                    to treat a near-tip unknown tip as inventory-owned.
+         *                    Callers must not pass true merely because the GET
+         *                    was appended to a response stream that has not yet
+         *                    been written — a full send buffer drops the packet.
          *
          *  @return true only when AttemptPeerBestChainRecovery reported PROGRESS.
          *

@@ -68,6 +68,8 @@ ________________________________________________________________________________
 #include <bitset>
 #include <optional>
 #include <set>
+#include <utility>
+#include <vector>
 
 namespace LLP
 {
@@ -2271,10 +2273,17 @@ namespace LLP
                 /* Create response data stream. */
                 DataStream ssResponse(SER_NETWORK, PROTOCOL_VERSION);
 
-                /* Block hashes from this NOTIFY that already queued an
-                 * ACTION::GET.  BESTCHAIN near-tip skip is inventory-owned
-                 * only when the matching tip hash is present here. */
+                /* Block hashes from this NOTIFY that were appended to
+                 * ssResponse for an ACTION::GET.  BESTCHAIN near-tip skip is
+                 * inventory-owned only when WritePacket succeeds below and the
+                 * matching tip hash is present here (append alone is not a
+                 * queued send — a full buffer drops the packet). */
                 std::set<uint1024_t> setBlockInventoryGets;
+
+                /* Foreign BESTCHAIN tips seen in this NOTIFY.  Recovery is
+                 * deferred until after WritePacket(ssResponse) so the near-tip
+                 * inventory-owned gate can require a successfully queued GET. */
+                std::vector<std::pair<uint1024_t, uint32_t>> vPendingBestChainRecovery;
 
                 /* Set our max limits to 100 notifications per packet. */
                 uint32_t nLimits = 0;
@@ -2649,8 +2658,8 @@ namespace LLP
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::NOTIFY: BESTCHAIN ", hashBestChain.SubString());
 
-                            /* Route every foreign BESTCHAIN tip through the shared
-                             * recovery coordinator (TIP-01 / TIP-02):
+                            /* Defer foreign BESTCHAIN recovery until after
+                             * WritePacket(ssResponse) below (TIP-01 / TIP-02):
                              *   - known heavier tip  → validated activation
                              *   - unknown / far tip  → throttled LIST+TRANSACTIONS
                              *                          (+ optional fanout peer)
@@ -2658,8 +2667,8 @@ namespace LLP
                              *                          at/ahead of local
                              *                          (near-tip +0/+1 races skip
                              *                          only when a matching BLOCK
-                             *                          inventory GET was queued
-                             *                          in this NOTIFY)
+                             *                          inventory GET was actually
+                             *                          queued from this NOTIFY)
                              *   - known side-branch  → throttled fallback LIST until
                              *                          local best matches
                              * Chatty BESTCHAIN must not unthrottled-LIST or double-
@@ -2669,11 +2678,8 @@ namespace LLP
                             if(hashBestChain != 0
                             && hashBestChain != TAO::Ledger::ChainState::hashBestChain.load())
                             {
-                                const bool fMatchingBlockGet =
-                                    (setBlockInventoryGets.count(hashBestChain) != 0);
-                                TAO::Ledger::RequestBestChainBranchRecovery(
-                                    hashBestChain, nCurrentHeight, NODE.c_str(), this,
-                                    /*pfBranchSyncQueued=*/nullptr, fMatchingBlockGet);
+                                vPendingBestChainRecovery.emplace_back(
+                                    hashBestChain, nCurrentHeight);
                             }
 
                             /* A sync peer is complete only when its advertised best
@@ -2763,9 +2769,24 @@ namespace LLP
                     }
                 }
 
-                /* Push a request for the data from notifications. */
+                /* Push a request for the data from notifications.
+                 * WritePacket returns false when the send buffer is full and
+                 * the packet is dropped — near-tip skip must not treat that as
+                 * an inventory-owned race. */
+                bool fInventoryGetQueued = false;
                 if(ssResponse.size() != 0)
-                    WritePacket(NewMessage(ACTION::GET, ssResponse));
+                    fInventoryGetQueued = WritePacket(NewMessage(ACTION::GET, ssResponse));
+
+                /* Run deferred BESTCHAIN recovery now that inventory GET
+                 * queueing outcome is known. */
+                for(const auto& pending : vPendingBestChainRecovery)
+                {
+                    const bool fMatchingBlockGet = fInventoryGetQueued
+                        && (setBlockInventoryGets.count(pending.first) != 0);
+                    TAO::Ledger::RequestBestChainBranchRecovery(
+                        pending.first, pending.second, NODE.c_str(), this,
+                        /*pfBranchSyncQueued=*/nullptr, fMatchingBlockGet);
+                }
 
                 break;
             }
