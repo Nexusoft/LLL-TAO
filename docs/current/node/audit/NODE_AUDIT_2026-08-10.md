@@ -205,13 +205,13 @@ After deploying NODE post-#691, grep logs for:
 ```
 missing-tx retry limit reached ... escalating to branch recovery
 ```
+followed by **one** LIST window open, not two rapid window replacements on the same peer.
 
 **Near-tip inventory race (level 2 debug)**
 ```
 BESTCHAIN near-tip race; deferring recovery to block inventory
 ```
 Must **not** appear when the advertised tip is already in `mapOrphans` (FG-20) — that case should emit coordinator `PEER_BEST_RECOVERY` / gap LIST instead.
-followed by **one** LIST window open, not two rapid window replacements on the same peer.
 
 **Mempool still stranded (not necessarily a bug)**
 ```

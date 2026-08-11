@@ -2265,6 +2265,7 @@ TEST_CASE("BESTCHAIN recovery skips near-tip unknown race",
         hashNoInvTip, /*nPeerHeight=*/nLocalHeight,
         "unit-test-bestchain-near-no-inv", &node, &fQueuedNoInv,
         /*fMatchingBlockInventoryGet=*/false));
+    REQUIRE(fQueuedNoInv);
     REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashNoInvTip) == 1);
 
     const uint1024_t hashGapTip(0xBC01000000000005ULL);
@@ -2274,6 +2275,7 @@ TEST_CASE("BESTCHAIN recovery skips near-tip unknown race",
         /*nPeerHeight=*/nLocalHeight + TAO::Ledger::BESTCHAIN_NEAR_TIP_HEIGHT_SLACK + 1,
         "unit-test-bestchain-gap", &node, &fQueuedGap,
         /*fMatchingBlockInventoryGet=*/true));
+    REQUIRE(fQueuedGap);
     REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashGapTip) == 1);
 
     PassBlock orphanNearTip;
