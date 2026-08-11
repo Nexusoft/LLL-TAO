@@ -69,7 +69,10 @@ AttemptPeerBestChainRecovery(peer_best)
 
 1. ~~**BESTCHAIN unthrottled LIST**~~ — closed via `RequestBestChainBranchRecovery` (TIP-01/02).
 2. ~~**BESTCHAIN `!fKnownBest`**~~ — always enters coordinator with notifying peer (TIP-02).
-3. Fanout peer selection is `RandomConnection()` — may pick disconnected; missing-tx fanout elsewhere requires `Connected()` (memory claims; verify if hardening needed).
+3. ~~**Near-tip skip for orphan-pool tips**~~ — closed: `fNearTipUnknown` requires `!mapOrphans.Contains` under `PROCESSING_MUTEX` (FG-20 / KF-6).
+4. Fanout peer selection is `RandomConnection()` — may pick disconnected; missing-tx fanout elsewhere requires `Connected()` (memory claims; verify if hardening needed).
+
+**Series docs:** [PROCESS_UPGRADE_KEY_FIXES.md](PROCESS_UPGRADE_KEY_FIXES.md) · [process-upgrade-series.md](../../../diagrams/audit/process-upgrade-series.md)
 
 ---
 
