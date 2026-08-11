@@ -182,11 +182,23 @@ BESTCHAIN / A1 / missing-tx   →  SPECIFIER::TRANSACTIONS   REQUIRED
 
 ---
 
+## FG-20 — Near-tip BESTCHAIN skip for tips already in `mapOrphans`
+
+**Symptom:** Node holds the advertised tip as an orphan but never walks ancestry or re-LISTs the missing branch after the original recovery request is lost; stays one tip behind while peers re-NOTIFY.  
+**Trap:** Treat any equal/+1 unknown tip with a matching BLOCK inventory GET as an inventory-owned race — including hashes already in `mapOrphans`.  
+**Rule:** `RequestBestChainBranchRecovery` near-tip shortcut requires `!mapOrphans.Contains(hash)` under `PROCESSING_MUTEX`. Orphan tips always enter `AttemptPeerBestChainRecovery` (walkback / gap LIST). A duplicate BLOCK GET alone is a no-op `ORPHAN` return from `Process()`.  
+**Code:** `process.cpp` `fNearTipUnknown` gate; `Process()` early `mapOrphans.Contains` return.  
+**Tests:** `BESTCHAIN recovery skips near-tip unknown race` orphan-seeded case.  
+**Docs:** [PROCESS_UPGRADE_KEY_FIXES.md](PROCESS_UPGRADE_KEY_FIXES.md) KF-6 · [process-upgrade-series.md](../../../diagrams/audit/process-upgrade-series.md).
+
+---
+
 ## Quick “before you touch X” index
 
 | If you touch… | Read first |
 |---------------|------------|
 | `AttemptPeerBestChainRecovery` | FG-01,03,04,05,15 + RECCES R1 |
+| `RequestBestChainBranchRecovery` near-tip | FG-20 + KF-5/KF-6 key-fixes doc |
 | `Process()` missing-tx | FG-06,07,08 + MISSING_TX archive |
 | `Mempool::Check` / Accept conflicts | FG-09,10 + MEMPOOL_CONFLICT_DAG |
 | `block.Check` / VerifyWork | FG-02 |

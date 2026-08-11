@@ -1,8 +1,9 @@
-# Diagram — Recovery Coordinator Upgrade (A1 / A1b)
+# Diagram — Recovery Coordinator Upgrade (A1 / A1b → BESTCHAIN)
 
-**Status:** Implemented on NODE via PR #690 + #691  
-**Code:** `AttemptPeerBestChainRecovery`, `RequestMissingTxBranchRecovery`, `PeerBestRecoveryResult`  
-**Audit TIPs remaining:** TIP-01 (BESTCHAIN throttle), TIP-02 (BESTCHAIN unify)
+**Status:** Implemented on NODE via PR #690 + #691 + #694 (+ near-tip inventory/orphan gates)  
+**Code:** `AttemptPeerBestChainRecovery`, `RequestMissingTxBranchRecovery`, `RequestBestChainBranchRecovery`, `PeerBestRecoveryResult`  
+**Series map:** [process-upgrade-series.md](process-upgrade-series.md) · [key fixes](../../current/node/audit/PROCESS_UPGRADE_KEY_FIXES.md)  
+**Audit TIPs remaining:** TIP-03 soak; TIP-04 ForceLocalChainResync (spec)
 
 ---
 
@@ -40,17 +41,22 @@
 
 ---
 
-## After (#690 + #691)
+## After (#690 + #691 + #694 + near-tip gates)
 
 ```
-                         foreign best / incomplete block
+                    foreign best / incomplete block / BESTCHAIN
                                     │
-                                    ▼
-                 ┌──────────────────────────────────────┐
-                 │   RequestMissingTxBranchRecovery     │  « coordinator »
-                 │   (missing-tx path; BESTCHAIN TBD)   │
-                 └──────────────────┬───────────────────┘
-                                    │
+              ┌─────────────────────┴─────────────────────┐
+              ▼                                           ▼
+ RequestMissingTxBranchRecovery          RequestBestChainBranchRecovery
+         « A1b »                              « TIP-01/02 »
+              │                                           │
+              │                              near-tip inventory race?
+              │                              (not on disk, not orphan,
+              │                               delta≤1, matching BLOCK GET)
+              │                                   yes → SKIP (no LIST)
+              │                                   no  ──┐
+              └─────────────────────┬───────────────────┘
                                     ▼
                  AttemptPeerBestChainRecovery
                                     │
@@ -73,7 +79,7 @@
                                             └──────┴───────┘
                                                    │
                          fallback LIST only if result == SKIPPED
-                         (NOT on QUEUED or THROTTLED)     « A1b »
+                         (NOT on QUEUED or THROTTLED)     « A1b / TIP-01 »
 ```
 
 ---
@@ -95,17 +101,18 @@
 
 ---
 
-## Residual asymmetry (TIP-01 / TIP-02)
+## Near-tip shortcut (post-#694, inventory + orphan gates)
 
 ```
    missing-tx path                     BESTCHAIN notify path
    ────────────────                    ─────────────────────
-   coordinator ✅                      partial ❌
-   throttle on recovery ✅             LIST unthrottled ❌
-   fanout on far tip ✅                single notifying peer only
-   result enum ✅                      bool fRecovered only
+   coordinator ✅                      coordinator ✅ (#694)
+   throttle on recovery ✅             throttle ✅
+   fanout on far tip ✅                fanout ✅
+   result enum ✅                      result enum ✅
 
-   Target: both arrows enter the same coordinator box.
+   Near-tip SKIP only when ALL hold:
+     !on_disk && !mapOrphans && peer_at/ahead && delta≤1 && matching BLOCK GET
 ```
 
 ---
@@ -115,5 +122,7 @@
 - [x] Far tip issues LIST (no terminal silent no-op)
 - [x] Missing-tx path does not double-LIST after FETCH_QUEUED/THROTTLED
 - [x] On-wire unit coverage for LIST+TRANSACTIONS+BLOCK+LOCATOR
-- [ ] BESTCHAIN shares throttle + coordinator (open TIP-01/02)
+- [x] BESTCHAIN shares throttle + coordinator (TIP-01/02 / #694)
+- [x] Near-tip skip requires matching BLOCK inventory GET
+- [x] Near-tip skip excludes tips already in mapOrphans
 - [ ] Production soak signatures observed (open TIP-03)

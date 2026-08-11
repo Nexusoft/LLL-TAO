@@ -64,9 +64,12 @@ namespace TAO
          *  with a matching BLOCK inventory entry that already queued a GET),
          *  not an A1 far-tip gap.  RequestBestChainBranchRecovery skips
          *  coordinator LIST + fanout for those tips only when the caller
-         *  confirms a matching BLOCK GET was queued; otherwise ordinary
-         *  recovery still runs (Sync() subscribes without BLOCK, and relay
-         *  filtering can deliver BESTCHAIN independently of BLOCK).
+         *  confirms a matching BLOCK GET was queued AND the tip is not already
+         *  held in mapOrphans; otherwise ordinary recovery still runs (Sync()
+         *  subscribes without BLOCK, relay filtering can deliver BESTCHAIN
+         *  independently of BLOCK, and orphan-pool tips need the coordinator
+         *  walkback / missing-branch LIST because a duplicate BLOCK GET is a
+         *  no-op ORPHAN return).
          **/
         static const uint32_t BESTCHAIN_NEAR_TIP_HEIGHT_SLACK = 1;
 
@@ -453,11 +456,15 @@ namespace TAO
          *         height / +1 unknown tips may be the normal tip-advance race
          *         (BLOCK inventory already GETs the body; BESTHEIGHT in the
          *         same NOTIFY often still lags by one), but that shortcut is
-         *         taken only when fMatchingBlockInventoryGet is true — i.e.
-         *         the caller's NOTIFY handler already queued a GET for this
-         *         hash.  Without a matching GET, near-tip unknown tips still
-         *         enter recovery so Sync()-time / BLOCK-unsubscribed peers
-         *         cannot stall one block behind.
+         *         taken only when fMatchingBlockInventoryGet is true AND the
+         *         tip is not already in mapOrphans — i.e. the caller's NOTIFY
+         *         handler already queued a GET for this hash and the body is
+         *         not sitting as an orphan whose recovery request may have
+         *         been lost.  Without a matching GET, or when the tip is in
+         *         the orphan pool, near-tip unknown tips still enter recovery
+         *         so Sync()-time / BLOCK-unsubscribed peers cannot stall one
+         *         block behind and orphan ancestry walkback / missing-branch
+         *         LIST still run.
          *    2. Fallback LIST only when step 1 returned SKIPPED, the advertised
          *       tip is not yet the active local best, the peer is at/ahead of
          *       local height, and ShouldSendBranchSyncRequest allows it
@@ -476,8 +483,9 @@ namespace TAO
          *                    locator LIST was successfully queued on pnode.
          *  @param[in]  fMatchingBlockInventoryGet  True when this NOTIFY already
          *                    queued an ACTION::GET for hashPeerBest from a
-         *                    TYPES::BLOCK inventory entry.  Required to treat
-         *                    a near-tip unknown tip as inventory-owned.
+         *                    TYPES::BLOCK inventory entry.  Required (with the
+         *                    tip not in mapOrphans) to treat a near-tip unknown
+         *                    tip as inventory-owned.
          *
          *  @return true only when AttemptPeerBestChainRecovery reported PROGRESS.
          *

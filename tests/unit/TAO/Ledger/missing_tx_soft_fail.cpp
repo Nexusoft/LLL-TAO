@@ -2029,9 +2029,11 @@ TEST_CASE("BESTCHAIN recovery skips near-tip unknown race",
 {
     /* Post-#694 regression: an unknown tip at peer_height == local (or only
      * BESTCHAIN_NEAR_TIP_HEIGHT_SLACK ahead) is the normal tip-advance race
-     * only when a matching BLOCK inventory GET was already queued.  Without
-     * that GET (Sync() omits BLOCK; relay can deliver BESTCHAIN alone),
-     * recovery must still run.  Far tips (delta > slack) always recover. */
+     * only when a matching BLOCK inventory GET was already queued AND the tip
+     * is not already in mapOrphans.  Without that GET (Sync() omits BLOCK;
+     * relay can deliver BESTCHAIN alone), or when the tip sits in the orphan
+     * pool (duplicate GET is a no-op ORPHAN return), recovery must still run.
+     * Far tips (delta > slack) always recover. */
     LedgerGuard env;
 
     TAO::Ledger::mapOrphans.Clear();
@@ -2178,6 +2180,65 @@ TEST_CASE("BESTCHAIN recovery skips near-tip unknown race",
     }
     REQUIRE(vGapSent == vExpected);
 
+    /* Near-tip tip already in the orphan pool must NOT take the inventory
+     * shortcut: a duplicate BLOCK GET returns ORPHAN immediately from Process()
+     * and never walks ancestry / reissues the missing-branch LIST.  Seed an
+     * orphan whose prev is not on disk so the coordinator gap path fires. */
+    PassBlock orphanNearTip;
+    orphanNearTip.nVersion      = 4;
+    orphanNearTip.hashPrevBlock = uint1024_t(0xBC01DEADBEEF0001ULL);
+    orphanNearTip.nChannel      = 2;
+    orphanNearTip.nHeight       = nLocalHeight;
+    orphanNearTip.nBits         = 1;
+    orphanNearTip.nNonce        = 0x0B01;
+    orphanNearTip.hashMerkleRoot = uint512_t(0x0B01);
+    const uint1024_t hashOrphanNearTip = orphanNearTip.GetHash();
+    const uint1024_t hashOrphanAncestor = orphanNearTip.hashPrevBlock;
+
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hashOrphanNearTip));
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hashOrphanAncestor));
+    REQUIRE(TAO::Ledger::mapOrphans.Insert(orphanNearTip));
+    REQUIRE(TAO::Ledger::mapOrphans.Contains(hashOrphanNearTip));
+
+    DataStream ssExpectedOrphan(SER_NETWORK, LLP::MIN_PROTO_VERSION);
+    ssExpectedOrphan
+        << uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS)
+        << uint8_t(LLP::TritiumNode::TYPES::BLOCK)
+        << uint8_t(LLP::TritiumNode::TYPES::LOCATOR)
+        << TAO::Ledger::Locator(hashLocalBest)
+        << uint1024_t(hashOrphanNearTip);
+    const std::vector<uint8_t> vExpectedOrphan =
+        LLP::TritiumNode::NewMessage(LLP::TritiumNode::ACTION::LIST, ssExpectedOrphan).GetBytes();
+
+    bool fQueuedOrphan = false;
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+        hashOrphanNearTip, /*nPeerHeight=*/nLocalHeight,
+        "unit-test-bestchain-near-orphan", &node, &fQueuedOrphan,
+        /*fMatchingBlockInventoryGet=*/true));
+    REQUIRE(fQueuedOrphan);
+    /* Gap-path throttle key is the deepest missing ancestor (orphan prev),
+     * not the advertised tip — same contract as AttemptPeerBestChainRecovery. */
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashOrphanAncestor) == 1);
+
+    while(node.Buffered() > 0)
+    {
+        if(node.Flush() <= 0)
+            break;
+    }
+
+    std::vector<uint8_t> vOrphanSent;
+    {
+        std::vector<uint8_t> buf(65536);
+        for(;;)
+        {
+            const ssize_t n = recv(fds[0], buf.data(), buf.size(), MSG_DONTWAIT);
+            if(n <= 0)
+                break;
+            vOrphanSent.insert(vOrphanSent.end(), buf.begin(), buf.begin() + n);
+        }
+    }
+    REQUIRE(vOrphanSent == vExpectedOrphan);
+
     node.fd = -1;
     close(fds[0]);
     close(fds[1]);
@@ -2214,9 +2275,29 @@ TEST_CASE("BESTCHAIN recovery skips near-tip unknown race",
         "unit-test-bestchain-gap", &node, &fQueuedGap,
         /*fMatchingBlockInventoryGet=*/true));
     REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashGapTip) == 1);
+
+    PassBlock orphanNearTip;
+    orphanNearTip.nVersion      = 4;
+    orphanNearTip.hashPrevBlock = uint1024_t(0xBC01DEADBEEF0001ULL);
+    orphanNearTip.nChannel      = 2;
+    orphanNearTip.nHeight       = nLocalHeight;
+    orphanNearTip.nBits         = 1;
+    orphanNearTip.nNonce        = 0x0B01;
+    orphanNearTip.hashMerkleRoot = uint512_t(0x0B01);
+    const uint1024_t hashOrphanNearTip = orphanNearTip.GetHash();
+    const uint1024_t hashOrphanAncestor = orphanNearTip.hashPrevBlock;
+    REQUIRE(TAO::Ledger::mapOrphans.Insert(orphanNearTip));
+
+    bool fQueuedOrphan = false;
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+        hashOrphanNearTip, /*nPeerHeight=*/nLocalHeight,
+        "unit-test-bestchain-near-orphan", &node, &fQueuedOrphan,
+        /*fMatchingBlockInventoryGet=*/true));
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashOrphanAncestor) == 1);
 #endif
 
     TAO::Ledger::ChainState::nBestHeight.store(nSavedBestHeight);
+    TAO::Ledger::mapOrphans.Clear();
     TAO::Ledger::mapLastOrphanRequest.clear();
 }
 

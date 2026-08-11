@@ -971,7 +971,14 @@ namespace TAO
              * about to land.  Without a matching BLOCK inventory GET (Sync()
              * does not subscribe to BLOCK; relay filtering can deliver
              * BESTCHAIN alone), still recover so the node cannot stall one
-             * block behind. */
+             * block behind.
+             *
+             * Orphan-pool exclusion: a tip already held in mapOrphans is not an
+             * inventory-owned race.  A duplicate BLOCK GET for that hash returns
+             * ORPHAN immediately from Process() without walking ancestry or
+             * reissuing a missing-branch LIST.  If the orphan's original recovery
+             * request was lost, only the coordinator path reconnects the chain.
+             * Check Contains() under PROCESSING_MUTEX (OrphanPool contract). */
             const bool fKnownOnDisk =
                 (LLD::Ledger && LLD::Ledger->HasBlock(hashPeerBest));
             const uint32_t nLocalHeight = ChainState::nBestHeight.load();
@@ -979,7 +986,15 @@ namespace TAO
             const uint32_t nHeightDelta = (nPeerHeight > nLocalHeight)
                 ? (nPeerHeight - nLocalHeight)
                 : 0;
+
+            bool fInOrphanPool = false;
+            {
+                LOCK(PROCESSING_MUTEX);
+                fInOrphanPool = mapOrphans.Contains(hashPeerBest);
+            }
+
             const bool fNearTipUnknown = !fKnownOnDisk
+                && !fInOrphanPool
                 && fPeerAtOrAhead
                 && nHeightDelta <= BESTCHAIN_NEAR_TIP_HEIGHT_SLACK
                 && fMatchingBlockInventoryGet;
