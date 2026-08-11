@@ -10,16 +10,20 @@
 
 ## 0. Executive scoreboard
 
-| Area | Status after #690/#691 | Residual risk |
-|------|------------------------|---------------|
+| Area | Status after #690/#691 (+ follow-ons) | Residual risk |
+|------|--------------------------------------|---------------|
 | A1 far-tip silent no-op | **FIXED** (#690) | Needs production soak |
-| A1 double LIST / window replace | **FIXED** (#691) | BESTCHAIN unified via RequestBestChainBranchRecovery (TIP-01/02) |
+| A1 double LIST / window replace | **FIXED** (#691) | — |
+| BESTCHAIN → coordinator | **FIXED** (#694 TIP-01/02) | Near-tip inventory + orphan gates |
+| Near-tip orphan-pool skip hole | **FIXED** (FG-20 / KF-6) | Duplicate GET is ORPHAN no-op without coordinator |
 | Ledger harness `[ledger]` segfault | **FIXED** (#690 harness) | Remaining assertion hygiene debt |
 | Mempool Option C DAG | **LANDED** (#688/#689) | UNKNOWN budget expiry still hard |
 | DDoS defaults (`-ddos`/`-rscore`) | **RESTORED** (#680 lineage) | Operator override foot-gun remains |
 | AddressManager TOCTOU | **FIXED** (#678) | Throwing `Get()` marked `[[deprecated]]` (TIP-17) |
 | `ForceLocalChainResync` | **SPEC ONLY** | Highest-risk future work |
 | Upstream Colin isolation package | **NOT STARTED** | See TIP-12 + draft checklist |
+
+**Series narrative + diagrams:** [PROCESS_UPGRADE_KEY_FIXES.md](PROCESS_UPGRADE_KEY_FIXES.md) · [process-upgrade-series.md](../../../diagrams/audit/process-upgrade-series.md)
 
 ```
                     NODE tip (post #691)
@@ -174,6 +178,9 @@ If you want a default sequence without reading every row:
 |-----------|-------|--------|
 | A1 silent far-tip no-op | Peer tip not on disk / not orphan → no fetch | **Closed #690** |
 | A1b double LIST | Escalation always LIST after recovery | **Closed #691** |
+| TIP-01/02 BESTCHAIN coordinator | Chatty BESTCHAIN unthrottled / dual path | **Closed #694** |
+| Near-tip inventory race skip | Equal/+1 spam LIST during tip advance | **Closed** (inventory GET gate) |
+| Near-tip orphan-pool hole | Orphan tip treated as inventory race → stall | **Closed FG-20 / KF-6** |
 | A2 missing-tx permanent wedge | `mapLastMissing` left at 51+ | **Closed earlier** (erase + escalate) |
 | A3 UNKNOWN vs INVALID_ABSOLUTE | Sync gap mis-evict | **Closed #664** |
 | A4 TLS / SSL admissibility | PORT_SSL disabled / redesign | **Still deferred** (global.cpp TODO) |
@@ -199,6 +206,12 @@ After deploying NODE post-#691, grep logs for:
 missing-tx retry limit reached ... escalating to branch recovery
 ```
 followed by **one** LIST window open, not two rapid window replacements on the same peer.
+
+**Near-tip inventory race (level 2 debug)**
+```
+BESTCHAIN near-tip race; deferring recovery to block inventory
+```
+Must **not** appear when the advertised tip is already in `mapOrphans` (FG-20) — that case should emit coordinator `PEER_BEST_RECOVERY` / gap LIST instead.
 
 **Mempool still stranded (not necessarily a bug)**
 ```
