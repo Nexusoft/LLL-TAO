@@ -30,14 +30,21 @@ The following nouns are supported for this API command-set:
 [`finance:trust`] - An object register containing a token-id, balance, and trust.  
 [`finance:token`] - An object register containing a token-id, balance, supply, and decimals.  
 [`names:name`] - An object register containing names and global names.  
-[`names:namespace`] - An object register containing namespaces.
-[`names:global`] - An object register containing global names.
+[`names:namespace`] - An object register containing namespaces.  
+[`names:global`] - An object register containing global names.  
+[`names:local`] - An object register containing local names.  
+[`assets:asset`] - An object register containing asset data.  
+[`assets:raw`] - An object register of type raw for assets.  
+[`assets:readonly`] - An object register of type readonly for assets.  
+[`supply:item`] - An object register containing supply item data.  
+[`supply:raw`] - An object register of type raw for supply.  
+[`supply:readonly`] - An object register of type readonly for supply.  
+[`invoices:invoice`] - An object register containing invoice data.  
 [`crypto`] - An object register which holds public key hashes.  
 [`object`] - An object register containing user-defined data structure.  
-[`assets:raw`] -  An object register of type raw.  
-[`assets:readonly`] - An object register of type readonly.  
-[`append`] - An object register of type append.  
-[`any`] - An object selection noun allowing mixed accounts of different tokens.  
+[`raw`] - An object register of type raw.  
+[`readonly`] - An object register of type readonly.  
+[`any`] - An object selection noun allowing mixed registers of different types.  
 
 -----------------------------------
 
@@ -87,10 +94,6 @@ Retrieves information for a specified readonly register.
 #### get/assets:raw
 
 Retrieves information for a specified raw register.
-
-#### get/append
-
-Retrieves information for a specified append register.
 
 ### Parameters:
 
@@ -147,17 +150,13 @@ Returns a list of all the crypto object registers.
 
 Returns a list of all the object registers.
 
-#### list/readonly
-
-Returns a list of all the readonly registers.
-
 #### list/raw
 
 Returns a list of all the raw registers.
 
-#### list/append
+#### list/readonly
 
-Returns a list of all the append registers.
+Returns a list of all the readonly registers.
 
 ### Parameters:
 
@@ -209,17 +208,13 @@ This will get the history of the specified crypto object register.
 
 This will get the history and ownership of the specified object register.
 
-##### history/assets:readonly
+#### history/assets:readonly
 
 This will get the history and ownership of the specified readonly register.
 
 #### history/assets:raw
 
 This will get the history and ownership of the specified raw register.
-
-#### history/append
-
-This will get the history and ownership of the specified append register.
 
 ### Parameters:
 
@@ -245,23 +240,23 @@ register/transactions/noun
 
 This command supports all the nouns.
 
-#### transactions/account
+#### transactions/finance:account
 
 List out all the transactions for the specified NXS account or token account.
 
-#### transactions/trust
+#### transactions/finance:trust
 
-List out all the transactions for the specified trust account
+List out all the transactions for the specified trust account.
 
-#### transactions/token
+#### transactions/finance:token
 
 List out all the transactions for the specified token address.
 
-#### transactions/name
+#### transactions/names:name
 
 List out all the transactions for the specified name.
 
-#### transactions/namespace
+#### transactions/names:namespace
 
 List out all the transactions for the specified namespace.
 
@@ -280,10 +275,6 @@ List out all the transactions for the specified readonly register.
 #### transactions/raw
 
 List out all the transactions for the specified raw register.
-
-#### transactions/append
-
-List out all the transactions for the specified append register.
 
 ### Parameters:
 
@@ -310,25 +301,25 @@ All these calls will require the latest build of the core and will not work with
 To calculate the sum of all NXS on the tritium chain:
 
 ```
-register/list/accounts,trust/total/sum sort=total order=desc limit=none where='object.token=0'
+register/list/finance:account,finance:trust/total/sum sort=total order=desc limit=none where='results.token=0'
 ```
 
 List all the namespaces created in ascending order:
 
 ```
-register/list/namespaces sort=created order=asc
+register/list/names:namespace sort=created order=asc
 ```
 
 List all the global names on the network:
 
 ```
-register/list/names where=object.namespace=~GLOBAL~
+register/list/names:global
 ```
 
 Create a rich list:
 
 ```
-register/list/accounts,trust sort=total order=desc page=0 where=(object.token=0)
+register/list/finance:account,finance:trust sort=total order=desc page=0 where=(results.token=0)
 ```
 
 -----------------------------------

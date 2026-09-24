@@ -22,7 +22,7 @@ The following parameters can be used to apply **sorting** to the returned data-s
 The `limit` and `offset` parameters can be given with the following format:
 
 ```
-limit=100.10
+limit=100,10
 ```
 
 This above will map to the parameters of `limit=100` and `offset=10`.
@@ -30,7 +30,7 @@ This above will map to the parameters of `limit=100` and `offset=10`.
 
 ## `Recursive Sorting`
 
-This parameter supports moving up levels of JSON keys by using `.`. This is a recursive function so therfore allows traversing any amount of levels in a JSON hierarchy. Let us take the following JSON object:
+This parameter supports moving up levels of JSON keys by using `.`. This is a recursive function so therefore allows traversing any amount of levels in a JSON hierarchy. Let us take the following JSON object:
 
 ```
 {

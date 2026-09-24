@@ -33,14 +33,15 @@ The following verbs are currently supported by this command-set:
 | :-----:  | :-------- | :---- |
 |[`create`](#-create) | Generate a register of specified type | `asset`, `raw`, `readonly`, `schema` |
 |[`get`](#-get) | Get register of supported type | `any`, `asset`, `raw`, `readonly`, `schema`
-|[`list`](#-list) | List all registers owned by active session | `any`, `asset`, `raw`, `readonly`, `partial`, `schema` |
+|[`list`](#-list) | List all registers owned by active session | `any`, `asset`, `raw`, `readonly`, `schema` |
+|[`list/partial`](#listpartial) | List users partial ownership of tokenized assets | N/A (special command) |
 |[`transfer`](#-transfer) | Transfer a specified register | `any`, `asset`, `raw`, `readonly` |
 |[`claim`](#-claim) | Claim ownership of a register | `any`, `asset`, `raw`, `readonly` |
 |[`tokenize`](#-tokenize) | To represent ownership of an asset object with a token object | `asset` |
 |[`transactions`](#-transactions) | List all transactions that modified specified object | `any`, `asset`, `raw`, `readonly`, `schema` |
 |[`history`](#-history) | Generate the history of all last states | `any`, `asset`, `raw`, `readonly`, `schema` |
-|[`update`](#-update) | Update a specified object | `any`, `asset`, `raw`, `readonly`, `schema` |
-|[`verify`](#-verify) | Verify if a given register has been tokenized | `partial` |
+|[`update`](#-update) | Update a specified object | `asset`, `raw` |
+|[`verify/partial`](#verifypartial) | Verify if a given register has been tokenized | N/A (special command) |
 
 ### Example:
 
@@ -123,6 +124,167 @@ The following parameter is required to identify the format input for modeling th
 
 - `format` : Required to **identify** the format used to define the asset. Values can be `readonly`, `raw`, `basic` and `JSON`.
 
+The format determines which additional parameters are required and how the asset data is structured:
+
+---
+
+### Format: `readonly`
+
+Creates a non-editable register without type safety. Once created, the data cannot be modified.
+
+**Required Parameters:**
+- `data` : A string containing the raw data to store in the register.
+
+**Example:**
+```
+assets/create/readonly name=certificate format=readonly data="Certificate of Authenticity - Item #12345 - Issued 2024"
+```
+
+**Result:**
+```json
+{
+    "owner": "b7392196b83aca438567558462cd0c5d982569c7cefa668500c4bf3e61a03b7a",
+    "version": 1,
+    "created": 1655279431,
+    "modified": 1655279431,
+    "type": "READONLY",
+    "data": "Certificate of Authenticity - Item #12345 - Issued 2024",
+    "address": "87Wai2JoS4hNAEVXZVmejLS6pK21XQWKoLAkaep5aXFdrYnJJyk",
+    "name": "certificate"
+}
+```
+
+---
+
+### Format: `raw`
+
+Creates an editable register without type safety. Data can be updated, but has no field structure.
+
+**Required Parameters:**
+- `data` : A string containing the raw data to store in the register.
+
+**Example:**
+```
+assets/create/raw name=mydata format=raw data="Initial raw data content"
+```
+
+**Result:**
+```json
+{
+    "owner": "b7392196b83aca438567558462cd0c5d982569c7cefa668500c4bf3e61a03b7a",
+    "version": 1,
+    "created": 1655279431,
+    "modified": 1655279431,
+    "type": "RAW",
+    "data": "Initial raw data content",
+    "address": "87Wai2JoS4hNAEVXZVmejLS6pK21XQWKoLAkaep5aXFdrYnJJyk",
+    "name": "mydata"
+}
+```
+
+---
+
+### Format: `basic`
+
+Creates an editable register with named fields. All fields are stored as strings and are mutable by default.
+
+**Required Parameters:**
+- `<fieldname>=<value>` : One or more key-value pairs defining the fields and their values. All values are stored as strings.
+
+**Example:**
+```
+assets/create/asset name=myvehicle format=basic make=Toyota model=Camry year=2024 color=Blue vin=1HGBH41JXMN109186
+```
+
+**Result:**
+```json
+{
+    "owner": "b7392196b83aca438567558462cd0c5d982569c7cefa668500c4bf3e61a03b7a",
+    "version": 1,
+    "created": 1655279431,
+    "modified": 1655279431,
+    "type": "OBJECT",
+    "make": "Toyota",
+    "model": "Camry",
+    "year": "2024",
+    "color": "Blue",
+    "vin": "1HGBH41JXMN109186",
+    "address": "87Wai2JoS4hNAEVXZVmejLS6pK21XQWKoLAkaep5aXFdrYnJJyk",
+    "name": "myvehicle"
+}
+```
+
+**Note:** The `basic` format only works with the `asset` or `schema` noun.
+
+---
+
+### Format: `JSON`
+
+Creates an editable register with full type safety and field-level mutability control. This is the most powerful format option.
+
+**Required Parameters:**
+- `json` : A JSON array of objects, where each object defines a field with the following properties:
+
+| Property | Required | Description |
+|:--------:|:--------:|:------------|
+| `name` | Yes | The name of the data field |
+| `type` | Yes | The data type: `uint8`, `uint16`, `uint32`, `uint64`, `uint256`, `uint512`, `uint1024`, `string`, or `bytes` |
+| `value` | Yes | The default/initial value of the field |
+| `mutable` | Yes | Boolean - `true` if the field can be updated, `false` if read-only after creation |
+| `maxlength` | No | For `string` or `bytes` fields with `mutable=true`: maximum characters/bytes allowed. Defaults to the length of the initial value rounded up to the nearest 64 bytes |
+
+**Example:**
+```
+assets/create/asset name=realestate format=JSON json='[
+    {"name":"property_id","type":"string","value":"PROP-2024-001","mutable":false},
+    {"name":"address","type":"string","value":"123 Main Street","mutable":false},
+    {"name":"owner_name","type":"string","value":"John Doe","mutable":true,"maxlength":128},
+    {"name":"square_feet","type":"uint32","value":"2500","mutable":false},
+    {"name":"bedrooms","type":"uint8","value":"4","mutable":false},
+    {"name":"assessed_value","type":"uint64","value":"450000","mutable":true},
+    {"name":"status","type":"string","value":"Active","mutable":true,"maxlength":32}
+]'
+```
+
+**Result:**
+```json
+{
+    "owner": "b7392196b83aca438567558462cd0c5d982569c7cefa668500c4bf3e61a03b7a",
+    "version": 1,
+    "created": 1655279431,
+    "modified": 1655279431,
+    "type": "OBJECT",
+    "property_id": "PROP-2024-001",
+    "address": "123 Main Street",
+    "owner_name": "John Doe",
+    "square_feet": 2500,
+    "bedrooms": 4,
+    "assessed_value": 450000,
+    "status": "Active",
+    "address": "87Wai2JoS4hNAEVXZVmejLS6pK21XQWKoLAkaep5aXFdrYnJJyk",
+    "name": "realestate"
+}
+```
+
+**Important considerations for JSON format:**
+- Fields with `mutable=false` cannot be changed after the asset is created
+- For mutable string/bytes fields, always specify `maxlength` to reserve enough space for future updates
+- Numeric types (`uint8`, `uint16`, etc.) provide type safety and efficient storage
+- The `value` parameter must be provided as a string, even for numeric types
+
+---
+
+### Format Comparison Summary
+
+| Feature | `readonly` | `raw` | `basic` | `JSON` |
+|:--------|:----------:|:-----:|:-------:|:------:|
+| Editable after creation | ❌ | ✅ | ✅ | ✅ (mutable fields only) |
+| Named fields | ❌ | ❌ | ✅ | ✅ |
+| Type safety | ❌ | ❌ | ❌ (all strings) | ✅ |
+| Field-level mutability control | N/A | N/A | ❌ (all mutable) | ✅ |
+| Supported nouns | `readonly` | `raw` | `asset`, `schema` | `asset`, `schema` |
+
+---
 
 ## **Optional:**
 
@@ -133,7 +295,7 @@ These parameters are not required to execute this command, but give you the abil
 
 **NOTE:**
 - There is a limit of 1KB for asset data to be saved in the register, excluding the asset name.
-- There is a fee of 1 NXS for creating and an asset and an additional 1 NXS for the optional name object.
+- There is a fee of 1 NXS for creating an asset and an additional 1 NXS for the optional name object.
 
 ## **Results:**
 
@@ -229,9 +391,9 @@ Retrieves a list of all the asset objects owned by the profile specified by the 
 assets/list/noun
 ```
 
-This command supports the `asset`, `readonly`, `raw`, and `any` nouns.
+This command supports the `asset`, `readonly`, `raw`, `any`, and `schema` nouns.
 
-#### list/assets
+#### list/asset
 
 Lists all the assets for object register type.
 
@@ -247,7 +409,7 @@ Lists all assets for raw register type.
 
 Lists all assets for all supported register types.
 
-[`list/partial`](#list/partial) - List users partial ownership details for tokenized assets.      
+See also: [`list/partial`](#listpartial) - List users partial ownership details for tokenized assets.      
 
 ### Parameters:
 
@@ -332,9 +494,9 @@ This updates the data values for the raw item register.
 
 `address` : Required to **identify** the register address of the asset. This is optional if the `name` is provided.
 
-`format` : Required to **specify** the format of the asset to update. Values can be `readonly`, `raw`, `basic` and `JSON`.
+`format` : Required to **specify** the format of the asset to update. Values can be `raw`, `basic` and `JSON`.
 
-`data` : Required if **format** is `readonly` or `raw`, allows caller to update the data object.  
+`data` : Required if **format** is `raw`, allows caller to update the data object.  
 
 `<fieldname>=<value>` : Optional for **format** `basic`, The caller can provide 'key=value' pairs to update each piece of data for the asset.
 
@@ -730,7 +892,7 @@ This command supports all nouns.
 
 -----------------------------------
 
-# <a name="list/partial"></a> `list/partial`
+# <a name="listpartial"></a> `list/partial`
 
 Retrieves a list of all the partial ownership details of tokenized assets for the user.
 
@@ -786,5 +948,44 @@ assets/list/partial
 `name` : The name identifying the asset.
 
 `ownership` : This is the percentage of the asset owned by the caller, based on the number of tokens owned.
+
+-----------------------------------
+
+# <a name="verifypartial"></a> `verify/partial`
+
+Verifies if a given token has been used to tokenize an asset. Returns the asset details if valid.
+
+```
+assets/verify/partial
+```
+
+### Parameters:
+
+`token` : Required to **identify** the token to verify. It can be the name (for global names), username:tokenname (for local names), or the register address of the token.
+
+
+### Results:
+
+#### Return value JSON object:
+
+```
+{
+    "asset": {
+        "address": "88NcYcKtMTRwtwDgfXFkZ4TbrHvkRGzsQkqVZco77Hqx1WRgCyi",
+        "owner": "d751c1ddbd2a50a0bee9883f4f8e029272551e8d09b336aeca876e1270e91422"
+    },
+    "valid": true
+}
+```
+
+#### Return Values:
+
+`asset` : Object containing the asset details if the token is valid.
+
+`asset.address` : The register address of the tokenized asset.
+
+`asset.owner` : The username hash of the profile that owns the asset.
+
+`valid` : Boolean flag indicating whether the token is a valid tokenized asset.
 
 -----------------------------------

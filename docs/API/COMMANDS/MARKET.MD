@@ -321,7 +321,7 @@ Retrieves a users market order information based on the noun.
 market/user/noun
 ```
 
-This command supports all the nouns.
+This command supports the `order` and `executed` nouns.
 
 
 ### Parameters:
@@ -330,7 +330,7 @@ This command supports all the nouns.
 
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
-`market` : Required to **identify** the market token pair.
+`token` : Required to **identify** the token to filter orders by. Can be a token name or register address.
 
 [`Sorting`](//docs/API/SORTING.MD).
 
@@ -345,7 +345,7 @@ This command supports all the nouns.
 
 ```
 {
-    "bids": [
+    "orders": [
         {
             "txid": "01722ce68a0fd5b22fdd5d1e90ec3ec4036f24592aafd9f414968a9c69355bb34012704bea1046557d81e297911c058b7623bd1f6c8a16974e5ed41528f1bb70",
             "timestamp": 1657201172,
@@ -369,14 +369,16 @@ This command supports all the nouns.
             }
         }
     ],
-    "asks": []
+    "executed": []
 }
 [Completed in 7.841892 ms]
 ```
 
 #### Return Values:
 
-`order` : The array for bid or ask orders.
+`orders` : The array of active orders for the user.
+
+`executed` : The array of executed orders for the user.
 
 `txid` : The hash of the transaction that was generated for this tx. If using -autotx this field will be ommitted.
 
