@@ -1,0 +1,16 @@
+02. Tests-First Research Pipeline
+
+idea
+  │
+  ▼
+fixtures defined
+  │
+  ▼
+Julia prototype
+  │
+  ├── correctness tests
+  ├── parity tests
+  └── benchmark notes
+  │
+  ▼
+C++ port candidate

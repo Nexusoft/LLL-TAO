@@ -21,6 +21,11 @@ ________________________________________________________________________________
 
 #include <Util/include/memory.h>
 
+#ifdef UNIT_TESTS
+#include <functional>
+#include <map>
+#endif
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -39,6 +44,33 @@ namespace TAO
 
             /** The best block height in the chain. **/
             extern std::atomic<uint32_t> nBestHeight;
+
+            /** SetBestHeight
+             *
+             *  Publish a committed best state and its derived height/hash/trust
+             *  and advance the API cache generation independently of height.
+             *  Supports rewinds and same-height reorganizations as well as advances.
+             *  Callers must serialize chain transitions and finish durable commit
+             *  and checkpoint hardening first. Performs no disk I/O.
+             *
+             *  Height is release-stored last; acquire height loads order prior
+             *  publications. Full BlockState/hash storage uses memory::atomic's
+             *  existing locks, not a lock-free multi-field update.
+             *
+             *  These separate atomics are not a multi-field snapshot: readers
+             *  needing a coherent tip must use a single tStateBest.load().
+             *
+             **/
+            void SetBestHeight(const BlockState& state);
+
+
+            /** The highest block height advertised by any connected peer.
+             *  Updated by TritiumNode when it receives an ACTION::NOTIFY
+             *  BESTHEIGHT message.  Used to distinguish a locally-stale node
+             *  (behind peers) from a node that is genuinely up-to-date, so
+             *  local-state-dependent invalidity can be classified correctly.
+             *  Never used for consensus decisions; diagnostic and deferral only. **/
+            extern std::atomic<uint32_t> nMaxPeerHeight;
 
 
             /** The best trust in the chain. **/
@@ -92,6 +124,18 @@ namespace TAO
              **/
             bool Initialize();
 
+#ifdef UNIT_TESTS
+            /** Run startup checkpoint recovery with a test checkpoint list. **/
+            bool RunHardcodedCheckpointRecoveryForTests(const std::map<uint32_t, uint1024_t>& mapCheckpointsTest,
+                                                        bool fAllowRepair);
+
+            /** Run startup best-chain integrity audit/repair with a bounded depth. **/
+            bool RunBestChainIntegrityAuditForTests(bool fAllowRepair, uint32_t nMaxDepth);
+
+            /** Override SetBest during checkpoint recovery tests. **/
+            void SetCheckpointRepairSetBestHook(const std::function<bool(const BlockState&)>& fnHook);
+#endif
+
 
             /** Genesis
              *
@@ -107,6 +151,24 @@ namespace TAO
 
             /** The best block in the chain. **/
             extern BlockState tStateGenesis;
+
+
+            /** RepairCheckpointIfStale
+             *
+             *  Attempt to repair the in-memory checkpoint state when it has drifted from
+             *  the on-disk best-chain state.  The in-memory gate (tStateBest.hashCheckpoint
+             *  vs hashCheckpoint) is checked first to avoid disk I/O when no repair is
+             *  needed; only a confirmed mismatch triggers the ReadBlock() disk read.
+             *
+             *  On success the in-memory hashCheckpoint and nCheckpointHeight are updated
+             *  to match the on-disk best state, and the caller should retry IsDescendant().
+             *
+             *  @return true  if the checkpoint was successfully repaired
+             *  @return false if the in-memory state was already consistent (no repair
+             *                needed), or if the repair could not be completed
+             *
+             **/
+            bool RepairCheckpointIfStale();
 
         }
     }

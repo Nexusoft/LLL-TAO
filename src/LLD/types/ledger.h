@@ -30,6 +30,7 @@ ________________________________________________________________________________
 #include <Util/include/memory.h>
 
 #include <tuple>
+#include <vector>
 
 
 /** Forward declarations **/
@@ -47,6 +48,60 @@ namespace TAO
 
 namespace LLD
 {
+    struct BlockAuditScanOptions
+    {
+        bool     fHasStartFile{false};
+        bool     fHasEndFile{false};
+        uint32_t nStartFile{0};
+        uint32_t nEndFile{0};
+        uint32_t nMaxFiles{8};
+    };
+
+
+    struct BlockAuditRecordMatch
+    {
+        uint32_t    nSectorFile{0};
+        uint64_t    nSectorStart{0};
+        uint64_t    nSectorSize{0};
+        uint32_t    nHeight{0};
+        uint1024_t  hashBlock{0};
+        uint1024_t  hashPrevBlock{0};
+        uint1024_t  hashNextBlock{0};
+        bool        fSerializedComplete{false};
+    };
+
+
+    struct BlockAuditAliasResult
+    {
+        bool     fExists{false};
+        bool     fReadable{false};
+        bool     fKeychainOnly{false};
+        bool     fOversized{false};
+        uint8_t  nState{0};
+        uint32_t nSectorFile{0};
+        uint64_t nSectorStart{0};
+        uint64_t nSectorSize{0};
+    };
+
+
+    struct BlockAuditScanResult
+    {
+        bool fRangeInvalid{false};
+        bool fMalformedRecord{false};
+        bool fTruncatedRecord{false};
+        bool fOversizedFile{false};
+        bool fInfrastructureFailure{false};
+        bool fFound{false};
+
+        uint32_t nScanStartFile{0};
+        uint32_t nScanEndFile{0};
+        uint32_t nFilesScanned{0};
+        uint32_t nFilesSkipped{0};
+        uint64_t nRecordsScanned{0};
+
+        std::vector<BlockAuditRecordMatch> vMatches;
+    };
+
 
     /** LedgerTransaction
      *
@@ -796,6 +851,62 @@ namespace LLD
          *
          **/
         bool EraseBlock(const uint1024_t& hashBlock);
+
+
+        /** AuditScanBlockRecords
+         *
+         *  Scan raw ledger datachain sector records for block payloads matching hash.
+         *  This is a read-only diagnostic API and does not mutate keychain aliases.
+         *
+         *  @param[in] hashBlock The block hash to match against decoded records.
+         *  @param[in] options The scan bounds/options to apply.
+         *  @param[out] result Scan output and match metadata.
+         *
+         *  @return True if scan infrastructure executed, false on infrastructure failure.
+         *
+         **/
+        bool AuditScanBlockRecords(const uint1024_t& hashBlock,
+                                   const BlockAuditScanOptions& options,
+                                   BlockAuditScanResult& result);
+
+
+        /** AuditReadAliasRecord
+         *
+         *  Read a block record through a keychain alias using bounded resources.
+         *  A damaged alias is reported through the result rather than allocating
+         *  whatever sector size the keychain claims.
+         *
+         *  @param[in] vKey The serialized keychain alias to resolve.
+         *  @param[out] state The block state read from the sector record.
+         *  @param[out] result The alias evidence collected while reading.
+         *
+         *  @return True if the record was read and deserialized, false otherwise.
+         *
+         **/
+        bool AuditReadAliasRecord(const std::vector<uint8_t>& vKey, TAO::Ledger::BlockState& state,
+                                  BlockAuditAliasResult& result);
+
+
+        /** AuditReadBlockRecord
+         *
+         *  Read a block record for the given key using the bounded alias read path.
+         *
+         *  @param[in] key The key or alias to resolve.
+         *  @param[out] state The block state read from the sector record.
+         *  @param[out] result The alias evidence collected while reading.
+         *
+         *  @return True if the record was read and deserialized, false otherwise.
+         *
+         **/
+        template<typename KeyType>
+        bool AuditReadBlockRecord(const KeyType& key, TAO::Ledger::BlockState& state,
+                                  BlockAuditAliasResult& result)
+        {
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
+            ssKey << key;
+
+            return AuditReadAliasRecord(ssKey.Bytes(), state, result);
+        }
 
 
         /** HasFirst

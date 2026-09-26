@@ -169,5 +169,22 @@ namespace config
     **/
     void CacheArgs();
 
+
+    /** GetFalcon1024
+     *
+     *  Get Falcon-1024 stealth mode setting.
+     *  
+     *  HARDCODED: Always returns true - node always accepts both Falcon-512 and Falcon-1024
+     *  for Disposable Falcon signatures (session-based, NOT stored on blockchain).
+     *
+     *  @return Always returns true (stealth mode always enabled)
+     *
+     **/
+    inline bool GetFalcon1024()
+    {
+        return true;  // HARDCODED: Always accept both Falcon-512 and Falcon-1024
+    }
+
+
 }
 #endif

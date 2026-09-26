@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/include/append.h>
 #include <TAO/Operation/include/claim.h>
+#include <TAO/Operation/include/coinbase.h>
 #include <TAO/Operation/include/create.h>
 #include <TAO/Operation/include/credit.h>
 #include <TAO/Operation/include/debit.h>

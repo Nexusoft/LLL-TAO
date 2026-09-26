@@ -30,10 +30,102 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/client.h>
 
+#include <Util/include/filesystem.h>
+
 #include <tuple>
+#include <algorithm>
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
+#include <limits>
 
 namespace LLD
 {
+    namespace
+    {
+        static constexpr uint32_t MAX_AUDIT_SECTOR_FILE = 99999;
+
+        /* Maximum bytes an offline audit will read from a single sector file. The writer only
+         * rotates files once the current file exceeds MAX_SECTOR_FILE_SIZE, so a valid file can
+         * overrun the limit by a single maximum sized record. */
+        static const uint64_t MAX_AUDIT_SECTOR_FILE_SIZE = static_cast<uint64_t>(MAX_SECTOR_FILE_SIZE)
+            + MAX_SIZE + GetSizeOfCompactSize(MAX_SIZE);
+    }
+
+    namespace
+    {
+        bool ReadCompactSizeFromFile(std::ifstream& stream, const uint64_t nFilePos, const uint64_t nFileSize,
+                                     uint64_t& nPayloadSizeOut, uint64_t& nPrefixSizeOut)
+        {
+            nPayloadSizeOut = 0;
+            nPrefixSizeOut = 0;
+
+            if(nFilePos >= nFileSize)
+                return false;
+
+            stream.seekg(static_cast<std::streamoff>(nFilePos), std::ios::beg);
+            uint8_t nPrefix = 0;
+            if(!stream.read(reinterpret_cast<char*>(&nPrefix), 1))
+                return false;
+
+            nPrefixSizeOut = 1;
+            if(nPrefix < 253)
+            {
+                nPayloadSizeOut = nPrefix;
+                return true;
+            }
+
+            if(nPrefix == 253)
+            {
+                if(nFilePos + 3 > nFileSize)
+                    return false;
+
+                uint8_t p[2] = {0, 0};
+                if(!stream.read(reinterpret_cast<char*>(p), 2))
+                    return false;
+
+                nPayloadSizeOut = static_cast<uint64_t>(p[0]) | (static_cast<uint64_t>(p[1]) << 8);
+                nPrefixSizeOut = 3;
+                return true;
+            }
+
+            if(nPrefix == 254)
+            {
+                if(nFilePos + 5 > nFileSize)
+                    return false;
+
+                uint8_t p[4] = {0, 0, 0, 0};
+                if(!stream.read(reinterpret_cast<char*>(p), 4))
+                    return false;
+
+                nPayloadSizeOut = static_cast<uint64_t>(p[0])
+                    | (static_cast<uint64_t>(p[1]) << 8)
+                    | (static_cast<uint64_t>(p[2]) << 16)
+                    | (static_cast<uint64_t>(p[3]) << 24);
+                nPrefixSizeOut = 5;
+                return true;
+            }
+
+            if(nFilePos + 9 > nFileSize)
+                return false;
+
+            uint8_t p[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+            if(!stream.read(reinterpret_cast<char*>(p), 8))
+                return false;
+
+            nPayloadSizeOut = static_cast<uint64_t>(p[0])
+                | (static_cast<uint64_t>(p[1]) << 8)
+                | (static_cast<uint64_t>(p[2]) << 16)
+                | (static_cast<uint64_t>(p[3]) << 24)
+                | (static_cast<uint64_t>(p[4]) << 32)
+                | (static_cast<uint64_t>(p[5]) << 40)
+                | (static_cast<uint64_t>(p[6]) << 48)
+                | (static_cast<uint64_t>(p[7]) << 56);
+            nPrefixSizeOut = 9;
+            return true;
+        }
+    }
+
 
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
     LedgerDB::LedgerDB(const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
@@ -1254,6 +1346,283 @@ namespace LLD
             return Client->Erase(hashBlock);
 
         return Erase(hashBlock);
+    }
+
+
+    bool LedgerDB::AuditScanBlockRecords(const uint1024_t& hashBlock,
+                                         const BlockAuditScanOptions& options,
+                                         BlockAuditScanResult& result)
+    {
+        result = BlockAuditScanResult();
+
+        uint32_t nStartFile = 0;
+        uint32_t nEndFile = 0;
+
+        if(options.fHasStartFile || options.fHasEndFile)
+        {
+            nStartFile = options.fHasStartFile ? options.nStartFile : options.nEndFile;
+            nEndFile = options.fHasEndFile ? options.nEndFile : options.nStartFile;
+        }
+        else
+        {
+            const uint32_t nBoundFiles = std::max<uint32_t>(1, options.nMaxFiles);
+            nEndFile = nCurrentFile;
+            nStartFile = (nEndFile >= (nBoundFiles - 1)) ? (nEndFile - (nBoundFiles - 1)) : 0;
+        }
+
+        if(nStartFile > nEndFile)
+        {
+            result.fRangeInvalid = true;
+            result.fInfrastructureFailure = true;
+            result.nScanStartFile = nStartFile;
+            result.nScanEndFile = nEndFile;
+            return false;
+        }
+
+        if(nStartFile > MAX_AUDIT_SECTOR_FILE || nEndFile > MAX_AUDIT_SECTOR_FILE)
+        {
+            result.fRangeInvalid = true;
+            result.fInfrastructureFailure = true;
+            result.nScanStartFile = nStartFile;
+            result.nScanEndFile = nEndFile;
+            return false;
+        }
+
+        result.nScanStartFile = nStartFile;
+        result.nScanEndFile = nEndFile;
+
+        for(uint64_t nFile = nEndFile; ; --nFile)
+        {
+            if(nFile < nStartFile)
+                break;
+
+            const std::string strPath = debug::safe_printstr(
+                strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nFile);
+
+            std::error_code error;
+            const uint64_t nFileSize = std::filesystem::file_size(strPath, error);
+            if(error)
+            {
+                if(error != std::errc::no_such_file_or_directory)
+                {
+                    result.fInfrastructureFailure = true;
+                    return false;
+                }
+
+                if(nFile == 0)
+                    break;
+
+                continue;
+            }
+
+            /* Bound the scan to the largest byte extent the writer can legitimately produce so a
+             * sparse or corrupt sector file cannot be read in its entirety. */
+            if(nFileSize > MAX_AUDIT_SECTOR_FILE_SIZE)
+            {
+                result.fOversizedFile = true;
+                ++result.nFilesSkipped;
+
+                if(nFile == 0)
+                    break;
+
+                continue;
+            }
+
+            ++result.nFilesScanned;
+
+            uint64_t nFilePos = 0;
+
+            std::ifstream stream(strPath, std::ios::in | std::ios::binary);
+            if(!stream.is_open())
+            {
+                result.fInfrastructureFailure = true;
+                return false;
+            }
+
+            while(nFilePos < nFileSize)
+            {
+                uint64_t nPayloadSize = 0;
+                uint64_t nPrefixSize = 0;
+                if(!ReadCompactSizeFromFile(stream, nFilePos, nFileSize, nPayloadSize, nPrefixSize))
+                {
+                    result.fTruncatedRecord = true;
+                    break;
+                }
+
+                if(nPayloadSize == 0)
+                {
+                    nFilePos += nPrefixSize;
+                    char buffer[64 * 1024];
+                    while(nFilePos < nFileSize)
+                    {
+                        const auto nRead = static_cast<std::streamsize>(
+                            std::min<uint64_t>(sizeof(buffer), nFileSize - nFilePos));
+                        if(!stream.read(buffer, nRead))
+                        {
+                            result.fTruncatedRecord = true;
+                            break;
+                        }
+
+                        const auto pNonzero = std::find_if(buffer, buffer + nRead,
+                            [](const char byte) { return byte != 0; });
+                        nFilePos += pNonzero - buffer;
+                        if(pNonzero != buffer + nRead)
+                            break;
+                    }
+                    if(!stream)
+                        break;
+                    continue;
+                }
+
+                if(nPayloadSize > MAX_SIZE)
+                {
+                    result.fMalformedRecord = true;
+                    break;
+                }
+
+                if(nPayloadSize > (nFileSize - nFilePos - nPrefixSize))
+                {
+                    result.fTruncatedRecord = true;
+                    break;
+                }
+
+                if(nPayloadSize > static_cast<uint64_t>(std::numeric_limits<size_t>::max()))
+                {
+                    result.fMalformedRecord = true;
+                    break;
+                }
+
+                std::vector<uint8_t> vRecord(static_cast<size_t>(nPayloadSize));
+                stream.seekg(static_cast<std::streamoff>(nFilePos + nPrefixSize), std::ios::beg);
+                if(!stream.read(reinterpret_cast<char*>(vRecord.data()), static_cast<std::streamsize>(vRecord.size())))
+                {
+                    result.fTruncatedRecord = true;
+                    break;
+                }
+
+                ++result.nRecordsScanned;
+
+                try
+                {
+                    DataStream ssRecord(vRecord, SER_LLD, DATABASE_VERSION);
+
+                    std::string strType;
+                    ssRecord >> strType;
+                    if(strType == "block")
+                    {
+                        TAO::Ledger::BlockState state;
+                        ssRecord >> state;
+
+                        if(!ssRecord.End())
+                            result.fMalformedRecord = true;
+
+                        const uint1024_t hashCandidate = state.GetHash();
+                        if(hashCandidate == hashBlock)
+                        {
+                            BlockAuditRecordMatch match;
+                            match.nSectorFile = static_cast<uint32_t>(nFile);
+                            match.nSectorStart = nFilePos;
+                            match.nSectorSize = nPayloadSize + nPrefixSize;
+                            match.nHeight = state.nHeight;
+                            match.hashBlock = hashCandidate;
+                            match.hashPrevBlock = state.hashPrevBlock;
+                            match.hashNextBlock = state.hashNextBlock;
+                            match.fSerializedComplete = ssRecord.End();
+
+                            result.vMatches.push_back(match);
+                            if(match.fSerializedComplete)
+                                result.fFound = true;
+                        }
+                    }
+                }
+                catch(const std::exception&)
+                {
+                    result.fMalformedRecord = true;
+                }
+
+                nFilePos += nPayloadSize + nPrefixSize;
+            }
+
+            if(nFile == 0)
+                break;
+        }
+
+        return !result.fInfrastructureFailure;
+    }
+
+
+    /* Read a block record through a keychain alias using bounded resources. */
+    bool LedgerDB::AuditReadAliasRecord(const std::vector<uint8_t>& vKey, TAO::Ledger::BlockState& state,
+                                        BlockAuditAliasResult& result)
+    {
+        result = BlockAuditAliasResult();
+
+        /* Resolve the alias from the keychain without reading any sector data. */
+        SectorKey cKey;
+        if(!pSectorKeys->Get(vKey, cKey))
+            return false;
+
+        result.fExists = true;
+        result.fKeychainOnly = (cKey.nSectorFile == 0 && cKey.nSectorSize == 0 && cKey.nSectorStart == 0);
+        result.nState = cKey.nState;
+        result.nSectorFile = cKey.nSectorFile;
+        result.nSectorStart = cKey.nSectorStart;
+        result.nSectorSize = cKey.nSectorSize;
+
+        if(result.fKeychainOnly)
+            return false;
+
+        /* Reject a sector size the writer could never produce before allocating for it. */
+        const uint64_t nPrefixSize = GetSizeOfCompactSize(cKey.nSectorSize);
+        if(cKey.nSectorSize <= nPrefixSize || (cKey.nSectorSize - nPrefixSize) > MAX_SIZE)
+        {
+            result.fOversized = true;
+            return false;
+        }
+
+        const std::string strPath = debug::safe_printstr(
+            strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile);
+
+        /* Validate the record is contained by the sector file it claims to live in. */
+        std::error_code error;
+        const uint64_t nFileSize = std::filesystem::file_size(strPath, error);
+        if(error)
+            return false;
+
+        if(cKey.nSectorStart > nFileSize || (nFileSize - cKey.nSectorStart) < cKey.nSectorSize)
+            return false;
+
+        std::ifstream stream(strPath, std::ios::in | std::ios::binary);
+        if(!stream.is_open())
+            return false;
+
+        std::vector<uint8_t> vData(static_cast<size_t>(cKey.nSectorSize - nPrefixSize));
+        stream.seekg(static_cast<std::streamoff>(cKey.nSectorStart + nPrefixSize), std::ios::beg);
+        if(!stream.read(reinterpret_cast<char*>(vData.data()), static_cast<std::streamsize>(vData.size())))
+            return false;
+
+        try
+        {
+            DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
+
+            std::string strType;
+            ssValue >> strType;
+            if(strType != "block")
+                return false;
+
+            ssValue >> state;
+
+            /* Require the record to be fully consumed like the raw scanner does. */
+            if(!ssValue.End())
+                return false;
+        }
+        catch(const std::exception&)
+        {
+            return false;
+        }
+
+        result.fReadable = true;
+        return true;
     }
 
 

@@ -173,8 +173,22 @@ namespace TAO
              *
              *  Check a tritium block for consistency.
              *
+             *  @param[in] fForceProof When true, evaluate the proof-of-work/stake
+             *             gate unconditionally (ignore the Synchronizing() fast-path).
+             *
              **/
-            bool Check() const override;
+            bool Check(bool fForceProof = false) const override;
+
+
+            /** CheckStored
+             *
+             *  Check a tritium block reconstructed from persisted block state.
+             *  Unlike Check(), this permits the block itself to exist and resolves
+             *  referenced transactions from the block database rather than the
+             *  transient mempool.
+             *
+             **/
+            bool CheckStored(bool fForceProof = false) const;
 
 
             /** Accept
@@ -197,10 +211,13 @@ namespace TAO
              *
              *  Verify the work was completed by miners as advertised.
              *
+             *  @param[in] fForceVerify When true, force full primality verification
+             *             regardless of Synchronizing() state.
+             *
              *  @return True if work is valid, false otherwise.
              *
              **/
-            bool VerifyWork() const override;
+            bool VerifyWork(bool fForceVerify = false) const override;
 
 
             /** SignatureHash
@@ -230,6 +247,11 @@ namespace TAO
              **/
             std::string ToString() const override;
 
+
+        private:
+
+            /** Shared implementation for incoming and persisted validation. **/
+            bool CheckInternal(bool fForceProof, bool fStored) const;
 
         };
     }

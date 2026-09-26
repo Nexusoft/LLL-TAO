@@ -16,10 +16,19 @@ ________________________________________________________________________________
 #define NEXUS_UTIL_INCLUDE_MUTEX_H
 
 #include <mutex>
+#include <shared_mutex>
 
 /* Macro preprocessor definitions for debug purposes. */
 #define LOCK(mut) std::unique_lock<std::mutex> lk(mut)
 #define LOCK2(mut) std::unique_lock<std::mutex> lk2(mut)
+
+/* Reader-writer lock macros for std::shared_mutex.
+ * SHARED_LOCK: concurrent read access (multiple readers allowed).
+ * WRITE_LOCK:  exclusive write access (blocks all readers and writers). */
+#define SHARED_LOCK(mut)  std::shared_lock<std::shared_mutex> slk(mut)
+#define SHARED_LOCK2(mut) std::shared_lock<std::shared_mutex> slk2(mut)
+#define WRITE_LOCK(mut)   std::unique_lock<std::shared_mutex> ulk(mut)
+#define WRITE_LOCK2(mut)  std::unique_lock<std::shared_mutex> ulk2(mut)
 
 /* Variadic macro to support multiple locks in same macro. */
 #define CRITICAL(...) std::scoped_lock<std::mutex>            __LOCK(__VA_ARGS__)

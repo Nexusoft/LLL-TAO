@@ -45,6 +45,15 @@ namespace LLD
         TRANSACTION     = 2
     };
 
+
+    /** Result of loading a transaction recovery journal. **/
+    enum class RECOVERY
+    {
+        INCOMPLETE,
+        COMPLETE,
+        FAILED
+    };
+
 }
 
 #endif

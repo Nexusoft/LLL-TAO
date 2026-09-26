@@ -72,7 +72,7 @@ Zf(get_seed)(void *seed, size_t len)
 	{
 		int f;
 
-		f = open("/dev/urandom", O_RDONLY);
+		f = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
 		if (f >= 0) {
 			while (len > 0) {
 				ssize_t rlen;

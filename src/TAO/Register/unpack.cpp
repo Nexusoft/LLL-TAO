@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/types/stream.h>
 
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/coinbase.h>
 #include <TAO/Operation/include/create.h>
 
 #include <Util/include/hex.h>

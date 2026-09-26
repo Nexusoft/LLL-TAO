@@ -19,13 +19,79 @@ ________________________________________________________________________________
 #include <LLD/keychain/filemap.h>
 #include <LLD/keychain/hashmap.h>
 
+#include <TAO/Ledger/include/sync_profile.h>
+
+#include <Util/include/args.h>
+#include <Util/include/config.h>
 #include <Util/include/filesystem.h>
 #include <Util/include/hex.h>
 
+#include <cstdio>
+#include <filesystem>
+#include <fstream>
 #include <functional>
+#include <memory>
+#include <set>
+
+#ifdef WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 namespace LLD
 {
+    namespace
+    {
+        bool SyncFileHandle(FILE* stream)
+        {
+            if(!stream)
+                return false;
+
+            #ifdef WIN32
+            return (_commit(_fileno(stream)) == 0);
+            #else
+            /* Prefer fdatasync on Linux: content durability without a full
+             * metadata flush on every call. */
+            #if defined(__linux__)
+            if(fdatasync(fileno(stream)) == 0)
+                return true;
+            #endif
+            return (fsync(fileno(stream)) == 0);
+            #endif
+        }
+
+
+        bool SyncFile(const std::string& strPath)
+        {
+            FILE* stream = std::fopen(strPath.c_str(), "rb+");
+            if(!stream)
+                return false;
+
+            const bool fSynced = SyncFileHandle(stream);
+            return (std::fclose(stream) == 0 && fSynced);
+        }
+
+
+        /* Creation-dirty paths must also persist newly created database parents.
+         * Content-only commits never enter this directory-chain sync. */
+        bool SyncParentDirectory(const std::string& strPath)
+        {
+            std::filesystem::path path = std::filesystem::path(strPath).lexically_normal();
+            if(path.has_relative_path() && path.filename().empty())
+                path = path.parent_path();
+            else if(!path.empty() && !std::filesystem::is_directory(path))
+                path = path.parent_path();
+
+            if(path.empty())
+                return false;
+
+            return config::SyncDataDirectoryChain(path.string());
+        }
+
+    }
+
+
 
     /* The Database Constructor. To determine file location and the Bytes per Record. */
     template<class KeychainType, class CacheType>
@@ -41,7 +107,13 @@ namespace LLD
     , strName(strNameIn)
     , runtime()
     , pTransaction(nullptr)
-    , pSectorKeys(new KeychainType((config::GetDataDir() + strName + "/keychain/"), nFlagsIn, nBucketsIn))
+    , fTxnReleaseRequired(false)
+    , fJournalDirectoryDirty(true)
+    , setPendingSectorFiles( )
+    , fSectorDirectoryDirty(true)
+    , pSectorKeys(new KeychainType((config::GetDataDir() + strName + "/keychain/"),
+          nFlagsIn | ((nFlagsIn & (FLAGS::FORCE | FLAGS::WRITE | FLAGS::APPEND)) ? 0 : FLAGS::READONLY),
+          nBucketsIn))
     , cachePool(new CacheType(nCacheIn))
     , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
     , nCurrentFile(0)
@@ -88,6 +160,24 @@ namespace LLD
         if(MeterThread.joinable())
             MeterThread.join();
 
+        /* Best-effort durable flush of any pending data files. */
+        if(!(nFlags & FLAGS::READONLY) && pSectorKeys)
+        {
+            for(const uint16_t nSectorFile : setPendingSectorFiles)
+            {
+                const std::string strPath = debug::safe_printstr(
+                    strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nSectorFile);
+                SyncFile(strPath);
+            }
+
+            if(fSectorDirectoryDirty)
+                SyncParentDirectory(strBaseLocation);
+
+            pSectorKeys->SyncTouchedFiles();
+            setPendingSectorFiles.clear();
+            fSectorDirectoryDirty = false;
+        }
+
         if(pTransaction)
             delete pTransaction;
 
@@ -107,7 +197,8 @@ namespace LLD
     void SectorDatabase<KeychainType, CacheType>::Initialize()
     {
         /* Create directories if they don't exist yet. */
-        if(nFlags & FLAGS::CREATE && !filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
+        if(!(nFlags & FLAGS::READONLY) && nFlags & FLAGS::CREATE
+        && !filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
             debug::log(0, FUNCTION, "Generated Path ", strBaseLocation);
 
         /* Find the most recent append file. */
@@ -118,17 +209,29 @@ namespace LLD
                 debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile);
 
             /* Build a stream object now. */
-            const int64_t nSize = filesystem::size(strPath);
+            int64_t nSize = -1;
+            if(nFlags & FLAGS::READONLY)
+            {
+                std::error_code error;
+                const auto nFileSize = std::filesystem::file_size(strPath, error);
+                if(error && error != std::errc::no_such_file_or_directory)
+                    throw debug::exception(FUNCTION, "cannot stat sector ", strPath, ": ", error.message());
+                if(!error)
+                    nSize = static_cast<int64_t>(nFileSize);
+            }
+            else
+                nSize = filesystem::size(strPath);
             if(nSize == -1)
             {
                 /* Assign the Current Size and File. */
                 if(nCurrentFile > 0)
                     --nCurrentFile;
-                else
+                else if(!(nFlags & FLAGS::READONLY))
                 {
                     /* Create a new file if it doesn't exist. */
                     std::ofstream cStream(strPath, std::ios::binary | std::ios::out | std::ios::trunc);
                     cStream.close();
+                    fSectorDirectoryDirty = true;
                 }
 
                 break;
@@ -162,41 +265,30 @@ namespace LLD
         if(pSectorKeys->Get(vKey, cKey))
         {
             {
-                LOCK(SECTOR_MUTEX);
+                SHARED_LOCK(SECTOR_MUTEX);
 
-                /* Find the file stream for LRU cache. */
-                std::fstream* pstream;
-                if(!fileCache->Get(cKey.nSectorFile, pstream))
-                {
-                    /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
-                    if(!pstream->is_open())
-                    {
-                        delete pstream;
-                        return debug::error(FUNCTION, "couldn't create stream file");
-                    }
+                /* Use a private read-only stream so that multiple readers can
+                 * proceed concurrently under the shared_lock without racing on
+                 * the shared fileCache's fstream seek/read state. */
+                std::ifstream stream(
+                    debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile),
+                    std::ios::in | std::ios::binary);
 
-                    /* If file not found add to LRU cache. */
-                    fileCache->Put(cKey.nSectorFile, pstream);
-                }
-
-                /* Check stream file is still open. */
-                if(!pstream->is_open())
-                    pstream->open(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                if(!stream.is_open())
+                    return debug::error(FUNCTION, "couldn't open stream file for read");
 
                 /* Get compact size from record. */
                 uint64_t nSize = GetSizeOfCompactSize(cKey.nSectorSize);
 
                 /* Seek to the Sector Position on Disk. */
-                pstream->seekg(cKey.nSectorStart + nSize, std::ios::beg);
+                stream.seekg(cKey.nSectorStart + nSize, std::ios::beg);
 
                 /* Resize for proper record length. */
                 vData.resize(cKey.nSectorSize - nSize);
 
                 /* Read the State and Size of Sector Header. */
-                if(!pstream->read((char*) &vData[0], vData.size()))
-                    return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
-
+                if(!stream.read((char*) &vData[0], vData.size()))
+                    return debug::error(FUNCTION, "only ", stream.gcount(), "/", vData.size(), " bytes read");
             }
 
             /* Add to cache */
@@ -220,7 +312,7 @@ namespace LLD
     bool SectorDatabase<KeychainType, CacheType>::Get(const SectorKey& cKey, std::vector<uint8_t>& vData)
     {
         {
-            LOCK(SECTOR_MUTEX);
+            SHARED_LOCK(SECTOR_MUTEX);
 
             nBytesRead += static_cast<uint32_t>(cKey.vKey.size() + vData.size());
 
@@ -228,40 +320,30 @@ namespace LLD
             if(cachePool->Get(cKey.vKey, vData))
                 return true;
 
-            /* Find the file stream for LRU cache. */
-            std::fstream *pstream;
-            if(!fileCache->Get(cKey.nSectorFile, pstream))
-            {
-                /* Set the new stream pointer. */
-                pstream = new std::fstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
-                if(!pstream->is_open())
-                {
-                    delete pstream;
-                    return false;
-                }
+            /* Use a private read-only stream so that multiple readers can
+             * proceed concurrently under the shared_lock without racing on
+             * the shared fileCache's fstream seek/read state. */
+            std::ifstream stream(
+                debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile),
+                std::ios::in | std::ios::binary);
 
-                /* If file not found add to LRU cache. */
-                fileCache->Put(cKey.nSectorFile, pstream);
-            }
-
-            /* Check stream file is still open. */
-            if(!pstream->is_open())
-                pstream->open(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+            if(!stream.is_open())
+                return false;
 
             /* Get compact size from record. */
             uint64_t nSize = GetSizeOfCompactSize(cKey.nSectorSize);
 
             /* Seek to the Sector Position on Disk. */
-            pstream->seekg(cKey.nSectorStart + nSize, std::ios::beg);
+            stream.seekg(cKey.nSectorStart + nSize, std::ios::beg);
 
             /* Resize for proper record length. */
             vData.resize(cKey.nSectorSize - nSize);
 
             /* Read the State and Size of Sector Header. */
-            if(!pstream->read((char*) &vData[0], vData.size()))
-                return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
+            if(!stream.read((char*) &vData[0], vData.size()))
+                return debug::error(FUNCTION, "only ", stream.gcount(), "/", vData.size(), " bytes read");
 
-            /* Verboe output. */
+            /* Verbose output. */
             if(config::nVerbose >= 5)
                 debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
                     " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
@@ -291,7 +373,7 @@ namespace LLD
         cachePool->Put(key, vKey, vData, false);
 
         {
-            LOCK(SECTOR_MUTEX);
+            WRITE_LOCK(SECTOR_MUTEX);
 
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;
@@ -314,6 +396,7 @@ namespace LLD
                 pstream->open(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
 
             /* If it is a New Sector, Assign a Binary Position. */
+            setPendingSectorFiles.insert(key.nSectorFile);
             pstream->seekp(key.nSectorStart, std::ios::beg);
 
             /* Write the size of record. */
@@ -324,6 +407,8 @@ namespace LLD
                 return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes written");
 
             pstream->flush();
+            if(!*pstream)
+                return debug::error(FUNCTION, "failed to flush sector file");
 
             /* Records flushed indicator. */
             ++nRecordsFlushed;
@@ -345,9 +430,12 @@ namespace LLD
     {
         if(nFlags & FLAGS::APPEND || !Update(vKey, vData))
         {
+            /* Sector key built inside the lock so that nCurrentFile and
+             * nCurrentFileSize are read and updated atomically. */
+            SectorKey key;
 
             {
-                LOCK(SECTOR_MUTEX);
+                WRITE_LOCK(SECTOR_MUTEX);
 
                 /* Create new file if above current file size. */
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
@@ -363,6 +451,7 @@ namespace LLD
                         std::ios::out | std::ios::binary | std::ios::trunc
                     );
                     stream.close();
+                    fSectorDirectoryDirty = true;
                 }
 
                 /* Find the file stream for LRU cache. */
@@ -386,6 +475,7 @@ namespace LLD
                     pstream->open(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
 
                 /* If it is a New Sector, Assign a Binary Position. */
+                setPendingSectorFiles.insert(static_cast<uint16_t>(nCurrentFile));
                 pstream->seekp(nCurrentFileSize, std::ios::beg);
 
                 /* Write the size of record. */
@@ -396,31 +486,34 @@ namespace LLD
                     return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes written");
 
                 pstream->flush();
+                if(!*pstream)
+                    return debug::error(FUNCTION, "failed to flush sector file");
+
+                /* Get current size */
+                const uint64_t nSize =
+                    (vData.size() + GetSizeOfCompactSize(vData.size()));
+
+                /* Create the Sector Key while still holding the lock so that
+                 * nCurrentFile and nCurrentFileSize are consistent. */
+                key = SectorKey(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
+                                nCurrentFileSize, static_cast<uint32_t>(nSize));
+
+                /* Increment the current filesize (now inside lock). */
+                nCurrentFileSize += static_cast<uint32_t>(nSize);
+
+                /* Records flushed indicator. */
+                ++nRecordsFlushed;
+                nBytesWrote += static_cast<uint32_t>(nSize);
             }
 
-            /* Get current size */
-            const uint64_t nSize =
-                (vData.size() + GetSizeOfCompactSize(vData.size()));
-
-            /* Create a new Sector Key. */
-            const SectorKey key(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
-                            nCurrentFileSize, static_cast<uint32_t>(nSize));
-
-            /* Increment the current filesize */
-            nCurrentFileSize += static_cast<uint32_t>(nSize);
-
-            /* Records flushed indicator. */
-            ++nRecordsFlushed;
-            nBytesWrote += static_cast<uint32_t>(nSize);
-
-            /* Assign the Key to Keychain. */
+            /* Assign the Key to Keychain (has its own internal synchronization). */
             if(!pSectorKeys->Put(key))
                 return debug::error(FUNCTION, "failed to write key to keychain");
 
             /* Write the data into the memory cache. */
             cachePool->Put(key, vKey, vData, false);
 
-            /* Verboe output. */
+            /* Verbose output. */
             if(config::nVerbose >= 5)
                 debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
                     " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
@@ -478,7 +571,7 @@ namespace LLD
             return true;
 
         {
-            LOCK(SECTOR_MUTEX);
+            WRITE_LOCK(SECTOR_MUTEX);
 
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;
@@ -501,6 +594,7 @@ namespace LLD
                 pstream->open(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
 
             /* Seek to write at specific location. */
+            setPendingSectorFiles.insert(key.nSectorFile);
             pstream->seekp(key.nSectorStart + GetSizeOfCompactSize(key.nSectorSize), std::ios::beg);
 
             /* Update the record with blank data. */
@@ -514,6 +608,8 @@ namespace LLD
 
             /* Flush the rest of the write buffer in stream. */
             pstream->flush();
+            if(!*pstream)
+                return debug::error(FUNCTION, "failed to flush deleted sector data");
 
             /* Verboe output. */
             if(config::nVerbose >= 4)
@@ -564,20 +660,6 @@ namespace LLD
                 nBufferBytes = 0;
             }
 
-            /* Create a new file if the sector file size is over file size limits. */
-            if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
-            {
-                debug::log(0, FUNCTION, "allocating new sector file ", nCurrentFile + 1);
-
-                /* Iterate the current file and reset current file sie. */
-                ++nCurrentFile;
-                nCurrentFileSize = 0;
-
-                /* Create a new file for next writes. */
-                std::fstream stream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::out | std::ios::binary | std::ios::trunc);
-                stream.close();
-            }
-
             /* Iterate through buffer to queue disk writes. */
             for(const auto& vObj : vIndexes)
             {
@@ -616,7 +698,7 @@ namespace LLD
         TIMER.Start();
 
         /* Loop until shutdown. */
-        while(!config::fShutdown.load())
+        while(!config::fShutdown.load() && !fDestruct.load())
         {
             runtime::sleep(100);
             if(TIMER.Elapsed() < 30)
@@ -645,6 +727,29 @@ namespace LLD
     }
 
 
+    /*  Check if a physical database transaction is currently open. */
+    template<class KeychainType, class CacheType>
+    bool SectorDatabase<KeychainType, CacheType>::HasTransaction()
+    {
+        LOCK(TRANSACTION_MUTEX);
+
+        return (pTransaction != nullptr);
+    }
+
+
+    template<class KeychainType, class CacheType>
+    bool SectorDatabase<KeychainType, CacheType>::HasPendingTransactionWork()
+    {
+        LOCK(TRANSACTION_MUTEX);
+
+        return (pTransaction
+            && (!pTransaction->mapTransactions.empty()
+             || !pTransaction->setKeychain.empty()
+             || !pTransaction->mapIndex.empty()
+             || !pTransaction->setErasedData.empty()));
+    }
+
+
     /*  Start a database transaction. */
     template<class KeychainType, class CacheType>
     void SectorDatabase<KeychainType, CacheType>::TxnBegin()
@@ -657,6 +762,7 @@ namespace LLD
 
         /* Create the new Database Transaction Object. */
         pTransaction = new SectorTransaction();
+        fTxnReleaseRequired = false;
     }
 
 
@@ -670,18 +776,65 @@ namespace LLD
         if(!pTransaction)
             return false;
 
-        /* Set commit message into journal. */
+        runtime::timer timerCheckpoint;
+        runtime::timer timerFsync;
+        const bool fProfile = TAO::Ledger::SyncProfile::Enabled();
+        if(fProfile)
+            timerCheckpoint.Start();
+
+        /* Recovery requires a commit marker from every participant, including empty ones.
+         *
+         * Journal fsync is the write-ahead commit point. Keychain/sector data
+         * files are synced during apply, before any participant's journal
+         * can be released. */
         pTransaction->ssJournal << std::string("commit");
 
+        const std::string strJournal =
+            debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat");
+        if(!filesystem::exists(strJournal))
+            fJournalDirectoryDirty = true;
+
         /* Create an append only stream. */
-        std::ofstream stream = std::ofstream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::app | std::ios::binary);
-        if(!stream.is_open())
+        FILE* stream = std::fopen(strJournal.c_str(), "ab");
+        if(!stream)
             return debug::error(FUNCTION, "failed to open journal file");
+
+        /* Even a failed write or sync may leave journal bytes that abort must discard. */
+        fTxnReleaseRequired = true;
+
+        if(fProfile)
+            timerFsync.Start();
 
         /* Write to the file.  */
         const std::vector<uint8_t>& vBytes = pTransaction->ssJournal.Bytes();
-        stream.write((char*)&vBytes[0], vBytes.size());
-        stream.close();
+        if(std::fwrite(vBytes.data(), 1, vBytes.size(), stream) != vBytes.size()
+        || std::fflush(stream) != 0)
+        {
+            std::fclose(stream);
+            return debug::error(FUNCTION, "failed to flush journal file");
+        }
+
+        if(!SyncFileHandle(stream))
+        {
+            std::fclose(stream);
+            return debug::error(FUNCTION, "failed to sync journal file");
+        }
+
+        if(std::fclose(stream) != 0)
+            return debug::error(FUNCTION, "failed to close journal file");
+
+        /* Keep new journal entries dirty until their directory sync succeeds. */
+        if(fJournalDirectoryDirty && !SyncParentDirectory(strJournal))
+            return debug::error(FUNCTION, "failed to sync journal directory");
+
+        fJournalDirectoryDirty = false;
+
+        if(fProfile)
+        {
+            timerFsync.Stop();
+            timerCheckpoint.Stop();
+            TAO::Ledger::SyncProfile::RecordTxnCheckpoint(1, timerCheckpoint.ElapsedMicroseconds(), timerFsync.ElapsedMicroseconds());
+        }
 
         return true;
     }
@@ -689,7 +842,7 @@ namespace LLD
 
     /*  Release the transaction checkpoint. */
     template<class KeychainType, class CacheType>
-    void SectorDatabase<KeychainType, CacheType>::TxnRelease()
+    bool SectorDatabase<KeychainType, CacheType>::TxnRelease()
     {
         LOCK(TRANSACTION_MUTEX);
 
@@ -700,9 +853,39 @@ namespace LLD
         /** Set the transaction pointer to null also acting like a flag **/
         pTransaction = nullptr;
 
-        /* Delete the transaction journal file. */
-        std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::trunc);
-        stream.close();
+        if(!fTxnReleaseRequired)
+            return true;
+
+        runtime::timer timerRelease;
+        runtime::timer timerFsync;
+        const bool fProfile = TAO::Ledger::SyncProfile::Enabled();
+        if(fProfile)
+        {
+            timerRelease.Start();
+            timerFsync.Start();
+        }
+
+        /* Durably truncate the transaction journal. The file already exists, so
+         * only the truncated contents need an fsync — not a full directory chain. */
+        const std::string strJournal =
+            debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat");
+        FILE* stream = std::fopen(strJournal.c_str(), "wb");
+        if(!stream)
+            return debug::error(FUNCTION, "failed to truncate journal file");
+
+        const bool fSynced = SyncFileHandle(stream);
+        if(std::fclose(stream) != 0 || !fSynced)
+            return debug::error(FUNCTION, "failed to sync truncated journal file");
+
+        fTxnReleaseRequired = false;
+        if(fProfile)
+        {
+            timerFsync.Stop();
+            timerRelease.Stop();
+            TAO::Ledger::SyncProfile::RecordTxnRelease(1, timerRelease.ElapsedMicroseconds(), timerFsync.ElapsedMicroseconds());
+        }
+
+        return true;
     }
 
 
@@ -716,50 +899,105 @@ namespace LLD
         if(!pTransaction)
             return false;
 
-        /* Erase data set to be removed. */
-        for(const auto& item : pTransaction->setErasedData)
-            if(!pSectorKeys->Erase(item))
-                return debug::error(FUNCTION, "failed to erase from keychain");
+        const bool fEmpty =
+            pTransaction->mapTransactions.empty()
+            && pTransaction->setKeychain.empty()
+            && pTransaction->mapIndex.empty()
+            && pTransaction->setErasedData.empty();
 
-        /* Commit the sector data. */
-        for(const auto& item : pTransaction->mapTransactions)
-            if(!Force(item.first, item.second))
-                return debug::error(FUNCTION, "failed to commit sector data");
+        runtime::timer timerApply;
+        runtime::timer timerFsync;
+        const bool fProfile = TAO::Ledger::SyncProfile::Enabled();
+        if(fProfile && !fEmpty)
+            timerApply.Start();
 
-        /* Commit keychain entries. */
-        for(const auto& item : pTransaction->setKeychain)
+        if(!fEmpty)
         {
-            SectorKey cKey(STATE::READY, item, 0, 0, 0);
-            if(!pSectorKeys->Put(cKey))
-                return debug::error(FUNCTION, "failed to commit to keychain");
-        }
+            pSectorKeys->BeginDurabilityTracking();
 
-        /* Commit the index data. */
-        std::map<std::vector<uint8_t>, SectorKey> mapIndex;
-        for(const auto& item : pTransaction->mapIndex)
-        {
-            /* Get the key. */
-            SectorKey cKey;
-            if(mapIndex.count(item.second))
-                cKey = mapIndex[item.second];
-            else
+            /* Erase data set to be removed. Erase is idempotent for missing keys
+             * and still propagates keychain I/O failures. */
+            for(const auto& item : pTransaction->setErasedData)
             {
-                /* Check for the new indexing entry. */
-                if(!pSectorKeys->Get(item.second, cKey))
-                    return debug::error(FUNCTION, "failed to read indexing entry");
-
-                mapIndex[item.second] = cKey;
+                if(!pSectorKeys->Erase(item))
+                    return debug::error(FUNCTION, "failed to erase from keychain");
             }
 
-            /* Write the new sector key. */
-            cKey.SetKey(item.first);
-            if(!pSectorKeys->Put(cKey))
-                return debug::error(FUNCTION, "failed to write indexing entry");
+            /* Commit the sector data. */
+            for(const auto& item : pTransaction->mapTransactions)
+            {
+                if(!Force(item.first, item.second))
+                    return debug::error(FUNCTION, "failed to commit sector data");
+            }
+
+            /* Commit keychain entries. */
+            for(const auto& item : pTransaction->setKeychain)
+            {
+                SectorKey cKey(STATE::READY, item, 0, 0, 0);
+                if(!pSectorKeys->Put(cKey))
+                    return debug::error(FUNCTION, "failed to commit to keychain");
+            }
+
+            /* Commit the index data. */
+            std::map<std::vector<uint8_t>, SectorKey> mapIndex;
+            for(const auto& item : pTransaction->mapIndex)
+            {
+                /* Get the key. */
+                SectorKey cKey;
+                if(mapIndex.count(item.second))
+                    cKey = mapIndex[item.second];
+                else
+                {
+                    /* Check for the new indexing entry. */
+                    if(!pSectorKeys->Get(item.second, cKey))
+                        return debug::error(FUNCTION, "failed to read indexing entry");
+
+                    mapIndex[item.second] = cKey;
+                }
+
+                /* Write the new sector key. */
+                cKey.SetKey(item.first);
+                if(!pSectorKeys->Put(cKey))
+                    return debug::error(FUNCTION, "failed to write indexing entry");
+            }
         }
+
+        /* Every participant must make its data durable before the coordinator
+         * releases any journals. A prior participant's flush cannot cover this
+         * database, even when it was empty. */
+        if(fProfile)
+            timerFsync.Start();
+        {
+            WRITE_LOCK(SECTOR_MUTEX);
+            for(const uint16_t nSectorFile : setPendingSectorFiles)
+            {
+                const std::string strPath = debug::safe_printstr(
+                    strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nSectorFile);
+                if(!SyncFile(strPath))
+                    return debug::error(FUNCTION, "failed to sync sector file");
+            }
+
+            if(fSectorDirectoryDirty && !SyncParentDirectory(strBaseLocation))
+                return debug::error(FUNCTION, "failed to sync sector directory");
+
+            if(!pSectorKeys->SyncTouchedFiles())
+                return debug::error(FUNCTION, "failed to sync keychain files");
+
+            setPendingSectorFiles.clear();
+            fSectorDirectoryDirty = false;
+        }
+        if(fProfile)
+            timerFsync.Stop();
 
         /* Cleanup the transaction object. */
         delete pTransaction;
         pTransaction = nullptr;
+
+        if(fProfile && !fEmpty)
+        {
+            timerApply.Stop();
+            TAO::Ledger::SyncProfile::RecordTxnApply(1, timerApply.ElapsedMicroseconds(), timerFsync.ElapsedMicroseconds());
+        }
 
         return true;
     }
@@ -767,22 +1005,50 @@ namespace LLD
 
     /*  Recover a transaction from the journal. */
     template<class KeychainType, class CacheType>
-    bool SectorDatabase<KeychainType, CacheType>::TxnRecovery()
+    RECOVERY SectorDatabase<KeychainType, CacheType>::TxnRecovery()
     {
-        /* Create an append only stream. */
-        std::ifstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::in | std::ios::out | std::ios::binary);
+        const std::string strJournal =
+            debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat");
+
+        std::error_code ec;
+        const std::filesystem::file_status nStatus = std::filesystem::status(strJournal, ec);
+        if(ec)
+        {
+            if(ec == std::errc::no_such_file_or_directory)
+                return RECOVERY::INCOMPLETE;
+
+            return debug::error(FUNCTION, "failed to inspect ", strName, " transaction journal"),
+                   RECOVERY::FAILED;
+        }
+
+        if(!std::filesystem::exists(nStatus))
+            return RECOVERY::INCOMPLETE;
+
+        if(!std::filesystem::is_regular_file(nStatus))
+        {
+            return debug::error(FUNCTION, strName, " transaction journal is not a regular file"),
+                   RECOVERY::FAILED;
+        }
+
+        /* Open the journal for reading. */
+        std::ifstream stream(strJournal, std::ios::in | std::ios::binary | std::ios::ate);
         if(!stream.is_open())
-            return false;
+            return debug::error(FUNCTION, "failed to open ", strName, " transaction journal"),
+                   RECOVERY::FAILED;
 
         /* Get the Binary Size. */
-        stream.ignore(std::numeric_limits<std::streamsize>::max());
+        const std::streampos nStreamSize = stream.tellg();
+        if(nStreamSize < 0
+        || static_cast<uint64_t>(nStreamSize) > std::numeric_limits<uint32_t>::max())
+            return debug::error(FUNCTION, "failed to read ", strName, " transaction journal size"),
+                   RECOVERY::FAILED;
 
         /* Get the data buffer. */
-        const uint32_t nSize = static_cast<uint32_t>(stream.gcount());
+        const uint32_t nSize = static_cast<uint32_t>(nStreamSize);
 
         /* Check journal size for 0. */
         if(nSize == 0)
-            return false;
+            return RECOVERY::INCOMPLETE;
 
         /* Create buffer to read into. */
         std::vector<uint8_t> vBuffer(nSize, 0);
@@ -790,87 +1056,120 @@ namespace LLD
         /* Read the journal file. */
         stream.seekg (0, std::ios::beg);
         stream.read((char*) &vBuffer[0], vBuffer.size());
+        if(!stream)
+            return debug::error(FUNCTION, "failed to read ", strName, " transaction journal"),
+                   RECOVERY::FAILED;
+
         stream.close();
 
         debug::log(0, FUNCTION, strName, " transaction journal detected of ", nSize, " bytes");
 
-        /* Create the transaction object. */
-        TxnBegin();
+        /* Parse into a temporary transaction so failures retain the existing state. */
+        std::unique_ptr<SectorTransaction> pRecovery(new SectorTransaction());
 
-        /* Serialize the key. */
-        const DataStream ssJournal(vBuffer, SER_LLD, DATABASE_VERSION);
-        while(!ssJournal.End())
+        try
         {
-            /* Read the data entry type. */
-            std::string strType;
-            ssJournal >> strType;
-
-            /* Check for Erase. */
-            if(strType == "erase")
+            /* Serialize the key. */
+            const DataStream ssJournal(vBuffer, SER_LLD, DATABASE_VERSION);
+            while(!ssJournal.End())
             {
-                /* Get the key to erase. */
-                std::vector<uint8_t> vKey;
-                ssJournal >> vKey;
+                /* Read the data entry type. */
+                std::string strType;
+                ssJournal >> strType;
 
-                /* Erase the key. */
-                pTransaction->EraseTransaction(vKey);
+                /* Check for Erase. */
+                if(strType == "erase")
+                {
+                    /* Get the key to erase. */
+                    std::vector<uint8_t> vKey;
+                    ssJournal >> vKey;
 
-                /* Debug output. */
-                debug::log(0, FUNCTION, "erasing key ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
-            }
-            else if(strType == "key")
-            {
-                /* Get the key to write. */
-                std::vector<uint8_t> vKey;
-                ssJournal >> vKey;
+                    /* Erase the key. */
+                    pRecovery->EraseTransaction(vKey);
 
-                /* Write the key. */
-                pTransaction->setKeychain.insert(vKey);
+                    /* Debug output. */
+                    debug::log(0, FUNCTION, "erasing key ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
+                }
+                else if(strType == "key")
+                {
+                    /* Get the key to write. */
+                    std::vector<uint8_t> vKey;
+                    ssJournal >> vKey;
 
-                /* Debug output. */
-                debug::log(0, FUNCTION, "writing keychain ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
-            }
-            else if(strType == "write")
-            {
-                /* Get the key to write. */
-                std::vector<uint8_t> vKey;
-                ssJournal >> vKey;
+                    /* Write the key. */
+                    pRecovery->setKeychain.insert(vKey);
 
-                /* Get the data to write. */
-                std::vector<uint8_t> vData;
-                ssJournal >> vData;
+                    /* Debug output. */
+                    debug::log(0, FUNCTION, "writing keychain ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
+                }
+                else if(strType == "write")
+                {
+                    /* Get the key to write. */
+                    std::vector<uint8_t> vKey;
+                    ssJournal >> vKey;
 
-                /* Write the sector data. */
-                pTransaction->mapTransactions[vKey] = vData;
+                    /* Get the data to write. */
+                    std::vector<uint8_t> vData;
+                    ssJournal >> vData;
 
-                /* Debug output. */
-                debug::log(0, FUNCTION, "writing data ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
-            }
-            else if(strType == "index")
-            {
-                /* Get the key to index. */
-                std::vector<uint8_t> vKey;
-                ssJournal >> vKey;
+                    /* Write the sector data. */
+                    pRecovery->mapTransactions[vKey] = vData;
 
-                /* Get the data to index to. */
-                std::vector<uint8_t> vIndex;
-                ssJournal >> vIndex;
+                    /* Debug output. */
+                    debug::log(0, FUNCTION, "writing data ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
+                }
+                else if(strType == "index")
+                {
+                    /* Get the key to index. */
+                    std::vector<uint8_t> vKey;
+                    ssJournal >> vKey;
 
-                /* Set the indexing key. */
-                pTransaction->mapIndex[vKey] = vIndex;
+                    /* Get the data to index to. */
+                    std::vector<uint8_t> vIndex;
+                    ssJournal >> vIndex;
 
-                /* Debug output. */
-                debug::log(0, FUNCTION, "indexing key ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
-            }
-            if(strType == "commit")
-            {
-                debug::log(0, FUNCTION, strName, " transaction journal ready to be restored");
+                    /* Set the indexing key. */
+                    pRecovery->mapIndex[vKey] = vIndex;
 
-                return true;
+                    /* Debug output. */
+                    debug::log(0, FUNCTION, "indexing key ", HexStr(vKey.begin(), vKey.end()).substr(0, 20));
+                }
+                else if(strType == "commit")
+                {
+                    LOCK(TRANSACTION_MUTEX);
+                    /* A process restart does not prove directory entries survived
+                     * a previous failed sync. Persist ancestry before recovery apply. */
+                    if(fJournalDirectoryDirty && !SyncParentDirectory(strJournal))
+                        return debug::error(FUNCTION, "failed to sync recovered journal directory"),
+                               RECOVERY::FAILED;
+
+                    fJournalDirectoryDirty = false;
+                    delete pTransaction;
+                    pTransaction = pRecovery.release();
+                    fTxnReleaseRequired = true;
+
+                    debug::log(0, FUNCTION, strName, " transaction journal ready to be restored");
+                    return RECOVERY::COMPLETE;
+                }
+                else
+                    return debug::error(FUNCTION, strName, " transaction journal contains invalid entry"),
+                           RECOVERY::FAILED;
             }
         }
+        catch(const std::exception& e)
+        {
+            return debug::error(FUNCTION, strName, " transaction journal parse failed: ", e.what()),
+                   RECOVERY::FAILED;
+        }
 
-        return debug::error(FUNCTION, strName, " transaction journal never reached commit");
+        /* A valid but uncommitted journal must be discarded before the next transaction. */
+        {
+            LOCK(TRANSACTION_MUTEX);
+            fTxnReleaseRequired = true;
+        }
+
+        debug::log(0, FUNCTION, strName, " transaction journal never reached commit");
+        return RECOVERY::INCOMPLETE;
     }
 
 

@@ -206,7 +206,8 @@ namespace LLP
         return false;
     }
 
-    /* Gets a TrustAddress from the BaseAddress */
+    /* Gets a TrustAddress from the BaseAddress.
+     * Deprecated: throws via map::at(); use Get(addr, TrustAddress&) instead. */
     const LLP::TrustAddress& AddressManager::Get(const BaseAddress &addr) const
     {
         const uint64_t hash = addr.GetHash();
@@ -216,6 +217,21 @@ namespace LLP
             std::ref(mapTrustAddress.at(hash));
 
         return rRet;
+    }
+
+
+    /* Atomically checks for and retrieves a TrustAddress from the BaseAddress. */
+    bool AddressManager::Get(const BaseAddress &addr, TrustAddress &addrOut) const
+    {
+        const uint64_t hash = addr.GetHash();
+        LOCK(MUTEX);
+
+        auto it = mapTrustAddress.find(hash);
+        if(it == mapTrustAddress.end())
+            return false;
+
+        addrOut = it->second;
+        return true;
     }
 
 

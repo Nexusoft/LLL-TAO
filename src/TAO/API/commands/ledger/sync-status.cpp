@@ -45,6 +45,7 @@ namespace TAO::API
 
         /* Populate our block related data. */
         jRet["networkBlock"]  = LLP::TritiumNode::nSyncStop.load();
+        jRet["activePeers"]   = LLP::TritiumNode::SyncPeerCount();
         jRet["downloadRate"]  = nTotalBlocks / (LLP::TritiumNode::SYNCTIMER.Elapsed() + 1);;
 
         /* Calculate our peer's block. */

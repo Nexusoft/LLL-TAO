@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #if !defined(WIN32) && !defined(QT_GUI) && !defined(NO_DAEMON)
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 #endif
 
 
@@ -49,7 +51,7 @@ void Daemonize()
     pid_t sid = setsid();
     if(sid < 0)
     {
-        debug::error(FUNCTION, "setsid() returned ", sid, " errno %d", errno);
+        debug::error(FUNCTION, "setsid() returned ", sid, " errno ", errno);
         exit(EXIT_FAILURE);
     }
 
@@ -58,12 +60,15 @@ void Daemonize()
     /* Set new file permissions */
     umask(077);
 
-    /* close stdin, stderr, stdout so that the tty no longer receives output */
-    if(int fdnull = open("/dev/null", O_RDWR))
+    /* Close stdin, stderr, stdout so that the tty no longer receives output.
+     * O_CLOEXEC prevents the fd from leaking into child processes.
+     * Use fdnull >= 0 instead of fdnull != 0 since fd 0 is valid (it's
+     * STDIN which we just made available via the fork). */
+    if(int fdnull = open("/dev/null", O_RDWR | O_CLOEXEC); fdnull >= 0)
     {
-        dup2 (fdnull, STDIN_FILENO);
-        dup2 (fdnull, STDOUT_FILENO);
-        dup2 (fdnull, STDERR_FILENO);
+        dup2(fdnull, STDIN_FILENO);
+        dup2(fdnull, STDOUT_FILENO);
+        dup2(fdnull, STDERR_FILENO);
         close(fdnull);
     }
     else

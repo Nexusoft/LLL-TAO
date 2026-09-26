@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <cstring>
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 
 #include <Util/include/debug.h>
 #include <Util/include/filesystem.h>
@@ -52,6 +53,65 @@ ________________________________________________________________________________
 
 namespace filesystem
 {
+    /* Flush a directory and its entries to stable storage. */
+    bool sync_directory(const std::string& strPath)
+    {
+        #ifdef WIN32
+        const HANDLE hDirectory = CreateFileA(
+            strPath.c_str(), GENERIC_READ | GENERIC_WRITE,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+        if(hDirectory == INVALID_HANDLE_VALUE)
+            return false;
+
+        const bool fSynced = (FlushFileBuffers(hDirectory) != 0);
+        return (CloseHandle(hDirectory) != 0 && fSynced);
+        #else
+        const int nDirectory = open(strPath.c_str(), O_RDONLY);
+        if(nDirectory < 0)
+            return false;
+
+        const bool fSynced = (fsync(nDirectory) == 0);
+        return (close(nDirectory) == 0 && fSynced);
+        #endif
+    }
+
+
+    /* Sync a directory and each parent through the requested root. */
+    bool sync_directory_chain(const std::string& strPath, const std::string& strRoot)
+    {
+        auto normalize = [](const std::string& strDirectory)
+        {
+            std::filesystem::path directory =
+                std::filesystem::path(strDirectory).lexically_normal();
+            if(directory.has_relative_path() && directory.filename().empty())
+                directory = directory.parent_path();
+
+            return directory;
+        };
+
+        std::filesystem::path path = normalize(strPath);
+        const std::filesystem::path root = normalize(strRoot);
+
+        while(!path.empty())
+        {
+            if(!sync_directory(path.string()))
+                return false;
+
+            if(path == root)
+                return true;
+
+            const std::filesystem::path parent = path.parent_path();
+            if(parent == path)
+                break;
+
+            path = parent;
+        }
+
+        return false;
+    }
+
+
     /* Get the size of a current file. */
     int64_t size(const std::string& strPath)
     {
@@ -218,14 +278,16 @@ namespace filesystem
             destFile.close();
 
 #ifndef WIN32
-            /* Set destination file permissions (read/write by owner only for data files) */
+            /* Set destination file permissions (read/write by owner only for data files).
+             * O_CLOEXEC prevents the fd from leaking into child processes. */
             mode_t m = S_IRUSR | S_IWUSR;
-            int file_des = open(strPathDest.c_str(), O_RDWR);
+            int file_des = open(strPathDest.c_str(), O_RDWR | O_CLOEXEC);
 
             if(file_des < 0)
                 return false;
 
             fchmod(file_des, m);
+            close(file_des);
 #endif
 
         }

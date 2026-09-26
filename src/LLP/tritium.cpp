@@ -11,6 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
+#include <algorithm>
+#include <atomic>
+
 #include <LLC/include/random.h>
 
 #include <LLD/include/global.h>
@@ -18,7 +21,10 @@ ________________________________________________________________________________
 
 #include <LLP/types/tritium.h>
 #include <LLP/include/global.h>
+#include <LLP/include/falcon_constants.h>
 #include <LLP/include/manager.h>
+#include <LLP/include/stale_sync_diagnostics.h>
+#include <LLP/include/sync_peer_state.h>
 #include <LLP/templates/events.h>
 
 #include <TAO/API/include/global.h>
@@ -34,6 +40,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/sync_profile.h>
 #include <TAO/Ledger/include/process.h>
 
 #include <TAO/Ledger/types/client.h>
@@ -59,14 +66,87 @@ ________________________________________________________________________________
 
 
 #include <climits>
+#include <deque>
 #include <memory>
 #include <iomanip>
 #include <bitset>
+#include <optional>
+#include <set>
+#include <utility>
+#include <vector>
 
 namespace LLP
 {
     /* Inventory class to track recent relays with expiring cache. */
     TritiumNode::Inventory TritiumNode::tInventory;
+
+    namespace
+    {
+        struct MissingTransactionRequest
+        {
+            uint1024_t hashBlock;
+            TritiumNode* owner;
+            bool sent = false;
+        };
+
+        /* Keep admitted work until its response arrives, not merely until enqueue.
+         * Window mutexes always precede this mutex; no peer is called while holding it. */
+        std::mutex MISSING_TRANSACTIONS_MUTEX;
+        std::deque<MissingTransactionRequest> vMissingTransactions;
+
+        /* Admission is shared; packet processing and durable ledger commits remain
+         * on the existing paths. Never call another connection while holding this lock. */
+        std::recursive_mutex SYNC_MUTEX;
+        SyncPeerState syncPeers;
+    }
+
+    /* [Option 3] Global cooldown timestamp for the periodic, chain-tip-independent
+     * mempool conflict-reconciliation sweep (see EVENTS::GENERIC below). File-scope
+     * with internal linkage rather than function-local static, so it is guaranteed
+     * to be initialized once before any TritiumNode's event loop can reach it,
+     * avoiding any ambiguity around function-local static initialization order in
+     * a multi-threaded context. */
+    static std::atomic<uint64_t> nLastConflictsSweep(0);
+
+
+    /* Per-block-hash timestamp of the last "recovery cap exceeded" warning.
+     * The capped-path warning fires once per block arrival per peer; without
+     * throttling it generates hundreds of lines in a 2 ms window during a
+     * multi-peer miss storm, contributing to the DataThread time-budget
+     * overruns it is meant to help diagnose.
+     *
+     * Bounded to CAP_WARNING_THROTTLE_MAX_ENTRIES entries using the same
+     * cheap clear-on-cap pattern already used for mapLastMissing. */
+    static constexpr uint32_t CAP_WARNING_THROTTLE_MAX_ENTRIES = 256;
+    static constexpr uint64_t CAP_WARNING_THROTTLE_SECONDS     = 60;
+    static std::mutex CAP_WARNING_THROTTLE_MUTEX;
+    static std::map<uint1024_t, uint64_t> mapCapWarningLastTime;
+
+    /* Per-stale-session throttled diagnostics for ignored SYNC blocks.
+     * Protected because multiple node connections can reject stale queued
+     * blocks concurrently on separate DataThread contexts. */
+    static std::mutex STALE_SYNC_WARNING_MUTEX;
+    static std::map<uint64_t, StaleSyncWarningState> mapStaleSyncWarningStates;
+
+    /* Allow a small height delta so minor notification races don't block sync
+     * finalization when peers are effectively at the same tip. */
+    static constexpr uint32_t SYNC_FINALIZATION_HEIGHT_TOLERANCE = 2;
+
+    static bool SyncPeerHeightIsCurrent(const uint32_t nPeerHeight)
+    {
+        const uint64_t nPeerHeight64 = nPeerHeight;
+        const uint64_t nMaxPeerHeight = TAO::Ledger::ChainState::nMaxPeerHeight.load();
+        if(nMaxPeerHeight == 0)
+            return true;
+
+        return nPeerHeight64 + SYNC_FINALIZATION_HEIGHT_TOLERANCE >= nMaxPeerHeight;
+    }
+
+    static bool CanFinalizeSyncFromPeer(const uint32_t nPeerHeight)
+    {
+        return TAO::Ledger::ChainState::nBestHeight.load() >= nPeerHeight
+            && SyncPeerHeightIsCurrent(nPeerHeight);
+    }
 
 
     /* Declaration of client mutex for synchronizing client mode transactions. */
@@ -109,6 +189,13 @@ namespace LLP
     memory::atomic<LLP::BaseAddress> TritiumNode::addrThis;
 
 
+    /* GlobalGetBlockLimiter static member definitions.
+     * Process-wide counters for the global ACTION::GET BLOCK rate cap.
+     * Initialized to 0 so the first window starts on first use. */
+    std::atomic<uint32_t> GlobalGetBlockLimiter::nGlobalBlockCount{0};
+    std::atomic<uint64_t> GlobalGetBlockLimiter::nWindowStartMs{0};
+
+
     /** Default Constructor **/
     TritiumNode::TritiumNode()
     : BaseConnection<MessagePacket>()
@@ -131,6 +218,7 @@ namespace LLP
     , hashCheckpoint(0)
     , hashBestChain(0)
     , hashLastIndex(0)
+    , nConsecutiveLastIndex(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
@@ -163,6 +251,7 @@ namespace LLP
     , hashCheckpoint(0)
     , hashBestChain(0)
     , hashLastIndex(0)
+    , nConsecutiveLastIndex(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
@@ -194,6 +283,7 @@ namespace LLP
     , hashCheckpoint(0)
     , hashBestChain(0)
     , hashLastIndex(0)
+    , nConsecutiveLastIndex(0)
     , nConsecutiveOrphans(0)
     , nConsecutiveFails(0)
     , strFullVersion()
@@ -206,6 +296,11 @@ namespace LLP
     /** Default Destructor **/
     TritiumNode::~TritiumNode()
     {
+        ReleaseMissingTransactions();
+        RECURSIVE(SYNC_MUTEX);
+        syncPeers.Remove(nCurrentSession);
+        if(nCurrentSession != 0 && TAO::Ledger::nSyncSession.load() == nCurrentSession)
+            TAO::Ledger::nSyncSession.store(syncPeers.Primary());
     }
 
 
@@ -316,6 +411,8 @@ namespace LLP
                     return;
                 }
 
+                RequestMissingTransactions();
+
                 /* Handle sending the pings to remote node.. */
                 if(nCurrentSession != 0 && nLastPing + 15 < runtime::unifiedtimestamp())
                 {
@@ -337,6 +434,45 @@ namespace LLP
                         if(!config::fClient.load())
                             Legacy::Wallet::Instance().ResendWalletTransactions();
                         #endif
+
+                        /* [Option 3] Periodic, chain-tip-independent mempool
+                         * conflict-reconciliation sweep. Mempool::Check()'s
+                         * eviction/re-admission pass over mapConflicts previously
+                         * only ran after a block successfully connected to the
+                         * best chain, so a stalled tip (stuck fork, weak network
+                         * with no recently mined blocks) meant mapConflicts was
+                         * never pruned or re-tested against disk. This fires on
+                         * a fixed global cadence guarded by a single shared
+                         * timestamp (not per-connection), regardless of how many
+                         * peers are connected or whether new blocks are arriving. */
+                        const uint64_t nNowSweep = runtime::unifiedtimestamp();
+                        uint64_t nLastSweep      = nLastConflictsSweep.load();
+
+                        /* Compute the elapsed time as a signed delta rather than
+                         * comparing the raw uint64_t timestamps directly: if the
+                         * system clock ever moves backward (e.g. an NTP
+                         * correction), nNowSweep < nLastSweep and an unsigned
+                         * subtraction would wrap around to a huge positive value,
+                         * making the sweep appear "not due" indefinitely instead
+                         * of firing correctly. */
+                        const int64_t nDeltaSweep = static_cast<int64_t>(nNowSweep) - static_cast<int64_t>(nLastSweep);
+
+                        /* fClockWentBackward: the clock moved backward since the
+                         * last sweep, so treat the sweep as immediately due
+                         * rather than waiting out a bogus (huge) unsigned delta.
+                         * fIntervalElapsed: the normal case, enough real time has
+                         * passed since the last sweep. Only evaluated once
+                         * fClockWentBackward is false, so the cast to uint64_t
+                         * below is always operating on a non-negative value. */
+                        const bool fClockWentBackward = (nDeltaSweep < 0);
+                        const bool fIntervalElapsed    = !fClockWentBackward
+                            && (static_cast<uint64_t>(nDeltaSweep) >= TAO::Ledger::CONFLICTS_SWEEP_INTERVAL_SECONDS);
+
+                        if(fClockWentBackward || fIntervalElapsed)
+                        {
+                            if(nLastConflictsSweep.compare_exchange_strong(nLastSweep, nNowSweep))
+                                TAO::Ledger::mempool.Check();
+                        }
                     }
                 }
 
@@ -391,19 +527,18 @@ namespace LLP
                 }
 
 
-                /* Unreliabilitiy re-requesting (max time since getblocks) */
-                if(TAO::Ledger::ChainState::Synchronizing()
-                && nCurrentSession == TAO::Ledger::nSyncSession.load()
-                && nCurrentSession != 0
-                && nLastTimeReceived.load() + 60 < runtime::timestamp())
+                /* A silent peer must not block healthy batch sources or the data
+                 * thread. Retired responses drain before that peer can be reused. */
+                if(!fSynchronized.load() && nCurrentSession != 0)
                 {
-                    debug::log(0, NODE, "Sync Node Timeout");
-
-                    /* Switch to a new node. */
-                    SwitchNode();
-
-                    /* Reset the event timeouts. */
-                    nLastTimeReceived.store(runtime::timestamp());
+                    { RECURSIVE(SYNC_MUTEX);
+                        if(syncPeers.Expire(nCurrentSession, runtime::timestamp()))
+                        {
+                            debug::log(0, NODE, "Sync peer timeout; continuing with other peers");
+                            TAO::Ledger::nSyncSession.store(syncPeers.Primary());
+                        }
+                    }
+                    Sync();
                 }
 
                 break;
@@ -412,6 +547,7 @@ namespace LLP
             /* Once a connection is terminated, this event will be fired off. */
             case EVENTS::DISCONNECT:
             {
+                ReleaseMissingTransactions();
                 /* Track whether to mark as failure or dropped. */
                 uint8_t nState = ConnectState::DROPPED;
 
@@ -491,13 +627,9 @@ namespace LLP
                 /* Check if we need to switch sync nodes. */
                 if(nCurrentSession != 0)
                 {
-                    /* Handle if sync node is disconnected and this is not a duplicate connection. */
-                    if(nCurrentSession == TAO::Ledger::nSyncSession.load())
-                    {
-                        /* Debug output for node disconnect. */
-                        debug::log(0, NODE, "Sync Node Disconnected (", strReason, ")");
-
-                        SwitchNode();
+                    { RECURSIVE(SYNC_MUTEX);
+                        syncPeers.Remove(nCurrentSession);
+                        TAO::Ledger::nSyncSession.store(syncPeers.Primary());
                     }
 
                     /* Critical Section changing mapSessions. */
@@ -506,6 +638,11 @@ namespace LLP
                         /* Free the session as long as it is not a duplicate connection that we are closing. */
                         if(mapSessions.count(nCurrentSession))
                             mapSessions.erase(nCurrentSession);
+                    }
+
+                    {
+                        std::lock_guard<std::mutex> lock(STALE_SYNC_WARNING_MUTEX);
+                        ResetStaleSyncWarningEvent(mapStaleSyncWarningStates, nCurrentSession);
                     }
 
                     /* Reset session value. */
@@ -680,13 +817,20 @@ namespace LLP
                     if(!config::GetBoolArg("-sync", true) || fLocalTestnet) //hard value to rely on if needed
                         fSynchronized.store(true);
 
-                    /* Start sync on startup, or override any legacy syncing currently in process. */
-                    else if(TAO::Ledger::nSyncSession.load() == 0 && !Incoming())
+                    /* Every compatible outbound peer may fill a free batch slot. */
+                    else if(!Incoming())
                     {
                         /* Initiate the sync process */
                         Sync();
                     }
                 }
+
+                /* Track network tips from standby peers too. In particular, do
+                 * not remove BESTCHAIN on rotation: queued commit notifications
+                 * must not turn a useful connection into an unsolicited sender. */
+                if(nProtocolVersion >= MIN_TRITIUM_VERSION)
+                    Subscribe((SUBSCRIPTION::BESTCHAIN | SUBSCRIPTION::BESTHEIGHT)
+                        & ~nSubscriptions.load());
 
                 /* Relay to subscribed nodes a new connection was seen. */
                 TRITIUM_SERVER->Relay
@@ -1242,8 +1386,11 @@ namespace LLP
                 const uint32_t nBatchLimit =
                     config::GetArg("-batchlimit", 2500);
 
-                /* Set the block batch limits */
-                int32_t nLimits = nBatchLimit;
+                /* Track the number of blocks left to send in this response. */
+                int32_t nBlockBudget = static_cast<int32_t>(nBatchLimit);
+
+                /* Transaction/inventory reads can still use the configured batch size. */
+                const uint32_t nInventoryBatchSize = nBatchLimit;
 
                 /* Get the next type in stream. */
                 uint8_t nType = 0;
@@ -1359,9 +1506,16 @@ namespace LLP
 
                         /* Do a sequential read to obtain the list at our set limit. */
                         std::vector<TAO::Ledger::BlockState> vStates;
-                        while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop
-                            && LLD::Ledger->BatchRead(hashLastRead, "block", vStates, nBatchLimit, true))
+                        uint32_t nBlocksSent = 0;
+
+                        while(!fBufferFull.load() && nBlockBudget > 0 && hashStart != hashStop)
                         {
+                            const auto nNextBlockBatchSize = static_cast<uint32_t>(
+                                std::min<int32_t>(nBlockBudget, static_cast<int32_t>(nBatchLimit)));
+
+                            if(!LLD::Ledger->BatchRead(hashLastRead, "block", vStates, nNextBlockBatchSize, true))
+                                break;
+
                             /* Loop through all available states. */
                             for(auto& state : vStates)
                             {
@@ -1383,6 +1537,8 @@ namespace LLP
                                     hashLastRead = state.GetHash();
                                 }
 
+                                bool fBlockQueued = false;
+
                                 /* Handle for special sync block type specifier. */
                                 if(nSpecifier == SPECIFIER::SYNC)
                                 {
@@ -1402,23 +1558,25 @@ namespace LLP
                                                 /* Check for tritium. */
                                                 case TAO::Ledger::TRANSACTION::TRITIUM:
                                                 {
-                                                    /* Check our map contains transactions. */
-                                                    if(!mapTritium.count(proof.second) || mapTritium.empty())
+                                                    auto itTritium = mapTritium.find(proof.second);
+                                                    if(itTritium == mapTritium.end())
                                                     {
                                                         /* Read the next batch of inventory. */
                                                         std::vector<TAO::Ledger::Transaction> vList;
-                                                        if(LLD::Ledger->BatchRead(proof.second, "tx", vList, nBatchLimit, false))
+                                                        if(LLD::Ledger->BatchRead(proof.second, "tx", vList, nInventoryBatchSize, false))
                                                         {
                                                             /* Add all of our values to a map. */
-                                                            for(const auto& tBatch : vList)
-                                                                mapTritium.emplace(std::make_pair(tBatch.GetHash(), std::move(tBatch)));
+                                                            for(auto& tBatch : vList)
+                                                                mapTritium.emplace(tBatch.GetHash(), std::move(tBatch));
 
                                                             //debug::notice("Read ", vList.size(), " entries (", mapTritium.size(), ")");
                                                         }
+
+                                                        itTritium = mapTritium.find(proof.second);
                                                     }
 
                                                     /* Check that we found it in batch. */
-                                                    if(!mapTritium.count(proof.second))
+                                                    if(itTritium == mapTritium.end())
                                                     {
                                                         /* Make sure we have the transaction. */
                                                         TAO::Ledger::Transaction tMissing;
@@ -1438,13 +1596,13 @@ namespace LLP
                                                     {
                                                         /* Build our transaction serialization stream. */
                                                         DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
-                                                        ssData << mapTritium[proof.second];
+                                                        ssData << itTritium->second;
 
                                                         /* Push this to our new sync block. */
                                                         block.vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
 
                                                         /* Delete processed transaction from memory. */
-                                                        mapTritium.erase(proof.second);
+                                                        mapTritium.erase(itTritium);
                                                     }
 
                                                     break;
@@ -1453,23 +1611,25 @@ namespace LLP
                                                 /* Check for legacy. */
                                                 case TAO::Ledger::TRANSACTION::LEGACY:
                                                 {
-                                                    /* Check our map contains transactions. */
-                                                    if(!mapLegacy.count(proof.second) || mapLegacy.empty())
+                                                    auto itLegacy = mapLegacy.find(proof.second);
+                                                    if(itLegacy == mapLegacy.end())
                                                     {
                                                         /* Read the next batch of inventory. */
                                                         std::vector<Legacy::Transaction> vList;
-                                                        if(LLD::Legacy->BatchRead(std::make_pair(std::string("tx"), proof.second), "tx", vList, nBatchLimit, false))
+                                                        if(LLD::Legacy->BatchRead(std::make_pair(std::string("tx"), proof.second), "tx", vList, nInventoryBatchSize, false))
                                                         {
                                                             /* Add all of our values to a map. */
-                                                            for(const auto& tBatch : vList)
-                                                                mapLegacy.emplace(std::make_pair(tBatch.GetHash(), std::move(tBatch)));
+                                                            for(auto& tBatch : vList)
+                                                                mapLegacy.emplace(tBatch.GetHash(), std::move(tBatch));
 
                                                             //debug::notice("Read ", vList.size(), " entries (", mapLegacy.size(), ")");
                                                         }
+
+                                                        itLegacy = mapLegacy.find(proof.second);
                                                     }
 
                                                     /* Check that we found it in batch. */
-                                                    if(!mapLegacy.count(proof.second))
+                                                    if(itLegacy == mapLegacy.end())
                                                     {
                                                         /* Make sure we have the transaction. */
                                                         Legacy::Transaction tMissing;
@@ -1489,13 +1649,13 @@ namespace LLP
                                                     {
                                                         /* Build our transaction serialization stream. */
                                                         DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
-                                                        ssData << mapLegacy[proof.second];
+                                                        ssData << itLegacy->second;
 
                                                         /* Push this to our new sync block. */
                                                         block.vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
 
                                                         /* Delete processed transaction from memory. */
-                                                        mapLegacy.erase(proof.second);
+                                                        mapLegacy.erase(itLegacy);
                                                     }
                                                 }
 
@@ -1504,25 +1664,33 @@ namespace LLP
                                         }
 
                                         /* Push message in response. */
-                                        PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::SYNC), block);
+                                        fBlockQueued = PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::SYNC), block);
                                     }
                                     else
                                     {
                                         /* Push message in response. */
-                                        PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::SYNC), TAO::Ledger::SyncBlock(state, true));
+                                        fBlockQueued = PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::SYNC), TAO::Ledger::SyncBlock(state, true));
                                     }
                                 }
 
                                 /* Push the block to our connection buffer. */
                                 else
-                                    PushBlock(nSpecifier, state);
+                                    fBlockQueued = PushBlock(nSpecifier, state);
+
+                                if(!fBlockQueued)
+                                {
+                                    hashStart = stateLast.GetHash();
+                                    break;
+                                }
+
+                                ++nBlocksSent;
 
                                 /* Update start every iteration. */
                                 stateLast = state;
                                 hashStart = hashLastRead;
 
                                 /* Check for stop hash. */
-                                if(--nLimits <= 0 || hashStart == hashStop || fBufferFull.load()) //1MB limit
+                                if(--nBlockBudget <= 0 || hashStart == hashStop || fBufferFull.load()) //1MB limit
                                 {
                                     /* Regular debug for normal limits */
                                     if(config::nVerbose >= 3)
@@ -1531,7 +1699,7 @@ namespace LLP
                                         if(fBufferFull.load())
                                             debug::log(3, FUNCTION, "Buffer is FULL ", Buffered(), " bytes");
 
-                                        debug::log(3, FUNCTION, "Limits ", nLimits, " Reached ", hashStart.SubString(), " == ", hashStop.SubString());
+                                        debug::log(3, FUNCTION, "Block budget ", nBlockBudget, " Reached ", hashStart.SubString(), " == ", hashStop.SubString());
                                     }
 
                                     break;
@@ -1541,7 +1709,15 @@ namespace LLP
 
                         /* Check for last subscription. */
                         if(nNotifications & SUBSCRIPTION::LASTINDEX)
-                            PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), fBufferFull.load() ? stateLast.hashPrevBlock : hashStart);
+                        {
+                            /* Advance LASTINDEX only for blocks successfully queued to the peer. */
+                            if(fBufferFull.load())
+                                debug::log(1, FUNCTION, "batch cut short by buffer pressure (",
+                                    Buffered(), " bytes buffered); LASTINDEX set to ", hashStart.SubString());
+
+                            TAO::Ledger::SyncProfile::RecordListBatch(nBlocksSent, fBufferFull.load(), hashStart);
+                            PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), hashStart);
+                        }
 
                         break;
                     }
@@ -1799,6 +1975,66 @@ namespace LLP
                             uint1024_t hashBlock;
                             ssPacket >> hashBlock;
 
+                            /* ── RATE LIMITING (before any LLD I/O) ──────────────────────
+                             * CRITICAL FIX: All rate-limit checks now fire BEFORE ReadBlock()
+                             * so that no disk I/O / SECTOR_MUTEX contention occurs when we are
+                             * over budget.  Previously the limiters ran AFTER ReadBlock() — the
+                             * I/O had already consumed shared LLD::Ledger SECTOR_MUTEX time by
+                             * the time the throttle was consulted, making it ineffective at
+                             * protecting mining template creation from P2P block-serving floods. */
+
+                            /* Add DDOS filtering first (cheap atomic increment). */
+                            if(DDOS)
+                                DDOS->rSCORE += 50;
+
+                            /* Per-connection GET::BLOCK rate limiting.
+                             * Reset the rolling window if expired, then check whether
+                             * this connection has exceeded the per-window block limit.
+                             * If so, log once and skip the remaining items in this packet
+                             * to protect block validation and mining push notification paths. */
+                            m_getTracker.MaybeResetWindow();
+                            {
+                                const uint32_t nMaxBlocks = static_cast<uint32_t>(
+                                    config::GetArg(std::string("-maxgetblocks"),
+                                        static_cast<int64_t>(GetRequestRateTracker::DEFAULT_MAX_GET_BLOCKS)));
+
+                                if(m_getTracker.ShouldThrottleBlock(nMaxBlocks))
+                                {
+                                    debug::log(2, NODE, "ACTION::GET::BLOCK throttled — peer ",
+                                               GetAddress().ToStringIP(), " exceeded ",
+                                               nMaxBlocks,
+                                               " block requests/", GetRequestRateTracker::WINDOW_SECONDS, "s window");
+                                    break;
+                                }
+                            }
+
+                            /* Global aggregate rate limiter — protects shared LLD I/O for mining.
+                             * Applies after the per-connection guard: even if each peer is within
+                             * its individual budget, the combined aggregate can monopolise
+                             * LLD::Ledger, starving mining template creation (new_block()).
+                             * Cap configurable via -maxglobalgetblocks (default 100/s). */
+                            {
+                                const uint32_t nGlobalMax = static_cast<uint32_t>(
+                                    config::GetArg(std::string("-maxglobalgetblocks"),
+                                        static_cast<int64_t>(GlobalGetBlockLimiter::DEFAULT_MAX_GLOBAL_GET_BLOCKS_PER_SEC)));
+
+                                if(GlobalGetBlockLimiter::ShouldThrottle(nGlobalMax))
+                                {
+                                    debug::log(1, NODE, "ACTION::GET::BLOCK global throttle — aggregate P2P block serving rate exceeded (",
+                                               nGlobalMax, "/s cap)");
+                                    std::this_thread::yield();
+                                    break;
+                                }
+
+                                /* Record BEFORE the I/O so the counter accurately reflects
+                                 * requests that will consume SECTOR_MUTEX time. */
+                                GlobalGetBlockLimiter::RecordServed();
+                            }
+
+                            /* ── LLD I/O (only if under rate limits) ─────────────────────
+                             * Now safe to touch disk: both per-connection and global caps
+                             * passed, so this read won't starve mining template creation. */
+
                             /* Check the database for the block. */
                             TAO::Ledger::BlockState state;
                             if(LLD::Ledger->ReadBlock(hashBlock, state))
@@ -1884,9 +2120,11 @@ namespace LLP
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::GET: BLOCK ", hashBlock.SubString());
 
-                            /* Add DDOS filtering here. */
-                            if(DDOS)
-                                DDOS->rSCORE += 50;
+                            /* Per-second yield scoring (post-I/O, for fairness). */
+                            if(m_getTracker.RecordGetBlock(
+                                static_cast<uint32_t>(config::GetArg(std::string("-getyieldthreshold"),
+                                    static_cast<int64_t>(GetRequestRateTracker::DEFAULT_YIELD_SCORE)))))
+                                std::this_thread::yield();
 
                             break;
                         }
@@ -1946,6 +2184,31 @@ namespace LLP
                             /* Add DDOS filtering here. */
                             if(DDOS)
                                 DDOS->rSCORE += 15;
+
+                            /* Per-connection GET::TRANSACTION rate limiting.
+                             * Mirror of the BLOCK guard above: resets window when expired,
+                             * then checks whether the per-window transaction limit has been
+                             * reached.  Yields the CPU when the per-second score threshold
+                             * is exceeded so the mining notification path gets CPU time. */
+                            m_getTracker.MaybeResetWindow();
+                            {
+                                const uint32_t nMaxTx = static_cast<uint32_t>(
+                                    config::GetArg(std::string("-maxgettx"),
+                                        static_cast<int64_t>(GetRequestRateTracker::DEFAULT_MAX_GET_TX)));
+
+                                if(m_getTracker.ShouldThrottleTx(nMaxTx))
+                                {
+                                    debug::log(2, NODE, "ACTION::GET::TRANSACTION throttled — peer ",
+                                               GetAddress().ToStringIP(), " exceeded ",
+                                               nMaxTx,
+                                               " tx requests/", GetRequestRateTracker::WINDOW_SECONDS, "s window");
+                                    break;
+                                }
+                            }
+                            if(m_getTracker.RecordGetTx(
+                                static_cast<uint32_t>(config::GetArg(std::string("-getyieldthreshold"),
+                                    static_cast<int64_t>(GetRequestRateTracker::DEFAULT_YIELD_SCORE)))))
+                                std::this_thread::yield();
 
                             break;
                         }
@@ -2034,6 +2297,22 @@ namespace LLP
                 /* Create response data stream. */
                 DataStream ssResponse(SER_NETWORK, PROTOCOL_VERSION);
 
+                /* Block hashes from this NOTIFY that were appended to
+                 * ssResponse for an ACTION::GET.  BESTCHAIN near-tip skip is
+                 * inventory-owned only when WritePacket succeeds below and the
+                 * matching tip hash is present here (append alone is not a
+                 * queued send — a full buffer drops the packet). */
+                std::set<uint1024_t> setBlockInventoryGets;
+
+                /* Foreign BESTCHAIN tips seen in this NOTIFY.  Recovery is
+                 * deferred until after the packet is fully parsed and
+                 * WritePacket(ssResponse) has run so policy uses the latest
+                 * BESTHEIGHT and the near-tip inventory-owned gate can require
+                 * a successfully queued GET. */
+                std::vector<uint1024_t> vPendingBestChainRecovery;
+                bool fSyncCompletionCandidate = false;
+                bool fContinueSync = false;
+
                 /* Set our max limits to 100 notifications per packet. */
                 uint32_t nLimits = 0;
                 while(!ssPacket.End())
@@ -2080,7 +2359,10 @@ namespace LLP
                             {
                                 /* Check the database for the block. */
                                 if(!LLD::Client->HasBlock(hashBlock))
+                                {
                                     ssResponse << uint8_t(SPECIFIER::CLIENT) << uint8_t(TYPES::BLOCK) << hashBlock;
+                                    setBlockInventoryGets.insert(hashBlock);
+                                }
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::NOTIFY: CLIENT BLOCK ", hashBlock.SubString());
@@ -2089,7 +2371,10 @@ namespace LLP
                             {
                                 /* Check the database for the block. */
                                 if(!LLD::Ledger->HasBlock(hashBlock))
+                                {
                                     ssResponse << uint8_t(TYPES::BLOCK) << hashBlock;
+                                    setBlockInventoryGets.insert(hashBlock);
+                                }
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::NOTIFY: BLOCK ", hashBlock.SubString());
@@ -2236,8 +2521,29 @@ namespace LLP
                             ssPacket >> nCurrentHeight;
 
                             /* If this is syncing node, cache this as our stopping block. */
-                            if(nCurrentSession == TAO::Ledger::nSyncSession.load())
-                                nSyncStop.store(nCurrentHeight);
+                            if(IsSyncPeer())
+                            {
+                                uint32_t nStop = nSyncStop.load();
+                                while(nCurrentHeight > nStop &&
+                                      !nSyncStop.compare_exchange_weak(nStop, nCurrentHeight))
+                                    ;
+                            }
+
+                            /* Update the global max-peer-height tracker so
+                             * local-state-dependent checks (e.g. coinbase
+                             * maturity during mempool admission) can tell the
+                             * difference between a genuinely immature coinbase
+                             * and one that is mature at network height but
+                             * appears immature because this node is 1-2 blocks
+                             * behind.  This is diagnostic and deferral only —
+                             * never used for consensus decisions. */
+                            {
+                                uint32_t nPrev = TAO::Ledger::ChainState::nMaxPeerHeight.load();
+                                while(nCurrentHeight > nPrev &&
+                                      !TAO::Ledger::ChainState::nMaxPeerHeight
+                                           .compare_exchange_weak(nPrev, nCurrentHeight))
+                                    ; /* re-read nPrev on CAS miss */
+                            }
 
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::NOTIFY: BESTHEIGHT ", nCurrentHeight);
@@ -2283,6 +2589,7 @@ namespace LLP
                                 /* Last index for a block is always uint1024_t. */
                                 case TYPES::BLOCK:
                                 {
+                                    RECURSIVE(m_txRespWindowMutex);
                                     /* Check for legacy. */
                                     if(fLegacy)
                                         return debug::drop(NODE, "ACTION::NOTIFY: LASTINDEX: block can't have legacy specifier");
@@ -2291,53 +2598,52 @@ namespace LLP
                                     uint1024_t hashLast;
                                     ssPacket >> hashLast;
 
-                                    /* Check if is sync node. */
-                                    if(nCurrentSession == TAO::Ledger::nSyncSession.load())
+                                    /* Each solicited stream has its own batch boundary. */
+                                    bool fSyncBatch = false;
+                                    if(m_nPendingRecoveryLists != 0)
+                                        --m_nPendingRecoveryLists;
+                                    else
+                                    { RECURSIVE(SYNC_MUTEX);
+                                        fSyncBatch = syncPeers.Complete(nCurrentSession);
+                                        TAO::Ledger::nSyncSession.store(syncPeers.Primary());
+                                    }
+                                    if(fSyncBatch && !fSynchronized.load())
                                     {
+                                        fSyncCompletionCandidate =
+                                            (hashLast == TAO::Ledger::ChainState::hashBestChain.load());
+                                        fContinueSync = true;
                                         /* Check if we are repeating our last index. */
                                         if(hashLastIndex == hashLast)
                                         {
-                                            SwitchNode();
-                                            return true;
-                                        }
-
-                                        /* Check for complete synchronization. */
-                                        if(hashLast == TAO::Ledger::ChainState::hashBestChain.load()
-                                        && hashLast == hashBestChain)
-                                        {
-                                            /* Set state to synchronized. */
-                                            fSynchronized.store(true);
-                                            TAO::Ledger::nSyncSession.store(0);
-
-                                            /* Unsubcribe from last. */
-                                            Unsubscribe(SUBSCRIPTION::LASTINDEX);
-
-                                            /* Total blocks synchronized */
-                                            uint32_t nBlocks = TAO::Ledger::ChainState::tStateBest.load().nHeight - nSyncStart.load();
-
-                                            /* Calculate the time to sync*/
-                                            uint32_t nElapsed = SYNCTIMER.Elapsed();
-
-                                            /* Log that sync is complete. */
-                                            debug::log(0, NODE, "ACTION::NOTIFY: Synchronization COMPLETE at ", hashBestChain.SubString());
-                                            debug::log(0, NODE, "ACTION::NOTIFY: Synchronized ", nBlocks, " blocks in ", nElapsed,
-                                                " seconds [", double(nBlocks / (nElapsed + 1.0)), " blocks/s]" );
+                                            if(++nConsecutiveLastIndex >= 3)
+                                            {
+                                                nConsecutiveLastIndex = 0;
+                                                PauseSync();
+                                                fContinueSync = false;
+                                            }
                                         }
                                         else
-                                        {
-                                            /* Ask for list of blocks. */
-                                            PushMessage(ACTION::LIST,
-                                                config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
-                                                uint8_t(TYPES::BLOCK),
-                                                uint8_t(TYPES::UINT1024_T),
-                                                hashLast,
-                                                uint1024_t(0)
-                                            );
-                                        }
+                                            nConsecutiveLastIndex = 0;
                                     }
 
                                     /* Set the last index. */
                                     hashLastIndex = hashLast;
+
+                                    /* Close any LIST-type SPECIFIER::TRANSACTIONS response window:
+                                     * LASTINDEX marks the end of the block batch, so the window has
+                                     * served its purpose.  A GET window would already be closed when
+                                     * its single block arrived. */
+                                    {
+                                        RECURSIVE(m_txRespWindowMutex);
+                                        if(m_nPendingRecoveryLists == 0 && m_txRespWindow.IsActive()
+                                        && m_txRespWindow.eKind == TxResponseKind::LIST)
+                                        {
+                                            debug::log(2, NODE, "tx-response-window closed: LASTINDEX received",
+                                                " session=", nCurrentSession,
+                                                " tx_count=", m_txRespWindow.nTxCount);
+                                            m_txRespWindow.Close();
+                                        }
+                                    }
 
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: LASTINDEX ", hashLast.SubString());
@@ -2360,24 +2666,39 @@ namespace LLP
                             /* Keep track of current checkpoint. */
                             ssPacket >> hashBestChain;
 
-                            /* Check if is sync node. */
-                            if(TAO::Ledger::nSyncSession.load() != 0
-                            && nCurrentSession == TAO::Ledger::nSyncSession.load()
-                            && LLD::Ledger->HasBlock(hashBestChain))
-                            {
-                                /* Set state to synchronized. */
-                                fSynchronized.store(true);
-                                TAO::Ledger::nSyncSession.store(0);
-
-                                /* Unsubcribe from last. */
-                                Unsubscribe(SUBSCRIPTION::LASTINDEX);
-
-                                /* Log that sync is complete. */
-                                debug::log(0, NODE, "ACTION::NOTIFY: Synchronization COMPLETE at ", hashBestChain.SubString());
-                            }
-
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::NOTIFY: BESTCHAIN ", hashBestChain.SubString());
+
+                            /* Defer foreign BESTCHAIN recovery until after
+                             * WritePacket(ssResponse) below (TIP-01 / TIP-02):
+                             *   - known heavier tip  → validated activation
+                             *   - unknown / far tip  → throttled LIST+TRANSACTIONS
+                             *                          (+ optional fanout peer)
+                             *                          only when peer height is
+                             *                          at/ahead of local
+                             *                          (near-tip +0/+1 races skip
+                             *                          only when a matching BLOCK
+                             *                          inventory GET was actually
+                             *                          queued from this NOTIFY)
+                             *   - known side-branch  → throttled fallback LIST until
+                             *                          local best matches
+                             * Chatty BESTCHAIN must not unthrottled-LIST or double-
+                             * open TxResponseWindow the way the pre-#691 missing-tx
+                             * path used to.  Behind peers cannot trigger unknown-
+                             * tip fetch (historical height gate). */
+                            if(!HasSyncRequest() && !TAO::Ledger::ChainState::Synchronizing()
+                            && hashBestChain != 0
+                            && hashBestChain != TAO::Ledger::ChainState::hashBestChain.load())
+                            {
+                                vPendingBestChainRecovery.push_back(hashBestChain);
+                            }
+
+                            /* A sync peer is complete only when its advertised best
+                             * hash is the active local best, not merely present on
+                             * disk as a side-branch block. */
+                            if(IsSyncPeer()
+                            && TAO::Ledger::IsBestChainSynchronized(hashBestChain))
+                                fSyncCompletionCandidate = true;
 
                             break;
                         }
@@ -2400,13 +2721,12 @@ namespace LLP
                                 /* Add addresses to manager.. */
                                 if(TRITIUM_SERVER->GetAddressManager() && addr.IsRoutable())
                                 {
-                                    /* Only output debug info if new address. */
-                                    if(TRITIUM_SERVER->GetAddressManager()->Has(addr))
+                                    /* Only output debug info if new address. Use the atomic Get()
+                                     * overload so a concurrent removal/ban between a separate
+                                     * Has()/Get() pair can't throw std::out_of_range. */
+                                    LLP::TrustAddress addrInfo;
+                                    if(TRITIUM_SERVER->GetAddressManager()->Get(addr, addrInfo))
                                     {
-                                        /* Only notify address logs if more than ten minutes since last connection. */
-                                        const LLP::TrustAddress& addrInfo =
-                                            TRITIUM_SERVER->GetAddressManager()->Get(addr);
-
                                         /* Calculate how long it has been since last connection. */
                                         const uint64_t nTimeAway =
                                             (runtime::unifiedtimestamp() - addrInfo.nLastSeen);
@@ -2448,9 +2768,32 @@ namespace LLP
                     }
                 }
 
-                /* Push a request for the data from notifications. */
+                /* Push a request for the data from notifications.
+                 * WritePacket returns false when the send buffer is full and
+                 * the packet is dropped — near-tip skip must not treat that as
+                 * an inventory-owned race. */
+                bool fInventoryGetQueued = false;
                 if(ssResponse.size() != 0)
-                    WritePacket(NewMessage(ACTION::GET, ssResponse));
+                    fInventoryGetQueued = WritePacket(NewMessage(ACTION::GET, ssResponse));
+
+                /* BESTHEIGHT may follow BESTCHAIN in the same notification.
+                 * Finalization and the next batch must use the fully parsed tip. */
+                if(fSyncCompletionCandidate && CompleteSync())
+                    debug::log(0, NODE, "ACTION::NOTIFY: Synchronization COMPLETE at ", hashBestChain.SubString());
+                /* Give retained missing-transaction work priority over the next batch. */
+                else if(fContinueSync && !RequestMissingTransactions())
+                    Sync();
+
+                /* Run deferred BESTCHAIN recovery now that inventory GET
+                 * queueing outcome is known. */
+                for(const auto& hashPending : vPendingBestChainRecovery)
+                {
+                    const bool fMatchingBlockGet = fInventoryGetQueued
+                        && (setBlockInventoryGets.count(hashPending) != 0);
+                    TAO::Ledger::RequestBestChainBranchRecovery(
+                        hashPending, nCurrentHeight, NODE.c_str(), this,
+                        /*pfBranchSyncQueued=*/nullptr, fMatchingBlockGet);
+                }
 
                 break;
             }
@@ -2558,10 +2901,6 @@ namespace LLP
                 //if(!(nSubscriptions & SUBSCRIPTION::BLOCK) && TAO::Ledger::nSyncSession.load() != nCurrentSession)
                 //    return debug::drop(NODE, "TYPES::BLOCK: unsolicited data");
 
-                /* Star the sync timer if this is the first sync block */
-                if(!SYNCTIMER.Running())
-                    SYNCTIMER.Start();
-
                 /* Get the specifier. */
                 uint8_t nSpecifier = 0;
                 ssPacket >> nSpecifier;
@@ -2580,9 +2919,11 @@ namespace LLP
                         /* Get the block from the stream. */
                         Legacy::LegacyBlock block;
                         ssPacket >> block;
+                        CloseTxResponseWindowForBlock(block.GetHash());
 
-                        /* Process the block. */
-                        TAO::Ledger::Process(block, nStatus, this);
+                        /* Credit sync counters only for a solicited, active peer batch. */
+                        TAO::Ledger::Process(block, nStatus, this, false,
+                            IsSyncPeer());
 
                         break;
                     }
@@ -2597,64 +2938,237 @@ namespace LLP
                         /* Get the block from the stream. */
                         TAO::Ledger::TritiumBlock block;
                         ssPacket >> block;
+                        CloseTxResponseWindowForBlock(block.GetHash());
 
-                        /* Process the block. */
-                        TAO::Ledger::Process(block, nStatus, this);
+                        /* [DoS prefilter] Reject oversized Prime vOffsets before
+                         * they reach Check() / GetPrimeBits() and trigger expensive
+                         * BIGNUM primality tests. This is an ingress-only policy (not
+                         * a consensus rule) so it lives here rather than in Check(). */
+                        if(block.GetChannel() == TAO::Ledger::CHANNEL::PRIME
+                        && block.vOffsets.size() > LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX)
+                        {
+                            if(DDOS)
+                                DDOS->rSCORE += 50;
+
+                            return debug::drop(NODE, "TYPES::BLOCK::TRITIUM: prime vOffsets too long: ",
+                                               block.vOffsets.size(), " (maximum ",
+                                               LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX, ")");
+                        }
+
+                        /* Process the block with this peer's batch provenance. */
+                        TAO::Ledger::Process(block, nStatus, this, false,
+                            IsSyncPeer());
 
                         /* Check for missing transactions. */
                         if(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
                         {
-                            /* Create response data stream. */
-                            DataStream ssResponse(SER_NETWORK, PROTOCOL_VERSION);
-
-                            /* Create a list of requested transactions. */
-                            uint32_t nTotalItems = 0;
+                            /* Log missing tx hashes for diagnostics. */
                             for(const auto& tx : block.vMissing)
+                                debug::log(2, FUNCTION, "missing tx ", tx.second.SubString());
+
+                            /* Re-request the block together with its missing transactions.
+                             * If hashMissing is 0 the retry limit was reached; skip the
+                             * normal per-tx re-request and escalate to full branch recovery. */
+                            if(block.hashMissing != 0)
                             {
-                                /* Check for legacy. */
-                                if(tx.first == TAO::Ledger::TRANSACTION::LEGACY)
-                                    ssResponse << uint8_t(SPECIFIER::LEGACY);
+                                std::shared_ptr<TritiumNode> pnode = TRITIUM_SERVER
+                                    ? TRITIUM_SERVER->RandomConnection() : nullptr;
+                                if(pnode != nullptr)
+                                    pnode->RequestMissingTransactions(block.hashMissing);
+                                else
+                                    debug::notice(NODE, "could not find random connection for missing transactions");
+                            }
+                            else
+                            {
+                                const uint1024_t hashBlock = block.GetHash();
+                                const uint32_t nEscalations =
+                                    TAO::Ledger::MissingBranchRecoveryEscalations(hashBlock);
 
-                                /* Push to stream. */
-                                ssResponse << uint8_t(TYPES::TRANSACTION) << tx.second;
-
-                                /* Log the missing data. */
-                                debug::log(0, FUNCTION, "requesting missing tx ", tx.second.SubString());
-
-                                /* Check if we need to create new protocol message. */
-                                if(++nTotalItems >= ACTION::GET_MAX_ITEMS || tx == block.vMissing.back())
+                                if(TAO::Ledger::IsMissingBranchRecoveryCapped(hashBlock))
                                 {
-                                    /* Normal case of asking for a getblocks inventory message. */
-                                    std::shared_ptr<TritiumNode> pnode = TRITIUM_SERVER->RandomConnection();
-                                    if(pnode != nullptr)
+                                    /* Throttle the "recovery cap exceeded" warning to at most
+                                     * once per CAP_WARNING_THROTTLE_SECONDS per block hash.
+                                     * Without throttling this warning fires once per arrival
+                                     * per peer — potentially hundreds of times in a 2 ms
+                                     * window during a multi-peer miss storm, worsening the
+                                     * DataThread budget overruns it is meant to diagnose. */
+                                    const uint64_t nNow = runtime::timestamp();
+                                    bool fEmitWarning = false;
                                     {
-                                        /* Send out another getblocks request. */
-                                        try
+                                        LOCK(CAP_WARNING_THROTTLE_MUTEX);
+                                        auto itW = mapCapWarningLastTime.find(hashBlock);
+                                        if(itW == mapCapWarningLastTime.end()
+                                        || nNow - itW->second >= CAP_WARNING_THROTTLE_SECONDS)
                                         {
-                                            debug::log(0, FUNCTION, "broadcasting packet with ", nTotalItems, " items to ", pnode->GetAddress().ToStringIP());
-
-                                            /* Write our packet with our total items. */
-                                            //pnode->WritePacket(NewMessage(ACTION::GET, ssResponse));
-
-                                            /* Expired our missing block last. */
-                                            pnode->PushMessage(ACTION::GET, uint8_t(SPECIFIER::TRANSACTIONS), uint8_t(TYPES::BLOCK),  block.hashMissing);
-
-                                            /* Clear our response data. */
-                                            ssResponse.clear();
-
-                                            /* Reset our counters. */
-                                            nTotalItems = 0;
-
-                                            break;
-                                        }
-                                        catch(const std::exception& e)
-                                        {
-                                            /* Recurse on failure. */
-                                            debug::error(FUNCTION, e.what());
+                                            fEmitWarning = true;
+                                            if(mapCapWarningLastTime.size() >= CAP_WARNING_THROTTLE_MAX_ENTRIES)
+                                                mapCapWarningLastTime.clear();
+                                            mapCapWarningLastTime[hashBlock] = nNow;
                                         }
                                     }
+
+                                    if(fEmitWarning)
+                                        debug::warning(NODE,
+                                            "missing-tx branch recovery cap exceeded for block ",
+                                            hashBlock.SubString(),
+                                            " height=", block.nHeight,
+                                            " escalations=", nEscalations,
+                                            " cap=", TAO::Ledger::MAX_BRANCH_RECOVERY_ESCALATIONS,
+                                            "; suppressing further branch re-request traffic for this block. ",
+                                            "Manual operator intervention may be required (e.g. peer refresh or resync).");
+
+                                    /* Even when capped, send one throttled ancestor-
+                                     * anchored branch sync so the orphan pool can
+                                     * drain if the correct chain becomes available.
+                                     * The blacklist in Process() prevents per-block
+                                     * work; this LIST is the only outgoing traffic
+                                     * that still makes sense at this stage.
+                                     *
+                                     * Key: throttle by block.hashPrevBlock (the missing
+                                     * ancestor) — the same key used by the orphan-insert
+                                     * path in Process() — so the drain-loop erase(
+                                     * hashParent) cleanup is always effective. */
+                                    if(TAO::Ledger::ShouldSendBranchSyncRequest(block.hashPrevBlock))
+                                    {
+                                        /* Use SPECIFIER::TRANSACTIONS (not SYNC): post-sync
+                                         * recovery must deliver inline transactions via the
+                                         * TRITIUM-tagged path; SYNC blocks are rejected as
+                                         * "unsolicited" once fSynchronized == true. */
+                                        const uint1024_t hashTarget =
+                                            TAO::Ledger::ChainState::hashBestChain.load();
+                                        const uint1024_t hashStop =
+                                            hashBestChain != 0 ? hashBestChain : hashBlock;
+                                        PushTxResponseRequest(TxResponseKind::LIST,
+                                            hashTarget, hashStop, false, ACTION::LIST,
+                                            config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::TRANSACTIONS),
+                                            uint8_t(TYPES::BLOCK),
+                                            uint8_t(TYPES::LOCATOR),
+                                            TAO::Ledger::Locator(hashTarget),
+                                            uint1024_t(hashStop)
+                                        );
+                                    }
+
+                                    break;
+                                }
+
+                                /* The per-tx re-request path was exhausted by Process().
+                                 * The retry counter has been reset so future arrivals of
+                                 * this block get fresh retries, but we also need a
+                                 * different recovery path:
+                                 *
+                                 *  1. Attempt peer-best-chain recovery (no-op if the
+                                 *     peer's block isn't on disk yet, but free to try).
+                                 *  2. Re-request the full branch from this peer via
+                                 *     locator so all blocks arrive with their transactions
+                                 *     in a consistent sequence, bypassing the local
+                                 *     mempool state that may be tied to a stale fork.
+                                 *  3. Also request the full block+txs from a random peer
+                                 *     whose mempool/disk state may differ.
+                                 */
+                                debug::warning(NODE,
+                                    "missing-tx retry limit reached for block ",
+                                    hashBlock.SubString(),
+                                    " height=", block.nHeight,
+                                    " escalation=", nEscalations,
+                                    "/", TAO::Ledger::MAX_BRANCH_RECOVERY_ESCALATIONS,
+                                    "; escalating to branch recovery");
+
+                                /* 1-2. Coordinated branch recovery + fallback LIST.  AttemptPeerBestChainRecovery
+                                 *    may already queue a locator LIST (orphan walk / far tip).  The helper
+                                 *    skips the identical fallback LIST in that case so we do not double-
+                                 *    request the branch or replace the first TxResponseWindow on this peer.
+                                 *    SPECIFIER::TRANSACTIONS (not SYNC): SYNC blocks are rejected as
+                                 *    "unsolicited" after initial sync completes (fSynchronized == true). */
+                                TAO::Ledger::RequestMissingTxBranchRecovery(
+                                    hashBestChain, hashBlock, nCurrentHeight, NODE.c_str(), this);
+
+                                /* 3. Request the full block + inline transactions from
+                                 *    a different live peer whose disk/mempool state
+                                 *    may not be affected by the local fork. */
+                                {
+                                    if(TRITIUM_SERVER)
+                                    {
+                                        for(const auto& pPeer : TRITIUM_SERVER->GetConnections())
+                                        {
+                                            if(pPeer && pPeer.get() != this && pPeer->Connected()
+                                            && pPeer->nCurrentSession != 0
+                                            && pPeer->nCurrentSession != nCurrentSession
+                                            && pPeer->RequestMissingTransactions(hashBlock))
+                                                break;
+                                        }
+                                    }
+                                }
+
+                                /* 4. Distribute missing transaction hash requests across
+                                 *    a small set of distinct peers (round-robin) so
+                                 *    recovery does not rely on one node's mempool. */
+                                {
+                                    if(block.vMissing.empty())
+                                    {
+                                        debug::notice(NODE,
+                                            "branch recovery escalated with no missing tx hashes available for per-tx fanout");
+                                        break;
+                                    }
+
+                                    const auto vPeers = TRITIUM_SERVER->GetConnections();
+                                    std::set<uint64_t> setSessions;
+                                    std::vector<std::shared_ptr<TritiumNode>> vFanoutPeers;
+
+                                    for(const auto& pPeer : vPeers)
+                                    {
+                                        if(!pPeer || !pPeer->Connected()
+                                        || pPeer->nCurrentSession == 0
+                                        || pPeer->nCurrentSession == nCurrentSession)
+                                            continue;
+
+                                        /* Connection vectors can briefly contain entries for
+                                         * multiple data-lane objects that map to the same
+                                         * session during handoff/reconnect windows, so dedupe
+                                         * by session before fanout selection. */
+                                        if(!setSessions.insert(pPeer->nCurrentSession).second)
+                                            continue;
+
+                                        vFanoutPeers.push_back(pPeer);
+                                        if(vFanoutPeers.size() >= ACTION::MISSING_TX_RECOVERY_PEER_FANOUT)
+                                            break;
+                                    }
+
+                                    if(vFanoutPeers.empty())
+                                    {
+                                        debug::notice(NODE,
+                                            "could not find distinct peers for per-tx missing recovery fanout");
+                                    }
                                     else
-                                        debug::notice(NODE, "could not find random connection for missing transactions");
+                                    {
+                                        uint32_t nPeerIndex = 0;
+                                        for(const auto& missing : block.vMissing)
+                                        {
+                                            const auto& pPeer =
+                                                vFanoutPeers[nPeerIndex % vFanoutPeers.size()];
+                                            ++nPeerIndex;
+
+                                            try
+                                            {
+                                                if(missing.first == TAO::Ledger::TRANSACTION::LEGACY)
+                                                {
+                                                    pPeer->PushMessage(ACTION::GET,
+                                                        uint8_t(SPECIFIER::LEGACY),
+                                                        uint8_t(TYPES::TRANSACTION),
+                                                        missing.second);
+                                                }
+                                                else
+                                                {
+                                                    pPeer->PushMessage(ACTION::GET,
+                                                        uint8_t(TYPES::TRANSACTION),
+                                                        missing.second);
+                                                }
+                                            }
+                                            catch(const std::exception& e)
+                                            {
+                                                debug::error(FUNCTION, e.what());
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -2670,12 +3184,51 @@ namespace LLP
                             return debug::drop(NODE, "TYPES::BLOCK::SYNC: disabled in -client mode");
 
                         /* Check if this is an unsolicited sync block. */
-                        //if(nCurrentSession != TAO::Ledger::nSyncSession || fSynchronized.load())
-                        //    return debug::drop(FUNCTION, "unsolicted sync block");
+                        /* The primary session is diagnostic only; any peer with
+                         * an outstanding authorized batch can supply SYNC blocks. */
+                        const uint64_t nSyncSession =
+                            TAO::Ledger::nSyncSession.load(std::memory_order_relaxed);
+                        const bool fAlreadySynchronized =
+                            fSynchronized.load(std::memory_order_relaxed);
+                        if(!IsSyncPeer() || fAlreadySynchronized)
+                        {
+                            const uint64_t nNow = runtime::timestamp();
+                            StaleSyncWarningDecision decision;
+                            {
+                                std::lock_guard<std::mutex> lock(STALE_SYNC_WARNING_MUTEX);
+                                decision = RecordStaleSyncWarningEvent(
+                                    mapStaleSyncWarningStates, nCurrentSession, nNow);
+                            }
+
+                            if(decision.fEmitWarning)
+                            {
+                                debug::warning(FUNCTION,
+                                    "ignoring unsolicited sync block from session ", std::hex,
+                                    nCurrentSession, " sync_session=", nSyncSession,
+                                    std::dec, " synchronized=", fAlreadySynchronized,
+                                    " suppressed=", decision.nSuppressedBlocks);
+                            }
+
+                            break;
+                        }
 
                         /* Get the block from the stream. */
                         TAO::Ledger::SyncBlock block;
                         ssPacket >> block;
+
+                        /* Overlapping peer batches commonly contain committed blocks.
+                         * Check the header hash before decoding transactions or touching
+                         * the mempool; Process uses the same duplicate-block policy. */
+                        TAO::Ledger::BlockState header;
+                        static_cast<TAO::Ledger::Block&>(header) = block;
+                        header.nTime = block.nTime;
+                        if(LLD::Ledger->HasBlock(header.GetHash()))
+                        {
+                            nStatus = TAO::Ledger::PROCESS::DUPLICATE;
+                            TAO::Ledger::SyncProfile::RecordBlockReceived();
+                            TAO::Ledger::SyncProfile::RecordProcessStatus(nStatus);
+                            break;
+                        }
 
                         /* Check version switch. */
                         if(block.nVersion >= 7)
@@ -2688,7 +3241,7 @@ namespace LLP
                                 debug::log(3, FUNCTION, "received sync block ", tritium.GetHash().SubString(), " height = ", block.nHeight);
 
                             /* Process the block. */
-                            TAO::Ledger::Process(tritium, nStatus);
+                            TAO::Ledger::Process(tritium, nStatus, nullptr, false, true);
                         }
                         else
                         {
@@ -2700,7 +3253,7 @@ namespace LLP
                                 debug::log(3, FUNCTION, "received sync block ", legacy.GetHash().SubString(), " height = ", block.nHeight);
 
                             /* Process the block. */
-                            TAO::Ledger::Process(legacy, nStatus);
+                            TAO::Ledger::Process(legacy, nStatus, nullptr, false, true);
                         }
 
                         break;
@@ -2714,8 +3267,23 @@ namespace LLP
                         TAO::Ledger::ClientBlock block;
                         ssPacket >> block;
 
-                        /* Process the block. */
-                        TAO::Ledger::Process(block, nStatus);
+                        /* [DoS prefilter] Reject oversized Prime vOffsets before
+                         * they reach Check() / GetPrimeBits() and trigger expensive
+                         * BIGNUM primality tests. Ingress-only policy, not a consensus rule. */
+                        if(block.GetChannel() == TAO::Ledger::CHANNEL::PRIME
+                        && block.vOffsets.size() > LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX)
+                        {
+                            if(DDOS)
+                                DDOS->rSCORE += 50;
+
+                            return debug::drop(NODE, "TYPES::BLOCK::CLIENT: prime vOffsets too long: ",
+                                               block.vOffsets.size(), " (maximum ",
+                                               LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX, ")");
+                        }
+
+                        /* Process the block with this peer's batch provenance. */
+                        TAO::Ledger::Process(block, nStatus, nullptr, false,
+                            IsSyncPeer());
 
                         /* Check for duplicate and ask for previous block. */
                         if(!(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
@@ -2723,7 +3291,9 @@ namespace LLP
                         &&  (nStatus & TAO::Ledger::PROCESS::ORPHAN))
                         {
                             /* Ask for list of blocks. */
-                            PushMessage(ACTION::LIST,
+                            PushTxResponseRequest(TxResponseKind::LIST,
+                                TAO::Ledger::ChainState::hashBestChain.load(), block.hashPrevBlock,
+                                true, ACTION::LIST,
                                 uint8_t(SPECIFIER::CLIENT),
                                 uint8_t(TYPES::BLOCK),
                                 uint8_t(TYPES::LOCATOR),
@@ -2731,8 +3301,6 @@ namespace LLP
                                 uint1024_t(block.hashPrevBlock)
                             );
                         }
-
-                        break;
 
                         /* Log received. */
                         debug::log(3, FUNCTION, "received client block ", block.GetHash().SubString(), " height = ", block.nHeight);
@@ -2753,8 +3321,11 @@ namespace LLP
                     nConsecutiveFails   = 0;
 
                     /* Reset last time received. */
-                    if(nCurrentSession == TAO::Ledger::nSyncSession.load())
+                    if(IsSyncPeer())
+                    {
+                        syncPeers.Progress(nCurrentSession, runtime::timestamp());
                         nLastTimeReceived.store(runtime::timestamp());
+                    }
                 }
 
                 /* Check for failure status messages. */
@@ -2768,16 +3339,15 @@ namespace LLP
                 /* Detect large orphan chains and ask for new blocks from origin again. */
                 if(nConsecutiveOrphans >= 10000)
                 {
-                    {
-                        LOCK(TAO::Ledger::PROCESSING_MUTEX);
-
-                        /* Clear the memory to prevent DoS attacks. */
-                        TAO::Ledger::mapOrphans.clear();
-                    }
+                    /* Purge the orphan pool AND all correlated recovery state so
+                     * that blacklist / escalation entries computed against the now-
+                     * discarded orphan graph don't persist as stale data and cause
+                     * legitimate future blocks to be silently IGNORED. */
+                    TAO::Ledger::PurgeOrphanRecoveryState("nConsecutiveOrphans>=10000");
 
                     /* Switch to another available node. */
-                    if(TAO::Ledger::ChainState::Synchronizing() && TAO::Ledger::nSyncSession.load() == nCurrentSession)
-                        SwitchNode();
+                    if(IsSyncPeer())
+                        PauseSync();
 
                     /* Disconnect from a node with large orphan chain. */
                     return debug::drop(NODE, "node reached orphan limit");
@@ -2790,9 +3360,9 @@ namespace LLP
                     if(TAO::Ledger::ChainState::Synchronizing())
                     {
                         /* If this is our sync session, switch nodes and restart syncing. */
-                        if(TAO::Ledger::nSyncSession.load() == nCurrentSession)
+                        if(IsSyncPeer())
                         {
-                            SwitchNode();
+                            PauseSync();
                             return true;
                         }
 
@@ -2810,9 +3380,42 @@ namespace LLP
             /* Handle incoming transaction. */
             case TYPES::TRANSACTION:
             {
-                /* Check for subscription. */
+                /* Check for subscription — or an active SPECIFIER::TRANSACTIONS
+                 * response window opened by a prior GET/LIST request to this peer.
+                 *
+                 * During initial sync NODE sends ACTION::GET/LIST with
+                 * SPECIFIER::TRANSACTIONS which causes the peer to send one or more
+                 * raw TYPES::TRANSACTION messages before the requested block.  The
+                 * node is NOT subscribed to SUBSCRIPTION::TRANSACTION at that time,
+                 * but those packets are expected and must not be force-dropped.
+                 *
+                 * Truly unsolicited raw transaction traffic (no active window, no
+                 * subscription) continues to be hard-dropped here. */
                 if(!(nSubscriptions & SUBSCRIPTION::TRANSACTION))
-                    return debug::drop(NODE, "TYPES::TRANSACTION: unsolicited data");
+                {
+                    bool fAuthorizedByWindow = false;
+                    {
+                        RECURSIVE(m_txRespWindowMutex);
+                        if(m_txRespWindow.IsActive())
+                        {
+                            const uint64_t nNow = runtime::timestamp();
+                            TxResponseCloseReason eReason;
+                            fAuthorizedByWindow = CheckAndUseTxResponseWindow(m_txRespWindow, nNow, &eReason);
+                            if(!fAuthorizedByWindow)
+                            {
+                                /* Window was active but is now closed due to expiry or budget. */
+                                debug::log(2, NODE, "tx-response-window closed: ",
+                                    (eReason == TxResponseCloseReason::EXPIRED ? "expired" : "budget exhausted"),
+                                    " tx_count=", m_txRespWindow.nTxCount,
+                                    " session=", nCurrentSession,
+                                    "; treating further transactions as unsolicited");
+                            }
+                        }
+                    }
+
+                    if(!fAuthorizedByWindow)
+                        return debug::drop(NODE, "TYPES::TRANSACTION: unsolicited data");
+                }
 
                 /* Get the specifier. */
                 uint8_t nSpecifier = 0;
@@ -2856,7 +3459,11 @@ namespace LLP
                                 if(tx.nVersion != Legacy::TRANSACTION_CURRENT_VERSION)
                                     return debug::drop(NODE, "invalid transaction version ", tx.nVersion, ", dropping node");
 
-                                ++nConsecutiveFails;
+                                /* Only ban-score hard rejects. Soft mempool
+                                 * failures (orphan / conflict / deferred) are
+                                 * local-state results, not peer faults. */
+                                if(TAO::Ledger::mempool.Rejected(hashTx))
+                                    ++nConsecutiveFails;
                             }
                         }
 
@@ -2903,7 +3510,13 @@ namespace LLP
                                 if(!TAO::Ledger::TransactionVersionActive(tx.nTimestamp, tx.nVersion))
                                     return debug::drop(NODE, "invalid transaction version ", tx.nVersion, ", dropping node");
 
-                                ++nConsecutiveFails;
+                                /* Only ban-score hard rejects. Soft mempool
+                                 * failures (orphan / conflict / deferred) are
+                                 * local-state results, not peer faults — a
+                                 * CONFLICTED-prev cascade must not drive the
+                                 * 10000-fail ban path while BESTCHAIN continues. */
+                                if(TAO::Ledger::mempool.Rejected(hashTx))
+                                    ++nConsecutiveFails;
                             }
                         }
 
@@ -2929,7 +3542,20 @@ namespace LLP
 
                 /* Check for orphan limit on node. */
                 if(nConsecutiveOrphans >= 10000)
+                {
+                    /* [C3] Mirror the BLOCK-type orphan-limit handling above:
+                     * a transaction-orphan storm (e.g. out-of-sequence sigchain
+                     * transactions during a fork/reorg) hits this same limit, but
+                     * previously only the BLOCK path would hand synchronization
+                     * off to another node. Without this, a node stuck syncing
+                     * against a peer that is itself behind on a losing fork could
+                     * sit on the tx-orphan limit without ever being told to try a
+                     * different sync source. */
+                    if(IsSyncPeer())
+                        PauseSync();
+
                     return debug::drop(NODE, "TX::node reached ORPHAN limit");
+                }
 
                 break;
             }
@@ -2969,7 +3595,10 @@ namespace LLP
                         /* Start our ACID transaction in case we have any failures here. */
                         { LOCK(CLIENT_MUTEX);
 
-                            LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
+                            LLD::TransactionGuard transaction(
+                                TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
+                            if(!transaction)
+                                return debug::drop(NODE, FUNCTION, "failed to begin transaction");
 
                             /* Build indexes if we don't have them. */
                             if(!LLD::Client->HasIndex(hashTx))
@@ -2987,7 +3616,8 @@ namespace LLP
                             TAO::API::Indexing::IndexDependant(hashTx, tx);
 
                             /* Commit our ACID transaction across LLD instances. */
-                            LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
+                            if(!LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE))
+                                return debug::drop(NODE, FUNCTION, "failed to commit transaction");
                         }
 
                         /* Verbose=3 dumps transaction data. */
@@ -3025,7 +3655,10 @@ namespace LLP
                             /* Start our ACID transaction in case we have any failures here. */
                             { LOCK(CLIENT_MUTEX);
 
-                                LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
+                                LLD::TransactionGuard transaction(
+                                    TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
+                                if(!transaction)
+                                    return debug::drop(NODE, FUNCTION, "failed to begin transaction");
 
                                 /* Only write to disk and index if not completed already. */
                                 if(!LLD::Client->HasIndex(hashTx))
@@ -3053,7 +3686,8 @@ namespace LLP
                                 }
 
                                 /* Commit our ACID transaction across LLD instances. */
-                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
+                                if(!LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE))
+                                    return debug::drop(NODE, FUNCTION, "failed to commit transaction");
                             }
 
                             /* Write Success to log. */
@@ -3181,8 +3815,12 @@ namespace LLP
 
 
     /* Subscribe to another node for notifications. */
-    void TritiumNode::Subscribe(const uint16_t nFlags, bool fSubscribe)
+    bool TritiumNode::Subscribe(const uint16_t nFlags, bool fSubscribe)
     {
+        if(nFlags == 0)
+            return true;
+
+        const uint16_t nNewFlags = nFlags & ~nSubscriptions.load();
         /* Build subscription message. */
         DataStream ssMessage(SER_NETWORK, MIN_PROTO_VERSION);
 
@@ -3386,7 +4024,21 @@ namespace LLP
         }
 
         /* Write the subscription packet. */
-        WritePacket(NewMessage((fSubscribe ? ACTION::SUBSCRIBE : ACTION::UNSUBSCRIBE), ssMessage));
+        try
+        {
+            if(WritePacket(NewMessage((fSubscribe ? ACTION::SUBSCRIBE : ACTION::UNSUBSCRIBE), ssMessage)))
+                return true;
+        }
+        catch(...)
+        {
+            if(fSubscribe)
+                nSubscriptions &= ~nNewFlags;
+            throw;
+        }
+
+        if(fSubscribe)
+            nSubscriptions &= ~nNewFlags;
+        return false;
     }
 
 
@@ -3765,14 +4417,13 @@ namespace LLP
     /* Determine whether a node is syncing. */
     bool TritiumNode::Syncing()
     {
-        LOCK(SESSIONS_MUTEX);
+        return SyncPeerCount() != 0;
+    }
 
-        /* Check if sync session is active. */
-        const uint64_t nSession = TAO::Ledger::nSyncSession.load();
-        if(nSession == 0)
-            return false;
 
-        return mapSessions.count(nSession);
+    size_t TritiumNode::SyncPeerCount()
+    {
+        return fSynchronized.load() ? 0 : syncPeers.Size();
     }
 
 
@@ -3798,8 +4449,202 @@ namespace LLP
     }
 
 
-    /* Push a block to tritium connection based on specifier. */
-    void TritiumNode::PushBlock(const uint8_t nSpecifier, const TAO::Ledger::BlockState& state)
+
+
+    /* Open a bounded SPECIFIER::TRANSACTIONS response window on this peer. */
+    uint64_t TritiumNode::OpenTxResponseWindow(const TxResponseKind eKind,
+                                               const uint1024_t& hashTarget,
+                                               const uint1024_t& hashStop,
+                                               const bool fPreserveExisting)
+    {
+        const uint64_t nNow   = runtime::timestamp();
+        const uint64_t nTTL   = (eKind == TxResponseKind::LIST)
+            ? TX_RESPONSE_WINDOW_LIST_TTL_SECONDS
+            : TX_RESPONSE_WINDOW_GET_TTL_SECONDS;
+        const uint32_t nMaxTx = (eKind == TxResponseKind::LIST)
+            ? TX_RESPONSE_WINDOW_LIST_MAX_TX
+            : TX_RESPONSE_WINDOW_GET_MAX_TX;
+
+        uint64_t nRequestId = 0;
+        { RECURSIVE(m_txRespWindowMutex);
+            if(fPreserveExisting && m_txRespWindow.IsActive()
+            && !m_txRespWindow.IsExpired(nNow) && !m_txRespWindow.IsBudgetExhausted())
+                return 0;
+
+            nRequestId = m_txRespWindow.Open(eKind, nNow, nTTL, nMaxTx, hashTarget, hashStop);
+        }
+
+        debug::log(2, NODE, "tx-response-window opened: kind=",
+            (eKind == TxResponseKind::LIST ? "LIST" : "GET"),
+            " TTL=", nTTL, "s budget=", nMaxTx,
+            " request=", nRequestId,
+            " target=", hashTarget.SubString(),
+            " stop=", hashStop.SubString(),
+            " session=", nCurrentSession);
+        return nRequestId;
+    }
+
+
+    void TritiumNode::RollbackTxResponseWindow(const uint64_t nRequestId)
+    {
+        { RECURSIVE(m_txRespWindowMutex);
+            if(!LLP::RollbackTxResponseWindow(m_txRespWindow, nRequestId))
+                return;
+
+            debug::log(2, NODE, "tx-response-window closed: request queue failed",
+                " request=", nRequestId,
+                " tx_count=", m_txRespWindow.nTxCount,
+                " session=", nCurrentSession);
+        }
+    }
+
+
+    void TritiumNode::CloseTxResponseWindowForBlock(const uint1024_t& hashBlock)
+    {
+        uint64_t nRequestId = 0;
+        uint1024_t hashTarget = 0;
+        uint32_t nTxCount = 0;
+        uint32_t nSession = 0;
+
+        { RECURSIVE(m_txRespWindowMutex);
+            if(!IsMatchingTxResponseBlock(m_txRespWindow, hashBlock))
+                return;
+
+            {
+                LOCK(MISSING_TRANSACTIONS_MUTEX);
+                vMissingTransactions.erase(std::remove_if(vMissingTransactions.begin(),
+                    vMissingTransactions.end(), [&](const MissingTransactionRequest& request)
+                    {
+                        return request.owner == this && request.hashBlock == hashBlock;
+                    }), vMissingTransactions.end());
+            }
+            nRequestId = m_txRespWindow.nRequestId;
+            hashTarget = m_txRespWindow.hashTarget;
+            nTxCount = m_txRespWindow.nTxCount;
+            nSession = nCurrentSession;
+            m_txRespWindow.Close();
+        }
+
+        TAO::Ledger::ClearPeerBestRecoveryState(hashBlock);
+        debug::log(2, NODE, "tx-response-window closed: matching-block received",
+            " request=", nRequestId,
+            " target=", hashTarget.SubString(),
+            " tx_count=", nTxCount,
+            " session=", nSession);
+    }
+
+
+    void TritiumNode::ReleaseMissingTransactions()
+    {
+        RECURSIVE(m_txRespWindowMutex);
+        m_fRecoveryDisconnected = true;
+        m_nPendingRecoveryLists = 0;
+        if(m_txRespWindow.IsActive())
+            debug::log(2, NODE, "tx-response-window closed: disconnect",
+                " session=", nCurrentSession, " tx_count=", m_txRespWindow.nTxCount);
+        m_txRespWindow.Close();
+        LOCK(MISSING_TRANSACTIONS_MUTEX);
+        for(auto& request : vMissingTransactions)
+        {
+            if(request.owner == this)
+            {
+                request.owner = nullptr;
+                request.sent = false;
+            }
+        }
+    }
+
+
+    /* Retry deferred missing transactions without disturbing an in-flight response. */
+    bool TritiumNode::RequestMissingTransactions(const uint1024_t& hashMissing)
+    {
+        RECURSIVE(m_txRespWindowMutex);
+        if(m_fRecoveryDisconnected || !Connected() || config::fClient.load()
+        || nCurrentSession == 0 || nProtocolVersion == 0)
+            return false;
+
+        uint1024_t hashPending = 0;
+        {
+            LOCK(MISSING_TRANSACTIONS_MUTEX);
+            if(hashMissing != 0)
+            {
+                const auto it = std::find_if(vMissingTransactions.begin(), vMissingTransactions.end(),
+                    [&](const MissingTransactionRequest& request)
+                    {
+                        return request.hashBlock == hashMissing
+                            && (request.owner == this || request.owner == nullptr);
+                    });
+                if(it != vMissingTransactions.end())
+                    it->owner = this;
+                else
+                {
+                    if(vMissingTransactions.size() >= MAX_PENDING_MISSING_TRANSACTIONS)
+                        return false;
+                    vMissingTransactions.push_back({hashMissing, this});
+                }
+            }
+
+            const uint64_t nNow = runtime::timestamp();
+            if(m_txRespWindow.IsActive() && !m_txRespWindow.IsExpired(nNow)
+            && !m_txRespWindow.IsBudgetExhausted())
+                return hashMissing != 0;
+
+            auto it = std::find_if(vMissingTransactions.begin(), vMissingTransactions.end(),
+                [&](const MissingTransactionRequest& request)
+                {
+                    return !request.sent && (request.owner == this || request.owner == nullptr);
+                });
+            if(it == vMissingTransactions.end())
+                it = std::find_if(vMissingTransactions.begin(), vMissingTransactions.end(),
+                    [&](const MissingTransactionRequest& request)
+                    {
+                        return request.owner == this || request.owner == nullptr;
+                    });
+            if(it == vMissingTransactions.end())
+                return false;
+            it->owner = this;
+            hashPending = it->hashBlock;
+        }
+
+        try
+        {
+            if(PushTxResponseRequest(TxResponseKind::GET, hashPending, 0, true,
+                ACTION::GET, uint8_t(SPECIFIER::TRANSACTIONS), uint8_t(TYPES::BLOCK), hashPending))
+            {
+                /* Rotate, but retain in-flight ownership for disconnect/timeout retries. */
+                LOCK(MISSING_TRANSACTIONS_MUTEX);
+                const auto it = std::find_if(vMissingTransactions.begin(), vMissingTransactions.end(),
+                    [&](const MissingTransactionRequest& request)
+                    {
+                        return request.owner == this && request.hashBlock == hashPending;
+                    });
+                if(it != vMissingTransactions.end())
+                {
+                    it->sent = true;
+                    std::rotate(it, std::next(it), vMissingTransactions.end());
+                }
+            }
+        }
+        catch(const std::exception& e)
+        {
+            debug::error(FUNCTION, e.what());
+        }
+        return true;
+    }
+
+
+    /* Push a block to tritium connection based on specifier.
+     *
+     * For SPECIFIER::TRANSACTIONS, implements atomic bundling: either ALL
+     * transaction messages and the block message are queued, or NONE are queued.
+     * This prevents orphaned transaction messages in the send queue if buffer
+     * becomes full partway through a multi-message sequence.
+     *
+     * @return true if block (and all transaction messages for TRANSACTIONS mode)
+     *         were successfully queued. false if unable to queue due to buffer
+     *         pressure. In false case, NOTHING is queued (all-or-nothing semantics).
+     */
+    bool TritiumNode::PushBlock(const uint8_t nSpecifier, const TAO::Ledger::BlockState& state)
     {
         /* Handle for a client block header. */
         if(nSpecifier == SPECIFIER::CLIENT)
@@ -3808,7 +4653,7 @@ namespace LLP
             TAO::Ledger::ClientBlock block(state);
 
             /* Push message in response. */
-            PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::CLIENT), block);
+            return PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::CLIENT), block);
         }
         else
         {
@@ -3819,7 +4664,7 @@ namespace LLP
                 Legacy::LegacyBlock block(state);
 
                 /* Push message in response. */
-                PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::LEGACY), block);
+                return PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::LEGACY), block);
             }
             else
             {
@@ -3829,6 +4674,24 @@ namespace LLP
                 /* Check for transactions. */
                 if(nSpecifier == SPECIFIER::TRANSACTIONS)
                 {
+                    std::vector<MessagePacket> vMessages;
+                    uint64_t nBundleBytes = 0;
+                    const auto AppendMessage = [&](const uint16_t nType, const DataStream& ssData)
+                    {
+                        const uint64_t nHeader =
+                            MessagePacket(nType).GetSerializeSize(SER_NETWORK, MIN_PROTO_VERSION);
+                        if(nHeader > MAX_BUNDLE_BYTES - nBundleBytes ||
+                           ssData.size() > MAX_BUNDLE_BYTES - nBundleBytes - nHeader)
+                        {
+                            fBufferFull.store(true);
+                            return false;
+                        }
+
+                        nBundleBytes += nHeader + ssData.size();
+                        vMessages.push_back(NewMessage(nType, ssData));
+                        return true;
+                    };
+
                     /* Loop through transactions. */
                     for(const auto& proof : block.vtx)
                     {
@@ -3840,8 +4703,11 @@ namespace LLP
                             if(!LLD::Legacy->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                 continue;
 
-                            /* Push message of transaction. */
-                            PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
+                            /* Pre-collect transaction message. */
+                            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+                            ssData << uint8_t(SPECIFIER::LEGACY) << tx;
+                            if(!AppendMessage(TYPES::TRANSACTION, ssData))
+                                return false;
                         }
 
                         /* Basic checks for tritium transactions. */
@@ -3852,15 +4718,25 @@ namespace LLP
                             if(!LLD::Ledger->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                 continue;
 
-
-                            /* Push message of transaction. */
-                            PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
+                            /* Pre-collect transaction message. */
+                            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+                            ssData << uint8_t(SPECIFIER::TRITIUM) << tx;
+                            if(!AppendMessage(TYPES::TRANSACTION, ssData))
+                                return false;
                         }
                     }
+
+                    /* Pre-collect block message. */
+                    DataStream ssBlock(SER_NETWORK, MIN_PROTO_VERSION);
+                    ssBlock << uint8_t(SPECIFIER::TRITIUM) << block;
+                    if(!AppendMessage(TYPES::BLOCK, ssBlock))
+                        return false;
+
+                    return WritePackets(vMessages);
                 }
 
                 /* Push message in response. */
-                PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
+                return PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
             }
         }
     }
@@ -3869,92 +4745,119 @@ namespace LLP
     /* Helper function to switch the nodes on sync. */
     void TritiumNode::SwitchNode()
     {
-        /* Track our current sync sessions. */
-        std::pair<uint32_t, uint32_t> pairSession;
-
-        /* Only check our current sync session if it is active. */
-        if(TAO::Ledger::nSyncSession.load() != 0)
-        { LOCK(SESSIONS_MUTEX);
-
-            /* Check for session. */
-            if(!mapSessions.count(TAO::Ledger::nSyncSession.load()))
-                return;
-
-            /* Set the current session. */
-            pairSession = mapSessions[TAO::Ledger::nSyncSession.load()];
-        }
-
-        /* Normal case of asking for a getblocks inventory message. */
-        std::shared_ptr<TritiumNode> pnode = TRITIUM_SERVER->GetConnection(pairSession);
-        if(pnode != nullptr)
-        {
-            /* Send out another getblocks request. */
-            try
-            {
-                /* Get the current sync node. */
-                std::shared_ptr<TritiumNode> pcurrent =
-                    TRITIUM_SERVER->GetConnection(pairSession.first, pairSession.second);
-
-                /* Make sure this is an active connection. */
-                if(pcurrent)
-                    pcurrent->Unsubscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN);
-
-                /* Initiate the sync */
-                pnode->Sync();
-            }
-            catch(const std::exception& e)
-            {
-                /* Recurse on failure. */
-                debug::error(FUNCTION, e.what());
-
-                SwitchNode();
-            }
-        }
-        else
-        {
-            /* Reset the current sync node. */
-            TAO::Ledger::nSyncSession.store(0);
-
-            /* Logging to verify (for debugging). */
-            debug::log(0, FUNCTION, "No Sync Nodes Available, reconnecting to DNS seeds in 15 seconds...");
-
-            /* Wait for timeouts and then restart. */
-            runtime::sleep(15000);
-
-            /* Reconnect to our seed nodes. */
-            LLP::MakeConnections(TRITIUM_SERVER);
-        }
+        RECURSIVE(SYNC_MUTEX);
+        syncPeers.Pause(TAO::Ledger::nSyncSession.load(), runtime::timestamp());
+        TAO::Ledger::nSyncSession.store(syncPeers.Primary());
+        /* Standby peers fill the vacant slot on their next GENERIC event.
+         * Connection management remains responsible for reconnecting seeds. */
     }
 
 
     /* Initiates a chain synchronization from the peer. */
     void TritiumNode::Sync()
     {
-        debug::log(0, NODE, "New sync address set ", std::hex, nCurrentSession, ", syncing from ", TAO::Ledger::ChainState::hashBestChain.load().SubString());
+        /* A recovery LIST and a sync LIST cannot share an untagged LASTINDEX.
+         * Reserve under the same lock used to enqueue transaction recovery. */
+        const std::lock_guard<std::recursive_mutex> windowLock(m_txRespWindowMutex);
+        const std::lock_guard<std::recursive_mutex> syncLock(SYNC_MUTEX);
+        if(fSynchronized.load() || m_fRecoveryDisconnected || Incoming()
+        || nCurrentSession == 0 || nProtocolVersion < MIN_TRITIUM_VERSION
+        || (config::fClient.load() && nProtocolVersion < MIN_TRITIUM_CLIENT_VERSION)
+        || !config::GetBoolArg("-sync", true)
+        || (config::fTestNet.load() && !config::GetBoolArg("-dns", true))
+        || m_nPendingRecoveryLists != 0
+        || (m_txRespWindow.IsActive() && !m_txRespWindow.IsExpired(runtime::timestamp())))
+            return;
 
-        /* Set the sync session-id. */
-        TAO::Ledger::nSyncSession.store(nCurrentSession);
+        const size_t nMaxPeers = config::fClient.load() ? 1
+            : static_cast<size_t>(std::clamp<int64_t>(config::GetArg("-syncpeers", 4), 1, 16));
+        const uint64_t nNow = runtime::timestamp();
+        if(!syncPeers.Begin(nCurrentSession, nNow, nMaxPeers))
+            return;
 
-        /* Reset last time received. */
-        nLastTimeReceived.store(runtime::timestamp());
+        bool fQueued = false;
+        try
+        {
+            if(Subscribe((SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN | SUBSCRIPTION::BESTHEIGHT)
+                & ~nSubscriptions.load()))
+            {
+                /* A validated side branch may need several batches before it
+                 * outweighs our tip. Do not restart its locator at every batch. */
+                TAO::Ledger::BlockState stateLast;
+                const bool fSideBranch = hashLastIndex != 0
+                    && LLD::Ledger->ReadBlock(hashLastIndex, stateLast)
+                    && stateLast.GetHash() == hashLastIndex && !stateLast.IsInMainChain();
+                const uint8_t nSpecifier = config::fClient.load()
+                    ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC);
+                if(fSideBranch)
+                    fQueued = PushMessage(ACTION::LIST, nSpecifier, uint8_t(TYPES::BLOCK),
+                        uint8_t(TYPES::UINT1024_T), hashLastIndex, uint1024_t(0));
+                else
+                    fQueued = PushMessage(ACTION::LIST, nSpecifier, uint8_t(TYPES::BLOCK),
+                        uint8_t(TYPES::LOCATOR),
+                        TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()), uint1024_t(0));
+            }
+        }
+        catch(...)
+        {
+            syncPeers.Complete(nCurrentSession);
+            PauseSync();
+            throw;
+        }
 
-        /* Cache the height at the start of the sync */
-        if(nSyncStart.load() == 0)
-            nSyncStart.store(TAO::Ledger::ChainState::tStateBest.load().nHeight);
+        if(!fQueued)
+        {
+            syncPeers.Complete(nCurrentSession);
+            PauseSync();
+            return;
+        }
 
-        /* Make sure the sync timer is stopped.  We don't start this until we receive our first sync block*/
-        SYNCTIMER.Stop();
+        /* Retain nSyncSession for diagnostics and legacy recovery callers, not
+         * as authorization for all block downloads. Start the shared meter once. */
+        static std::once_flag started;
+        std::call_once(started, [&]()
+        {
+            nSyncStart.store(TAO::Ledger::ChainState::nBestHeight.load());
+            SYNCTIMER.Start();
+        });
+        TAO::Ledger::nSyncSession.store(syncPeers.Primary());
+        nLastTimeReceived.store(nNow);
+        debug::log(1, NODE, "Sync batch requested from ", std::hex, nCurrentSession,
+            std::dec, " active peers=", syncPeers.Size());
+    }
 
-        /* Subscribe to this node. */
-        Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN | SUBSCRIPTION::BESTHEIGHT);
 
-        /* Ask for list of blocks if this is current sync node. */
-        PushMessage(ACTION::LIST,
-            config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
-            uint8_t(TYPES::BLOCK),
-            uint8_t(TYPES::LOCATOR),
-            TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-            uint1024_t(0)
-        );
+    bool TritiumNode::IsSyncPeer() const
+    {
+        return !fSynchronized.load() && syncPeers.Active(nCurrentSession);
+    }
+
+    bool TritiumNode::HasSyncRequest() const
+    {
+        return syncPeers.Pending(nCurrentSession);
+    }
+
+
+    void TritiumNode::PauseSync()
+    {
+        RECURSIVE(SYNC_MUTEX);
+        syncPeers.Pause(nCurrentSession, runtime::timestamp());
+        TAO::Ledger::nSyncSession.store(syncPeers.Primary());
+    }
+
+
+    bool TritiumNode::CompleteSync()
+    {
+        RECURSIVE(SYNC_MUTEX);
+        if(fSynchronized.load() || !CanFinalizeSyncFromPeer(nCurrentHeight)
+        || hashBestChain == 0 || hashBestChain != TAO::Ledger::ChainState::hashBestChain.load())
+            return false;
+
+        fSynchronized.store(true);
+        syncPeers.RetireAll(runtime::timestamp());
+        TAO::Ledger::nSyncSession.store(0);
+        /* Keep subscriptions while queued batches drain. A late LASTINDEX or
+         * BESTCHAIN after a commit is not grounds to disconnect a healthy peer. */
+        return true;
     }
 }

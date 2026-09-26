@@ -161,7 +161,10 @@ namespace LLP
                                     LOCK(TritiumNode::CLIENT_MUTEX);
 
                                     /* Begin our ACID transaction across LLD instances. */
-                                    LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
+                                    LLD::TransactionGuard transaction(
+                                        TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
+                                    if(!transaction)
+                                        return debug::drop(NODE, "FLAGS::LOOKUP: failed to begin transaction");
 
                                     /* Terminate early if we have already indexed this transaction. */
                                     if(!LLD::Client->HasIndex(hashTx))
@@ -179,7 +182,8 @@ namespace LLP
                                     TAO::API::Indexing::IndexDependant(hashTx, tx);
 
                                     /* Commit our ACID transaction across LLD instances. */
-                                    LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
+                                    if(!LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE))
+                                        return debug::drop(NODE, "FLAGS::LOOKUP: failed to commit transaction");
 
                                     debug::log(3, "FLAGS::LOOKUP::TRITIUM: ", hashTx.SubString(), " ACCEPTED");
                                 }
@@ -220,7 +224,10 @@ namespace LLP
                                 /* Begin our ACID transaction across LLD instances. */
                                 { LOCK(TritiumNode::CLIENT_MUTEX);
 
-                                    LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
+                                    LLD::TransactionGuard transaction(
+                                        TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
+                                    if(!transaction)
+                                        return debug::drop(NODE, "FLAGS::LOOKUP: failed to begin transaction");
 
                                     /* Check if we have this transaction already. */
                                     if(!LLD::Client->HasIndex(hashTx))
@@ -238,7 +245,8 @@ namespace LLP
                                     TAO::API::Indexing::IndexDependant(hashTx, tx);
 
                                     /* Commit our ACID transaction across LLD instances. */
-                                    LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
+                                    if(!LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE))
+                                        return debug::drop(NODE, "FLAGS::LOOKUP: failed to commit transaction");
                                 }
 
                                 /* Write Success to log. */
@@ -276,7 +284,10 @@ namespace LLP
                                     { LOCK(TritiumNode::CLIENT_MUTEX);
 
                                         /* Begin our ACID transaction across LLD instances. */
-                                        LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
+                                        LLD::TransactionGuard transaction(
+                                            TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
+                                        if(!transaction)
+                                            return debug::drop(NODE, "FLAGS::LOOKUP::PROOF: failed to begin transaction");
 
                                         /* Track our contract-id to unpack proof data. */
                                         uint32_t nContract = 0;
@@ -321,7 +332,8 @@ namespace LLP
                                         }
 
                                         /* Commit our ACID transaction across LLD instances. */
-                                        LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
+                                        if(!LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE))
+                                            return debug::drop(NODE, "FLAGS::LOOKUP::PROOF: failed to commit transaction");
                                     }
 
                                     debug::log(3, "FLAGS::LOOKUP::TRITIUM::", (nType == SPECIFIER::CONTRACT) ? "CONTRACT: " : "PROOF: ", hash.SubString(), " ACCEPTED");
@@ -346,7 +358,10 @@ namespace LLP
                                     /* Begin our ACID transaction across LLD instances. */
                                     { LOCK(TritiumNode::CLIENT_MUTEX);
 
-                                        LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
+                                        LLD::TransactionGuard transaction(
+                                            TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
+                                        if(!transaction)
+                                            return debug::drop(NODE, "FLAGS::LOOKUP::PROOF: failed to begin transaction");
 
                                         /* Iterate the transaction contracts. */
                                         for(const auto& in : tx.vin)
@@ -357,7 +372,8 @@ namespace LLP
                                         }
 
                                         /* Commit our ACID transaction across LLD instances. */
-                                        LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
+                                        if(!LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE))
+                                            return debug::drop(NODE, "FLAGS::LOOKUP::PROOF: failed to commit transaction");
                                     }
 
                                     /* Write Success to log. */

@@ -23,7 +23,9 @@ ________________________________________________________________________________
 
 #include <Util/include/allocators.h>
 
+#include <chrono>
 #include <condition_variable>
+#include <cstdint>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -43,26 +45,42 @@ namespace TAO
          *
          *  @param[in] user The signature chain to generate this tx
          *  @param[in] pin The pin number to generate with.
-         *  @param[out] tx The traansaction object being created
+         *  @param[out] tx The transaction object being created
          *  @param[in] nScheme The key scheme to be used.
+         *  @param[in] pKnownLast Optional authoritative predecessor transaction for this
+         *             sigchain, already selected into the block's vtx by AddTransactions().
+         *             When supplied, this is used verbatim as the chaining predecessor
+         *             instead of independently re-querying sessions/mempool/disk, which
+         *             closes a TOCTOU race where a newer sigchain transaction submitted
+         *             between AddTransactions() and CreateTransaction() could be picked
+         *             as "last" even though it never made it into the block, producing a
+         *             producer.hashPrevTx that disagrees with what Check() validates
+         *             against (see FindProducerGenesisTxInVtx() in create.cpp).
          *
          **/
         bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
-                               TAO::Ledger::Transaction& tx, const uint8_t nScheme = TAO::Ledger::SIGNATURE::BRAINPOOL);
+                               TAO::Ledger::Transaction& tx, const uint8_t nScheme = TAO::Ledger::SIGNATURE::BRAINPOOL,
+                               const TAO::Ledger::Transaction* pKnownLast = nullptr);
 
 
         /** CreateProducer
          *
          *  Create a producer transaction object from signature chain.
          *
+         *  Dual-identity mining: user signs the block, hashDynamicGenesis receives rewards.
+         *
          *  @param[in] user The signature chain to generate this tx
          *  @param[in] pin The pin number to generate with.
-         *  @param[out] tx The traansaction object being created
+         *  @param[out] tx The transaction object being created
          *  @param[in] tStateBest The current best block state
          *  @param[in] nBlockVersion The block version the producer is being created for
          *  @param[in] nChannel The channel to create block for.
          *  @param[in] nExtraNonce An extra nonce to use for double iterating.
          *  @param[in] pCoinbaseRecipients The coinbase recipients, if any.
+         *  @param[in] hashDynamicGenesis Reward recipient genesis (0 = use user genesis)
+         *  @param[in] pKnownLast Optional authoritative predecessor transaction for the
+         *             producer's sigchain, forwarded to CreateTransaction(). See that
+         *             function's documentation for why this closes a sequencing race.
          *
          **/
         bool CreateProducer(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
@@ -71,7 +89,34 @@ namespace TAO
                                const uint32_t nBlockVersion,
                                const uint32_t nChannel,
                                const uint64_t nExtraNonce,
-                               Legacy::Coinbase *pCoinbaseRecipients = nullptr);
+                               Legacy::Coinbase *pCoinbaseRecipients = nullptr,
+                               const uint256_t& hashDynamicGenesis = uint256_t(0),
+                               const TAO::Ledger::Transaction* pKnownLast = nullptr);
+
+
+        /** FindProducerGenesisTxInVtx
+         *
+         *  Scans a block's already-selected vtx entries for the transaction whose
+         *  hashGenesis matches the given genesis, returning the entry with the
+         *  highest nSequence (there should be at most one per AddTransactions()'
+         *  per-genesis chaining, but scanning defensively guards against future
+         *  changes to that ordering).
+         *
+         *  This is the authoritative source for producer chaining: it reflects
+         *  exactly what Check() will later validate the producer against, so
+         *  using it to seed CreateTransaction() eliminates the TOCTOU race where
+         *  an independent, later mempool/disk query could disagree with vtx.
+         *
+         *  @param[in] block The block whose vtx has already been populated by AddTransactions().
+         *  @param[in] hashGenesis The sigchain genesis to search for.
+         *  @param[out] txOut The matching transaction, if found.
+         *
+         *  @return true if a matching transaction was found in vtx.
+         *
+         **/
+        bool FindProducerGenesisTxInVtx(const TAO::Ledger::TritiumBlock& block,
+                                        const uint256_t& hashGenesis, TAO::Ledger::Transaction& txOut);
+
 
 
         /** AddTransactions
@@ -96,6 +141,27 @@ namespace TAO
         void AddBlockData(const TAO::Ledger::BlockState& tStateBest, const uint32_t nChannel, TAO::Ledger::TritiumBlock& block);
 
 
+        /** CachedMiningTemplateRequiresProducerFinalization
+         *
+         *  Return true when a cached mining block template cannot safely reuse the
+         *  cached producer transaction.  Producer finalization is keyed by
+         *  (tip, reward address): a different reward address must finalize a fresh
+         *  producer and merkle root from the cached base template.
+         *
+         *  Extra nonce differences are intentionally ignored so prime-mod retry
+         *  paths can reuse the expensive producer work for the same tip+reward.
+         *
+         **/
+        inline bool CachedMiningTemplateRequiresProducerFinalization(
+            const uint256_t& hashCachedDynamicGenesis,
+            const uint256_t& hashRequestedDynamicGenesis,
+            const uint64_t /*nCachedExtraNonce*/,
+            const uint64_t /*nRequestedExtraNonce*/)
+        {
+            return hashCachedDynamicGenesis != hashRequestedDynamicGenesis;
+        }
+
+
         /** CreateBlock
          *
          *  Create a new block object from the chain.
@@ -106,17 +172,53 @@ namespace TAO
          *  When called for Coinbase or private blocks, this method completes all block setup, including creating the block
          *  producer with producer operations and adding transactions to the block.
          *
+         *  Dual-identity mining: user signs the block, hashDynamicGenesis receives rewards.
+         *
          *  @param[in] user The signature chain to generate this block
          *  @param[in] pin The pin number to generate with.
          *  @param[in] nChannel The channel to create block for.
          *  @param[out] block The block object being created.
          *  @param[in] nExtraNonce An extra nonce to use for double iterating.
          *  @param[in] pCoinbaseRecipients The coinbase recipients, if any.
+         *  @param[in] hashDynamicGenesis Reward recipient genesis (0 = use user genesis)
+         *  @param[out] pfTipRaceRetry If non-null, set to true when this call failed
+         *              specifically because the chain tip advanced while the fresh
+         *              template was being built/signed (a transient race, not a real
+         *              error). Callers may use this to immediately retry against the
+         *              new tip instead of surfacing a hard failure. Left untouched
+         *              (caller should pre-initialize to false) on any other failure.
          *
          **/
         bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
                          const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce = 0,
-                         Legacy::Coinbase *pCoinbaseRecipients = nullptr);
+                         Legacy::Coinbase *pCoinbaseRecipients = nullptr,
+                         const uint256_t& hashDynamicGenesis = uint256_t(0),
+                         bool* pfTipRaceRetry = nullptr);
+
+
+        /** ClearMiningTemplateCaches
+         *
+         *  Drops cached PRIME/HASH mining templates so subsequent miner work is
+         *  rebuilt from the current best-chain hash.
+         *
+         **/
+        void ClearMiningTemplateCaches(const char* pszReason = nullptr);
+
+
+        /** InvalidateMiningTemplateCacheEntry
+         *
+         *  Evicts a single cached mining template keyed by (nChannel, hashDynamicGenesis),
+         *  if present. Unlike ClearMiningTemplateCaches(), this does not disturb other
+         *  miners' cached templates on the same channel. Used to force the next
+         *  CreateBlock() call for this (channel, reward) pair to rebuild a fresh
+         *  producer/merkle root, since a plain cache-hit reuse ignores nExtraNonce
+         *  by design (see CachedMiningTemplateRequiresProducerFinalization).
+         *
+         *  @param[in] nChannel The mining channel (1=Prime, 2=Hash). No-op otherwise.
+         *  @param[in] hashDynamicGenesis The reward address whose cached entry to evict.
+         *
+         **/
+        void InvalidateMiningTemplateCacheEntry(const uint32_t nChannel, const uint256_t& hashDynamicGenesis);
 
 
         /** CreateStakeBlock
@@ -174,6 +276,37 @@ namespace TAO
          *
          **/
         void UpdateProducerTimestamp(TAO::Ledger::TritiumBlock& block);
+
+#ifdef UNIT_TESTS
+        namespace Testing
+        {
+            using SingleflightToken = std::uint64_t;
+
+            SingleflightToken BeginOrJoinMiningTemplateInFlight(const uint32_t nChannel,
+                                                                const uint256_t& hashDynamicGenesis,
+                                                                bool& fIsOwner);
+
+            bool WaitForMiningTemplateInFlight(const uint32_t nChannel,
+                                               const SingleflightToken nToken,
+                                               const std::chrono::milliseconds nTimeout,
+                                               uint256_t& hashOut);
+
+            void CompleteMiningTemplateInFlight(const SingleflightToken nToken,
+                                                const uint32_t nChannel,
+                                                const uint256_t& hashDynamicGenesis,
+                                                const uint64_t nExtraNonce);
+
+            void AbandonMiningTemplateInFlight(const SingleflightToken nToken,
+                                               const uint32_t nChannel);
+
+            void StoreMiningTemplateCacheEntryForTesting(const uint32_t nChannel,
+                                                         const uint256_t& hashDynamicGenesis,
+                                                         const uint64_t nExtraNonce);
+
+            void ClearMiningTemplateCacheForTesting(const uint32_t nChannel);
+            std::size_t MiningTemplateInFlightCountForTesting(const uint32_t nChannel);
+        }
+#endif
     }
 }
 

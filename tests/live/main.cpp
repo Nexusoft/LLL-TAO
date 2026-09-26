@@ -413,7 +413,12 @@ int oldmain(int argc, char** argv)
     return 0;
 
     /* Initialize LLD. */
-    LLD::Initialize();
+    if(!LLD::Initialize())
+    {
+        LLD::Shutdown();
+        debug::Shutdown();
+        return 1;
+    }
 
     uint32_t nScannedCount = 0;
 

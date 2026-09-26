@@ -81,11 +81,13 @@ namespace LLD
 
         /** Erase
          *
-         *  Erase a key from the keychain
+         *  Erase a key from the keychain. Implementations should treat a
+         *  missing key as success so recovery replays remain idempotent, while
+         *  still returning false for keychain I/O failures.
          *
          *  @param[in] vKey the key to erase.
          *
-         *  @return True if the key was erased, false otherwise.
+         *  @return True if the key was erased or already absent, false on I/O failure.
          *
          **/
         virtual bool Erase(const std::vector<uint8_t>& vKey) = 0;

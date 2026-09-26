@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLP/include/legacy_address.h>
 #include <LLP/include/manager.h>
 #include <LLP/include/config.h>
+#include <LLP/include/channel_notify_result.h>
 
 #include <Util/types/lock_unique_ptr.h>
 
@@ -100,11 +101,11 @@ namespace LLP
 
 
         /** Constructor **/
-        Server<ProtocolType>(const Config& config);
+        Server(const Config& config);
 
 
         /** Default Destructor **/
-        virtual ~Server<ProtocolType>();
+        virtual ~Server();
 
 
         /** Name
@@ -237,6 +238,29 @@ namespace LLP
          *  @return Returns a vector of active connections
          **/
         std::vector<std::shared_ptr<ProtocolType>> GetConnections() const;
+
+
+        /** NotifyChannelMiners
+         *
+         *  Broadcast channel-specific notification to subscribed miners on this server lane.
+         *  Called from MinerPushDispatcher::BroadcastChannel() for each lane separately.
+         *
+         *  Server-side filtering ensures only miners subscribed to the specific channel
+         *  receive notifications.  Logs include channel, lane, and miner count for
+         *  de-duplication verification.
+         *
+         *  @param[in] nChannel    Channel that advanced (1=Prime, 2=Hash)
+         *
+         *  @return ChannelNotifyResult with notified and per-reason skip counts.
+         *          nSkippedWrongChannel is expected to be non-zero when miners on the
+         *          other channel are connected (e.g. all miners are Prime, so the Hash
+         *          broadcast skips them — this is normal, not a failure).
+         *
+         *  @note This method is only meaningful for StatelessMinerConnection and Miner servers.
+         *        For other protocol types, it will be a no-op that returns {0,0,0,0}.
+         *
+         **/
+        ChannelNotifyResult NotifyChannelMiners(uint32_t nChannel);
 
 
         /** GetConnectionCount

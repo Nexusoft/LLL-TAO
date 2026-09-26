@@ -22,6 +22,9 @@ ________________________________________________________________________________
 #include <Util/include/mutex.h>
 #include <Util/include/memory.h>
 
+#include <atomic>
+#include <cstdint>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -642,7 +645,54 @@ namespace TAO::API
         static void Shutdown();
 
 
+        /** CurrentEpoch
+         *
+         *  Read the global authentication epoch counter.  The counter is bumped
+         *  under MUTEX inside every mutation point that can invalidate a cached
+         *  credential handle (Insert, Update, terminate_session, Shutdown).
+         *
+         *  Consumers of cached credentials may snapshot this value at populate
+         *  time and compare against the live value on subsequent use as a
+         *  lock-free staleness signal.  A mismatch means *something* under
+         *  Authentication changed and the cache must refresh; equality is a
+         *  necessary (not sufficient) condition for the cache to be valid.
+         *
+         *  Acquire ordering pairs with the release-ordered bumps performed
+         *  inside the mutation points below.
+         *
+         *  @return The current monotonically-increasing epoch value.
+         *
+         **/
+        static uint64_t CurrentEpoch()
+        {
+            return nEpoch.load(std::memory_order_acquire);
+        }
+
+
     private:
+
+
+        /** Monotonic authentication-state epoch.
+         *
+         *  Bumped under MUTEX inside Insert, Update (both overloads),
+         *  terminate_session, and Shutdown.  Read lock-free via CurrentEpoch().
+         *
+         **/
+        static std::atomic<uint64_t> nEpoch;
+
+
+        /** bump_epoch
+         *
+         *  Helper to bump nEpoch with release ordering.  MUST only be called
+         *  from sites already holding MUTEX so that the bump is observed by
+         *  subsequent acquire-loads after the mutation it advertises.
+         *
+         **/
+        static void bump_epoch()
+        {
+            nEpoch.fetch_add(1, std::memory_order_release);
+        }
+
 
 
         /** Mutex to lock around critical data. **/

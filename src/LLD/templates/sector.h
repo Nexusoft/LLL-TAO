@@ -33,7 +33,9 @@ ________________________________________________________________________________
 #include <atomic>
 #include <thread>
 #include <mutex>
+#include <shared_mutex>
 #include <condition_variable>
+#include <set>
 
 namespace LLD
 {
@@ -88,10 +90,11 @@ namespace LLD
         std::condition_variable CONDITION;
 
     protected:
-        /* Mutex for Thread Synchronization.
-            TODO: Lock Mutex based on Read / Writes on a per Sector Basis.
-            Will allow higher efficiency for thread concurrency. */
-        std::mutex SECTOR_MUTEX;
+        /* Reader-writer mutex for Thread Synchronization.
+            Uses std::shared_mutex so that read operations (Get, GetBatch)
+            acquire shared_lock (concurrent readers allowed) while write
+            operations (Update, Force, Delete) acquire unique_lock (exclusive). */
+        mutable std::shared_mutex SECTOR_MUTEX;
         std::mutex BUFFER_MUTEX;
         std::mutex TRANSACTION_MUTEX;
 
@@ -100,13 +103,22 @@ namespace LLD
         std::string strBaseLocation;
         std::string strName;
 
-
         /* timer for Runtime Calculations. */
         runtime::timer runtime;
 
 
         /* Class to handle Transaction Data. */
         SectorTransaction* pTransaction;
+        bool fTxnReleaseRequired;
+
+        /* Retain unsynced journal directory metadata across transaction aborts. */
+        bool fJournalDirectoryDirty;
+
+        /* Sector files awaiting a durable data flush, guarded by SECTOR_MUTEX. */
+        std::set<uint16_t> setPendingSectorFiles;
+
+        /* First writable use and new sectors require a directory-ancestry sync. */
+        bool fSectorDirectoryDirty;
 
 
         /* Sector Keys Database. */
@@ -374,7 +386,7 @@ namespace LLD
                     ssData.resize(nBufferSize);
 
                     {
-                        LOCK(SECTOR_MUTEX);
+                        SHARED_LOCK(SECTOR_MUTEX);
 
                         /* Seek stream to beginning. */
                         stream.seekg(nFilePos, std::ios::beg);
@@ -798,6 +810,19 @@ namespace LLD
         void Meter();
 
 
+        /** HasTransaction
+         *
+         *  Check if a physical database transaction is currently open.
+         *
+         *  @return True if a transaction is open, false otherwise.
+         *
+         **/
+        bool HasTransaction();
+
+        /** Determine whether the currently open transaction has any staged physical work. */
+        bool HasPendingTransactionWork();
+
+
         /** TxnBegin
          *
          *  Start a database transaction.
@@ -819,7 +844,7 @@ namespace LLD
          *  Release the transaction checkpoint.
          *
          **/
-        void TxnRelease();
+        bool TxnRelease();
 
 
         /** TxnCommit
@@ -837,7 +862,7 @@ namespace LLD
          *  Recover a transaction from the journal.
          *
          **/
-        bool TxnRecovery();
+        RECOVERY TxnRecovery();
 
     };
 }

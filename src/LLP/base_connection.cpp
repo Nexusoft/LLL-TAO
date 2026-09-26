@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 
 #include <LLP/packets/packet.h>
+#include <LLP/packets/stateless_packet.h>
 #include <LLP/packets/http.h>
 #include <LLP/packets/message.h>
 
@@ -26,6 +27,8 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 
 #include <Util/include/runtime.h>
+
+#include <type_traits>
 
 
 namespace LLP
@@ -61,6 +64,7 @@ namespace LLP
     , fDDOS           (false)
     , fOUTGOING       (false)
     , fCONNECTED      (false)
+    , nConsecutivePollEmptyStrikes(0)
     , nDataThread     (-1)
     , nDataIndex      (-1)
     , FLUSH_CONDITION (nullptr)
@@ -83,6 +87,7 @@ namespace LLP
     , fDDOS           (fDDOSIn)
     , fOUTGOING       (fOutgoing)
     , fCONNECTED      (false)
+    , nConsecutivePollEmptyStrikes(0)
     , nDataThread     (-1)
     , nDataIndex      (-1)
     , FLUSH_CONDITION (nullptr)
@@ -105,6 +110,7 @@ namespace LLP
     , fDDOS           (fDDOSIn)
     , fOUTGOING       (fOutgoing)
     , fCONNECTED      (false)
+    , nConsecutivePollEmptyStrikes(0)
     , nDataThread     (-1)
     , nDataIndex      (-1)
     , FLUSH_CONDITION (nullptr)
@@ -186,6 +192,7 @@ namespace LLP
         fDDOS           = false;
         fOUTGOING       = false;
         fCONNECTED      = false;
+        nConsecutivePollEmptyStrikes = 0;
         nDataThread     = -1;
         nDataIndex      = -1;
 
@@ -228,19 +235,47 @@ namespace LLP
 
     /*  Write a single packet to the TCP stream. */
     template <class PacketType>
-    void BaseConnection<PacketType>::WritePacket(const PacketType& PACKET)
+    bool BaseConnection<PacketType>::WritePacket(const PacketType& PACKET)
     {
+        return WritePacket(PACKET, false);
+    }
 
-        /* Only get this value one time so we don't need to keep accessing the args map. */
-        static const uint64_t nMaxSendBuffer =
-            config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER);
+
+    template <class PacketType>
+    bool BaseConnection<PacketType>::WritePacket(const PacketType& PACKET, bool fPriority)
+    {
+        RECURSIVE(SOCKET_MUTEX);
+
+        if(Buffered() == 0)
+            nBundleBufferLimit.store(0);
+
+        bool fQueued = false;
+
+        /* Per-connection buffer limit — mining connections return a larger value
+         * (5 MB by default) so push notifications are not dropped under normal
+         * mining pressure.  Ordinary writes are always constrained to this
+         * configured maximum: the oversized-bundle allowance must not be
+         * refilled by unrelated traffic as the bundle drains. */
+        const uint64_t nMaxSendBuffer = GetMaxSendBuffer();
 
         /* Get the bytes of the packet. */
         const std::vector<uint8_t> vBytes = PACKET.GetBytes();
 
+        /* Reserve space for critical control messages (keepalive ACK, session
+         * status, round state).  Proportional to buffer size: 1% of max,
+         * minimum 1 KB.  For 3 MB P2P: ~30 KB.  For 5 MB mining: ~50 KB.
+         * The old hardcoded 1 KB was meaningless for large mining buffers. */
+        const uint64_t nReserve = std::max(uint64_t(1024), nMaxSendBuffer / 100);
+
+        /* While an oversized bundle occupies the queue, only small control
+         * messages (e.g. LASTINDEX) may use the narrow reserve above it. */
+        const uint64_t nBundleLimit = nBundleBufferLimit.load();
+
         /* Stop sending packets if send buffer is full. */
-        if(Buffered() + vBytes.size() + 1024 < nMaxSendBuffer //reserve 1Kb of buffer for critical messages
-        || (fBufferFull.load() && Buffered() + vBytes.size() < nMaxSendBuffer)) //catch for critical messages (< 1 Kb)
+        if(Buffered() + vBytes.size() + nReserve < nMaxSendBuffer
+        || (fBufferFull.load() && Buffered() + vBytes.size() < nMaxSendBuffer) //catch for critical messages (< reserve)
+        || (fBufferFull.load() && nBundleLimit != 0 && vBytes.size() <= nReserve
+            && Buffered() + vBytes.size() < nBundleLimit)) //control reserve above an active oversized bundle
         {
             /* Debug dump of message type. */
             debug::log(4, NODE, "sent packet (", vBytes.size(), " bytes)");
@@ -250,14 +285,28 @@ namespace LLP
                 PrintHex(vBytes);
 
             /* Write the packet to socket buffer. */
-            Write(vBytes, vBytes.size());
+            Write(vBytes, vBytes.size(), fPriority);
 
             /* Update packet count. */
             ++PACKETS;
+            fQueued = true;
         }
         else
         {
-            debug::log(4, NODE, "Socket buffer full. Packet size: ", vBytes.size(), " bytes.  Buffered: ", Buffered(), " bytes");
+            /* For authenticated mining connections, packet drops are critical — push
+             * notifications are the primary mechanism for delivering fresh work.
+             * Log at level 0 so operators can see buffer pressure issues.
+             * For P2P connections, keep the existing level 4 to avoid log spam. */
+            if(IsTimeoutExempt())
+            {
+                debug::log(0, NODE, "WARNING: Socket buffer full — packet DROPPED for authenticated miner."
+                    " Packet size: ", vBytes.size(), " bytes.  Buffered: ", Buffered(),
+                    " bytes.  MaxSendBuffer: ", nMaxSendBuffer, " bytes");
+            }
+            else
+            {
+                debug::log(4, NODE, "Socket buffer full. Packet size: ", vBytes.size(), " bytes.  Buffered: ", Buffered(), " bytes");
+            }
 
             /* set buffer to full */
             fBufferFull.store(true);
@@ -266,6 +315,94 @@ namespace LLP
         /* Notify condition if available. */
         if(FLUSH_CONDITION && Buffered())
             FLUSH_CONDITION->notify_all();
+
+        return fQueued;
+    }
+
+    template <class PacketType>
+    bool BaseConnection<PacketType>::WritePackets(const std::vector<PacketType>& vPackets)
+    {
+        RECURSIVE(SOCKET_MUTEX);
+
+        const uint64_t nBuffered = Buffered();
+        if(nBuffered == 0)
+            nBundleBufferLimit.store(0);
+        else if(nBundleBufferLimit.load() != 0)
+        {
+            fBufferFull.store(true);
+            return false;
+        }
+
+        std::vector<uint8_t> vBytes;
+        if constexpr(std::is_same_v<PacketType, MessagePacket>)
+        {
+            /* Reject transaction bundles before making any wire-buffer copies. */
+            uint64_t nBundleBytes = 0;
+            for(const auto& packet : vPackets)
+            {
+                const uint64_t nHeader = packet.GetSerializeSize(SER_NETWORK, MIN_PROTO_VERSION);
+                if(nHeader > MAX_BUNDLE_BYTES - nBundleBytes ||
+                   packet.DATA.size() > MAX_BUNDLE_BYTES - nBundleBytes - nHeader)
+                {
+                    fBufferFull.store(true);
+                    return false;
+                }
+                nBundleBytes += nHeader + packet.DATA.size();
+            }
+            vBytes.reserve(nBundleBytes);
+        }
+
+        uint64_t nReserve = 0;
+        bool fOversized = false;
+        for(const auto& packet : vPackets)
+        {
+            const auto bytes = packet.GetBytes();
+            if(bytes.size() > MAX_BUNDLE_BYTES - vBytes.size())
+            {
+                fBufferFull.store(true);
+                return false;
+            }
+
+            const uint64_t nMaxSendBuffer = GetMaxSendBuffer();
+            nReserve = std::max(nReserve, std::max(uint64_t(1024), nMaxSendBuffer / 100));
+            const uint64_t nRequired = nBuffered + vBytes.size() + bytes.size() + nReserve;
+
+            /* Bulk bundles must not consume the reserve needed by LASTINDEX. */
+            if(nRequired >= nMaxSendBuffer)
+            {
+                if(nBuffered != 0 || nMaxSendBuffer <= nReserve)
+                {
+                    fBufferFull.store(true);
+                    return false;
+                }
+
+                /* A block's transaction bodies can exceed the normal queue
+                 * limit. Admit one bounded bundle only on an empty queue. */
+                fOversized = true;
+            }
+
+            vBytes.insert(vBytes.end(), bytes.begin(), bytes.end());
+        }
+
+        /* No packet reaches the socket until every member has been admitted.
+         * The same lock excludes both ordinary writers and Flush(). */
+        if(fOversized)
+            nBundleBufferLimit.store(vBytes.size() + nReserve + 1);
+
+        if(!vBytes.empty() && Write(vBytes, vBytes.size()) < 0)
+        {
+            nBundleBufferLimit.store(0);
+            return false;
+        }
+
+        PACKETS.fetch_add(vPackets.size());
+        if(fOversized && Buffered())
+            fBufferFull.store(true);
+
+        if(FLUSH_CONDITION && Buffered())
+            FLUSH_CONDITION->notify_all();
+
+        return true;
     }
 
 
@@ -339,5 +476,6 @@ namespace LLP
     template class BaseConnection<Packet>;
     template class BaseConnection<MessagePacket>;
     template class BaseConnection<HTTPPacket>;
+    template class BaseConnection<StatelessPacket>;
 
 }

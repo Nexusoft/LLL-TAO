@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <LLP/types/lookup.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
+#include <LLP/types/stateless_miner_connection.h>
 
 namespace LLP
 {
@@ -33,13 +34,14 @@ namespace LLP
 
 
     /** List of LLP Server Instances. **/
-    extern Server<TritiumNode>*  TRITIUM_SERVER;
-    extern Server<LookupNode>*   LOOKUP_SERVER;
-    extern Server<TimeNode>*     TIME_SERVER;
-    extern Server<APINode>*      API_SERVER;
-    extern Server<FileNode>*     FILE_SERVER;
-    extern Server<RPCNode>*      RPC_SERVER;
-    extern Server<Miner>*        MINING_SERVER;
+    extern Server<TritiumNode>*             TRITIUM_SERVER;
+    extern Server<LookupNode>*              LOOKUP_SERVER;
+    extern Server<TimeNode>*                TIME_SERVER;
+    extern Server<APINode>*                 API_SERVER;
+    extern Server<FileNode>*                FILE_SERVER;
+    extern Server<RPCNode>*                 RPC_SERVER;
+    extern Server<Miner>*                   MINING_SERVER;
+    extern Server<StatelessMinerConnection>* STATELESS_MINER_SERVER;
 
 
     /** Current session identifier. **/

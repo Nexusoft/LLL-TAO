@@ -130,6 +130,20 @@ namespace TAO::API
                 break;
             }
 
+            /* Skip coinbase/coinstake/hybrid — these are block-only producer transactions
+             * and are never valid in the mempool. They appear in the session DB when the
+             * autologin sigchain was used to mine a block; the producer was committed
+             * on-chain inside the block but the session DB still references it as the
+             * sigchain tip. Attempting to Accept() them just pollutes mapRejected and
+             * logs a spurious ERROR on every startup, and worse, cascades rejection to
+             * any subsequent transactions chaining off this hashPrevTx. */
+            if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
+            {
+                debug::log(1, FUNCTION, "skipping block-producer tx ", hash->SubString(),
+                    " (coinbase/coinstake/hybrid - not valid in mempool)");
+                continue;
+            }
+
             /* Broadcast our transaction if it is in the mempool already. */
             if(TAO::Ledger::mempool.Has(*hash))
                 tx.Broadcast();

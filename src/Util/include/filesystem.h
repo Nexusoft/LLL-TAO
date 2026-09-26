@@ -150,6 +150,22 @@ namespace filesystem
     bool create_directory(const std::string& strPath);
 
 
+    /** sync_directory
+     *
+     *  Flush a directory and its entries to stable storage.
+     *
+     *  @param[in] strPath The directory path to sync.
+     *
+     *  @return Returns true if the directory was synced, false otherwise.
+     *
+     **/
+    bool sync_directory(const std::string& strPath);
+
+
+    /** Sync each directory from strPath through strRoot, inclusive. **/
+    bool sync_directory_chain(const std::string& strPath, const std::string& strRoot);
+
+
     /** system_complete
      *
      *  Obtain the system complete path from a given relative path.

@@ -244,6 +244,14 @@ namespace TAO
             bool Index();
 
 
+            /** IsHeavierThan
+             *
+             *  Applies the ledger's unified fork-choice rule.
+             *
+             **/
+            bool IsHeavierThan(const BlockState& state) const;
+
+
             /** Set Best
              *
              *  Set this state as the best chain.

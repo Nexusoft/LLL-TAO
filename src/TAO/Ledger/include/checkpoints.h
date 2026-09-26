@@ -19,6 +19,10 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#ifdef UNIT_TESTS
+#include <functional>
+#endif
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -33,10 +37,12 @@ namespace TAO
          *
          *  @param[in] state The state object to check from.
          *
-         *  @returns true if a new timespan has elapsed
+         *  @param[out] fNewTimespan Set true if a new timespan has elapsed.
+         *
+         *  @returns true if the checkpoint state was evaluated successfully.
          *
          **/
-        bool IsNewTimespan(const BlockState& state);
+        bool IsNewTimespan(const BlockState& state, bool& fNewTimespan);
 
 
         /** IsDescendant
@@ -57,10 +63,17 @@ namespace TAO
          *
          *  @param[in] state The state object to check from.
          *
-         *  @returns true if a checkpoint was hardened.
+         *  @param[out] pfHardened Set true when a checkpoint was published.
+         *
+         *  @returns true if checkpoint evaluation and publication succeeded.
          *
          **/
-        bool HardenCheckpoint(const BlockState& state);
+        bool HardenCheckpoint(const BlockState& state, bool* pfHardened = nullptr);
+
+#ifdef UNIT_TESTS
+        /** Install a checkpoint-hardening seam for SetBest regression tests. **/
+        void SetHardenCheckpointHook(const std::function<bool(const BlockState&, bool*)>& fnHook);
+#endif
 
 
         /** Checkpoint Height.

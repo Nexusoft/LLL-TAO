@@ -1,0 +1,28 @@
+name: Copilot Setup Steps
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+      - .devcontainer/setup.sh
+      - contrib/devtools/install-build-deps.sh
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+      - .devcontainer/setup.sh
+      - contrib/devtools/install-build-deps.sh
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install build dependencies
+        run: sudo bash "${GITHUB_WORKSPACE}/contrib/devtools/install-build-deps.sh"

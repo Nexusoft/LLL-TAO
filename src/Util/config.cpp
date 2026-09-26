@@ -16,8 +16,10 @@ ________________________________________________________________________________
 #include <Util/include/mutex.h>
 #include <Util/include/filesystem.h>
 #include <Util/include/debug.h>
+#include <filesystem>
 #include <fstream>
 #include <cstring> /* strlen */
+#include <vector>
 
 #ifdef WIN32
 #include <shlobj.h>
@@ -25,6 +27,14 @@ ________________________________________________________________________________
 
 namespace config
 {
+    namespace
+    {
+        std::string pathCached[2];
+        std::mutex csPathCached;
+        bool fCachedPath[2] = {false, false};
+        std::vector<std::filesystem::path> vDataDirectoryParents[2];
+    }
+
 
     /* Read the Config file from the Disk. */
     void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet,
@@ -37,16 +47,74 @@ namespace config
         std::string line;
         while(std::getline(streamConfig, line))
         {
-            size_t i = line.find('=');
+            /* Trim leading whitespace */
+            size_t start = line.find_first_not_of(" \t");
+            if(start == std::string::npos)
+                continue; /* Empty line */
+            
+            /* Check for comment at start of line */
+            if(line[start] == '#')
+                continue;
+            
+            /* Find the equals sign */
+            size_t i = line.find('=', start);
             if(i == std::string::npos)
                 continue;
-
-            size_t l = line.find('#');
-            if(l != std::string::npos)
-                continue;
-
-            std::string strKey = std::string("-") + std::string(line, 0, i);
-            std::string strVal = std::string(line, i + 1, line.size() - i - 1);
+            
+            /* Extract key (before =) */
+            std::string strKey = std::string("-") + std::string(line, start, i - start);
+            
+            /* Trim trailing whitespace from key */
+            size_t keyEnd = strKey.find_last_not_of(" \t");
+            if(keyEnd != std::string::npos)
+                strKey = strKey.substr(0, keyEnd + 1);
+            
+            /* Extract value (after =) */
+            std::string strVal = std::string(line, i + 1);
+            
+            /* Trim leading whitespace from value */
+            size_t valStart = strVal.find_first_not_of(" \t");
+            if(valStart != std::string::npos)
+                strVal = strVal.substr(valStart);
+            else
+                strVal = "";
+            
+            /* Handle quoted values */
+            if(!strVal.empty() && (strVal[0] == '"' || strVal[0] == '\''))
+            {
+                char quote = strVal[0];
+                size_t endQuote = strVal.find(quote, 1);
+                if(endQuote != std::string::npos)
+                {
+                    strVal = strVal.substr(1, endQuote - 1);
+                }
+                else
+                {
+                    /* No closing quote - treat rest of line as value */
+                    strVal = strVal.substr(1);
+                }
+            }
+            else
+            {
+                /* For unquoted values, check for inline comment (# after whitespace) */
+                size_t commentPos = strVal.find('#');
+                while(commentPos != std::string::npos)
+                {
+                    /* Only treat as comment if preceded by whitespace */
+                    if(commentPos > 0 && (strVal[commentPos - 1] == ' ' || strVal[commentPos - 1] == '\t'))
+                    {
+                        strVal = strVal.substr(0, commentPos);
+                        break;
+                    }
+                    /* Otherwise, # is part of the value - keep looking */
+                    commentPos = strVal.find('#', commentPos + 1);
+                }
+                
+                /* Trim trailing whitespace from value */
+                size_t valEnd = strVal.find_last_not_of(" \t\r");
+                if(valEnd != std::string::npos)
+                    strVal = strVal.substr(0, valEnd + 1);
+            }
 
             if(mapSettingsRet.count(strKey) == 0)
             {
@@ -169,10 +237,6 @@ namespace config
     /* Get the location that Nexus data is being stored in. */
     std::string GetDataDir(bool fNetSpecific)
     {
-        static std::string pathCached[2];
-        static std::mutex csPathCached;
-        static bool fCachedPath[2] = {false, false};
-
         std::string &path = pathCached[fNetSpecific];
 
         // This can be called during exceptions by debug log, so we cache the
@@ -226,10 +290,60 @@ namespace config
         if(config::GetBoolArg("-client", false))
             path.append("client/");
 
-        filesystem::create_directories(path);
+        if(!filesystem::exists(path))
+        {
+            std::filesystem::path cDirectory(path);
+            if(cDirectory.filename().empty())
+                cDirectory = cDirectory.parent_path();
+
+            std::vector<std::filesystem::path> vDirectories;
+            while(!cDirectory.empty() && !filesystem::exists(cDirectory.string()))
+            {
+                vDirectories.push_back(cDirectory);
+                cDirectory = cDirectory.parent_path();
+            }
+
+            filesystem::create_directories(path);
+            for(const auto& cCreated : vDirectories)
+            {
+                if(filesystem::exists(cCreated.string()))
+                    vDataDirectoryParents[fNetSpecific].push_back(cCreated.parent_path());
+            }
+        }
 
         pathCached[fNetSpecific] =  path;
         fCachedPath[fNetSpecific] = true;
         return path;
+    }
+
+
+    /* Persist newly created data-directory entries in their parents. */
+    bool SyncDataDirectories()
+    {
+        GetDataDir();
+
+        LOCK(csPathCached);
+
+        for(uint32_t nIndex = 0; nIndex < 2; ++nIndex)
+        {
+            if(!vDataDirectoryParents[nIndex].empty()
+            && !filesystem::sync_directory_chain(vDataDirectoryParents[nIndex].front().string(),
+                                                  vDataDirectoryParents[nIndex].back().string()))
+                return false;
+
+            vDataDirectoryParents[nIndex].clear();
+        }
+
+        return true;
+    }
+
+
+    /* Persist a database directory chain and any newly created data directories. */
+    bool SyncDataDirectoryChain(const std::string& strDirectory)
+    {
+        if(!filesystem::sync_directory_chain(strDirectory, GetDataDir()))
+            return false;
+
+        return SyncDataDirectories();
     }
 }

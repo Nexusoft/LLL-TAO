@@ -151,7 +151,9 @@ namespace TAO::API
         std::map<uint256_t, TAO::Register::State> mapStates;
 
         /* Start a ACID transaction. */
-        LLD::TxnBegin(TAO::Ledger::FLAGS::MINER); //we use miner flag here so we don't conflict with mempool
+        LLD::TransactionGuard transaction(TAO::Ledger::FLAGS::MINER); //we use miner flag here so we don't conflict with mempool
+        if(!transaction)
+            return false;
 
         /* Return flag */
         bool fSanitized = false;

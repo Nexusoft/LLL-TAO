@@ -1,0 +1,1375 @@
+/*__________________________________________________________________________________________
+
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
+
+            (c) Copyright The Nexus Developers 2014 - 2025
+
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+            "ad vocem populi" - To the Voice of the People
+
+____________________________________________________________________________________________*/
+
+#include <TAO/Ledger/include/stateless_block_utility.h>
+#include <TAO/Ledger/include/create.h>
+#include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/prime.h>
+#include <TAO/Ledger/include/supply.h>
+#include <TAO/Ledger/include/retarget.h>
+#include <TAO/Ledger/include/timelocks.h>
+#include <TAO/Ledger/include/process.h>
+#include <TAO/Ledger/types/mempool.h>
+
+#include <LLD/include/global.h>
+
+#include <TAO/API/include/global.h>
+#include <TAO/API/include/credential_cache.h>
+#include <TAO/API/types/authentication.h>
+
+#include <LLD/include/global.h>
+
+#include <LLP/include/version.h>
+#include <LLP/include/falcon_constants.h>
+#include <LLP/include/disposable_falcon.h>
+
+#include <LLC/include/flkey.h>
+#include <LLC/include/eckey.h>
+
+#include <Util/include/args.h>
+#include <Util/include/convert.h>
+#include <Util/include/debug.h>
+#include <Util/include/runtime.h>
+#include <chrono>
+#include <memory>
+#include <sstream>
+
+/* Global TAO namespace. */
+namespace TAO::Ledger
+{
+    namespace
+    {
+        static constexpr uint32_t MAX_TIP_RACE_RETRIES = 5;
+
+        /* [Removed] A prior "Prime template ProofHash pre-screen" gate used to
+         * live here (PrimeTemplateProofHashValid()/PrimeTemplateProofHashBitMask(),
+         * -primemod, MAX_PRIME_TEMPLATE_ATTEMPTS), rejecting a template before it
+         * was ever handed to a miner unless the high bit(s) of ProofHash() (SK1024
+         * over nVersion..nBits) happened to be clear.
+         *
+         * That premise was invalid: ProofHash() is a fixed hash of the template
+         * header computed BEFORE any nonce search happens (block.cpp ProofHash()
+         * does not include nNonce). The value miners actually search over is
+         * GetPrime() = ProofHash() + nNonce, and real prime validity (chain
+         * length, fractional difficulty; see GetPrimeBits()) can only be computed
+         * from GetPrime() -- i.e. only after the miner has searched. Nothing
+         * about the pre-nonce ProofHash() predicts whether a miner can find a
+         * valid prime chain from a template, so the gate rejected an essentially
+         * random ~50% of templates by default and ~99% of templates under
+         * -primemod (top bit / top 7 bits of a cryptographic hash are each an
+         * unbiased coin flip), regardless of how many retries were allowed.
+         * This produced the "Unable to create valid Prime template ... refusing
+         * to serve invalid work" / "NO VALID TEMPLATE -- workers have no work to
+         * do!" livelock. Submission-time proof-of-work validation already
+         * correctly enforces prime validity via TritiumBlock::Check(fForceProof)
+         * -> GetPrimeBits(fVerify), so no consensus protection is lost by
+         * removing this template-creation-time gate.
+         *
+         * Do not reintroduce a pre-nonce ProofHash() bit-range filter on
+         * template creation -- it can never correlate with post-nonce prime
+         * validity. */
+
+
+        bool SequenceDiagnosticsEnabled()
+        {
+            return config::GetBoolArg("-nseqdiag", false);
+        }
+
+        uint64_t ReadUint64LE(const std::vector<uint8_t>& vData, const size_t nOffset)
+        {
+            if(nOffset + sizeof(uint64_t) > vData.size())
+                return 0;
+
+            uint64_t nValue = 0;
+            for(size_t i = 0; i < sizeof(uint64_t); ++i)
+                nValue |= static_cast<uint64_t>(vData[nOffset + i]) << (8 * i);
+
+            return nValue;
+        }
+
+
+        bool BuildFalconWrappedSubmitBlockCandidate(
+            const std::vector<uint8_t>& vPayload,
+            const size_t nSigLenOffset,
+            FalconWrappedSubmitBlockParseResult& result)
+        {
+            if(nSigLenOffset < LLP::FalconConstants::TIMESTAMP_SIZE)
+                return false;
+
+            const uint16_t nSignatureLength =
+                static_cast<uint16_t>(vPayload[nSigLenOffset]) |
+                (static_cast<uint16_t>(vPayload[nSigLenOffset + 1]) << 8);
+
+            if(nSignatureLength < LLP::FalconConstants::FALCON_SIG_MIN ||
+               nSignatureLength > LLP::FalconConstants::FALCON_SIG_MAX_VALIDATION)
+            {
+                return false;
+            }
+
+            const size_t nSignatureOffset = nSigLenOffset + LLP::FalconConstants::LENGTH_FIELD_SIZE;
+            if(nSignatureOffset + nSignatureLength != vPayload.size())
+                return false;
+
+            const size_t nTimestampOffset = nSigLenOffset - LLP::FalconConstants::TIMESTAMP_SIZE;
+            const size_t nBlockBytesSize = nTimestampOffset;
+            if(nBlockBytesSize < LLP::FalconConstants::FULL_BLOCK_TRITIUM_MIN)
+                return false;
+
+            const std::vector<uint8_t> vBlockBytes(vPayload.begin(), vPayload.begin() + nBlockBytesSize);
+            const std::vector<uint8_t> vBlockBody(
+                vBlockBytes.begin(),
+                vBlockBytes.begin() + LLP::FalconConstants::FULL_BLOCK_TRITIUM_MIN);
+
+            const uint32_t nChannel = convert::bytes2uint(
+                vBlockBody, LLP::FalconConstants::FULL_BLOCK_TRITIUM_CHANNEL_OFFSET);
+            if(nChannel != 1 && nChannel != 2)
+                return false;
+
+            if(nChannel == 2 && nBlockBytesSize != LLP::FalconConstants::FULL_BLOCK_TRITIUM_MIN)
+                return false;
+
+            result.success = true;
+            result.vBlockBytes = vBlockBytes;
+            result.vBlockBody = vBlockBody;
+            result.vOffsets.assign(
+                vBlockBytes.begin() + LLP::FalconConstants::FULL_BLOCK_TRITIUM_MIN,
+                vBlockBytes.end());
+            result.vSignature.assign(vPayload.begin() + nSignatureOffset, vPayload.end());
+            result.hashMerkle.SetBytes(std::vector<uint8_t>(
+                vBlockBody.begin() + LLP::FalconConstants::FULL_BLOCK_MERKLE_OFFSET,
+                vBlockBody.begin() + LLP::FalconConstants::FULL_BLOCK_MERKLE_OFFSET +
+                    LLP::FalconConstants::MERKLE_ROOT_SIZE));
+            result.nonce = ReadUint64LE(vBlockBody, LLP::FalconConstants::FULL_BLOCK_TRITIUM_NONCE_OFFSET);
+            result.timestamp = ReadUint64LE(vPayload, nTimestampOffset);
+            result.nSignatureLength = nSignatureLength;
+            result.nChannel = nChannel;
+            result.nUnifiedHeight = convert::bytes2uint(
+                vBlockBody, LLP::FalconConstants::FULL_BLOCK_TRITIUM_HEIGHT_OFFSET);
+            return true;
+        }
+    }
+
+
+    /* Create wallet-signed block for stateless mining */
+    TritiumBlock* CreateBlockForStatelessMining(
+        const uint32_t nChannel,
+        const uint64_t nExtraNonce,
+        const uint256_t& hashRewardAddress)
+    {
+        return CreateBlockForStatelessMining(
+            nChannel,
+            nExtraNonce,
+            hashRewardAddress,
+            nullptr);
+    }
+
+
+    /* Create wallet-signed block for stateless mining */
+    TritiumBlock* CreateBlockForStatelessMining(
+        const uint32_t nChannel,
+        const uint64_t nExtraNonce,
+        const uint256_t& hashRewardAddress,
+        TAO::API::CredentialCache* pCredentialCache,
+        uint64_t* pnActualExtraNonce)
+    {
+        /* Early exit if shutdown is in progress */
+        if(config::fShutdown.load())
+        {
+            debug::log(1, FUNCTION, "Shutdown in progress; skipping block creation");
+            return nullptr;
+        }
+        
+        /* Validate input nChannel parameter (defense in depth) */
+        if(nChannel == 0)
+        {
+            debug::error(FUNCTION, "❌ Invalid input: nChannel is 0");
+            debug::error(FUNCTION, "   Caller must provide valid channel (1=Prime, 2=Hash)");
+            return nullptr;
+        }
+        
+        if(nChannel != 1 && nChannel != 2)
+        {
+            debug::error(FUNCTION, "❌ Invalid input: nChannel = ", nChannel);
+            debug::error(FUNCTION, "   Valid channels: 1 (Prime), 2 (Hash)");
+            return nullptr;
+        }
+
+        const auto tCbsmStart = std::chrono::steady_clock::now();
+        debug::log(1, FUNCTION, "[CBSM_TIMING] phase=entry elapsed_ms=0 reward=", hashRewardAddress.SubString());
+        
+        /* All blocks MUST be wallet-signed per Nexus consensus */
+        if (!TAO::API::Authentication::Unlocked(TAO::Ledger::PinUnlock::MINING))
+        {
+            debug::error(FUNCTION, "Mining not unlocked - use -unlock=mining or -autologin=username:password");
+            debug::error(FUNCTION, "CRITICAL: Nexus consensus requires wallet-signed blocks");
+            debug::error(FUNCTION, "Falcon authentication is for miner sessions, NOT block signing");
+            return nullptr;
+        }
+
+        {
+            const int64_t nMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - tCbsmStart).count();
+            debug::log(1, FUNCTION, "[CBSM_TIMING] phase=unlocked_checked elapsed_ms=", nMs,
+                       " reward=", hashRewardAddress.SubString());
+        }
+
+        debug::log(1, FUNCTION, "Creating wallet-signed block (Nexus consensus requirement)");
+        
+        try {
+            const uint256_t hashSession = uint256_t(TAO::API::Authentication::SESSION::DEFAULT);
+            memory::encrypted_ptr<TAO::Ledger::Credentials> localCredentialsStorage;
+            const memory::encrypted_ptr<TAO::Ledger::Credentials>* pCredentialsToUse = nullptr;
+            if(pCredentialCache != nullptr)
+            {
+                const std::shared_ptr<TAO::Ledger::Credentials> pCached =
+                    pCredentialCache->Acquire(hashSession);
+
+                if(!pCached)
+                {
+                    debug::error(FUNCTION, "Failed to acquire cached credentials for session ", hashSession.SubString());
+                    return nullptr;
+                }
+
+                localCredentialsStorage.store(new TAO::Ledger::Credentials(*pCached));
+                pCredentialsToUse = &localCredentialsStorage;
+            }
+            else
+            {
+                pCredentialsToUse = &TAO::API::Authentication::Credentials(hashSession);
+            }
+
+            {
+                const int64_t nMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - tCbsmStart).count();
+                debug::log(1, FUNCTION, "[CBSM_TIMING] phase=credentials_resolved elapsed_ms=", nMs,
+                           " reward=", hashRewardAddress.SubString());
+            }
+            
+            SecureString strPIN;
+            RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING, hashSession));
+            
+            /* Get current chain state (SAME as normal node does) */
+            const BlockState statePrev = ChainState::tStateBest.load();
+            const uint32_t nChainHeight = ChainState::nBestHeight.load();
+            
+            /* Diagnostic logging */
+            debug::log(2, FUNCTION, "=== CHAIN STATE DIAGNOSTIC ===");
+            debug::log(2, FUNCTION, "  ChainState::nBestHeight: ", nChainHeight);
+            debug::log(2, FUNCTION, "  statePrev.nHeight: ", statePrev.nHeight);
+            debug::log(2, FUNCTION, "  statePrev.GetHash(): ", statePrev.GetHash().SubString());
+            debug::log(2, FUNCTION, "  Synchronizing: ", ChainState::Synchronizing() ? "YES" : "NO");
+            debug::log(2, FUNCTION, "  Template will be for height: ", statePrev.nHeight + 1);
+            
+            /* Verify chain state is valid before proceeding */
+            if(!statePrev || statePrev.GetHash() == 0)
+            {
+                debug::error(FUNCTION, "Chain state not initialized - cannot create block template");
+                debug::error(FUNCTION, "  Node may still be starting up or synchronizing");
+                return nullptr;
+            }
+            
+            /* Don't create blocks while synchronizing */
+            if(ChainState::Synchronizing())
+            {
+                debug::error(FUNCTION, "Cannot create block templates while synchronizing");
+                return nullptr;
+            }
+            
+            uint64_t nAttemptExtraNonce = nExtraNonce;
+            std::unique_ptr<TritiumBlock> pBlock(new TritiumBlock());
+
+            pBlock->SetNull();
+            const auto tCreateStart = std::chrono::steady_clock::now();
+
+            // CreateBlock() handles wallet signing per consensus requirements
+            {
+                const int64_t nMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - tCbsmStart).count();
+                debug::log(1, FUNCTION, "[CBSM_TIMING] phase=pre_createblock elapsed_ms=", nMs,
+                           " reward=", hashRewardAddress.SubString(),
+                           " extra_nonce=", nAttemptExtraNonce);
+            }
+
+            /* [Option D] The chain tip can advance while CreateBlock() is
+             * signing the producer (Falcon signing can take 1000+ ms), in
+             * which case CreateBlock() abandons the stale in-flight template
+             * and reports the race via pfTipRaceRetry rather than a real
+             * error. Previously this bubbled straight up to nullptr, and
+             * every caller (Miner, StatelessMinerConnection, the template
+             * prewarmer) simply gave up and waited for the next externally
+             * triggered poll/push -- under a fast-reorging tip this could
+             * livelock the miner out of ever publishing a fresh template.
+             * Retry immediately against the now-current tip instead, bounded
+             * so a persistently unstable tip still surfaces as a failure. */
+            bool success = false;
+            for(uint32_t nTipRaceAttempt = 0; nTipRaceAttempt <= MAX_TIP_RACE_RETRIES; ++nTipRaceAttempt)
+            {
+                bool fTipRaceRetry = false;
+                success = CreateBlock(
+                    *pCredentialsToUse,
+                    strPIN,
+                    nChannel,
+                    *pBlock,
+                    nAttemptExtraNonce,
+                    nullptr,           // No coinbase recipients
+                    hashRewardAddress, // Route reward events to miner's genesis
+                    &fTipRaceRetry
+                );
+
+                if(success || !fTipRaceRetry)
+                    break;
+
+                if(nTipRaceAttempt < MAX_TIP_RACE_RETRIES)
+                    debug::log(1, FUNCTION, "[TIP_RACE] tip advanced during build, retrying template"
+                               " (attempt ", nTipRaceAttempt + 1, "/", MAX_TIP_RACE_RETRIES,
+                               ") reward=", hashRewardAddress.SubString());
+                else
+                    debug::error(FUNCTION, "[TIP_RACE] tip kept advancing across ", MAX_TIP_RACE_RETRIES,
+                                 " retries; giving up for this request reward=", hashRewardAddress.SubString());
+            }
+
+            if(pCredentialCache != nullptr && !pCredentialCache->PostUseCheck())
+                debug::log(2, FUNCTION, "Credential cache epoch drift detected post CreateBlock");
+
+            {
+                const int64_t nMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - tCbsmStart).count();
+                debug::log(1, FUNCTION, "[CBSM_TIMING] phase=createblock_returned elapsed_ms=", nMs,
+                           " reward=", hashRewardAddress.SubString(),
+                           " extra_nonce=", nAttemptExtraNonce);
+            }
+
+            const int64_t nCreateMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - tCreateStart).count();
+            debug::log(1, FUNCTION, "CreateBlockForStatelessMining CreateBlock duration_ms=",
+                       nCreateMs, " channel=", nChannel,
+                       " extra_nonce=", nAttemptExtraNonce,
+                       " reward=", hashRewardAddress.SubString());
+
+            if(!success)
+            {
+                debug::error(FUNCTION, "CreateBlock failed");
+                return nullptr;
+            }
+
+            /* DO NOT call Check() here - the block hasn't been mined yet.
+             * Check() validates PoW which requires a valid nonce from the miner.
+             * Validation happens in validate_block() AFTER miner submits solution. */
+
+            /* Basic sanity check only - verify CreateBlock() produced valid output */
+            if(pBlock->hashMerkleRoot == 0)
+            {
+                debug::error(FUNCTION, "CreateBlock() produced invalid merkle root");
+                return nullptr;
+            }
+
+            if(pnActualExtraNonce != nullptr)
+                *pnActualExtraNonce = nAttemptExtraNonce;
+
+            /* Log block creation result */
+            debug::log(2, FUNCTION, "CreateBlock: channel ", pBlock->nChannel,
+                       " unified height ", pBlock->nHeight);
+            debug::log(2, FUNCTION, "  Note: PoW validation deferred until miner submits nonce");
+            debug::log(2, FUNCTION, "  Reward address: ", hashRewardAddress.SubString());
+
+            return pBlock.release();
+        }
+        catch (const std::exception& e) {
+            debug::error(FUNCTION, "Block creation failed: ", e.what());
+            return nullptr;
+        }
+    }
+
+
+    const char* SubmitBlockStaleReasonString(const SubmitBlockStaleReason reason)
+    {
+        switch(reason)
+        {
+            case SubmitBlockStaleReason::HASH_PREV_BLOCK:        return "HASH_PREV_BLOCK";
+            case SubmitBlockStaleReason::VTX_ALREADY_COMMITTED:  return "VTX_ALREADY_COMMITTED";
+            case SubmitBlockStaleReason::PRODUCER_SIGCHAIN:      return "PRODUCER_SIGCHAIN";
+            case SubmitBlockStaleReason::VTX_SIGCHAIN:           return "VTX_SIGCHAIN";
+            case SubmitBlockStaleReason::MERKLE_MUTATED:         return "MERKLE_MUTATED";
+            default:                                             return "NONE";
+        }
+    }
+
+
+    SubmitBlockStalenessResult ValidateSubmitBlockStaleness(
+        const TAO::Ledger::TritiumBlock& block,
+        const uint512_t& hashMerkleFrozen,
+        const char* pszLane)
+    {
+        SubmitBlockStalenessResult result;
+        result.hashBestChain = TAO::Ledger::ChainState::hashBestChain.load();
+        result.hashMerkleFrozen = hashMerkleFrozen;
+        result.hashMerkleCurrent = block.hashMerkleRoot;
+
+        static constexpr const char* DEFAULT_SUBMIT_STALE_LANE = "unknown";
+        const char* pszLaneName = pszLane ? pszLane : DEFAULT_SUBMIT_STALE_LANE;
+
+        auto markStale = [&](const SubmitBlockStaleReason reason, const std::string& message)
+        {
+            result.fresh = false;
+            result.reason = reason;
+            result.message = message;
+
+            debug::log(0, FUNCTION,
+                "[SUBMIT_STALE]"
+                " lane=", pszLaneName,
+                " reason=", SubmitBlockStaleReasonString(reason),
+                " message=", message,
+                " channel=", block.nChannel,
+                " height=", block.nHeight,
+                " merkle=", block.hashMerkleRoot.SubString(),
+                " hashPrevBlock=", block.hashPrevBlock.SubString(),
+                " hashBestChain=", result.hashBestChain.SubString(),
+                " frozenMerkle=", hashMerkleFrozen.SubString());
+        };
+
+        if(block.hashPrevBlock != result.hashBestChain)
+        {
+            markStale(SubmitBlockStaleReason::HASH_PREV_BLOCK,
+                "hashPrevBlock does not match current chain tip");
+            return result;
+        }
+
+        if(!TAO::Ledger::ValidateVtxNotCommitted(block))
+        {
+            markStale(SubmitBlockStaleReason::VTX_ALREADY_COMMITTED,
+                "vtx contains a transaction already committed by another block");
+            return result;
+        }
+
+        if(!TAO::Ledger::ValidateProducerFreshness(block))
+        {
+            markStale(SubmitBlockStaleReason::PRODUCER_SIGCHAIN,
+                "producer sigchain predecessor is no longer fresh");
+            return result;
+        }
+
+        if(!TAO::Ledger::ValidateVtxSigchainConsistency(block))
+        {
+            markStale(SubmitBlockStaleReason::VTX_SIGCHAIN,
+                "vtx sigchain predecessor is stale or malformed");
+            return result;
+        }
+
+        if(block.hashMerkleRoot != hashMerkleFrozen)
+        {
+            markStale(SubmitBlockStaleReason::MERKLE_MUTATED,
+                "hashMerkleRoot mutated during submit-time pre-validation");
+            return result;
+        }
+
+        result.message = "fresh";
+        return result;
+    }
+
+
+    /* Canonical validation entrypoint for mined Tritium blocks. */
+    BlockValidationResult ValidateMinedBlock(const TAO::Ledger::TritiumBlock& block)
+    {
+        BlockValidationResult result;
+        result.nChannel = block.nChannel;
+        result.nHeight = block.nHeight;
+        result.nUnifiedHeight = block.nHeight;  // block.nHeight is unified height (NexusMiner #169)
+        result.hashBlock = block.hashMerkleRoot;
+
+        debug::log(2, FUNCTION, "Centralized validation for block ", block.hashMerkleRoot.SubString(),
+                   " channel=", block.nChannel, " unified_height=", block.nHeight);
+
+        if(config::fShutdown.load())
+        {
+            result.reason = "shutdown in progress";
+            return result;
+        }
+
+        if(block.IsNull())
+        {
+            result.reason = "block is null";
+            return result;
+        }
+
+        if(block.hashMerkleRoot == 0)
+        {
+            result.reason = "block merkle root is null";
+            return result;
+        }
+
+        if(block.nChannel != 1 && block.nChannel != 2)
+        {
+            result.reason = "invalid block channel";
+            return result;
+        }
+
+        if(block.nHeight == 0)
+        {
+            result.reason = "invalid block height";
+            return result;
+        }
+
+        /* Stale detection uses unified chain tip shared across channels.
+         * Perform this cheap check before the expensive block.Check() / VerifyWork()
+         * so stale blocks are rejected immediately without running full PoW verification. */
+        if(block.hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
+        {
+            result.reason = "submitted block is stale";
+            return result;
+        }
+
+        /* Run the full consistency + proof check.  fForceProof=true bypasses the
+         * Synchronizing() fast-path inside Check()/VerifyWork(): a freshly mined
+         * block extending our own tip is never legitimately "synchronizing", so it
+         * must be fully proof-verified (PoW primality / PoS stake-hash) regardless
+         * of the node's sync state.  This closes the gap where a block submitted
+         * while Synchronizing()==true would commit with zero proof verification. */
+        if(!block.Check(/*fForceProof=*/true))
+        {
+            result.reason = "block Check() failed";
+            return result;
+        }
+
+        result.valid = true;
+        result.reason = "valid";
+        return result;
+    }
+
+    /* Detect vtx transactions already committed by another block.
+     *
+     * This is a detection-only check.  It does NOT mutate the block.
+     * If any vtx transactions are already indexed (committed by another block),
+     * the block's merkle root would need to change to exclude them, which would
+     * invalidate the miner's proof-of-work (ProofHash includes hashMerkleRoot).
+     * Instead, we reject the block and the miner requests a fresh template. */
+    bool ValidateVtxNotCommitted(const TAO::Ledger::TritiumBlock& block)
+    {
+        /* Only PoW channels (Prime=1, Hash=2) include user transactions in vtx. */
+        if(block.nChannel != 1 && block.nChannel != 2)
+            return true;
+
+        /* Scan for already-indexed vtx entries. */
+        for(const auto& txpair : block.vtx)
+        {
+            if(LLD::Ledger->HasIndex(txpair.second))
+            {
+                /* This transaction was already committed by another block.
+                 * The block cannot be salvaged without rebuilding the merkle
+                 * root, which would invalidate the proof-of-work. */
+                debug::log(0, FUNCTION,
+                    "Vtx transaction already committed — rejecting block"
+                    " (miner should request fresh template via GET_BLOCK)."
+                    " tx=", txpair.second.SubString(),
+                    " type=", uint32_t(txpair.first),
+                    " channel=", block.nChannel,
+                    " height=", block.nHeight,
+                    " merkle=", block.hashMerkleRoot.SubString());
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** ValidateProducerFreshness
+     *
+     *  Detection-only producer staleness check.  Called after sign_block() and
+     *  BEFORE ValidateMinedBlock() in both the stateless (port 9323) and legacy
+     *  (port 8323) SUBMIT_BLOCK paths.
+     *
+     *  This function does NOT mutate the block.  If the producer's sigchain
+     *  predecessor (hashPrevTx) no longer matches the current authoritative
+     *  "last" for its genesis, the block is stale and must be rejected.  The
+     *  miner will request a fresh template via GET_BLOCK.
+     *
+     *  Mutating the producer, merkle root, or block signature after the miner
+     *  has found a valid nonce would invalidate the proof-of-work because
+     *  ProofHash() includes hashMerkleRoot in its contiguous memory hash.
+     *
+     *  Source priority matches CreateTransaction() to avoid false positives:
+     *    1. vtx same-genesis (will be on-disk after Connect())
+     *    2. Sessions index   (most up-to-date local state)
+     *    3. Mempool
+     *    4. Disk/Ledger
+     */
+    bool ValidateProducerFreshness(const TAO::Ledger::TritiumBlock& block)
+    {
+        const bool fSeqDiag = SequenceDiagnosticsEnabled();
+
+        /* Only PoW channels (Prime=1, Hash=2) have a sigchain producer that can
+         * go stale.  Stake (0) and Private (3) use different producer semantics. */
+        if(block.nChannel != 1 && block.nChannel != 2)
+            return true;
+
+        /* ── Step 1: find the highest-sequence vtx tx for the producer's genesis ──
+         *
+         * block.vtx transactions will be connected by BlockState::Connect() BEFORE
+         * the producer.  Each one calls WriteLast(genesis, hash).  So by the time
+         * Connect() reaches the producer, the on-disk last will be whatever is the
+         * last same-genesis tx in vtx — not what was on disk when this function runs.
+         *
+         * We must therefore verify the producer follows the last vtx tx for its genesis,
+         * not the current disk last. */
+        uint512_t hashVtxLast    = 0;
+        uint32_t  nVtxLastSeq    = 0;
+        bool      fHasVtxSameGen = false;
+        bool      fVtxReadFailure = false;
+
+        for(const auto& txpair : block.vtx)
+        {
+            /* We only store TRITIUM transactions in vtx for sigchain ordering. */
+            if(txpair.first != TAO::Ledger::TRANSACTION::TRITIUM)
+                continue;
+
+            TAO::Ledger::Transaction txVtx;
+            if(!LLD::Ledger->ReadTx(txpair.second, txVtx, TAO::Ledger::FLAGS::MEMPOOL))
+            {
+                fVtxReadFailure = true;
+                debug::log(2, FUNCTION, "vtx ReadTx failed for ", txpair.second.SubString(),
+                           " — skipping for producer staleness check");
+                continue;
+            }
+
+            if(txVtx.hashGenesis != block.producer.hashGenesis)
+                continue;
+
+            /* Track the highest sequence. vtx is typically in ascending order, but
+             * we use max() defensively to handle any reordering or edge cases. */
+            if(!fHasVtxSameGen || txVtx.nSequence > nVtxLastSeq)
+            {
+                hashVtxLast    = txpair.second;
+                nVtxLastSeq    = txVtx.nSequence;
+                fHasVtxSameGen = true;
+            }
+        }
+
+        /* ── Step 2: determine the true predecessor for the producer ── */
+        uint512_t hashTrueLast = 0;
+        uint32_t  nTrueLastSeq = 0;
+        const char* strSeqSource = "none";
+
+        if(fHasVtxSameGen)
+        {
+            /* vtx transactions win — they will be on-disk by connect time. */
+            hashTrueLast = hashVtxLast;
+            nTrueLastSeq = nVtxLastSeq;
+            strSeqSource = "vtx";
+        }
+        else
+        {
+            /* No vtx tx for this genesis.  Check sources in the same priority
+             * order as CreateTransaction() to avoid false-positive staleness
+             * detection when Sessions is ahead of disk (normal during/after
+             * block acceptance):
+             *   1. Sessions index (most up-to-date local state)
+             *   2. Mempool
+             *   3. Disk/Ledger */
+            uint512_t hashSessionsLast = 0;
+            if(LLD::Sessions && LLD::Sessions->ReadLast(block.producer.hashGenesis, hashSessionsLast))
+            {
+                TAO::Ledger::Transaction txSess;
+                if(LLD::Ledger->ReadTx(hashSessionsLast, txSess, TAO::Ledger::FLAGS::MEMPOOL))
+                {
+                    hashTrueLast = hashSessionsLast;
+                    nTrueLastSeq = txSess.nSequence;
+                    strSeqSource = "sessions";
+                }
+            }
+
+            /* Check mempool — may be ahead of both Sessions and disk. */
+            TAO::Ledger::Transaction txMem;
+            if(TAO::Ledger::mempool.Get(block.producer.hashGenesis, txMem))
+            {
+                if(txMem.nSequence > nTrueLastSeq
+                    || (hashTrueLast == 0 && txMem.hashGenesis != 0))
+                {
+                    hashTrueLast = txMem.GetHash();
+                    nTrueLastSeq = txMem.nSequence;
+                    strSeqSource = (hashSessionsLast != 0 ? "mempool_over_sessions" : "mempool");
+                }
+            }
+
+            /* Check disk — may be ahead of Sessions/mempool after block commit. */
+            uint512_t hashDiskLast = 0;
+            if(LLD::Ledger->ReadLast(block.producer.hashGenesis, hashDiskLast))
+            {
+                TAO::Ledger::Transaction txDisk;
+                if(LLD::Ledger->ReadTx(hashDiskLast, txDisk, TAO::Ledger::FLAGS::MEMPOOL)
+                    && txDisk.nSequence > nTrueLastSeq)
+                {
+                    hashTrueLast = hashDiskLast;
+                    nTrueLastSeq = txDisk.nSequence;
+                    strSeqSource = "ledger";
+                }
+            }
+
+            /* No source found — genesis not yet anywhere (first block). */
+            if(hashTrueLast == 0)
+                return true;
+        }
+
+        if(fSeqDiag)
+        {
+            debug::log(0, FUNCTION,
+                "[NSEQ_DIAG][ValidateProducerFreshness][SOURCE]"
+                " genesis=", block.producer.hashGenesis.SubString(),
+                " source=", strSeqSource,
+                " vtx_read_failure=", (fVtxReadFailure ? "yes" : "no"),
+                " hashTrueLast=", hashTrueLast.SubString(),
+                " nTrueLastSeq=", nTrueLastSeq,
+                " current.hashPrevTx=", block.producer.hashPrevTx.SubString(),
+                " current.nSequence=", block.producer.nSequence);
+        }
+
+        /* ── Step 3: check if the producer is consistent ── */
+        if(hashTrueLast == block.producer.hashPrevTx)
+            return true; /* consistent — nothing to do */
+
+        /* Producer is stale.  Log details and reject — the block cannot be
+         * salvaged without mutating the merkle root, which would invalidate
+         * the miner's proof-of-work. */
+        debug::log(0, FUNCTION,
+            "Producer STALE — template sigchain has advanced since issuance."
+            " Rejecting block (miner should request fresh template via GET_BLOCK)."
+            " genesis=",          block.producer.hashGenesis.SubString(),
+            " producer.hashPrevTx=", block.producer.hashPrevTx.SubString(),
+            " producer.nSequence=",  block.producer.nSequence,
+            " trueLast=",         hashTrueLast.SubString(),
+            " trueLast.nSequence=", nTrueLastSeq,
+            " source=",           strSeqSource,
+            " channel=",          block.nChannel,
+            " height=",           block.nHeight,
+            " merkle=",           block.hashMerkleRoot.SubString());
+
+        return false;
+    }
+
+    /* Pre-connect vtx sigchain staleness check.  Anchor resolution is kept
+     * oracle-consistent with BlockState::Connect():
+     *   (1) in-flight mapLast for prior same-genesis vtx entries in this block,
+     *   (2) disk-only ReadLast(genesis) (FLAGS::BLOCK default).
+     *
+     * AddTransactions() already filters non-first vtx entries whose predecessor
+     * is mempool-only and not earlier in-block, so disk-only anchoring is
+     * correct for this submit-time pre-check path. */
+    bool ValidateVtxSigchainConsistency(const TAO::Ledger::TritiumBlock& block)
+    {
+        const bool fSeqDiag = SequenceDiagnosticsEnabled();
+
+        /* Only PoW channels (Prime=1, Hash=2) have sigchain producers whose vtx
+         * entries can go stale.  Stake (0) and Private (3) use different semantics. */
+        if(block.nChannel != 1 && block.nChannel != 2)
+            return true;
+
+        /* In-flight map of last hashes, tracking what WriteLast() will have
+         * committed for each genesis by the time Connect() processes each tx.
+         * Populated from the vtx entries in order, matching Connect() behaviour. */
+        std::map<uint256_t, uint512_t> mapLast;
+
+        for(const auto& txpair : block.vtx)
+        {
+            if(txpair.first != TAO::Ledger::TRANSACTION::TRITIUM)
+                continue;
+
+            /* Read the vtx transaction.  It may still be mempool-only at this
+             * point so allow a mempool fallback for the ReadTx here. */
+            TAO::Ledger::Transaction tx;
+            if(!LLD::Ledger->ReadTx(txpair.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
+            {
+                if(fSeqDiag)
+                    debug::log(0, FUNCTION,
+                        "[NSEQ_DIAG][ValidateVtxSigchainConsistency]"
+                        " vtx tx not readable: ", txpair.second.SubString(),
+                        " — skipping consistency check for this entry");
+                continue;
+            }
+
+            if(!tx.IsFirst())
+            {
+                uint512_t hashLast = 0;
+                bool fAnchorFound = false;
+
+                /* Hard MALFORMED invariant — hashPrevTx must never equal self
+                 * (cryptographically impossible under normal operation). */
+                if(tx.hashPrevTx == txpair.second)
+                {
+                    debug::error(FUNCTION,
+                        "ValidateVtxSigchainConsistency:"
+                        " MALFORMED tx — hashPrevTx equals self (cryptographically impossible):"
+                        " genesis=", tx.hashGenesis.SubString(),
+                        " tx=", txpair.second.SubString(),
+                        " tx.hashPrevTx=", tx.hashPrevTx.SubString(),
+                        " tx.nSequence=", tx.nSequence);
+                    return false;
+                }
+
+                if(mapLast.count(tx.hashGenesis))
+                {
+                    /* A prior vtx entry for this genesis will have advanced
+                     * WriteLast() by the time Connect() reaches this tx. */
+                    hashLast = mapLast[tx.hashGenesis];
+                    fAnchorFound = true;
+                }
+                else
+                {
+                    /* Resolve from the same disk oracle Connect() uses. */
+                    uint512_t hashDiskLast = 0;
+                    if(LLD::Ledger->ReadLast(tx.hashGenesis, hashDiskLast))
+                    {
+                        hashLast = hashDiskLast;
+                        fAnchorFound = true;
+
+                        if(fSeqDiag)
+                            debug::log(0, FUNCTION,
+                                "[NSEQ_DIAG][ValidateVtxSigchainConsistency]"
+                                " using disk anchor (Connect-aligned):"
+                                " genesis=", tx.hashGenesis.SubString(),
+                                " tx=", txpair.second.SubString(),
+                                " disk_hashLast=", hashDiskLast.SubString());
+                    }
+                    else if(fSeqDiag)
+                    {
+                        /* No disk anchor — defer to Connect(). */
+                        debug::log(0, FUNCTION,
+                            "[NSEQ_DIAG][ValidateVtxSigchainConsistency]"
+                            " no disk ReadLast anchor found — deferring to Connect():"
+                            " genesis=", tx.hashGenesis.SubString(),
+                            " tx=", txpair.second.SubString(),
+                            " tx.hashPrevTx=", tx.hashPrevTx.SubString());
+                    }
+
+                    if(!fAnchorFound)
+                    {
+                        mapLast[tx.hashGenesis] = txpair.second;
+                        continue;
+                    }
+                }
+
+                if(fAnchorFound && tx.hashPrevTx != hashLast)
+                {
+                    debug::error(FUNCTION,
+                        "ValidateVtxSigchainConsistency:"
+                        " vtx tx STALE — sigchain advanced relative to Connect-aligned disk/in-block anchor:"
+                        " genesis=", tx.hashGenesis.SubString(),
+                        " tx=", txpair.second.SubString(),
+                        " tx.hashPrevTx=", tx.hashPrevTx.SubString(),
+                        " anchor.hashLast=", hashLast.SubString(),
+                        " tx.nSequence=", tx.nSequence);
+                    return false;
+                }
+
+                if(fSeqDiag && fAnchorFound)
+                    debug::log(0, FUNCTION,
+                        "[NSEQ_DIAG][ValidateVtxSigchainConsistency]"
+                        " vtx tx OK:"
+                        " genesis=", tx.hashGenesis.SubString(),
+                        " tx=", txpair.second.SubString(),
+                        " tx.hashPrevTx=", tx.hashPrevTx.SubString(),
+                        " anchor.hashLast=", hashLast.SubString(),
+                        " tx.nSequence=", tx.nSequence);
+                else if(fSeqDiag)
+                    debug::log(0, FUNCTION,
+                        "[NSEQ_DIAG][ValidateVtxSigchainConsistency]"
+                        " no anchor found; deferred to Connect():"
+                        " genesis=", tx.hashGenesis.SubString(),
+                        " tx=", txpair.second.SubString(),
+                        " tx.hashPrevTx=", tx.hashPrevTx.SubString(),
+                        " tx.nSequence=", tx.nSequence);
+            }
+
+            /* Track what WriteLast() will write for this genesis. */
+            mapLast[tx.hashGenesis] = txpair.second;
+        }
+
+        return true;
+    }
+
+
+    /* Canonical acceptance entrypoint for mined Tritium blocks. */
+    BlockAcceptanceResult AcceptMinedBlock(TAO::Ledger::TritiumBlock& block)
+    {
+        BlockAcceptanceResult result;
+        result.nChannel = block.nChannel;
+        result.nHeight = block.nHeight;
+        result.nUnifiedHeight = block.nHeight;  // block.nHeight is unified height (NexusMiner #169)
+        result.hashBlock = block.hashMerkleRoot;
+
+        debug::log(2, FUNCTION, "Centralized acceptance for block ", block.hashMerkleRoot.SubString(),
+                   " channel=", block.nChannel, " unified_height=", block.nHeight);
+
+        /* Unlock sigchain to process mined block. */
+        SecureString strPIN;
+        try
+        {
+            RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
+        }
+        catch(const std::exception& e)
+        {
+            result.reason = e.what();
+            return result;
+        }
+        strPIN.clear();
+
+        const uint1024_t hashBestChainNow = TAO::Ledger::ChainState::hashBestChain.load();
+        if(block.hashPrevBlock != hashBestChainNow)
+        {
+            debug::log(0, FUNCTION,
+                       "Post-validation tip-race stale rejection: block.hashPrevBlock=",
+                       block.hashPrevBlock.SubString(),
+                       " bestChain=", hashBestChainNow.SubString(),
+                       " channel=", block.nChannel,
+                       " unified_height=", block.nHeight);
+            result.reason = "submitted block is stale (post-validation tip-race check)";
+            return result;
+        }
+
+        uint8_t nStatus = 0;
+        /* Pass fSkipCheck=true because ValidateMinedBlock() already ran block.Check()
+         * (including the expensive VerifyWork() / PrimeCheck() consensus validation).
+         * Skipping the redundant Check() inside Process() eliminates the double
+         * PoW verification that caused the triple-PrimeCheck stall in production. */
+        TAO::Ledger::Process(block, nStatus, nullptr, true);
+        result.status = nStatus;
+        result.accepted = (nStatus & TAO::Ledger::PROCESS::ACCEPTED);
+
+        if(!result.accepted)
+        {
+            if(nStatus & TAO::Ledger::PROCESS::ORPHAN)
+                result.reason = "block is orphan";
+            else if(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
+                result.reason = "duplicate block";
+            else if(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
+                result.reason = "block incomplete";
+            else if(nStatus & TAO::Ledger::PROCESS::REJECTED)
+                result.reason = "block rejected";
+            else if(nStatus & TAO::Ledger::PROCESS::IGNORED)
+                result.reason = "block ignored";
+            else
+                result.reason = "block not accepted";
+            return result;
+        }
+
+        TAO::Ledger::TrackLocalMinedAcceptedBlock(block);
+
+        result.reason = "accepted";
+        return result;
+    }
+
+
+    /* Canonical acceptance entrypoint for mined Tritium blocks. */
+    SubmitResult SubmitMinedBlockForStatelessMining(TAO::Ledger::TritiumBlock& block)
+    {
+        SubmitResult result;
+        result.nChannel = block.nChannel;
+        result.nHeight = block.nHeight;
+        result.nUnifiedHeight = block.nHeight;  // block.nHeight is unified height (NexusMiner #169)
+        result.hashBlock = block.hashMerkleRoot;
+
+        debug::log(0, FUNCTION, "[BLOCK SUBMIT] nHeight=", block.nHeight, " (unified)",
+                   " channel=", block.nChannel,
+                   " hashPrevBlock=", block.hashPrevBlock.SubString());
+
+        const BlockValidationResult validationResult = ValidateMinedBlock(block);
+        if(!validationResult.valid)
+        {
+            result.reason = validationResult.reason;
+            return result;
+        }
+
+        const BlockAcceptanceResult acceptanceResult = AcceptMinedBlock(block);
+        if(!acceptanceResult.accepted)
+        {
+            result.reason = acceptanceResult.reason;
+            return result;
+        }
+
+        result.accepted = true;
+        result.reason = acceptanceResult.reason;
+        return result;
+    }
+
+
+    /* Parse stateless miner work submission payloads. */
+    ParseResult ParseStatelessWorkSubmission(const std::vector<uint8_t>& vData)
+    {
+        ParseResult result;
+
+        if(vData.size() < LLP::FalconConstants::MERKLE_ROOT_SIZE + LLP::FalconConstants::NONCE_SIZE)
+        {
+            result.reason = "submission payload too small";
+            return result;
+        }
+
+        if(vData.size() >= LLP::FalconConstants::SUBMIT_BLOCK_WRAPPER_MIN)
+        {
+            LLP::DisposableFalcon::SignedWorkSubmission submission;
+            if(submission.Deserialize(vData) && submission.IsValid())
+            {
+                result.hashMerkle = submission.hashMerkleRoot;
+                result.nonce = submission.nNonce;
+                result.timestamp = submission.nTimestamp;
+                result.success = true;
+
+                /* Opportunistically extract nUnifiedHeight from the block body when the
+                 * payload is large enough to contain a full Tritium block header (>= 204 bytes
+                 * covers offsets [0-203]).  We validate nChannel (must be 1 or 2) at offset
+                 * 196 to discriminate full-block-body payloads from compact-format submissions
+                 * that happen to be >= 204 bytes.  Channel 0 (Proof-of-Stake) is intentionally
+                 * excluded because stateless mining only supports Prime (1) and Hash (2).
+                 * nHeight lives at offset 200 (big-endian uint32_t). */
+                if(vData.size() >= 204)
+                {
+                    const uint32_t nCh = convert::bytes2uint(vData, 196);
+                    if(nCh == 1 || nCh == 2)
+                    {
+                        result.nUnifiedHeight = convert::bytes2uint(vData, 200);
+                    }
+                }
+
+                return result;
+            }
+        }
+
+        result.hashMerkle.SetBytes(std::vector<uint8_t>(
+            vData.begin(),
+            vData.begin() + LLP::FalconConstants::MERKLE_ROOT_SIZE));
+
+        /* Nonce is little-endian per Falcon stateless protocol. */
+        uint64_t nonce = 0;
+        for(size_t i = 0; i < LLP::FalconConstants::NONCE_SIZE; ++i)
+        {
+            nonce |= static_cast<uint64_t>(vData[LLP::FalconConstants::MERKLE_ROOT_SIZE + i]) << (8 * i);
+        }
+        result.nonce = nonce;
+
+        result.success = true;
+        return result;
+    }
+
+
+    FalconWrappedSubmitBlockParseResult ParseFalconWrappedSubmitBlock(const std::vector<uint8_t>& vPayload)
+    {
+        FalconWrappedSubmitBlockParseResult result;
+
+        const size_t nMinimumPayloadSize =
+            LLP::FalconConstants::FULL_BLOCK_TRITIUM_MIN +
+            LLP::FalconConstants::TIMESTAMP_SIZE +
+            LLP::FalconConstants::LENGTH_FIELD_SIZE +
+            LLP::FalconConstants::FALCON_SIG_MIN;
+
+        if(vPayload.size() < nMinimumPayloadSize)
+        {
+            result.reason = "payload shorter than minimum Falcon full-block wrapper";
+            return result;
+        }
+
+        const size_t nMinSigLenOffset =
+            LLP::FalconConstants::FULL_BLOCK_TRITIUM_MIN + LLP::FalconConstants::TIMESTAMP_SIZE;
+        const size_t nMaxSigLenOffset = vPayload.size() - LLP::FalconConstants::LENGTH_FIELD_SIZE;
+
+        /* Scan for the Falcon trailer position.  The tail-anchor constraint in
+         * BuildFalconWrappedSubmitBlockCandidate() — requiring that
+         *   nSignatureOffset + nSignatureLength == vPayload.size()
+         * — means at most ONE nSigLenOffset value can produce a structurally valid
+         * candidate for a given payload.  BuildFalconWrappedSubmitBlockCandidate()
+         * therefore returns true for at most one candidate per call to ParseFalconWrappedSubmitBlock(). */
+        for(size_t nSigLenOffset = nMinSigLenOffset; nSigLenOffset <= nMaxSigLenOffset; ++nSigLenOffset)
+        {
+            FalconWrappedSubmitBlockParseResult candidate;
+            if(BuildFalconWrappedSubmitBlockCandidate(vPayload, nSigLenOffset, candidate))
+                return candidate;
+        }
+
+        result.reason = "unable to locate Falcon trailer in full-block payload";
+        return result;
+    }
+
+
+    bool VerifyFalconWrappedSubmitBlock(
+        const std::vector<uint8_t>& vPayload,
+        const std::vector<uint8_t>& vPubKey,
+        FalconWrappedSubmitBlockParseResult& result)
+    {
+        result = FalconWrappedSubmitBlockParseResult();
+
+        LLC::FLKey verifyKey;
+        if(!verifyKey.SetPubKey(vPubKey))
+            return false;
+
+        const size_t nMinSigLenOffset =
+            LLP::FalconConstants::FULL_BLOCK_TRITIUM_MIN + LLP::FalconConstants::TIMESTAMP_SIZE;
+        if(vPayload.size() < nMinSigLenOffset + LLP::FalconConstants::LENGTH_FIELD_SIZE + LLP::FalconConstants::FALCON_SIG_MIN)
+            return false;
+
+        const size_t nMaxSigLenOffset = vPayload.size() - LLP::FalconConstants::LENGTH_FIELD_SIZE;
+        /* Scan for the Falcon trailer position.  The tail-anchor constraint in
+         * BuildFalconWrappedSubmitBlockCandidate() — requiring that
+         *   nSignatureOffset + nSignatureLength == vPayload.size()
+         * — means at most ONE nSigLenOffset value can produce a structurally valid
+         * candidate for a given payload.  FLKey::Verify() is therefore called at
+         * most once per call to VerifyFalconWrappedSubmitBlock(). */
+        for(size_t nSigLenOffset = nMinSigLenOffset; nSigLenOffset <= nMaxSigLenOffset; ++nSigLenOffset)
+        {
+            FalconWrappedSubmitBlockParseResult candidate;
+            if(!BuildFalconWrappedSubmitBlockCandidate(vPayload, nSigLenOffset, candidate))
+                continue;
+
+            std::vector<uint8_t> vMessage = candidate.vBlockBytes;
+            for(size_t i = 0; i < LLP::FalconConstants::TIMESTAMP_SIZE; ++i)
+                vMessage.push_back(static_cast<uint8_t>((candidate.timestamp >> (8 * i)) & 0xff));
+
+            if(verifyKey.Verify(vMessage, candidate.vSignature))
+            {
+                result = std::move(candidate);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
+    /* Build a canonical solved Prime candidate from the immutable stored template. */
+    TritiumBlock BuildSolvedPrimeCandidateFromTemplate(
+        const TritiumBlock& tmpl,
+        const uint64_t nNonce,
+        const std::vector<uint8_t>& vOffsets)
+    {
+        /* Copy all consensus-critical fields from the original template.
+         * This preserves: nVersion, hashPrevBlock, hashMerkleRoot, nChannel,
+         * nHeight, nBits, nTime, producer, ssSystem, vtx, and hashMerkleRoot.
+         *
+         * nTime is deliberately preserved from the template rather than refreshed:
+         * - For Prime: ProofHash = SK1024(nVersion..nBits) does NOT include nTime,
+         *   so the miner's solved proof is independent of nTime.
+         * - For Hash:  ProofHash = SK1024(nVersion..nNonce) also excludes nTime.
+         * Preserving nTime avoids mutating template anchor fields after issuance.
+         * Callers that require a fresh timestamp must call UpdateTime() separately. */
+        TritiumBlock solved = tmpl;
+
+        /* Apply the miner-submitted nonce. */
+        solved.nNonce = nNonce;
+
+        /* Apply miner-submitted Prime offsets for the Prime channel.
+         * Clear offsets for all other channels (consensus invariant). */
+        if(solved.nChannel == CHANNEL::PRIME)
+            solved.vOffsets = vOffsets;
+        else
+            solved.vOffsets.clear();
+
+        /* Clear the block signature.  SignatureHash() covers nNonce and vOffsets,
+         * so any signature produced for the template (nNonce=1, vOffsets=empty)
+         * is no longer valid.  Caller must invoke FinalizeWalletSignatureForSolvedBlock()
+         * before submitting to ValidateMinedBlock() / AcceptMinedBlock(). */
+        solved.vchBlockSig.clear();
+
+        debug::log(2, FUNCTION, "Built solved candidate from template: channel=", solved.nChannel,
+                   " height=", solved.nHeight, " nNonce=0x", std::hex, nNonce, std::dec,
+                   " vOffsets.size()=", solved.vOffsets.size());
+
+        return solved;
+    }
+
+
+    /* Build a canonical solved Hash (channel 2) candidate from the immutable stored template. */
+    TritiumBlock BuildSolvedHashCandidateFromTemplate(
+        const TritiumBlock& tmpl,
+        const uint64_t nNonce)
+    {
+        /* Copy all consensus-critical fields from the original template.
+         * This preserves: nVersion, hashPrevBlock, hashMerkleRoot, nChannel,
+         * nHeight, nBits, nTime, producer, ssSystem, vtx.
+         *
+         * nTime is deliberately preserved from the template rather than refreshed:
+         * - For Hash (channel 2): ProofHash = SK1024(nVersion..nNonce) does NOT
+         *   include nTime.  The miner's solved proof is independent of nTime, so
+         *   preserving nTime avoids mutating anchor fields after template issuance
+         *   without any proof-correctness benefit.
+         * Callers that require a fresh timestamp for network propagation may call
+         * UpdateTime() on the returned candidate separately. */
+        TritiumBlock solved = tmpl;
+
+        /* Apply the miner-submitted nonce. */
+        solved.nNonce = nNonce;
+
+        /* Hash channel invariant: vOffsets must always be empty.
+         * Clear unconditionally even if the template carried residual Prime offset
+         * bytes from a prior channel switch or serialisation artefact. */
+        solved.vOffsets.clear();
+
+        /* Clear the block signature.  SignatureHash() covers nNonce; any prior
+         * signature produced for the template (nNonce=1) is no longer valid after
+         * the miner's nonce is applied.  Caller must invoke
+         * FinalizeWalletSignatureForSolvedBlock() before submitting to
+         * ValidateMinedBlock() / AcceptMinedBlock(). */
+        solved.vchBlockSig.clear();
+
+        debug::log(2, FUNCTION, "Built solved Hash candidate from template: channel=", solved.nChannel,
+                   " height=", solved.nHeight, " nNonce=0x", std::hex, nNonce, std::dec);
+
+        return solved;
+    }
+
+
+    /* Structurally validate miner-submitted Prime vOffsets without the broken
+     * GetOffsets(GetPrime()) equivalence check. */
+    bool VerifySubmittedPrimeOffsets(
+        const TritiumBlock& solvedBlock,
+        const std::vector<uint8_t>& vOffsets)
+    {
+        /* Prime blocks must carry non-empty offsets (enforced by Check()). */
+        if(vOffsets.empty())
+            return debug::error(FUNCTION, "Prime block requires non-empty vOffsets");
+
+        /* Minimum structure: at least 1 chain-offset byte + 4 fractional bytes. */
+        if(vOffsets.size() < 5)
+            return debug::error(FUNCTION, "vOffsets too short: ", vOffsets.size(),
+                                " bytes (minimum 5: ≥1 chain offset + 4 fractional)");
+
+        /* Maximum structural ceiling.  This is purely an anti-DoS guardrail —
+         * the consensus PoW gate (VerifyWork → GetPrimeBits) accepts any chain
+         * length, but a runaway / hostile miner could otherwise submit megabytes
+         * of bogus offset bytes which the gap-walk in GetPrimeDifficulty would
+         * have to read before failing on the first byte > 12.
+         *
+         * The canonical wire-format ceiling lives in
+         * `LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX` (= 22) and is
+         * shared with the miner side (NexusMiner PR #675's
+         * `protocol::FalconConstants::PRIME_VOFFSETS_MAX_SIZE`).  We re-export
+         * it here under the structural-validator name; the single source of
+         * truth means SUBMIT_BLOCK wrapper buffers and this validator cannot
+         * silently disagree.
+         *
+         * 22 bytes encodes a Cunningham chain of length up to 19 (18
+         * chain-offset bytes + 4 fractional).  No Cunningham chain of that
+         * length has been found at any difficulty in any known prime-channel
+         * network; the current world-record dense Cunningham clusters sit
+         * well below it.  The ceiling is therefore generous enough to
+         * accommodate all foreseeable difficulty growth while still bounding
+         * the validator's worst-case work. */
+        constexpr size_t kMaxSerializedPrimeOffsets =
+            LLP::FalconConstants::SUBMIT_BLOCK_PRIME_OFFSETS_MAX;
+        if(vOffsets.size() > kMaxSerializedPrimeOffsets)
+            return debug::error(FUNCTION, "vOffsets too long: ", vOffsets.size(),
+                                " bytes (maximum ", kMaxSerializedPrimeOffsets,
+                                ": ≤", kMaxSerializedPrimeOffsets - 4,
+                                " chain offsets + 4 fractional)");
+
+        /* Chain-offset bytes are all bytes except the last 4 (fractional difficulty).
+         * Each chain-offset encodes the gap to the next prime in the Cunningham chain;
+         * the maximum valid gap is 12 (hardcoded in GetOffsets / GetPrimeDifficulty).
+         * Use the shared PrimeChainOffsetCount() helper (single source of truth,
+         * safe against underflow) rather than re-deriving `size() - 4` here. */
+        const size_t nChainOffsets = PrimeChainOffsetCount(vOffsets);
+        for(size_t i = 0; i < nChainOffsets; ++i)
+        {
+            if(vOffsets[i] > 12)
+                return debug::error(FUNCTION, "invalid Prime offset[", i, "]=",
+                                    static_cast<int>(vOffsets[i]),
+                                    " (maximum chain gap is 12)");
+        }
+
+        /* NOTE: We intentionally do NOT call GetOffsets(GetPrime()) and compare
+         * the result against the miner-submitted vOffsets.  That approach was
+         * broken: GetOffsets() returns an empty vector whenever PrimeCheck() fails
+         * on the raw GetPrime() value, producing false rejections for valid chains
+         * where the node cannot re-derive the starting prime independently.
+         *
+         * The authoritative proof-of-work validation is performed by VerifyWork()
+         * (called from TritiumBlock::Check()), which evaluates
+         *   GetPrimeBits(GetPrime(), vOffsets, !Synchronizing()) >= nBits
+         * That gate remains the canonical acceptance criterion. */
+
+        debug::log(2, FUNCTION, "Prime vOffsets structurally valid: ",
+                   vOffsets.size(), " bytes, ", nChainOffsets, " chain offset(s)");
+        return true;
+    }
+
+
+    /* Generate the canonical block signature for a solved TritiumBlock. */
+    bool FinalizeWalletSignatureForSolvedBlock(TritiumBlock& block)
+    {
+        /* Unlock the mining sigchain to obtain the signing credentials.
+         * Authentication::Unlock fetches the mining PIN for the unlocked session;
+         * strPIN is populated by the call.
+         * RECURSIVE is used here because this function may be called from within
+         * the already-held authentication lock; the recursive variant allows
+         * re-entry without deadlock. */
+        SecureString strPIN;
+        try
+        {
+            RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
+        }
+        catch(const std::exception& e)
+        {
+            return debug::error(FUNCTION, "Unable to unlock mining credentials: ", e.what());
+        }
+
+        /* Retrieve the default session credentials. */
+        const auto& pCredentials =
+            TAO::API::Authentication::Credentials(uint256_t(TAO::API::Authentication::SESSION::DEFAULT));
+
+        if(!pCredentials)
+            return debug::error(FUNCTION, "Null credentials — mining session not active");
+
+        /* Derive the signing key for the producer's sequence position. */
+        const std::vector<uint8_t> vBytes =
+            pCredentials->Generate(block.producer.nSequence, strPIN).GetBytes();
+        const LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
+
+        /* Sign the block using the key type recorded in the producer transaction. */
+        switch(block.producer.nKeyType)
+        {
+            case TAO::Ledger::SIGNATURE::FALCON:
+            {
+                LLC::FLKey key;
+                if(!key.SetSecret(vchSecret))
+                    return debug::error(FUNCTION, "FLKey::SetSecret failed for block ",
+                                        block.hashMerkleRoot.SubString());
+
+                if(!block.GenerateSignature(key))
+                    return debug::error(FUNCTION, "GenerateSignature (Falcon) failed for block ",
+                                        block.hashMerkleRoot.SubString());
+
+                break;
+            }
+
+            case TAO::Ledger::SIGNATURE::BRAINPOOL:
+            {
+                LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+                if(!key.SetSecret(vchSecret, true))
+                    return debug::error(FUNCTION, "ECKey::SetSecret failed for block ",
+                                        block.hashMerkleRoot.SubString());
+
+                if(!block.GenerateSignature(key))
+                    return debug::error(FUNCTION, "GenerateSignature (Brainpool) failed for block ",
+                                        block.hashMerkleRoot.SubString());
+
+                break;
+            }
+
+            default:
+                return debug::error(FUNCTION, "Unknown producer key type: ",
+                                    static_cast<int>(block.producer.nKeyType));
+        }
+
+        debug::log(2, FUNCTION, "Wallet signature generated for block ",
+                   block.hashMerkleRoot.SubString(),
+                   " channel=", block.nChannel,
+                   " height=", block.nHeight);
+        return true;
+    }
+
+}

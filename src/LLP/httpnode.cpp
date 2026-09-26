@@ -165,18 +165,11 @@ namespace LLP
     /* Returns an HTTP packet with response code and content. */
     void HTTPNode::PushResponse(const uint16_t nMsg, const std::string& strContent)
     {
-        try
-        {
-            /* Build packet. */
-            HTTPPacket RESPONSE(nMsg);
-            RESPONSE.strContent = strContent;
+        /* Build packet. */
+        HTTPPacket RESPONSE(nMsg);
+        RESPONSE.strContent = strContent;
 
-            this->WritePacket(RESPONSE);
-        }
-        catch(...)
-        {
-            throw;
-        }
+        this->WritePacket(RESPONSE);
     }
 
 }

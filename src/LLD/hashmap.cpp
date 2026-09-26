@@ -17,11 +17,22 @@ ________________________________________________________________________________
 #include <LLD/hash/xxh3.h>
 
 #include <Util/templates/datastream.h>
+#include <Util/include/config.h>
 #include <Util/include/filesystem.h>
 #include <Util/include/debug.h>
 #include <Util/include/hex.h>
 
+#include <cstdio>
+#include <filesystem>
 #include <iomanip>
+
+#ifdef WIN32
+#include <io.h>
+#include <windows.h>
+#else
+#include <fcntl.h>
+#include <unistd.h>
+#endif
 
 namespace LLD
 {
@@ -37,6 +48,8 @@ namespace LLD
     , HASHMAP_MAX_KEY_SIZE   (32)
     , HASHMAP_KEY_ALLOCATION (static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
     , nFlags                 (nFlagsIn)
+    , setDirtyFiles          ( )
+    , fDirectoryDirty        (false)
     , RECORD_MUTEX           (1024)
     {
         Initialize();
@@ -54,6 +67,8 @@ namespace LLD
     , HASHMAP_MAX_KEY_SIZE   (map.HASHMAP_MAX_KEY_SIZE)
     , HASHMAP_KEY_ALLOCATION (map.HASHMAP_KEY_ALLOCATION)
     , nFlags                 (map.nFlags)
+    , setDirtyFiles          ( )
+    , fDirectoryDirty        (false)
     , RECORD_MUTEX           (map.RECORD_MUTEX.size())
     {
         Initialize();
@@ -71,6 +86,8 @@ namespace LLD
     , HASHMAP_MAX_KEY_SIZE   (std::move(map.HASHMAP_MAX_KEY_SIZE))
     , HASHMAP_KEY_ALLOCATION (std::move(map.HASHMAP_KEY_ALLOCATION))
     , nFlags                 (std::move(map.nFlags))
+    , setDirtyFiles          (std::move(map.setDirtyFiles))
+    , fDirectoryDirty        (map.fDirectoryDirty)
     , RECORD_MUTEX           (map.RECORD_MUTEX.size())
     {
         Initialize();
@@ -88,6 +105,8 @@ namespace LLD
         HASHMAP_MAX_KEY_SIZE   = map.HASHMAP_MAX_KEY_SIZE;
         HASHMAP_KEY_ALLOCATION = map.HASHMAP_KEY_ALLOCATION;
         nFlags                 = map.nFlags;
+        setDirtyFiles.clear();
+        fDirectoryDirty        = false;
 
         Initialize();
 
@@ -106,6 +125,8 @@ namespace LLD
         HASHMAP_MAX_KEY_SIZE   = std::move(map.HASHMAP_MAX_KEY_SIZE);
         HASHMAP_KEY_ALLOCATION = std::move(map.HASHMAP_KEY_ALLOCATION);
         nFlags                 = std::move(map.nFlags);
+        setDirtyFiles          = std::move(map.setDirtyFiles);
+        fDirectoryDirty        = map.fDirectoryDirty;
 
         Initialize();
 
@@ -158,28 +179,54 @@ namespace LLD
     /* Read a key index from the disk hashmaps. */
     void BinaryHashMap::Initialize()
     {
+        const bool fReadOnly = (nFlags & FLAGS::READONLY);
+        if(!fReadOnly)
+            fDirectoryDirty = true;
+        const auto nOpenMode = std::ios::in | std::ios::binary
+            | (fReadOnly ? std::ios::openmode(0) : std::ios::out);
+
         /* Create directories if they don't exist yet. */
-        if(!filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
+        if(!fReadOnly && !filesystem::exists(strBaseLocation) && filesystem::create_directories(strBaseLocation))
             debug::log(0, FUNCTION, "Generated Path ", strBaseLocation);
 
         /* Build the hashmap indexes. */
         std::string index = debug::safe_printstr(strBaseLocation, "_hashmap.index");
-        if(!filesystem::exists(index))
+        if(!fReadOnly && !filesystem::exists(index))
         {
-            /* Generate empty space for new file. */
-            const static std::vector<uint8_t> vSpace(HASHMAP_TOTAL_BUCKETS * 4, 0);
+            /* Preserve the on-disk layout without physically writing every zero. */
+            const uint64_t nSize = uint64_t(HASHMAP_TOTAL_BUCKETS) * 4;
 
             /* Write the new disk index .*/
             std::fstream stream(index, std::ios::out | std::ios::binary | std::ios::trunc);
-            stream.write((char*)&vSpace[0], vSpace.size());
+            if(!stream)
+                throw debug::exception(FUNCTION, "failed to create disk index");
+
+            stream.seekp(nSize - 1);
+            stream.put('\0');
+            stream.flush();
+            if(!stream)
+            {
+                stream.close();
+                filesystem::remove(index);
+                throw debug::exception(FUNCTION, "failed to initialize disk index");
+            }
+
             stream.close();
+            if(!stream)
+            {
+                filesystem::remove(index);
+                throw debug::exception(FUNCTION, "failed to close disk index");
+            }
+
+            setDirtyFiles.insert(index);
+            fDirectoryDirty = true;
 
             /* Debug output showing generation of disk index. */
-            debug::log(0, FUNCTION, "Generated Disk Index of ", vSpace.size(), " bytes");
+            debug::log(0, FUNCTION, "Generated Disk Index of ", nSize, " bytes");
         }
 
         /* Read the hashmap indexes. */
-        else
+        else if(std::filesystem::exists(index))
         {
             /* Build a vector to read the disk index. */
             std::vector<uint8_t> vIndex(HASHMAP_TOTAL_BUCKETS * 2, 0);
@@ -187,6 +234,8 @@ namespace LLD
             /* Read the disk index bytes. */
             std::fstream stream(index, std::ios::in | std::ios::binary);
             stream.read((char*)&vIndex[0], vIndex.size());
+            if(fReadOnly && !stream)
+                throw debug::exception(FUNCTION, "cannot read disk index ", index);
             stream.close();
 
             /* Deserialize the values into memory index. */
@@ -204,25 +253,45 @@ namespace LLD
 
         /* Build the first hashmap index file if it doesn't exist. */
         std::string file = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), 0u);
-        if(!filesystem::exists(file))
+        if(!fReadOnly && !filesystem::exists(file))
         {
-            /* Build a vector with empty bytes to flush to disk. */
-            std::vector<uint8_t> vSpace(HASHMAP_TOTAL_BUCKETS * HASHMAP_KEY_ALLOCATION, 0);
+            /* Sparse holes read as zero-filled buckets on supported filesystems. */
+            const uint64_t nSize = uint64_t(HASHMAP_TOTAL_BUCKETS) * HASHMAP_KEY_ALLOCATION;
 
             /* Flush the empty keychain file to disk. */
             std::fstream stream(file, std::ios::out | std::ios::binary | std::ios::trunc);
-            stream.write((char*)&vSpace[0], vSpace.size());
+            if(!stream)
+                throw debug::exception(FUNCTION, "failed to create disk hashmap");
+
+            stream.seekp(nSize - 1);
+            stream.put('\0');
+            stream.flush();
+            if(!stream)
+            {
+                stream.close();
+                filesystem::remove(file);
+                throw debug::exception(FUNCTION, "failed to initialize disk hashmap");
+            }
+
             stream.close();
+            if(!stream)
+            {
+                filesystem::remove(file);
+                throw debug::exception(FUNCTION, "failed to close disk hashmap");
+            }
+
+            setDirtyFiles.insert(file);
+            fDirectoryDirty = true;
 
             /* Debug output showing generating of the hashmap file. */
-            debug::log(0, FUNCTION, "Generated Disk Hash Map 0 of ", vSpace.size(), " bytes");
+            debug::log(0, FUNCTION, "Generated Disk Hash Map 0 of ", nSize, " bytes");
         }
 
         /* Create the stream index object. */
-        pindex = new std::fstream(index, std::ios::in | std::ios::out | std::ios::binary);
+        pindex = new std::fstream(index, nOpenMode);
 
         /* Load the stream object into the stream LRU cache. */
-        fileCache->Put(0, new std::fstream(file, std::ios::in | std::ios::out | std::ios::binary));
+        fileCache->Put(0, new std::fstream(file, nOpenMode));
     }
 
 
@@ -230,6 +299,10 @@ namespace LLD
     bool BinaryHashMap::Get(const std::vector<uint8_t>& vKey, SectorKey &cKey)
     {
         LOCK(KEY_MUTEX);
+
+        const bool fReadOnly = (nFlags & FLAGS::READONLY);
+        const auto nOpenMode = std::ios::in | std::ios::binary
+            | (fReadOnly ? std::ios::openmode(0) : std::ios::out);
 
         /* Get the assigned bucket for the hashmap. */
         uint32_t nBucket = GetBucket(vKey);
@@ -255,10 +328,12 @@ namespace LLD
                 /* Set the new stream pointer. */
                 std::string filename = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i);
 
-                pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
+                pstream = new std::fstream(filename, nOpenMode);
                 if(!pstream->is_open())
                 {
                     delete pstream;
+                    if(fReadOnly && std::filesystem::exists(filename))
+                        throw debug::exception(FUNCTION, "cannot read disk hashmap ", filename);
                     continue;
                 }
 
@@ -268,13 +343,30 @@ namespace LLD
 
             /* Check that file is open. */
             if(!pstream->is_open())
-                pstream->open(debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i), std::ios::in | std::ios::out | std::ios::binary);
+            {
+                const std::string filename =
+                    debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i);
+                pstream->open(filename, nOpenMode);
+                if(!pstream->is_open())
+                {
+                    if(fReadOnly && std::filesystem::exists(filename))
+                        throw debug::exception(FUNCTION, "cannot read disk hashmap ", filename);
+                    continue;
+                }
+            }
 
             /* Seek to the hashmap index in file. */
+            pstream->clear();
             pstream->seekg(nFilePos, std::ios::beg);
 
             /* Read the bucket binary data from file stream */
             pstream->read((char*) &vBucket[0], vBucket.size());
+            if(!*pstream)
+            {
+                if(fReadOnly)
+                    throw debug::exception(FUNCTION, "cannot read disk hashmap bucket");
+                continue;
+            }
 
             /* Check if this bucket has the key */
             if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
@@ -310,6 +402,9 @@ namespace LLD
     /* Write a key to the disk hashmaps. */
     bool BinaryHashMap::Put(const SectorKey& cKey)
     {
+        if(nFlags & FLAGS::READONLY)
+            return false;
+
         LOCK(KEY_MUTEX);
 
         /* Get the assigned bucket for the hashmap. */
@@ -396,7 +491,11 @@ namespace LLD
                     pstream->seekp (nFilePos, std::ios::beg);
                     pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
                     pstream->flush();
+                    if(!*pstream)
+                        return debug::error(FUNCTION, "failed to flush hashmap file");
 
+                    setDirtyFiles.insert(debug::safe_printstr(
+                        strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i));
 
                     /* Debug Output of Sector Key Information. */
                     if(config::nVerbose >= 4)
@@ -417,21 +516,38 @@ namespace LLD
 
         /* Create a new disk hashmap object in linked list if it doesn't exist. */
         std::string file = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), hashmap[nBucket]);
+        const int64_t nExpectedSize =
+            static_cast<int64_t>(HASHMAP_TOTAL_BUCKETS) * HASHMAP_KEY_ALLOCATION;
+        if(filesystem::exists(file) && filesystem::size(file) != nExpectedSize
+        && !filesystem::remove(file))
+            return debug::error(FUNCTION, "failed to remove partial hashmap file");
+
         if(!filesystem::exists(file))
         {
-            /* Blank vector to write empty space in new disk file. */
-            std::vector<uint8_t> vSpace(HASHMAP_KEY_ALLOCATION, 0);
-
-            /* Write the blank data to the new file handle. */
-            std::ofstream stream(file, std::ios::out | std::ios::binary | std::ios::app);
+            /* Extend the new collision file without a full zero-fill write. */
+            std::ofstream stream(file, std::ios::out | std::ios::binary | std::ios::trunc);
             if(!stream)
                 return debug::error(FUNCTION, strerror(errno));
 
-            for(uint32_t i = 0; i < HASHMAP_TOTAL_BUCKETS; ++i)
-                stream.write((char*)&vSpace[0], vSpace.size());
+            stream.seekp(nExpectedSize - 1);
+            stream.put('\0');
 
-            //stream.flush();
+            stream.flush();
+            if(!stream)
+            {
+                stream.close();
+                filesystem::remove(file);
+                return debug::error(FUNCTION, "failed to initialize hashmap file");
+            }
+
             stream.close();
+            if(!stream)
+            {
+                filesystem::remove(file);
+                return debug::error(FUNCTION, "failed to close hashmap file");
+            }
+
+            fDirectoryDirty = true;
         }
 
         /* Read the State and Size of Sector Header. */
@@ -465,6 +581,10 @@ namespace LLD
         pstream->seekp (nFilePos, std::ios::beg);
         pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
         pstream->flush();
+        if(!*pstream)
+            return debug::error(FUNCTION, "failed to flush hashmap file");
+
+        setDirtyFiles.insert(file);
 
         /* Check index file handle is open. */
         if(!pindex->is_open())
@@ -482,6 +602,10 @@ namespace LLD
         /* Write the index into hashmap. */
         pindex->write((char*)&vBucket[0], vBucket.size());
         pindex->flush();
+        if(!*pindex)
+            return debug::error(FUNCTION, "failed to flush hashmap index");
+
+        setDirtyFiles.insert(debug::safe_printstr(strBaseLocation, "_hashmap.index"));
 
         /* Debug Output of Sector Key Information. */
         if(config::nVerbose >= 4)
@@ -503,6 +627,9 @@ namespace LLD
     /* Flush all buffers to disk if using ACID transaction. */
     void BinaryHashMap::Flush()
     {
+        if(nFlags & FLAGS::READONLY)
+            return;
+
         /* Check index file handle is open. */
         if(!pindex->is_open())
             pindex->open(debug::safe_printstr(strBaseLocation, "_hashmap.index"), std::ios::in | std::ios::out | std::ios::binary);
@@ -523,10 +650,73 @@ namespace LLD
     }
 
 
+    /* Preserve unsynced files and directory metadata until a successful sync. */
+    void BinaryHashMap::BeginDurabilityTracking()
+    {
+        LOCK(KEY_MUTEX);
+    }
+
+
+    /* Sync only files touched while applying the current transaction. */
+    bool BinaryHashMap::SyncTouchedFiles()
+    {
+        LOCK(KEY_MUTEX);
+
+        /* Transaction commits also hit empty participants; avoid walking the
+         * stream cache when nothing is waiting for a durable sync. */
+        if(setDirtyFiles.empty() && !fDirectoryDirty)
+            return true;
+
+        /* Push any user-space stream buffers before durable file sync. */
+        Flush();
+
+        for(const auto& strPath : setDirtyFiles)
+        {
+            FILE* stream = std::fopen(strPath.c_str(), "rb+");
+            if(!stream)
+                return false;
+
+            #ifdef WIN32
+            const bool fSynced = (_commit(_fileno(stream)) == 0);
+            #else
+            bool fSynced = false;
+            #if defined(__linux__)
+            fSynced = (fdatasync(fileno(stream)) == 0);
+            #endif
+            if(!fSynced)
+                fSynced = (fsync(fileno(stream)) == 0);
+            #endif
+
+            if(std::fclose(stream) != 0 || !fSynced)
+                return false;
+        }
+
+        /* Directory entries only change when a new hashmap file is created.
+         * Content updates of existing files do not need a directory chain walk
+         * on every commit (the NODE vs RC-25 disk stall regression). */
+        if(fDirectoryDirty)
+        {
+            std::filesystem::path path = std::filesystem::path(strBaseLocation).lexically_normal();
+            if(path.has_relative_path() && path.filename().empty())
+                path = path.parent_path();
+
+            if(!config::SyncDataDirectoryChain(path.string()))
+                return false;
+        }
+
+        setDirtyFiles.clear();
+        fDirectoryDirty = false;
+        return true;
+    }
+
+
     /*  Erase a key from the disk hashmaps.
      *  TODO: This should be optimized further. */
     bool BinaryHashMap::Erase(const std::vector<uint8_t> &vKey)
     {
+        if(nFlags & FLAGS::READONLY)
+            return false;
+
         LOCK(KEY_MUTEX);
 
         /* Get the assigned bucket for the hashmap. */
@@ -547,20 +737,38 @@ namespace LLD
             std::fstream* pstream;
             if(!fileCache->Get(i, pstream))
             {
+                const std::string filename = debug::safe_printstr(
+                    strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i);
+
                 /* Set the new stream pointer. */
-                pstream = new std::fstream(
-                  debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i),
-                  std::ios::in | std::ios::out | std::ios::binary);
+                pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
+                if(!pstream->is_open())
+                {
+                    delete pstream;
+                    return debug::error(FUNCTION, "couldn't open hashmap object at: ",
+                        filename, " (", strerror(errno), ")");
+                }
 
                 /* If file not found add to LRU cache. */
                 fileCache->Put(i, pstream);
             }
 
+            /* Check that file is open. */
+            if(!pstream->is_open())
+                pstream->open(debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i),
+                    std::ios::in | std::ios::out | std::ios::binary);
+
+            if(!pstream->is_open())
+                return debug::error(FUNCTION, "couldn't open hashmap object at bucket file ", i);
+
             /* Seek to the hashmap index in file. */
-            pstream->seekg (nFilePos, std::ios::beg);
+            pstream->clear();
+            pstream->seekg(nFilePos, std::ios::beg);
 
             /* Read the bucket binary data from file stream */
             pstream->read((char*) &vBucket[0], vBucket.size());
+            if(!*pstream)
+                return debug::error(FUNCTION, "failed to read hashmap bucket");
 
             /* Check if this bucket has the key */
             if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
@@ -571,12 +779,18 @@ namespace LLD
                 ssKey >> cKey;
 
                 /* Seek to the hashmap index in file. */
-                pstream->seekp (nFilePos, std::ios::beg);
+                pstream->clear();
+                pstream->seekp(nFilePos, std::ios::beg);
 
-                /* Read the bucket binary data from file stream */
+                /* Write an empty bucket over the erased key. */
                 std::vector<uint8_t> vEmpty(HASHMAP_KEY_ALLOCATION, 0);
                 pstream->write((char*) &vEmpty[0], vEmpty.size());
                 pstream->flush();
+                if(!*pstream)
+                    return debug::error(FUNCTION, "failed to flush hashmap erase");
+
+                setDirtyFiles.insert(debug::safe_printstr(
+                    strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i));
 
                 /* Debug Output of Sector Key Information. */
                 if(config::nVerbose >= 4)
@@ -594,7 +808,8 @@ namespace LLD
             }
         }
 
-        return false;
+        /* Missing keys are already erased; treat that as successful idempotent apply. */
+        return true;
     }
 
 

@@ -29,22 +29,42 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
+#ifdef UNIT_TESTS
+        static std::function<bool(const BlockState&, bool*)> fnHardenCheckpointHook;
+
+
+        void SetHardenCheckpointHook(const std::function<bool(const BlockState&, bool*)>& fnHook)
+        {
+            fnHardenCheckpointHook = fnHook;
+        }
+#endif
 
         /** Checkpoint timespan. **/
         uint32_t CHECKPOINT_TIMESPAN = 30;
 
 
         /* Check if the new block triggers a new Checkpoint timespan.*/
-        bool IsNewTimespan(const BlockState& state)
+        bool IsNewTimespan(const BlockState& state, bool& fNewTimespan)
         {
+            fNewTimespan = false;
+
             /* Catch if checkpoint is not established. */
             if(ChainState::hashCheckpoint == 0)
+            {
+                fNewTimespan = true;
                 return true;
+            }
 
             /* Get previous block state. */
+            if(state.hashPrevBlock == 0)
+            {
+                fNewTimespan = true;
+                return true;
+            }
+
             BlockState statePrev;
             if(!LLD::Ledger->ReadBlock(state.hashPrevBlock, statePrev))
-                return true;
+                return debug::error(FUNCTION, "failed to read previous block");
 
             /* Get checkpoint state. */
             BlockState stateCheck;
@@ -55,14 +75,25 @@ namespace TAO
             uint32_t nFirstMinutes = static_cast<uint32_t>((state.GetBlockTime() - stateCheck.GetBlockTime()) / 60);
             uint32_t nLastMinutes =  static_cast<uint32_t>((statePrev.GetBlockTime() - stateCheck.GetBlockTime()) / 60);
 
-            return (nFirstMinutes != nLastMinutes && nFirstMinutes >= CHECKPOINT_TIMESPAN);
+            fNewTimespan = (nFirstMinutes != nLastMinutes && nFirstMinutes >= CHECKPOINT_TIMESPAN);
+            return true;
         }
 
 
         /* Check that the checkpoint is a Descendant of previous Checkpoint.*/
         bool IsDescendant(const BlockState& state)
         {
-            /* Check hardcoded checkpoints when synchronizing. */
+            /* If no checkpoint defined, return true (applies to both the synchronizing
+             * hardcoded-checkpoint check and the live disk-walk check below). */
+            if(ChainState::hashCheckpoint == 0)
+                return true;
+
+            /* Check hard coded checkpoints when syncing.
+             *
+             * NOTE: matches upstream Nexusoft/LLL-TAO ordering — hardcoded checkpoint
+             * validation during initial sync always applies, regardless of the
+             * "-checkpoints" opt-in flag below (which only governs live, post-sync
+             * descendant enforcement). */
             if(ChainState::Synchronizing())
             {
                 /* If no checkpoint defined, return true. */
@@ -85,38 +116,79 @@ namespace TAO
                 return it->second == state.hashCheckpoint;
             }
 
-            /* Check if we should force our descendant checks. */
+            /* Live (post-sync) checkpoint-descendant enforcement is opt-in, matching
+             * upstream Nexusoft/LLL-TAO default (disabled). Enforcing this unconditionally
+             * makes any block that lands on or below the local checkpoint height permanently
+             * unacceptable — including a legitimately valid block that merely arrived late
+             * because it was delayed by mempool/sigchain self-healing. Node operators who
+             * want strict deep-reorg protection can opt in with "-checkpoints=1". */
             if(!config::GetBoolArg("-checkpoints", false))
                 return true;
 
             /* Check The Block Hash */
             BlockState check = state;
+            uint32_t nWalkDepth = 0;
             while(!check.IsNull())
             {
                 /* Check that checkpoint exists in the map. */
                 if(ChainState::hashCheckpoint.load() == check.hashCheckpoint)
                     return true;
 
-                /* Break when new height is found. */
-                if(state.nHeight < ChainState::nCheckpointHeight.load())
+                /* Break when the walking pointer drops below the checkpoint height. */
+                if(check.nHeight < ChainState::nCheckpointHeight.load())
+                {
+                    debug::log(2, FUNCTION, "IsDescendant FAILED: block height=", state.nHeight,
+                        " walked to height=", check.nHeight,
+                        " below checkpointHeight=", ChainState::nCheckpointHeight.load(),
+                        " checkpoint=", ChainState::hashCheckpoint.load().SubString(),
+                        " walkDepth=", nWalkDepth);
                     return false;
+                }
 
                 /* Iterate backwards. */
                 check = check.Prev();
+                ++nWalkDepth;
             }
 
+            debug::log(2, FUNCTION, "IsDescendant FAILED: block height=", state.nHeight,
+                " backward walk exhausted (null block) after ", nWalkDepth, " steps",
+                " checkpoint=", ChainState::hashCheckpoint.load().SubString(),
+                " checkpointHeight=", ChainState::nCheckpointHeight.load());
             return false;
         }
 
 
         /*Harden a checkpoint into the checkpoint chain.*/
-        bool HardenCheckpoint(const BlockState& state)
+        bool HardenCheckpoint(const BlockState& state, bool* pfHardened)
         {
+#ifdef UNIT_TESTS
+            if(fnHardenCheckpointHook)
+                return fnHardenCheckpointHook(state, pfHardened);
+#endif
+
+            if(pfHardened)
+                *pfHardened = false;
+
             /* Only Harden New Checkpoint if it Fits new timestamp. */
-            if(!IsNewTimespan(state))
+            bool fNewTimespan = false;
+            if(!IsNewTimespan(state, fNewTimespan))
                 return false;
 
-            /* Notify nodes of the checkpoint. */
+            if(!fNewTimespan)
+                return true;
+
+            /* Read the checkpoint block BEFORE updating atomics to avoid
+             * partial-update visibility between hashCheckpoint and nCheckpointHeight. */
+            BlockState stateCheckpoint;
+            if(!LLD::Ledger->ReadBlock(state.hashCheckpoint, stateCheckpoint))
+                return debug::error(FUNCTION, "failed to read checkpoint");
+
+            /* Store height first, then hash — any thread that reads the new hashCheckpoint
+             * will already see the matching nCheckpointHeight. */
+            ChainState::nCheckpointHeight = stateCheckpoint.nHeight;
+            ChainState::hashCheckpoint    = state.hashCheckpoint;
+
+            /* Notify nodes only after the checkpoint has been published locally. */
             if(LLP::TRITIUM_SERVER && !ChainState::Synchronizing())
             {
                 LLP::TRITIUM_SERVER->Relay
@@ -127,19 +199,11 @@ namespace TAO
                 );
             }
 
-            /* Update the Checkpoints into Memory. */
-            ChainState::hashCheckpoint    = state.hashCheckpoint;
-
-            /* Get checkpoint state. */
-            BlockState stateCheckpoint;
-            if(!LLD::Ledger->ReadBlock(state.hashCheckpoint, stateCheckpoint))
-                return debug::error(FUNCTION, "failed to read checkpoint");
-
-            /* Set the correct height for the checkpoint. */
-            ChainState::nCheckpointHeight = stateCheckpoint.nHeight;
+            if(pfHardened)
+                *pfHardened = true;
 
             /* Dump the Checkpoint if not Initializing. */
-            if(config::nVerbose >= ChainState::Synchronizing() ? 1 : 0)
+            if(config::nVerbose >= (ChainState::Synchronizing() ? 1 : 0))
                 debug::log(ChainState::Synchronizing() ? 1 : 0, "===== Hardened Checkpoint ", ChainState::hashCheckpoint.load().SubString(), " Height ", ChainState::nCheckpointHeight.load());
 
             return true;
