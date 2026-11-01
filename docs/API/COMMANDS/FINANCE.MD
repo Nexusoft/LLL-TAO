@@ -113,7 +113,7 @@ Deduct an amount of NXS or token specified by the noun and send it to another ac
 finance/debit/noun
 ```
 
-This command supports the any wildcard noun.
+This command supports the `account`, `token`, `trust` and `any` nouns.
 
 #### debit/account
 
@@ -161,13 +161,13 @@ This deducts an amount of tokens from a token address to send to a token account
 
 # <a name="credit"></a> `credit`
 
-Create a new object register specified by given noun.
+Claim funds issued to an account from a debit transaction.
 
 ```
 finance/credit/noun
 ```
 
-This command supports the any wildcard noun.
+This command supports the `account`, `token` and `any` nouns.
 
 #### credit/account
 
@@ -198,9 +198,9 @@ Increment an amount of tokens received from a token account.
 ```
 #### Return values:
 
-`txid` : The ID (hash) of the transaction that includes the account creation.
+`success` : Boolean flag indicating that the credit was successful.
 
-`address` : The register address for this  account. The address (or name that hashes to this address) is needed when creating crediting or debiting the account.
+`txid` : The ID (hash) of the transaction that includes the credit.
 
 -----------------------------------
 
@@ -259,7 +259,7 @@ Retrieves information for a single object for a type specified by the noun
 finance/get/noun
 ```
 
-This command supports the `account`, `trust` and `token` nouns.
+This command supports the `account`, `trust`, `token` and `any` nouns.
 
 #### get/account
 
@@ -352,7 +352,7 @@ This will list off all of the object register details specified by the noun.
 finance/list/noun
 ```
 
-This command supports the `account`, `trust` and `token` nouns.
+This command supports the `account`, `trust`, `token` and `any` nouns.
 
 #### list/account
 
@@ -447,7 +447,7 @@ This will get the history of the specified noun.
 finance/history/noun
 ```
 
-This command supports the `account`, `trust` and `token `nouns.
+This command supports the `account`, `trust`, `token` and `any` nouns.
 
 #### history/account
 
@@ -560,7 +560,7 @@ This will list off all of the transactions for the specified noun.
 finance/transactions/noun
 ```
 
-This command supports the account, trust and token nouns.
+This command supports the `account`, `trust`, `token` and `any` nouns.
 
 #### transactions/account
 

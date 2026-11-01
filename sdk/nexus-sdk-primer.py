@@ -1,14 +1,15 @@
+#!/usr/bin/env python3
 #
 # nexus-sdk-primer.py
 #
-# A very simple sequential program for interacting with the Nexus Tritium
+# A very simple sequential program for interacting with the Nexus Tritium++
 # APIs. If you want more details and want to see more interactions and
 # return response detail, use LLL-TAO/sdk/nexus-sdk-test.py.
 #
-# If you want a bit more detail in this program, just uncomment "#print json"
+# If you want a bit more detail in this program, just uncomment "#print(json)"
 # lines.
 #
-# Usage: python nexus-sdk-primer.py [users] [supply] [assets] [tokens]
+# Usage: python3 nexus-sdk-primer.py [sessions] [supply] [assets] [finance]
 #
 #------------------------------------------------------------------------------
 
@@ -16,15 +17,15 @@ import nexus_sdk
 import time
 import sys
 
-if(len(sys.argv) == 1):
-    do_users = do_supply = do_assets = do_tokens = True
+if len(sys.argv) == 1:
+    do_sessions = do_supply = do_assets = do_finance = True
 else:
-    do_users = ("users" in sys.argv)
-    do_supply = ("supply" in sys.argv)
-    do_assets = ("assets" in sys.argv)
-    do_tokens = ("tokens" in sys.argv)
+    do_sessions = "sessions" in sys.argv
+    do_supply = "supply" in sys.argv
+    do_assets = "assets" in sys.argv
+    do_finance = "finance" in sys.argv
 #endif
-do_users = (do_users or do_supply or do_assets or do_tokens)
+do_sessions = do_sessions or do_supply or do_assets or do_finance
 
 #
 # Column width for continuation output line.
@@ -35,12 +36,13 @@ width = 48
 # sleep
 #
 # If you want to play around with delay times between API operations. Defaults
-# to 1 second. You can litter sleep() calls whereever you like below.
+# to 3 seconds. You can litter sleep() calls wherever you like below.
 #
 def sleep():
     delay = 3
-    if(delay == 0): return
-    print "Sleeping for {} ...".format(delay)
+    if delay == 0:
+        return
+    print("Sleeping for {} seconds...".format(delay))
     time.sleep(delay)
 #enddef
 
@@ -50,23 +52,24 @@ def sleep():
 # api_print
 #
 # Print if API succeeded or failed on a continuation output line. When program
-# returns, caller should continue. Otherwise this funciton exits program.
+# returns, caller should continue. Otherwise this function exits program.
 #
 def api_print(json, succeed_msg=None):
-    if(json.has_key("error") == False):
+    if "error" not in json:
         msg = "succeeded"
-        if(succeed_msg != None): msg += ", {}".format(succeed_msg)
-        print msg
-        return(False)
+        if succeed_msg is not None:
+            msg += ", {}".format(succeed_msg)
+        print(msg)
+        return False
     #endif
 
     msg = json["error"]["message"]
-    print "{}, {}".format(red("failed"), msg)
-    if(msg == "Connection refused"):
-        print "Abnormal exit"
+    print("{}, {}".format(red("failed"), msg))
+    if msg == "Connection refused":
+        print("Abnormal exit")
         exit(1)
     #endif
-    return(True)
+    return True
 #enddef
 
 #
@@ -75,7 +78,9 @@ def api_print(json, succeed_msg=None):
 # Print genesis-id in the form "xxxx...xxxx".
 #
 def short_genid(genid):
-    return(genid[0:4] + "..." + genid[-5:-1])
+    if not genid or len(genid) < 10:
+        return genid or "N/A"
+    return genid[0:4] + "..." + genid[-4:]
 #enddef
 
 #
@@ -83,8 +88,10 @@ def short_genid(genid):
 #
 # Print txid in the form "xxxxxxxx...yyyyyyyy".
 #
-def short_txid(genid):
-    return(genid[0:8] + "..." + genid[-9:-1])
+def short_txid(txid):
+    if not txid or len(txid) < 20:
+        return txid or "N/A"
+    return txid[0:8] + "..." + txid[-8:]
 #enddef
 
 #
@@ -93,11 +100,12 @@ def short_txid(genid):
 # Print ownership history for supply-chain, asset, or token.
 #
 def print_history(json):
-    print "Ownership History:"
+    print("Ownership History:")
     for owner in json["result"]:
-        o = short_genid(owner["owner"])
-        owner.pop("owner")
-        print "  owner {}: {}".format(o, owner)
+        o = short_genid(owner.get("owner", ""))
+        owner_copy = dict(owner)
+        owner_copy.pop("owner", None)
+        print("  owner {}: {}".format(o, owner_copy))
     #endfor
 #enddef
 
@@ -105,75 +113,76 @@ def print_history(json):
 # login_or_create_username
 #
 # Check to see if username exists by trying to login. If it does not exist,
-# create an account and login.
+# create a profile and login.
 #
 def login_or_create_username(sdk, username):
-    json = sdk.nexus_users_login_user()
+    json = sdk.sessions_create()
 
-    msg = json["error"]["message"] if json.has_key("error") else None
-    if(msg == "Account doesn't exists"):
-        print "Create username '{}' ...".format(username).ljust(width),
-        json = sdk.nexus_users_create_user()
+    msg = json["error"]["message"] if "error" in json else None
+    if msg and "doesn't exist" in msg.lower():
+        print("Create profile '{}' ...".format(username).ljust(width), end="")
+        json = sdk.profiles_create()
         api_print(json)
+        sleep()
     #endif
 
-    print "Login user '{}' ...".format(username).ljust(width),
-    if(msg == None):
-        print "Already logged in"
+    print("Login user '{}' ...".format(username).ljust(width), end="")
+    if msg is None:
+        print("Already logged in")
         return
     #endif
 
-    json = sdk.nexus_users_login_user()
-    if(sdk.genesis_id == None):
-        print "users/login/user failed, nexus daemon may not be running"
+    json = sdk.sessions_create()
+    if sdk.genesis_id is None:
+        print("sessions/create failed, nexus daemon may not be running")
         exit(1)
     #endif
     api_print(json, "genesis {}".format(short_genid(sdk.genesis_id)))
 #enddef
 
 #
-# create_token
+# create_token_or_account
 #
 # Check to see if token or token account has been created. If not create it.
 # Otherwise, show data about each.
 #
-def create_token(sdk, token_name, tok_or_account):
-    if(tok_or_account):
-        json = sdk.nexus_tokens_create_token(token_name, 1, 10000)
-        token_string = "token already exists"
+def create_token_or_account(sdk, name, is_token):
+    if is_token:
+        json = sdk.finance_create("token", name, supply=10000, decimals=2)
+        exists_string = "token already exists"
     else:
-        json = sdk.nexus_tokens_create_account(token_name, 1)
-        token_string = "token account already exists"
+        json = sdk.finance_create("account", name, token="0")  # NXS token
+        exists_string = "account already exists"
     #endif
 
     address = "?"
-    if(json.has_key("result") and json["result"] != None):
-        address = json["result"]["address"]
+    if "result" in json and json["result"] is not None:
+        address = json["result"].get("address", "?")
         api_print(json, "address {}".format(address))
         sleep()
     else:
-        print token_string
+        print(exists_string)
     #endif
 
     #
-    # Test API tokens/get/token.
+    # Get the token or account.
     #
     msg = None
-    if(tok_or_account):
-        print "Get Token '{}' ...".format(token_name).ljust(width),
-        json = sdk.nexus_tokens_get_token_by_name(token_name)
+    if is_token:
+        print("Get Token '{}' ...".format(name).ljust(width), end="")
+        json = sdk.finance_get("token", name=name)
     else:
-        print "Get Token Account '{}' ...".format(token_name).ljust(width),
-        json = sdk.nexus_tokens_get_account_by_name(token_name)
+        print("Get Account '{}' ...".format(name).ljust(width), end="")
+        json = sdk.finance_get("account", name=name)
     #endif
 
-    if(json.has_key("result") and json["result"] != None):
-        if(tok_or_account):
-            ms = json["result"]["maxsupply"]
-            cs = json["result"]["currentsupply"]
+    if "result" in json and json["result"] is not None:
+        if is_token:
+            ms = json["result"].get("maxsupply", 0)
+            cs = json["result"].get("currentsupply", 0)
             msg = "max-supply {}, current-supply {}".format(ms, cs)
         else:
-            balance = json["result"]["balance"]
+            balance = json["result"].get("balance", 0)
             msg = "balance {}".format(balance)
         #endif
     #endif
@@ -186,65 +195,68 @@ def create_token(sdk, token_name, tok_or_account):
 # Print red to make "failed" stand out.
 #
 def red(string):
-    return("\033[91m" + string + "\033[0m")
+    return "\033[91m" + string + "\033[0m"
 #enddef
 
 #
 # parse_tx
 #
-# Parse a line from the users/list/transactions returned array.
+# Parse a line from the profiles/transactions returned array.
 #
 def parse_tx(tx):
     try:
         op, tx = tx.split("(")
     except:
-        return("")
+        return ""
     #endtry
     tx = tx[0:-1].split(", ")
     line = "{}: {}".format(op, tx)
-    return(line)
+    return line
 #enddef
 
 #
-# users
+# sessions
 #
-# Run through supply API/SDK.
+# Run through sessions/profiles API/SDK.
 #
-def users(primer1, primer2):
-
-    print ""
-    print "---------- Users SDK/API ----------"
+def sessions(primer1, primer2):
+    print("")
+    print("---------- Sessions/Profiles SDK/API ----------")
 
     #
-    # Use API users/create/user and users/login/user for a few users.
+    # Use API profiles/create and sessions/create for users.
     #
     login_or_create_username(primer1, "primer1")
     login_or_create_username(primer2, "primer2")
     login_or_create_username(temp_primer, "temp-primer")
 
     #
-    # Test API users/logout on username 'temp-primer'.
+    # Test API sessions/terminate on username 'temp-primer'.
     #
-    print "Logout user 'temp-primer' ...".ljust(width),
-    json = temp_primer.nexus_users_logout_user()
+    print("Logout user 'temp-primer' ...".ljust(width), end="")
+    json = temp_primer.sessions_terminate()
     api_print(json)
 
     #
-    # Call API users/transactions
+    # Call API profiles/transactions
     #
-    json = primer1.nexus_users_list_transactions(0, 3, 2)
-    print "Transaction history for 'primer1':"
-    for entry in json["result"]:
-        tx = entry["operation"]
-        print "  {}".format(str(tx))
-    #endfor
+    json = primer1.profiles_transactions(page=0, limit=3)
+    print("Transaction history for 'primer1':")
+    if "result" in json and json["result"]:
+        for entry in json["result"]:
+            tx = entry.get("operation", entry)
+            print("  {}".format(str(tx)))
+        #endfor
+    #endif
 
-    json = primer2.nexus_users_list_transactions(0, 3, 2)
-    print "Transaction history for 'primer2':"
-    for entry in json["result"]:
-        tx = entry["operation"]
-        print "  {}".format(str(tx))
-    #endfor
+    json = primer2.profiles_transactions(page=0, limit=3)
+    print("Transaction history for 'primer2':")
+    if "result" in json and json["result"]:
+        for entry in json["result"]:
+            tx = entry.get("operation", entry)
+            print("  {}".format(str(tx)))
+        #endfor
+    #endif
 #enddef
 
 #
@@ -253,22 +265,20 @@ def users(primer1, primer2):
 # Run through supply API/SDK.
 #
 def supply_chain(primer1, primer2):
-
-    #
-    # Put in break line between users and supply API.
-    #
-    print ""
-    print "---------- Supply-Chain SDK/API ----------"
+    print("")
+    print("---------- Supply-Chain SDK/API ----------")
 
     #
     # Call API supply/create/item.
     #
     address = None
     data = "0xdeadbeef"
-    print "Supply-Chain create item, data '{}' ...".format(data).ljust(width),
-    json = primer1.nexus_supply_create_item(data)
-    if(json.has_key("result") and json["result"] != None):
-        address = json["result"]["address"]
+    item_name = "primer-item-{}".format(int(time.time()) % 10000)
+    print("Supply-Chain create item '{}', data '{}' ...".format(
+        item_name, data).ljust(width), end="")
+    json = primer1.supply_create(item_name, data)
+    if "result" in json and json["result"] is not None:
+        address = json["result"].get("address", "?")
     #endif
     api_print(json, "address {}".format(address))
 
@@ -278,17 +288,20 @@ def supply_chain(primer1, primer2):
     # Call API supply/get/item.
     #
     msg = None
-    print "Supply-Chain get item ...".ljust(width),
+    print("Supply-Chain get item ...".ljust(width), end="")
 
-    while(True):
-        json = primer1.nexus_supply_get_item(address)
-        if(json.has_key("error") == False): break
-        print ".",
+    retries = 10
+    while retries > 0:
+        json = primer1.supply_get(name=item_name)
+        if "error" not in json:
+            break
+        print(".", end="", flush=True)
         time.sleep(1)
+        retries -= 1
     #endwhile
-    if(json.has_key("result") and json["result"] != None):
-        owner = json["result"]["owner"]
-        state = json["result"]["state"]
+    if "result" in json and json["result"] is not None:
+        owner = json["result"].get("owner", "?")
+        state = json["result"].get("state", "?")
         msg = "stored data '{}', owner {}".format(state, short_genid(owner))
     #endif
     api_print(json, msg)
@@ -296,24 +309,24 @@ def supply_chain(primer1, primer2):
     #
     # Call API supply/transfer/item.
     #
-    print "Transfer genesis {} to genesis {}".format( \
-        short_genid(primer1.genesis_id),  short_genid(primer2.genesis_id))
-    print "Transfer ownership ...".ljust(width),
-    json = primer1.nexus_supply_transfer_item(address, primer2.genesis_id)
+    print("Transfer genesis {} to genesis {}".format(
+        short_genid(primer1.genesis_id), short_genid(primer2.genesis_id)))
+    print("Transfer ownership ...".ljust(width), end="")
+    json = primer1.supply_transfer(primer2.genesis_id, name=item_name)
     api_print(json)
 
     sleep()
 
     #
-    # Call API supply/list/item/history.
+    # Call API supply/history/item.
     #
-    print "Get ownership history of item ...".ljust(width),
-    json = primer1.nexus_supply_list_item_history_by_address(address)
+    print("Get ownership history of item ...".ljust(width), end="")
+    json = primer1.supply_history(name=item_name)
     api_print(json)
-    if(json.has_key("result") and json["result"] != None):
+    if "result" in json and json["result"] is not None:
         print_history(json)
     #endif
-#endef
+#enddef
 
 #
 # assets
@@ -321,8 +334,8 @@ def supply_chain(primer1, primer2):
 # Run through assets API/SDK.
 #
 def assets(primer1, primer2):
-    print ""
-    print "---------- Assets SDK/API ----------"
+    print("")
+    print("---------- Assets SDK/API ----------")
 
     #
     # Call API assets/create/asset if the asset-name does not exist.
@@ -331,18 +344,17 @@ def assets(primer1, primer2):
     asset_data = "asset-data"
     address = None
     owner = None
-    print "Create Asset named '{}' ...".format(asset_name).ljust(width),
-    json = primer1.nexus_assets_get_asset_by_name(asset_name)
-    if(json.has_key("error") == False):
-        owner = json["result"]["owner"]
-        state = json["result"]["metadata"]
-        msg = "stored metadata '{}', owner {}".format(state,
-            short_genid(owner))
-        print "asset already exists, {}".format(msg)
+    print("Create Asset named '{}' ...".format(asset_name).ljust(width), end="")
+    json = primer1.assets_get(name=asset_name)
+    if "error" not in json:
+        owner = json["result"].get("owner")
+        state = json["result"].get("metadata", json["result"].get("state", ""))
+        msg = "stored data '{}', owner {}".format(state, short_genid(owner))
+        print("asset already exists, {}".format(msg))
     else:
-        json = primer1.nexus_assets_create_asset(asset_name, asset_data)
-        if(json.has_key("result") and json["result"] != None):
-            address = json["result"]["address"]
+        json = primer1.assets_create(asset_name, asset_data)
+        if "result" in json and json["result"] is not None:
+            address = json["result"].get("address", "?")
         #endif
         api_print(json, "address {}".format(address))
         sleep()
@@ -351,52 +363,52 @@ def assets(primer1, primer2):
         # Call API assets/get/asset.
         #
         msg = None
-        print "Get Asset named '{}' ...".format(asset_name).ljust(width),
-        count = 10
-        while(True):
-            json = primer1.nexus_assets_get_asset_by_name(asset_name)
-            if(json.has_key("error") == False or count == 0): break
-            print ".",
+        print("Get Asset named '{}' ...".format(asset_name).ljust(width), end="")
+        retries = 10
+        while retries > 0:
+            json = primer1.assets_get(name=asset_name)
+            if "error" not in json:
+                break
+            print(".", end="", flush=True)
             time.sleep(1)
-            count -= 1
+            retries -= 1
         #endwhile
-        if(json.has_key("result") and json["result"] != None):
-            owner = json["result"]["owner"]
-            state = json["result"]["metadata"]
-            msg = "stored metadata '{}', owner {}".format(state,
-                short_genid(owner))
+        if "result" in json and json["result"] is not None:
+            owner = json["result"].get("owner")
+            state = json["result"].get("metadata", json["result"].get("state", ""))
+            msg = "stored data '{}', owner {}".format(state, short_genid(owner))
         #endif
         api_print(json, msg)
     #endif
 
     #
-    # Call API asserts/transfer back and forth from primer1 to primer2.
+    # Call API assets/transfer back and forth from primer1 to primer2.
     #
-    to = None
-    if(primer1.genesis_id == owner):
+    to_user = None
+    if primer1.genesis_id == owner:
         sdk = primer1
         fr = "primer1"
-        to = "primer2"
-        print "Transfer Asset '{}' from '{}' (genid {}) to '{}' (genid {})". \
-            format(asset_name, fr, short_genid(owner), to,
-            short_genid(primer2.genesis_id))
+        to_user = "primer2"
+        print("Transfer Asset '{}' from '{}' (genid {}) to '{}' (genid {})".format(
+            asset_name, fr, short_genid(owner), to_user,
+            short_genid(primer2.genesis_id)))
     #endif
-    if(primer2.genesis_id == owner):
+    if primer2.genesis_id == owner:
         sdk = primer2
         fr = "primer2"
-        to = "primer1"
-        print "Transfer Asset '{}' from '{}' (genid {}) to '{}' (genid {})". \
-            format(asset_name, fr, short_genid(owner), to,
-            short_genid(primer1.genesis_id))
+        to_user = "primer1"
+        print("Transfer Asset '{}' from '{}' (genid {}) to '{}' (genid {})".format(
+            asset_name, fr, short_genid(owner), to_user,
+            short_genid(primer1.genesis_id)))
     #endif
 
-    if(to != None):
+    if to_user is not None:
         msg = None
-        print "Transfer ownership ...".ljust(width),
-        json = sdk.nexus_assets_transfer_asset_by_name(asset_name, to)
-        if(json.has_key("result") and json["result"] != None):
-            txid = json["result"]["txid"]
-            address = json["result"]["address"]
+        print("Transfer ownership ...".ljust(width), end="")
+        json = sdk.assets_transfer(to_user, name=asset_name)
+        if "result" in json and json["result"] is not None:
+            txid = json["result"].get("txid", "?")
+            address = json["result"].get("address", "?")
             msg = "txid {}, address {}".format(short_txid(txid), address)
         #endif
         api_print(json, msg)
@@ -405,28 +417,28 @@ def assets(primer1, primer2):
     sleep()
 
     #
-    # Call API assets/list/item/history
+    # Call API assets/history/asset
     #
-    print "Get history for Asset '{}' ...".format(asset_name).ljust(width),
-    json = primer1.nexus_assets_list_item_history_by_name(asset_name)
+    print("Get history for Asset '{}' ...".format(asset_name).ljust(width), end="")
+    json = primer1.assets_history(name=asset_name)
     api_print(json)
-    if(json.has_key("result") and json["result"] != None):
+    if "result" in json and json["result"] is not None:
         print_history(json)
     #endif
-    print ""
+    print("")
 
     #
-    # Tokenize an asset. Create new asset and token token now.
+    # Tokenize an asset. Create new asset and token now.
     #
     asset_name = "tokenized-asset"
-    print "Get tokenized asset '{}'...".format(asset_name).ljust(width),
-    json = primer1.nexus_assets_get_asset_by_name(asset_name)
-    if(json.has_key("error")):
-        print ""
-        print "Create tokenized asset '{}'...".format(asset_name).ljust(width),
-        json = primer1.nexus_assets_create_asset(asset_name, asset_name)
-        if(json.has_key("result") and json["result"] != None):
-            address = json["result"]["address"]
+    print("Get tokenized asset '{}' ...".format(asset_name).ljust(width), end="")
+    json = primer1.assets_get(name=asset_name)
+    if "error" in json:
+        print("")
+        print("Create tokenized asset '{}' ...".format(asset_name).ljust(width), end="")
+        json = primer1.assets_create(asset_name, asset_name)
+        if "result" in json and json["result"] is not None:
+            address = json["result"].get("address", "?")
         #endif
         api_print(json, "address {}".format(address))
     else:
@@ -435,65 +447,64 @@ def assets(primer1, primer2):
     sleep()
 
     tn = "shares-token"
-    print "Get token token '{}'...".format(tn).ljust(width),
-    json = primer1.nexus_tokens_get_token_by_name(tn)
-    if(json.has_key("error")):
-        print ""
-        print "Create token token '{}', supply {}...".format(tn, 100),
-        json = sdk.nexus_tokens_create_token(tn, 100, 100)
-        if(json.has_key("result") and json["result"] != None):
-            address = json["result"]["address"]
+    print("Get token '{}' ...".format(tn).ljust(width), end="")
+    json = primer1.finance_get("token", name=tn)
+    if "error" in json:
+        print("")
+        print("Create token '{}', supply {} ...".format(tn, 100).ljust(width), end="")
+        json = primer1.finance_create("token", tn, supply=100, decimals=0)
+        if "result" in json and json["result"] is not None:
+            address = json["result"].get("address", "?")
         #endif
         api_print(json, "address {}".format(address))
-        print json
     else:
         api_print(json)
     #endif
     sleep()
 
-    print ""
-    print "Tokenize '{}'...".format(asset_name).ljust(width),
-    json = primer1.nexus_assets_tokenize_asset_by_name(asset_name, tn)
-    if(json.has_key("result") and json["result"] != None):
-        txid = json["result"]["txid"]
-        address= json["result"]["address"]
+    print("")
+    print("Tokenize '{}' ...".format(asset_name).ljust(width), end="")
+    json = primer1.assets_tokenize(tn, name=asset_name)
+    msg = None
+    if "result" in json and json["result"] is not None:
+        txid = json["result"].get("txid", "?")
+        address = json["result"].get("address", "?")
         msg = "txid {}, address {}".format(txid, address)
     #endif
     api_print(json, msg)
-
 #enddef
 
 #
-# tokens
+# finance
 #
-# Run through assets API/SDK.
+# Run through finance API/SDK (replaces tokens API).
 #
-def tokens(primer1, primer2):
-    print ""
-    print "---------- Tokens SDK/API ----------"
+def finance(primer1, primer2):
+    print("")
+    print("---------- Finance SDK/API ----------")
 
     #
-    # Call API tokens/create/token for a token. Token-ID will be 1.
+    # Call API finance/create/token.
     #
     token_name = "primer-token"
-    print "Create Token '{}', supply {} ...".format(token_name, 10000). \
-        ljust(width),
-    create_token(primer1, token_name, True)
-    print "Create Token Account '{}' ...".format("primer1").ljust(width),
-    create_token(primer1, "primer1", False)
-    print "Create Token Account '{}' ...".format("primer2").ljust(width),
-    create_token(primer2, "primer2", False)
+    print("Create Token '{}', supply {} ...".format(token_name, 10000).ljust(width), end="")
+    create_token_or_account(primer1, token_name, True)
+    
+    print("Create Account 'primer1-account' ...".ljust(width), end="")
+    create_token_or_account(primer1, "primer1-account", False)
+    
+    print("Create Account 'primer2-account' ...".ljust(width), end="")
+    create_token_or_account(primer2, "primer2-account", False)
 
     #
-    # Call API tokens/debit/token.
+    # Call API finance/debit.
     #
     msg = None
     txid1 = None
-    print "Debit '{}' by 100 for 'primer1' ...".format(token_name). \
-        ljust(width),
-    json = primer1.nexus_tokens_debit_token_by_name(token_name, "primer1", 100)
-    if(json.has_key("result") and json["result"] != None):
-        txid1 = json["result"]["txid"]
+    print("Debit '{}' by 100 for 'primer1-account' ...".format(token_name).ljust(width), end="")
+    json = primer1.finance_debit(100, name_from=token_name, name_to="primer1-account")
+    if "result" in json and json["result"] is not None:
+        txid1 = json["result"].get("txid")
         msg = "txid {}".format(short_txid(txid1))
     #endif
     api_print(json, msg)
@@ -501,56 +512,72 @@ def tokens(primer1, primer2):
 
     msg = None
     txid2 = None
-    print "Debit '{}' by 200 for 'primer2' ...".format(token_name). \
-        ljust(width),
-    json = primer1.nexus_tokens_debit_token_by_name(token_name, "primer2", 200)
-    if(json.has_key("result") and json["result"] != None):
-        txid2 = json["result"]["txid"]
+    print("Debit '{}' by 200 for 'primer2-account' ...".format(token_name).ljust(width), end="")
+    json = primer1.finance_debit(200, name_from=token_name, name_to="primer2-account")
+    if "result" in json and json["result"] is not None:
+        txid2 = json["result"].get("txid")
         msg = "txid {}".format(short_txid(txid2))
     #endif
     api_print(json, msg)
     sleep()
 
     #
-    # Call API tokens/credit to credit eash token account with 100 and 200
-    # tokens respectively.
+    # Call API finance/credit to credit each account.
     #
-    msg = None
-    print "Credit 100 to user 'primer1' ...".ljust(width),
-    json = primer1.nexus_tokens_credit_token_by_name("primer1", 100, txid1,
-        None)
-    if(json.has_key("result") and json["result"] != None):
-        txid = json["result"]["txid"]
-        msg = "txid {}".format(short_txid(txid))
+    if txid1:
+        msg = None
+        print("Credit 100 to 'primer1-account' ...".ljust(width), end="")
+        json = primer1.finance_credit(txid1, name="primer1-account")
+        if "result" in json and json["result"] is not None:
+            txid = json["result"].get("txid", "?")
+            msg = "txid {}".format(short_txid(txid))
+        #endif
+        api_print(json, msg)
+        sleep()
     #endif
-    api_print(json, msg)
-    sleep()
 
-    msg = None
-    print "Credit 200 to user 'primer2' ...".ljust(width),
-    json = primer2.nexus_tokens_credit_token_by_name("primer2", 200, txid2,
-        None)
-    if(json.has_key("result") and json["result"] != None):
-        txid = json["result"]["txid"]
-        msg = "txid {}".format(short_txid(txid))
+    if txid2:
+        msg = None
+        print("Credit 200 to 'primer2-account' ...".ljust(width), end="")
+        json = primer2.finance_credit(txid2, name="primer2-account")
+        if "result" in json and json["result"] is not None:
+            txid = json["result"].get("txid", "?")
+            msg = "txid {}".format(short_txid(txid))
+        #endif
+        api_print(json, msg)
+        sleep()
     #endif
-    api_print(json, msg)
-    sleep()
 
     #
-    # Show balances of token accounts.
+    # Show balances of accounts.
     #
-    print ""
-    print "Token Acccount Balances:"
-    json = primer1.nexus_tokens_get_account_by_name("primer1")
-    if(json.has_key("error") == False):
-        balance = json["result"]["balance"]
-        print "  'primer1' token account balance {}".format(balance)
+    print("")
+    print("Account Balances:")
+    json = primer1.finance_get("account", name="primer1-account")
+    if "error" not in json and json.get("result"):
+        balance = json["result"].get("balance", 0)
+        print("  'primer1-account' balance {}".format(balance))
     #endif
-    json = primer1.nexus_tokens_get_account_by_name("primer2")
-    if(json.has_key("error") == False):
-        balance = json["result"]["balance"]
-        print "  'primer2' token account balance {}".format(balance)
+    json = primer2.finance_get("account", name="primer2-account")
+    if "error" not in json and json.get("result"):
+        balance = json["result"].get("balance", 0)
+        print("  'primer2-account' balance {}".format(balance))
+    #endif
+
+    #
+    # Show staking info.
+    #
+    print("")
+    print("Staking Info for 'primer1':")
+    json = primer1.finance_get_stakeinfo()
+    if "error" not in json and json.get("result"):
+        result = json["result"]
+        print("  stake: {}, trust: {}, rate: {}%".format(
+            result.get("stake", 0),
+            result.get("trust", 0),
+            result.get("stakerate", 0)))
+    else:
+        print("  (staking info not available)")
     #endif
 #enddef
 
@@ -559,22 +586,23 @@ def tokens(primer1, primer2):
 #
 # Initialize with SDK.
 #
-print "Initialize Nexus SDK ...".ljust(width),
-primer1 = nexus_sdk.sdk_init("primer1", "primer-password", "1234")
-primer2 = nexus_sdk.sdk_init("primer2", "primer-password", "1234")
-temp_primer = nexus_sdk.sdk_init("temp-primer", "primer-password", "1234")
-print "succeeded"
+print("Initialize Nexus SDK ...".ljust(width), end="")
+primer1 = nexus_sdk.NexusSDK("primer1", "primer-password", "1234")
+primer2 = nexus_sdk.NexusSDK("primer2", "primer-password", "1234")
+temp_primer = nexus_sdk.NexusSDK("temp-primer", "primer-password", "1234")
+print("succeeded")
 
-asset = token = None
+if do_sessions:
+    sessions(primer1, primer2)
+if do_supply:
+    supply_chain(primer1, primer2)
+if do_assets:
+    assets(primer1, primer2)
+if do_finance:
+    finance(primer1, primer2)
 
-if(do_users): users(primer1, primer2)
-if(do_supply): supply_chain(primer1, primer2)
-if(do_assets): assets(primer1, primer2)
-if(do_tokens): tokens(primer1, primer2)
-
-
-print ""
-print "All Done!"
+print("")
+print("All Done!")
 exit(0)
 
 #------------------------------------------------------------------------------

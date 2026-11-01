@@ -16,6 +16,8 @@ The following commands are direct endpoints and thus do not support the above ve
 [`submit/transaction`](#submit/transaction)  
 [`get/info`](#get/info)  
 [`get/metrics`](#get/metrics)  
+[`recent/blocks`](#recent/blocks)  
+[`sync/status`](#sync/status)  
 
 Direct endpoints support `filters` and `operators`.
 
@@ -356,7 +358,7 @@ ledger/list/blocks
 
 `contracts` : The array of contracts bound to this transaction and their details with opcodes.  
 {  
-`idcontractid` : The sequential ID of this contract within the transaction.
+`id` : The sequential ID of this contract within the transaction.
 
 `OP` : The contract operation. Can be APPEND, CLAIM, COINBASE, CREATE, CREDIT, DEBIT, FEE, GENESIS, LEGACY, TRANSFER, TRUST, STAKE, UNSTAKE, WRITE.
 
@@ -505,10 +507,10 @@ ledger/get/transaction
 
 # <a name="list/transactions"></a> `list/transactions`
 
-Retrieves transaction data for a given transaction hash.
+Retrieves a list of transactions from the mempool.
 
 ```
-ledger/get/transaction
+ledger/list/transactions
 ```
 
 ### Parameters:
@@ -946,5 +948,132 @@ ledger/get/metrics
 `monthly` : Total number of NXS locked or unlocked from stake in the last month.    
 }    
 }    
+
+-----------------------------------
+
+# <a name="recent/blocks"></a> `recent/blocks`
+
+Retrieves an array of recent block data, starting from the most recent block and working backwards.
+
+```
+ledger/recent/blocks
+```
+
+### Parameters:
+
+`limit` : Optional, the number of blocks to return. Default is 10, maximum is 1440. Only returns blocks from the last 28 days.
+
+`verbose` : Optional, determines how much **transaction data** to include in the response. Default is 1 (hash only). Supported values are:
+- `default` : hash.
+
+- `summary` : type, version, sequence, timestamp, and operation.
+
+- `detail` : genesis, nexthash, prevhash, pubkey and signature.
+
+[`Filtering`](/docs/API/FILTERING.MD). 
+
+### Returns:
+
+#### Return value JSON object:
+
+```
+[
+    {
+        "hash": "5c985f5402f0bcb339ebef0e2edcad30427bf79803994772cd3a1458012748cd1d9d2ee8d6f1466f0c8ca867e1d8a2d9cfe6bc8cfdd885421fb56c55bfc11328f19c61bdc87193831851526a835e457fb46fcd0088879d564e88bb39524aa40489329ecc2cbc6a0453b8dd69a90b82232df6ee6d39ddec80e16149c99b1ddeab",
+        "proofhash": "...",
+        "size": 807,
+        "height": 4555101,
+        "channel": 1,
+        "version": 8,
+        "merkleroot": "...",
+        "timestamp": 1658817563,
+        "date": "2022-07-26 06:39:23 UTC",
+        "nonce": 15731843013639865474,
+        "bits": "04c23531",
+        "difficulty": 7.9836465,
+        "mint": 1.92113,
+        "previousblockhash": "...",
+        "nextblockhash": "...",
+        "tx": [...]
+    }
+]
+```
+
+#### Return values:
+
+`hash` : The hash of the block.
+
+`proofhash` : The proof hash of the block.
+
+`size` : The block size in bytes.
+
+`height` : The block height.
+
+`channel` : The block channel (0=Stake, 1=Prime, 2=Hash).
+
+`version` : The serialization version of this block.
+
+`merkleroot` : The hash merkle root of the block transactions.
+
+`timestamp` : The Unix timestamp of when the block was created.
+
+`date` : The UTC date/time when the block was created.
+
+`nonce` : The solution nonce.
+
+`bits` : The compact representation for the block difficulty.
+
+`difficulty` : The channel specific difficulty.
+
+`mint` : The value minted in this block.
+
+`previousblockhash` : The hash of the previous block in the chain.
+
+`nextblockhash` : The hash of the next block in the chain, unless this is the last block in the chain.
+
+`tx` : An array of transactions included in this block (detail depends on verbose level).
+
+-----------------------------------
+
+# <a name="sync/status"></a> `sync/status`
+
+Returns the current synchronization status of the node.
+
+```
+ledger/sync/status
+```
+
+### Parameters:
+
+None.
+
+### Returns:
+
+#### Return value JSON object:
+
+```
+{
+    "networkBlock": 4595000,
+    "downloadRate": 125,
+    "completed": 99.85,
+    "progress": 95.5,
+    "secondsRemaining": 3600,
+    "timeRemaining": "01:00:00"
+}
+```
+
+#### Return values:
+
+`networkBlock` : The highest block height known from connected peers.
+
+`downloadRate` : The number of blocks downloaded per second.
+
+`completed` : The overall percentage of the blockchain synchronized (0-100).
+
+`progress` : The percentage progress of the current sync session (0-100).
+
+`secondsRemaining` : The estimated number of seconds remaining until sync is complete.
+
+`timeRemaining` : The estimated time remaining in HH:MM:SS format.
 
 -----------------------------------

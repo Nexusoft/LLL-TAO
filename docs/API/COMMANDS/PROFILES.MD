@@ -22,6 +22,7 @@ The following verbs are currently supported by this API command-set:
 [`status`](#status) - Retreives status information for a profile.  
 [`notifications`](#notifications) - List all notifications that modified specified object.  
 [`transactions`](#transactions) - List all transactions that modified specified object.  
+[`list`](#list) - List all object registers owned by the profile.  
 
 -----------------------------------
 
@@ -33,6 +34,7 @@ The following nouns are supported for this API command-set:
 [`auth`] - Crypto object register for login auth.  
 [`credentials`] - Credentials used to secure profiles.  
 [`recovery`] - An object which represents the recovery seed for the profile.  
+[`register`] - An object register owned by the profile (used by list).  
 
 -----------------------------------
 
@@ -294,8 +296,6 @@ This command only supports the `master` noun.
 
 `txid` : The transaction that was credited / claimed.
 
-`suppressed`: If the caller included the optional suppressed flag, then the response will include this field to indicate whether this notification is currently being suppressed or not.
-
 `from` : For DEBIT transactions, the register address of the account that the debit is being made from.
 
 `from_name` : For DEBIT transactions, the name of the account that the debit is being made from. Only included if the name can be resolved.
@@ -444,5 +444,69 @@ resolved.
 
 `object` : Returns a list of all hashed public keys in the crypto object register for the specified profile. The object result will contain the nine default keys(app1, app2, app3, auth, cert lisp, network, sign  and verify).  
 }  
+
+-----------------------------------
+
+# <a name="list"></a> `list`
+
+This will list all object registers owned by the profile.
+
+```
+profiles/list/noun
+```
+
+This command only supports the `register` noun.
+
+
+### Parameters:
+
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user profile.
+
+`where` : An array of clauses to **filter** the JSON results. More information on filtering the results from /list/xxx API methods can be found at [`Queries`](/docs/API/QUERIES.md).
+
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD). 
+
+
+### Results:
+
+#### Return value JSON object:
+
+```
+[
+    {
+        "owner": "b7fa11647c02a3a65a72970d8e703d8804eb127c7e7c41d565c3514a4d3fdf13",
+        "version": 1,
+        "created": 1654620591,
+        "modified": 1654620591,
+        "type": "OBJECT",
+        "address": "89AVoe5S8gjZpVngYoYtqJbSr9fGsdsoXShxnyNaEGPvMMeDnT6",
+        "name": "default",
+        "standard": "ACCOUNT"
+    }
+]
+[Completed in 0.256792 ms]
+```
+
+#### Return values:
+
+`owner` : The profile genesis hash that owns the register.
+
+`version` : The serialization version of the register.
+
+`created` : The UNIX timestamp when the register was created.
+
+`modified` : The UNIX timestamp when the register was last modified.
+
+`type` : The type of register (OBJECT, RAW, READONLY, APPEND).
+
+`address` : The register address of the object.
+
+`name` : The name of the register if one was provided.
+
+`standard` : The standard type of the object (ACCOUNT, TOKEN, CRYPTO, NAME, NAMESPACE, etc.).
 
 -----------------------------------
