@@ -365,10 +365,6 @@ namespace TAO
             if(!producer.Check())
                 return debug::error(FUNCTION, "producer transaction is invalid");
 
-            /* Print the block if it gets this far into processing. */
-            if(config::nVerbose >= 2)
-                debug::log(2, ToString());
-
             /* Proof of stake specific checks. */
             if(IsProofOfStake())
             {
@@ -699,8 +695,12 @@ namespace TAO
             }
 
             /* Add the producer transaction(s) */
-            if(!LLD::Ledger->WriteTx(producer.GetHash(), producer))
+            const uint512_t hashProducer = producer.GetHash();
+            if(!LLD::Ledger->WriteTx(hashProducer, producer))
                 return debug::error(FUNCTION, "failed to write producer to disk");
+
+            /* Make sure we don't have any orphans to process from the producer. */
+            mempool.ProcessOrphans(hashProducer);
 
             /* Accept the block state. */
             if(!state.Index())

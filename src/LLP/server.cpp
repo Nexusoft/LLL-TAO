@@ -1058,14 +1058,14 @@ namespace LLP
         if(!CONFIG.REQUIRE_SSL)
         {
             closesocket(hListenBase.first);
-            hListenBase.first = 0;
+            hListenBase.first = INVALID_SOCKET;
         }
 
         /* Close the ssl socket if running */
         if(CONFIG.ENABLE_SSL)
         {
             closesocket(hListenSSL.first);
-            hListenSSL.first = 0;
+            hListenSSL.first = INVALID_SOCKET;
         }
 
     }

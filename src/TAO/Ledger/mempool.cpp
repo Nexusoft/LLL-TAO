@@ -49,10 +49,12 @@ namespace TAO
         , mapLedger          ( )
         , mapConflicts       ( )
         , mapOrphans         ( )
+        , mapRequestCount    ( )
         , mapClaimed         ( )
         , mapRejected        ( )
         , mapInputs          ( )
         , setOrphansByIndex  ( )
+        , mapOrphansByIndex  ( )
         {
         }
 
@@ -92,41 +94,25 @@ namespace TAO
 
             try
             {
+                /* Reset our request count if we received it. */
+                if(mapRequestCount.count(hashTx))
+                    mapRequestCount[hashTx] = 0;
+
                 /* Check for transaction on disk. */
                 if(mapLedger.count(hashTx))
                     return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
-
-                /* If we are already an ORPHAN, keep iterating backwards. */
-                if(mapOrphans.count(hashTx))
-                {
-                    /* Track our starting orphan. */
-                    uint512_t hashMissing = hashTx;
-
-                    /* Go back to our last ORPHAN on record. */
-                    //while(mapOrphans.count(hashMissing))
-                    hashMissing = mapOrphans[hashTx].hashPrevTx;
-
-                    /* Debug output. */
-                    debug::log(0, FUNCTION, "REQUESTING ORPHAN tx ", hashMissing.SubString());
-
-                    /* Ask for our previous transaction now. */
-                    if(LLP::TRITIUM_SERVER)
-                    {
-                        /* Get a random node in case we have an unreliable node that gave us an ORPHAN */
-                        std::shared_ptr<LLP::TritiumNode> pCheck =
-                            LLP::TRITIUM_SERVER->RandomConnection();
-
-                        /* Ask the random node for our orphan data. */
-                        pCheck->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), hashMissing);
-                    }
-                }
 
                 /* Check for rejected tx. */
                 if(mapRejected.count(tx.hashPrevTx))
                 {
                     mapRejected.insert(hashTx);
-                    return debug::error(FUNCTION, "part of rejected transaction orphan chain");
+                    return false;
+                    //return debug::error(FUNCTION, "part of rejected transaction orphan chain");
                 }
+
+                /* If we are already an ORPHAN, skip over. */
+                if(mapOrphans.count(tx.hashPrevTx))
+                    return true;
 
                 /* Print the transaction here. */
                 if(config::nVerbose >= 3)
@@ -178,6 +164,7 @@ namespace TAO
                         /* Push to orphan queue. */
                         mapOrphans[tx.hashPrevTx] = tx;
                         setOrphansByIndex.insert(hashTx);
+                        mapOrphansByIndex[hashTx] = tx;
 
                         /* Increment consecutive orphans. */
                         if(pnode)
@@ -207,6 +194,18 @@ namespace TAO
                             debug::error(FUNCTION, "CONFLICT: prev tx ", (mapClaimed.count(tx.hashPrevTx) ? "CLAIMED " : "CONFLICTED "), tx.hashPrevTx.SubString());
 
                             mapConflicts[hashTx] = tx;
+
+                            /* Relay the conflicts if we are running over tritium protocol. */
+                            if(pnode && LLP::TRITIUM_SERVER)
+                            {
+                                /* Relay the transaction notification. */
+                                LLP::TRITIUM_SERVER->Relay
+                                (
+                                    LLP::TritiumNode::ACTION::NOTIFY,
+                                    uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
+                                    hashTx
+                                );
+                            }
                         }
 
 
@@ -227,6 +226,26 @@ namespace TAO
                             /* Add to conflicts map. */
                             debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString(), " and ", hashLast.SubString());
                             mapConflicts[hashTx] = tx;
+
+                            /* Relay the conflicts if we are running over tritium protocol. */
+                            if(pnode && LLP::TRITIUM_SERVER)
+                            {
+                                /* Relay the transaction notification. */
+                                LLP::TRITIUM_SERVER->Relay
+                                (
+                                    LLP::TritiumNode::ACTION::NOTIFY,
+                                    uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
+                                    hashLast
+                                );
+
+                                /* Relay the transaction notification. */
+                                LLP::TRITIUM_SERVER->Relay
+                                (
+                                    LLP::TritiumNode::ACTION::NOTIFY,
+                                    uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
+                                    hashTx
+                                );
+                            }
                         }
 
                         return false;
@@ -330,6 +349,7 @@ namespace TAO
                     /* Erase the transaction. */
                     mapOrphans.erase(hashTx);
                     setOrphansByIndex.erase(hashThis);
+                    mapOrphansByIndex.erase(hashThis);
 
                     /* Set the hashTx. */
                     hashTx = hashThis;
@@ -352,6 +372,7 @@ namespace TAO
                 /* Erase the transaction. */
                 mapOrphans.erase(hashTx);
                 setOrphansByIndex.erase(hashThis);
+                mapOrphansByIndex.erase(hashThis);
 
                 /* Set the hashTx. */
                 hashTx = hashThis;
@@ -398,6 +419,30 @@ namespace TAO
         bool Mempool::Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx) const
         {
             RECURSIVE(MUTEX);
+
+            /* Check in conflict memory. */
+            if(mapConflicts.count(hashTx))
+            {
+                /* Get from conflicts map. */
+                tx = mapConflicts.at(hashTx);
+
+                /* Set our internal cached hash. */
+                tx.hashCache = hashTx;
+
+                return true;
+            }
+
+            /* Check in orphans memory. */
+            if(mapOrphansByIndex.count(hashTx))
+            {
+                /* Get from conflicts map. */
+                tx = mapOrphansByIndex.at(hashTx);
+
+                /* Set our internal cached hash. */
+                tx.hashCache = hashTx;
+
+                return true;
+            }
 
             /* Check in ledger memory. */
             if(mapLedger.count(hashTx))
@@ -481,7 +526,7 @@ namespace TAO
         {
             RECURSIVE(MUTEX);
 
-            return mapLedger.count(hashTx) || mapLegacy.count(hashTx) || mapConflicts.count(hashTx);
+            return mapLedger.count(hashTx) || mapLegacy.count(hashTx) || mapConflicts.count(hashTx) || mapOrphansByIndex.count(hashTx);
         }
 
 
@@ -519,6 +564,10 @@ namespace TAO
             /* Erase from orphans memory. */
             if(setOrphansByIndex.count(hashTx))
                 setOrphansByIndex.erase(hashTx);
+
+            /* Erase from orphans index. */
+            if(mapOrphansByIndex.count(hashTx))
+                mapOrphansByIndex.erase(hashTx);
 
             /* Find the transaction in pool. */
             if(mapLedger.count(hashTx))

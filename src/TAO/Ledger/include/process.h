@@ -53,7 +53,7 @@ namespace TAO
 
 
         /** Track the times we have requested processed missing transactions so we don't loop too much. **/
-        extern std::pair<uint1024_t, uint64_t> pairLastMissing;
+        extern std::map<uint1024_t, uint64_t> mapLastMissing;
 
 
         /** Mutex to protect checking more than one block at a time. **/

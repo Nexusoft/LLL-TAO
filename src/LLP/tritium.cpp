@@ -1919,11 +1919,21 @@ namespace LLP
                                     /* Check if producer is being asked for, and send block instead. */
                                     if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
                                     {
-                                        /* We want to iterate our DDOS values here. */
-                                        if(DDOS && fDDOS.load())
-                                            DDOS->rSCORE += 100; //make a high penalty for doing this
+                                        /* Read the block from disk. */
+                                        TAO::Ledger::BlockState tBlockState;
+                                        if(!LLD::Ledger->ReadBlock(hashTx, tBlockState))
+                                        {
+                                            debug::notice(NODE, " couldn't read block from producer ", hashTx.SubString());
+                                            break;
+                                        }
 
-                                        return debug::drop(NODE, "ACTION::GET: TRANSACTION: cannot request producer without block");
+                                        /* Push block as response. */
+                                        TAO::Ledger::TritiumBlock block(tBlockState);
+                                        PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
+
+                                        /* Add DDOS filtering here. */
+                                        if(DDOS)
+                                            DDOS->rSCORE += 50;
                                     }
                                     else
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
@@ -2394,7 +2404,7 @@ namespace LLP
                                     if(TRITIUM_SERVER->GetAddressManager()->Has(addr))
                                     {
                                         /* Only notify address logs if more than ten minutes since last connection. */
-                                        const LLP::TrustAddress addrInfo =
+                                        const LLP::TrustAddress& addrInfo =
                                             TRITIUM_SERVER->GetAddressManager()->Get(addr);
 
                                         /* Calculate how long it has been since last connection. */
@@ -2624,10 +2634,10 @@ namespace LLP
                                             debug::log(0, FUNCTION, "broadcasting packet with ", nTotalItems, " items to ", pnode->GetAddress().ToStringIP());
 
                                             /* Write our packet with our total items. */
-                                            pnode->WritePacket(NewMessage(ACTION::GET, ssResponse));
+                                            //pnode->WritePacket(NewMessage(ACTION::GET, ssResponse));
 
                                             /* Expired our missing block last. */
-                                            pnode->PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), block.hashMissing);
+                                            pnode->PushMessage(ACTION::GET, uint8_t(SPECIFIER::TRANSACTIONS), uint8_t(TYPES::BLOCK),  block.hashMissing);
 
                                             /* Clear our response data. */
                                             ssResponse.clear();
@@ -2660,8 +2670,8 @@ namespace LLP
                             return debug::drop(NODE, "TYPES::BLOCK::SYNC: disabled in -client mode");
 
                         /* Check if this is an unsolicited sync block. */
-                        if(nCurrentSession != TAO::Ledger::nSyncSession || fSynchronized.load())
-                            return debug::drop(FUNCTION, "unsolicted sync block");
+                        //if(nCurrentSession != TAO::Ledger::nSyncSession || fSynchronized.load())
+                        //    return debug::drop(FUNCTION, "unsolicted sync block");
 
                         /* Get the block from the stream. */
                         TAO::Ledger::SyncBlock block;
@@ -3926,7 +3936,7 @@ namespace LLP
         TAO::Ledger::nSyncSession.store(nCurrentSession);
 
         /* Reset last time received. */
-        nLastTimeReceived.store(runtime::unifiedtimestamp());
+        nLastTimeReceived.store(runtime::timestamp());
 
         /* Cache the height at the start of the sync */
         if(nSyncStart.load() == 0)
