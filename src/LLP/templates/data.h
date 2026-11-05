@@ -135,6 +135,9 @@ namespace LLP
         int m_nEpollFd;
 #endif
 
+        std::mutex DATA_CONDITION_MUTEX;
+        std::mutex FLUSH_CONDITION_MUTEX;
+
 
         /** Default Constructor. **/
         DataThread(const uint32_t nID, const bool ffDDOSIn, const uint32_t rScore, const uint32_t cScore,

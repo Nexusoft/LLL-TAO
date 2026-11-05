@@ -397,7 +397,7 @@ namespace LLP
              * If it doesn't return that, it means it connected immediately and connection was successful. (very unusual, but possible)
              */
             RECURSIVE(SOCKET_MUTEX);
-            fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
+            fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) != SOCKET_ERROR);
         }
         else
         {
@@ -413,11 +413,11 @@ namespace LLP
             }
 
             RECURSIVE(SOCKET_MUTEX);
-            fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
+            fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) != SOCKET_ERROR);
         }
 
         /* Handle final socket checks if connection established with no errors. */
-        if(fConnected)
+        if(!fConnected)
         {
             /* Check for errors. */
             int32_t nError = WSAGetLastError();
@@ -425,6 +425,7 @@ namespace LLP
             /* We would expect to get WSAEWOULDBLOCK/WSAEINPROGRESS here in the normal case of attempting a connection. */
             if(nError == WSAEWOULDBLOCK || nError == WSAEALREADY || nError == WSAEINPROGRESS)
             {
+                fConnected = true;
                 /* Setup poll objects. */
                 pollfd fds[1];
                 fds[0].events = POLLOUT;
@@ -463,7 +464,9 @@ namespace LLP
                     debug::log(3, FUNCTION, "Connection failed ", addrDest.ToString());
                 }
             }
-            else if (nError != WSAEISCONN)
+            else if (nError == WSAEISCONN)
+                fConnected = true;
+            else
             {
                 fConnected = false;
                 debug::log(3, FUNCTION, "Connection failed ", addrDest.ToString(), " (", nError, ")");

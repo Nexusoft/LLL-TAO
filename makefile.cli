@@ -381,6 +381,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_packet_processing_comprehensive.o \
 		   build/Tests_LLP_packet_round_response.o \
 		   build/Tests_LLP_permissions_test.o \
+		   build/Tests_LLP_peer_recovery_tests.o \
 		   build/Tests_LLP_prime_sign_finalization_tests.o \
 		   build/Tests_LLP_push_notification_tests.o \
 		   build/Tests_LLP_push_throttle_test.o \

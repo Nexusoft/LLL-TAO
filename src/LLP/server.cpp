@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #include <LLP/templates/ddos.h>
 #include <LLP/templates/static.h>
 #include <LLP/include/network.h>
+#include <LLP/include/hosts.h>
+#include <LLP/include/peer_recovery.h>
 
 #include <LLP/types/tritium.h>
 #include <LLP/types/time.h>
@@ -45,6 +47,7 @@ ________________________________________________________________________________
 #include <functional>
 #include <numeric>
 #include <type_traits>
+#include <chrono>
 
 #include <openssl/ssl.h>
 
@@ -58,6 +61,8 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    std::atomic<bool> fManagersStarting{false};
+
     /* Type trait to detect if a protocol type supports channel mining notifications.
      * This is used with if constexpr to only compile mining-specific code for types that support it. */
     template <typename T, typename = void>
@@ -82,7 +87,7 @@ namespace LLP
 {
     /** Constructor **/
     template <class ProtocolType>
-    Server<ProtocolType>::Server(const Config& config)
+    Server<ProtocolType>::Server(const Config& config, AddressManager::SeedResolver resolver)
     : CONFIG            (config)
     , DDOS_MAP          (new std::map<BaseAddress, DDOS_Filter*>())
     , hListenBase       (-1, -1)
@@ -93,6 +98,7 @@ namespace LLP
     , THREAD_UPNP       ( )
     , THREAD_METER      ( )
     , THREAD_MANAGER    ( )
+    , seedResolver      (resolver ? std::move(resolver) : AddressManager::SeedResolver(LookupHostFresh))
     {
         /* -banned means do not let node connect */
         if(config::HasArg("-banned"))
@@ -230,6 +236,13 @@ namespace LLP
     Server<ProtocolType>::~Server()
     {
         debug::log(1, FUNCTION, "Shutting down ", Name(), " server - waiting for threads...");
+        RequestManagerStop();
+
+        /* Stop the producer of outgoing sockets before closing the data threads. */
+        debug::log(1, FUNCTION, "  Joining address manager thread...");
+        if(THREAD_MANAGER.joinable())
+            THREAD_MANAGER.join();
+        debug::log(1, FUNCTION, "  Address manager thread joined");
 
         /* ── Pre-close all connection sockets BEFORE joining threads ──────────
          * Closing the socket fd causes the kernel to return POLLHUP/POLLERR on
@@ -264,12 +277,6 @@ namespace LLP
             THREADS_DATA[nIndex]->CONDITION.notify_all();
             THREADS_DATA[nIndex]->FLUSH_CONDITION.notify_all();
         }
-
-        /* Wait for address manager. */
-        debug::log(1, FUNCTION, "  Joining address manager thread...");
-        if(THREAD_MANAGER.joinable())
-            THREAD_MANAGER.join();
-        debug::log(1, FUNCTION, "  Address manager thread joined");
 
         /* Wait for meter thread. */
         debug::log(1, FUNCTION, "  Joining meter thread...");
@@ -348,6 +355,13 @@ namespace LLP
     AddressManager* Server<ProtocolType>::GetAddressManager() const
     {
         return pAddressManager;
+    }
+
+    template <class ProtocolType>
+    PeerRecoveryStatus Server<ProtocolType>::GetPeerRecoveryStatus() const
+    {
+        std::lock_guard<std::mutex> lock(RECOVERY_MUTEX);
+        return recoveryStatus;
     }
 
 
@@ -589,7 +603,7 @@ namespace LLP
                 {
                     /* Get the current atomic_ptr. */
                     std::shared_ptr<ProtocolType> CONNECTION = THREADS_DATA[nThread]->CONNECTIONS->at(nIndex);
-                    if(!CONNECTION)
+                    if(!CONNECTION || !CONNECTION->Connected())
                         continue;
 
                     /* Push the active connection. */
@@ -617,47 +631,14 @@ namespace LLP
     template <class ProtocolType>
     std::shared_ptr<ProtocolType> Server<ProtocolType>::RandomConnection()
     {
-        /* Get the total count of connections in this server. */
-        const uint32_t nTotalConnections =
-            GetConnectionCount();
-
-        /* Check for no connections. */
-        if(nTotalConnections == 0)
-            return nullptr;
-
-        /* Get a random integer for this connection. */
-        uint32_t nConnectionIndex =
-            LLC::GetRandInt(nTotalConnections);
-
-        /* List of connections to return. */
+        std::vector<std::shared_ptr<ProtocolType>> vConnections;
         for(uint16_t nThread = 0; nThread < CONFIG.MAX_THREADS; ++nThread)
         {
-            /* Loop through connections in data thread. */
-            const uint16_t nSize =
-                static_cast<uint16_t>(THREADS_DATA[nThread]->CONNECTIONS->size());
-
-            /* Loop through all connections. */
-            for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
-            {
-                try
-                {
-                    /* Get the current atomic_ptr. */
-                    std::shared_ptr<ProtocolType> CONNECTION = THREADS_DATA[nThread]->CONNECTIONS->at(nIndex);
-                    if(!CONNECTION)
-                        continue;
-
-                    /* Push the active connection. */
-                    if(nConnectionIndex-- == 0)
-                        return CONNECTION;
-                }
-                catch(const std::exception& e)
-                {
-                    //debug::error(FUNCTION, e.what());
-                }
-            }
+            const auto vSnapshot = *THREADS_DATA[nThread]->CONNECTIONS;
+            vConnections.insert(vConnections.end(), vSnapshot.begin(), vSnapshot.end());
         }
 
-        return RandomConnection();
+        return SelectConnectedPeer(vConnections, [](size_t n) { return LLC::GetRand(n); });
     }
 
 
@@ -684,7 +665,7 @@ namespace LLP
 
                     /* Get the current atomic_ptr. */
                     std::shared_ptr<ProtocolType> CONNECTION = THREADS_DATA[nThread]->CONNECTIONS->at(nIndex);
-                    if(!CONNECTION)
+                    if(!CONNECTION || !CONNECTION->Connected())
                         continue;
 
                     /* Push the active connection. */
@@ -819,39 +800,126 @@ namespace LLP
         pAddressManager->ReadDatabase();
         pAddressManager->SetPort(CONFIG.PORT_BASE);
 
-        /* Timer to print the address manager debug info */
-        runtime::timer TIMER;
-        TIMER.Start();
+        while(fManagersStarting.load() && !config::fShutdown.load() && !fStopManager.load())
+            runtime::sleep(100);
+
+        PeerRecovery recovery;
+        uint64_t nLastSuccess = 0;
+        pAddressManager->ReadLastDNSUpdate(nLastSuccess);
+        const uint64_t nDNSInterval = static_cast<uint64_t>(
+            std::max(int64_t(1), config::GetArg("-dnsupdate", 86400)));
+        auto nextConnection = std::chrono::steady_clock::now();
+        std::thread dnsThread;
+        std::atomic<bool> fDNSDone{false};
+        bool fDNSResult = false;
 
         /* Loop connections. */
-        while(!config::fShutdown.load())
+        while(!config::fShutdown.load() && !fStopManager.load())
         {
-            /* Check if we need to loop in suspended state. */
+            const auto now = std::chrono::steady_clock::now();
+            const uint64_t nNow = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+            const uint64_t nWall = runtime::timestamp();
+            const bool fSuspended = config::fSuspended.load();
+            const bool fDNS = !config::GetBoolArg("-nodns");
+            const uint32_t nIncoming = GetConnectionCount(FLAGS::INCOMING);
+            const uint32_t nOutgoing = GetConnectionCount(FLAGS::OUTGOING);
+            const uint32_t nConnections = nIncoming + nOutgoing;
+            const uint32_t nEligible = pAddressManager->EligibleCount();
+            const bool fCapacity = CanAttemptOutgoing(nConnections, CONFIG.MAX_CONNECTIONS);
+            const bool fPeriodic = nLastSuccess == 0 || nLastSuccess > nWall || nWall - nLastSuccess >= nDNSInterval;
+            const bool fDegraded = nOutgoing == 0 || nEligible == 0;
+            recovery.Observe(nNow, nOutgoing > 0);
+
+            {
+                std::lock_guard<std::mutex> lock(RECOVERY_MUTEX);
+                recoveryStatus.enabled = fDNS;
+                recoveryStatus.suspended = fSuspended;
+                recoveryStatus.incoming = nIncoming;
+                recoveryStatus.outgoing = nOutgoing;
+                recoveryStatus.eligible = nEligible;
+                recoveryStatus.lastSuccess = nLastSuccess;
+                recoveryStatus.retryIn = recovery.NextAttempt() > nNow ? recovery.NextAttempt() - nNow : 0;
+                recoveryStatus.state = !fDNS ? "disabled" : fSuspended ? "suspended"
+                    : !fCapacity ? "at_capacity" : fDegraded ? "degraded" : "connected";
+                if(recoveryStatus.resolving)
+                    recoveryStatus.state = "resolving";
+            }
+
+            if(dnsThread.joinable() && fDNSDone.load())
+            {
+                dnsThread.join();
+                if(fDNSResult)
+                    pAddressManager->ReadLastDNSUpdate(nLastSuccess);
+                else if(!config::fShutdown.load() && !config::fSuspended.load() && !fStopManager.load())
+                    debug::warning(FUNCTION, Name(), " seed refresh failed; retrying with backoff");
+
+                recovery.Completed(nNow, LLC::GetRandInt(1001), nOutgoing > 0 && nEligible > 0, fDNSResult);
+                {
+                    std::lock_guard<std::mutex> lock(RECOVERY_MUTEX);
+                    recoveryStatus.resolving = false;
+                    recoveryStatus.lastSucceeded = fDNSResult;
+                    recoveryStatus.lastSuccess = nLastSuccess;
+                    recoveryStatus.retryIn = recovery.NextAttempt() - nNow;
+                    recoveryStatus.state = !fDNS ? "disabled" : fSuspended ? "suspended"
+                        : !fCapacity ? "at_capacity" : fDegraded ? "degraded" : "connected";
+                }
+            }
+
+            if(!dnsThread.joinable()
+               && recovery.Due(nNow, fDNS, fSuspended, fCapacity, fPeriodic, fDegraded, fRecoveryRequested.load()))
+            {
+                fRecoveryRequested.exchange(false);
+                {
+                    std::lock_guard<std::mutex> lock(RECOVERY_MUTEX);
+                    recoveryStatus.resolving = true;
+                    recoveryStatus.lastAttempt = nWall;
+                    recoveryStatus.state = "resolving";
+                }
+                debug::log(0, FUNCTION, Name(), " refreshing DNS seeds");
+                fDNSDone.store(false);
+                fDNSResult = false;
+                try
+                {
+                    dnsThread = std::thread([this, &fDNSResult, &fDNSDone] {
+                        try
+                        {
+                            fDNSResult = pAddressManager->RefreshSeedAddresses(config::fTestNet.load(), seedResolver,
+                                [this] { return fStopManager.load(); });
+                        }
+                        catch(const std::exception& e)
+                        {
+                            debug::error(FUNCTION, "seed refresh failed: ", e.what());
+                        }
+                        fDNSDone.store(true);
+                    });
+                }
+                catch(const std::system_error& e)
+                {
+                    debug::error(FUNCTION, "failed to start seed resolver: ", e.what());
+                    recovery.Completed(nNow, LLC::GetRandInt(1001), false, false);
+                    std::lock_guard<std::mutex> lock(RECOVERY_MUTEX);
+                    recoveryStatus.resolving = false;
+                    recoveryStatus.lastSucceeded = false;
+                    recoveryStatus.retryIn = recovery.NextAttempt() - nNow;
+                    recoveryStatus.state = !fDNS ? "disabled" : fSuspended ? "suspended"
+                        : !fCapacity ? "at_capacity" : fDegraded ? "degraded" : "connected";
+                }
+            }
+
+            if(config::fShutdown.load() || fStopManager.load())
+                break;
             if(config::fSuspended.load())
             {
                 runtime::sleep(100);
                 continue;
             }
 
-            /* Address to select. */
-            BaseAddress addr = BaseAddress();
-
-            /* Get the number of incoming and total connection counts */
-            uint32_t nConnections = GetConnectionCount(FLAGS::ALL);
-            uint32_t nIncoming    = GetConnectionCount(FLAGS::INCOMING);
-
-            /* Sleep between connection attempts.
-               If there are no connections then sleep for a minimum interval until a connection is established. */
-            if(nConnections == 0)
-                runtime::sleep(1000);
-            else
-                /* Sleep in 1 second intervals for easy break on shutdown. */
-                for(int i = 0; i < (CONFIG.MANAGER_SLEEP / 1000) && !config::fShutdown.load(); ++i)
-                    runtime::sleep(1000);
-
-            /* Pick a weighted random priority from a sorted list of addresses. */
-            if(nConnections < CONFIG.MAX_CONNECTIONS && nIncoming < CONFIG.MAX_INCOMING && pAddressManager->StochasticSelect(addr))
+            BaseAddress addr;
+            if(now >= nextConnection && CanAttemptOutgoing(GetConnectionCount(FLAGS::ALL), CONFIG.MAX_CONNECTIONS)
+               && pAddressManager->StochasticSelect(addr))
             {
+                nextConnection = now + std::chrono::milliseconds(
+                    nConnections == 0 ? 1000 : std::max(uint32_t(1000), CONFIG.MANAGER_SLEEP));
                 /* Check for invalid address */
                 if(!addr.IsValid())
                 {
@@ -872,18 +940,25 @@ namespace LLP
                    fConnected = AddConnection(addr.ToStringIP(), GetPort(true), true, false);
 
                 /* If SSL connection failed or was not attempted and SSL is not required, attempt on the non-SSL port */
-                if(!fConnected && !CONFIG.REQUIRE_SSL)
+                if(!fConnected && !CONFIG.REQUIRE_SSL && !config::fShutdown.load()
+                   && !config::fSuspended.load() && !fStopManager.load())
                     fConnected = AddConnection(addr.ToStringIP(), GetPort(false), false, false);
 
                 if(fConnected)
                 {
+                    nextConnection = std::chrono::steady_clock::now() + std::chrono::milliseconds(
+                        std::max(uint32_t(1000), CONFIG.MANAGER_SLEEP));
                     /* If address is DNS, log message on connection. */
                     std::string strDNS;
                     if(pAddressManager->GetDNSName(addr, strDNS))
                         debug::log(3, FUNCTION, "Connected to DNS Address: ", strDNS);
                 }
             }
+            runtime::sleep(1000);
         }
+
+        if(dnsThread.joinable())
+            dnsThread.join();
     }
 
 

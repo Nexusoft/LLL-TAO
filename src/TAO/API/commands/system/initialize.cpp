@@ -367,7 +367,23 @@ namespace TAO
 
             /* Then check connections to the tritium server */
             if(LLP::TRITIUM_SERVER)
+            {
                 jRet["connections"] = LLP::TRITIUM_SERVER->GetConnectionCount();
+                const auto recovery = LLP::TRITIUM_SERVER->GetPeerRecoveryStatus();
+                jRet["peer_recovery"] = {
+                    {"enabled", recovery.enabled},
+                    {"suspended", recovery.suspended},
+                    {"resolving", recovery.resolving},
+                    {"state", recovery.state},
+                    {"last_succeeded", recovery.lastSucceeded},
+                    {"incoming", recovery.incoming},
+                    {"outgoing", recovery.outgoing},
+                    {"eligible", recovery.eligible},
+                    {"last_attempt", recovery.lastAttempt},
+                    {"last_success", recovery.lastSuccess},
+                    {"retry_in", recovery.retryIn}
+                };
+            }
 
             return jRet;
         }

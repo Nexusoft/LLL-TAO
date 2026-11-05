@@ -232,7 +232,7 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
     {
         for (auto const& ip : ipInputV4)
         {
-            sockaddr_in* pSockAddr;
+            sockaddr_in* pSockAddr = nullptr;
             LLP::BaseAddress address;
 
             REQUIRE(address.GetSockAddr(pSockAddr) == false);  
@@ -274,7 +274,7 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
     {
         for (auto const& ip : ipInputV6)
         {
-            sockaddr_in6* pSockAddr;
+            sockaddr_in6* pSockAddr = nullptr;
             LLP::BaseAddress address;
 
             REQUIRE(address.GetSockAddr6(pSockAddr) == false);  

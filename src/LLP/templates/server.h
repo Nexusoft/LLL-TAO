@@ -34,6 +34,23 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    extern std::atomic<bool> fManagersStarting;
+
+    struct PeerRecoveryStatus
+    {
+        bool enabled = false;
+        bool suspended = false;
+        bool resolving = false;
+        bool lastSucceeded = false;
+        uint32_t incoming = 0;
+        uint32_t outgoing = 0;
+        uint32_t eligible = 0;
+        uint64_t lastAttempt = 0;
+        uint64_t lastSuccess = 0;
+        uint64_t retryIn = 0;
+        std::string state = "disabled";
+    };
+
     /* forward declarations */
     class AddressManager;
     class DDOS_Filter;
@@ -96,12 +113,18 @@ namespace LLP
         /** Connection Manager thread. **/
         std::thread THREAD_MANAGER;
 
+        std::atomic<bool> fStopManager{false};
+        std::atomic<bool> fRecoveryRequested{false};
+        mutable std::mutex RECOVERY_MUTEX;
+        PeerRecoveryStatus recoveryStatus;
+        AddressManager::SeedResolver seedResolver;
+
 
     public:
 
 
         /** Constructor **/
-        Server(const Config& config);
+        Server(const Config& config, AddressManager::SeedResolver resolver = {});
 
 
         /** Default Destructor **/
@@ -132,6 +155,10 @@ namespace LLP
          *
          **/
         AddressManager* GetAddressManager() const;
+
+        void RequestPeerRecovery() { fRecoveryRequested.store(true); }
+        void RequestManagerStop() { fStopManager.store(true); }
+        PeerRecoveryStatus GetPeerRecoveryStatus() const;
 
 
         /** AddNode
