@@ -2,7 +2,7 @@
 
 			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2025
+			(c) Copyright The Nexus Developers 2014 - 2026
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -721,7 +721,7 @@ namespace TAO::API
                                 return true;
 
                             /* Log some info about this. */
-                            debug::log(2, FUNCTION, "OP::CREDIT: sanitize failed for ", rEvent.first.SubString(), ", adding to work queue");
+                            debug::log(3, FUNCTION, "OP::CREDIT: sanitize failed for ", rEvent.first.SubString(), ", adding to work queue");
 
                             /* Push this to our contracts queue so we can process again later. */
                             LLD::Sessions->PushContract(hashGenesis, rEvent.first, rEvent.second);
@@ -757,7 +757,7 @@ namespace TAO::API
                                 return true;
 
                             /* Log some info about this. */
-                            debug::log(2, FUNCTION, "OP::CLAIM: sanitize failed for ", rEvent.first.SubString(), ", adding to work queue");
+                            debug::log(3, FUNCTION, "OP::CLAIM: sanitize failed for ", rEvent.first.SubString(), ", adding to work queue");
 
                             /* Push this to our contracts queue so we can process again later. */
                             LLD::Sessions->PushContract(hashGenesis, rEvent.first, rEvent.second);

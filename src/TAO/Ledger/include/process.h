@@ -2,7 +2,7 @@
 
 			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2025
+			(c) Copyright The Nexus Developers 2014 - 2026
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -50,6 +50,10 @@ namespace TAO
 
         /** Static instantiation of orphan blocks in queue to process. **/
         extern std::map<uint1024_t, std::unique_ptr<TAO::Ledger::Block>> mapOrphans;
+
+
+        /** Track the times we have requested processed missing transactions so we don't loop too much. **/
+        extern std::pair<uint1024_t, uint64_t> pairLastMissing;
 
 
         /** Mutex to protect checking more than one block at a time. **/

@@ -2,7 +2,7 @@
 
         Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2025
+        (c) Copyright The Nexus Developers 2014 - 2026
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -517,7 +517,7 @@ namespace TAO
                 {
                     /* Get the coinbase from the memory pool. */
                     Legacy::Transaction tx;
-                    if(!LLD::Legacy->ReadTx(vtx[0].second, tx, FLAGS::MEMPOOL))
+                    if(!LLD::Legacy->ReadTx(vtx[0].second, tx))
                         return debug::error(FUNCTION, "cannot get legacy coinbase tx");
 
                     /* Double check for coinbase. */
@@ -539,7 +539,7 @@ namespace TAO
                 {
                     /* Get the coinbase from the memory pool. */
                     Transaction disk;
-                    if(!LLD::Ledger->ReadTx(vtx.back().second, disk, FLAGS::MEMPOOL))
+                    if(!LLD::Ledger->ReadTx(vtx.back().second, disk)) //Ledger COINBASE will never be in MEMPOOL
                         return debug::error(FUNCTION, "cannot get ledger coinbase tx");
 
                     /* Get a const reference of transaction. */

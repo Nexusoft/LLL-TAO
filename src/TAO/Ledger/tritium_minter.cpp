@@ -2,7 +2,7 @@
 
         Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2025
+        (c) Copyright The Nexus Developers 2014 - 2026
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -280,8 +280,9 @@ namespace TAO::Ledger
              * potentially have difficulty finding a block to add stake, even if they were adding a large amount.
              */
             TAO::Ledger::StakeChange tStakeChange;
-            if(LLD::Local->ReadStakeChange(hashGenesis, tStakeChange))
+            if(LLD::Local->ReadStakeChange(hashGenesis, tStakeChange) && tStakeChange.nAmount > 0)
                 nStake += tStakeChange.nAmount;
+
         }
 
         /* Calculate the minimum Required Energy Efficiency Threshold.

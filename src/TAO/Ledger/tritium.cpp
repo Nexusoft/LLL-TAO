@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2025
+            (c) Copyright The Nexus Developers 2014 - 2026
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -532,10 +532,6 @@ namespace TAO
             vHashes.push_back(hashProducer);
             setUnique.insert(hashProducer);
 
-            /* Check for missing transactions. */
-            if(vMissing.size() != 0)
-                return debug::error(FUNCTION, "missing ", vMissing.size(), " transactions");
-
             /* Check for duplicate txid's. */
             if(setUnique.size() != vHashes.size())
                 return debug::error(FUNCTION, "duplicate transaction");
@@ -624,7 +620,7 @@ namespace TAO
 
             /* Check that Block is Descendant of Hardened Checkpoints. */
             #ifndef UNIT_TESTS
-            if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
+            if(config::GetBoolArg("-checkpoints", false) && !ChainState::Synchronizing() && !IsDescendant(statePrev))
                 return debug::error(FUNCTION, "not descendant of last checkpoint");
             #endif
 

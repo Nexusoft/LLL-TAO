@@ -2,7 +2,7 @@
 
             Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2025
+            (c) Copyright The Nexus Developers 2014 - 2026
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -62,17 +62,13 @@ namespace TAO
         /* Check that the checkpoint is a Descendant of previous Checkpoint.*/
         bool IsDescendant(const BlockState& state)
         {
-            /* Check if we should force our descendant checks. */
-            if(config::GetBoolArg("-forcesync", false))
-                return true;
-
-            /* If no checkpoint defined, return true. */
-            if(ChainState::hashCheckpoint == 0)
-                return true;
-
-            /* Check hard coded checkpoints when syncing. */
+            /* Check hardcoded checkpoints when synchronizing. */
             if(ChainState::Synchronizing())
             {
+                /* If no checkpoint defined, return true. */
+                if(ChainState::hashCheckpoint == 0)
+                    return true;
+
                 /* Check that height isn't exceeded. */
                 if(config::fTestNet || state.nHeight > CHECKPOINT_HEIGHT)
                     return true;
@@ -88,6 +84,10 @@ namespace TAO
                 /* Block must match checkpoints map. */
                 return it->second == state.hashCheckpoint;
             }
+
+            /* Check if we should force our descendant checks. */
+            if(!config::GetBoolArg("-checkpoints", false))
+                return true;
 
             /* Check The Block Hash */
             BlockState check = state;
