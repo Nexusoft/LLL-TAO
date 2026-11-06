@@ -102,6 +102,10 @@ namespace TAO
                         {
                             const uint1024_t previousHash = ancestor.hashPrevBlock;
                             const uint32_t previousHeight = ancestor.nHeight - 1;
+                            if(previousHeight == peer.nHeight)
+                                return previousHash == hash
+                                    ? ChainState::MiningPeerEvidence::SUPPORTING
+                                    : ChainState::MiningPeerEvidence::BEHIND;
                             if(!LLD::Ledger->ReadBlock(previousHash, ancestor)
                             || ancestor.GetHash() != previousHash
                             || ancestor.nHeight != previousHeight)
