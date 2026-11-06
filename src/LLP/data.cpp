@@ -274,11 +274,18 @@ namespace LLP
             pnode->nDataThread     = ID;
             pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
 
-            /* Check for inbound socket. */
+            /* Check for inbound socket. The condition mutex must cover this
+             * counter transition so the data-thread wait cannot miss it. */
             if(pnode->Incoming())
+            {
+                std::scoped_lock lock(DATA_CONDITION_MUTEX);
                 ++nIncoming;
+            }
             else
+            {
+                std::scoped_lock lock(DATA_CONDITION_MUTEX);
                 ++nOutbound;
+            }
 
             /* Find an avilable data thread slot. */
             const uint32_t nSlot = find_slot();
@@ -298,7 +305,10 @@ namespace LLP
             epoll_sync_write_interest(pnode->fd, nSlot, pnode->NeedsWriteService());
 
             /* Notify data thread to wake up. */
-            CONDITION.notify_all();
+            {
+                std::scoped_lock lock(DATA_CONDITION_MUTEX);
+                CONDITION.notify_all();
+            }
 
         }
         catch(const std::runtime_error& e)

@@ -422,10 +422,10 @@ namespace LLP
             /* Check for errors. */
             int32_t nError = WSAGetLastError();
 
-            /* We would expect to get WSAEWOULDBLOCK/WSAEINPROGRESS here in the normal case of attempting a connection. */
+            /* We would expect to get WSAEWOULDBLOCK/WSAEINPROGRESS here in the normal case of attempting a connection.
+             * Do not mark the socket connected until poll reports completion and SO_ERROR is clear. */
             if(nError == WSAEWOULDBLOCK || nError == WSAEALREADY || nError == WSAEINPROGRESS)
             {
-                fConnected = true;
                 /* Setup poll objects. */
                 pollfd fds[1];
                 fds[0].events = POLLOUT;
@@ -446,22 +446,23 @@ namespace LLP
 
                     /* Check poll for errors. */
                     if(nPoll < 0)
-                    {
                         debug::log(3, FUNCTION, "poll failed ", addrDest.ToString(), " (", nError, ")");
-                        fConnected = false;
-                    }
                 }
 
                 /* Check for timeout. */
                 if(nPoll == 0)
                 {
-                    fConnected = false;
                     debug::log(3, FUNCTION, "poll timeout ", addrDest.ToString(), " (", nError, ")");
                 }
-                else if((fds[0].revents & POLLERR) || (fds[0].revents & POLLHUP))
+                else if(nPoll > 0)
                 {
-                    fConnected = false;
-                    debug::log(3, FUNCTION, "Connection failed ", addrDest.ToString());
+                    /* Writable/readable is not success. A completed connect can
+                     * still carry a kernel error that only SO_ERROR reports. */
+                    const int32_t nSocketError = RefreshSocketError();
+                    if(nSocketError != 0 || (fds[0].revents & POLLERR) || (fds[0].revents & POLLHUP))
+                        debug::log(3, FUNCTION, "Connection failed ", addrDest.ToString(), " (", nSocketError, ")");
+                    else
+                        fConnected = true;
                 }
             }
             else if (nError == WSAEISCONN)

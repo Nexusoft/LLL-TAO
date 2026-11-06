@@ -83,16 +83,19 @@ namespace LLP
         /* This will contain the list of results after the lookup is performed. */
         struct addrinfo *aiRes = nullptr;
 
-        /* Do not hold the cache lock while the system resolver is running. */
+        /* Do not hold the cache lock while the system resolver is running.
+         * LOOKUP_MUTEX is not recursive, so release it before getaddrinfo and
+         * the later cache insertion. */
         if(fUseCache)
         {
-            LOCK(LOOKUP_MUTEX);
+            std::unique_lock<std::mutex> lookupLock(LOOKUP_MUTEX);
             const auto it = mapResolved.find(key);
             if(it != mapResolved.end())
             {
                 vAddr = it->second;
                 return true;
             }
+            lookupLock.unlock();
         }
 
         /* Attempt to obtain address info for the lookup address. */
