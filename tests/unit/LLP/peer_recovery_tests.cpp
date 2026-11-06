@@ -246,6 +246,43 @@ TEST_CASE("Idle server workers shut down reliably", "[llp][peer-recovery]")
     }
 }
 
+TEST_CASE("Relay queues drain while producers enqueue concurrently", "[llp][peer-recovery]")
+{
+    LLP::DataThread<LLP::TimeNode> worker(0, false, 1, 1, 10);
+    std::vector<std::thread> producers;
+    for(unsigned int producer = 0; producer < 4; ++producer)
+    {
+        producers.emplace_back([&, producer] {
+            for(uint32_t sequence = 0; sequence < 4096; ++sequence)
+            {
+                if(producer % 2 == 0)
+                    worker.Relay(uint8_t(1), sequence);
+                else
+                {
+                    DataStream data(SER_NETWORK, LLP::MIN_PROTO_VERSION);
+                    data << sequence;
+                    worker._Relay(uint8_t(1), data);
+                }
+            }
+        });
+    }
+    for(auto& producer : producers)
+        producer.join();
+
+    bool drained = false;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while(!drained && std::chrono::steady_clock::now() < deadline)
+    {
+        {
+            std::scoped_lock lock(worker.FLUSH_CONDITION_MUTEX);
+            drained = worker.RELAY->empty();
+        }
+        if(!drained)
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    REQUIRE(drained);
+}
+
 TEST_CASE("Stopping a manager discards an in-flight seed result", "[llp][peer-recovery]")
 {
     const uint16_t port = 54328;

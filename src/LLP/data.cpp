@@ -848,12 +848,15 @@ namespace LLP
             std::pair<typename ProtocolType::message_t, DataStream> qRelay =
                 std::make_pair(typename ProtocolType::message_t(), DataStream(SER_NETWORK, MIN_PROTO_VERSION));
 
-            /* Grab data from queue. */
-            if(!RELAY->empty())
+            /* Grab data under the producer mutex, then release it before processing connections. */
             {
-                /* Make a copy of the relay data. */
-                qRelay = RELAY->front();
-                RELAY->pop();
+                std::scoped_lock lock(FLUSH_CONDITION_MUTEX);
+                if(!RELAY->empty())
+                {
+                    /* Make a copy of the relay data. */
+                    qRelay = RELAY->front();
+                    RELAY->pop();
+                }
             }
 
             /* Check all connections for data and packets. */
