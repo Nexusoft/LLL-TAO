@@ -626,7 +626,7 @@ TEST_CASE("A slow resolver does not block known-peer connections", "[llp][peer-r
     const LLP::BaseAddress address("127.0.0.1", port, false);
     server.GetAddressManager()->AddAddress(address);
     std::shared_ptr<LLP::TimeNode> peer;
-    REQUIRE(server.ConnectNode(address.ToString(), peer));
+    REQUIRE(server.ConnectNode(address.ToStringIP(), peer));
     peer = server.RandomConnection();
     REQUIRE(peer);
     REQUIRE(peer->Connected());
