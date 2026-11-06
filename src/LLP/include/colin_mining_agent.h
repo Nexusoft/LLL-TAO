@@ -29,6 +29,8 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    /** Format one Colin report line without truncating long text. */
+    std::string ColinReportBoxLine(const std::string& text);
 
     /** PingFrame
      *
@@ -201,10 +203,8 @@ namespace LLP
 
         /** on_node_shutdown
          *
-         *  Called just before the node disconnects all miners during LLP::Shutdown().
-         *  Emits a final diagnostic report so the last Colin snapshot (connected miners,
-         *  last template, submission stats) is captured in debug.log before connection
-         *  objects are destroyed.
+         *  Queues the final report after miner disconnects. stop() must be
+         *  called before the report's dependencies are torn down.
          *
          **/
         void on_node_shutdown();

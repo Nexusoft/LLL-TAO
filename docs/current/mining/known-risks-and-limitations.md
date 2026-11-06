@@ -6,6 +6,25 @@
 
 ---
 
+## Chain Connectivity and Mining Readiness
+
+The existing synchronization predicate is not a network-health or
+mining-readiness check. A recently updated tip or a previously completed sync
+can leave mining enabled after peers disappear or a competing branch appears.
+Operators should not assume that available work proves the node is on the best
+chain. A separate readiness gate for both mining protocols and staking,
+including rejection of previously issued work, remains to be implemented.
+
+Sync completion and mempool deferral use the greatest recent `BESTHEIGHT`
+advertised by connected peers. Observations are removed on disconnect and
+expire 30 minutes after their last height notification; an idle peer does not
+refresh that observation merely by remaining connected. A connected peer can
+still advertise an erroneous height, and no peer height or peer agreement
+proves that a chain is best. Fork activation remains subject to local
+validation and chain weight.
+
+---
+
 ## 1. Platform Limitation: Linux-Only Epoll
 
 **Risk Level:** Medium (production) / Low (development)

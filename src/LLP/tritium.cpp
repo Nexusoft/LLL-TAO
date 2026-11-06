@@ -37,6 +37,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/peer_height.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/process.h>
 
@@ -104,24 +105,11 @@ namespace LLP
     static std::mutex STALE_SYNC_WARNING_MUTEX;
     static std::map<uint64_t, StaleSyncWarningState> mapStaleSyncWarningStates;
 
-    /* Allow a small height delta so minor notification races don't block sync
-     * finalization when peers are effectively at the same tip. */
-    static constexpr uint32_t SYNC_FINALIZATION_HEIGHT_TOLERANCE = 2;
-
-    static bool SyncPeerHeightIsCurrent(const uint32_t nPeerHeight)
-    {
-        const uint64_t nPeerHeight64 = nPeerHeight;
-        const uint64_t nMaxPeerHeight = TAO::Ledger::ChainState::nMaxPeerHeight.load();
-        if(nMaxPeerHeight == 0)
-            return true;
-
-        return nPeerHeight64 + SYNC_FINALIZATION_HEIGHT_TOLERANCE >= nMaxPeerHeight;
-    }
-
     static bool CanFinalizeSyncFromPeer(const uint32_t nPeerHeight)
     {
-        return TAO::Ledger::ChainState::nBestHeight.load() >= nPeerHeight
-            && SyncPeerHeightIsCurrent(nPeerHeight);
+        return TAO::Ledger::ChainState::CanFinalizeSyncFromPeer(
+            TAO::Ledger::ChainState::nBestHeight.load(), nPeerHeight,
+            TAO::Ledger::ChainState::MaxPeerHeight());
     }
 
 
@@ -283,6 +271,8 @@ namespace LLP
             /* Once a new connection is established, this event is fired off. */
             case EVENTS::CONNECT:
             {
+                TAO::Ledger::ChainState::ForgetPeerHeight(this);
+
                 /* Check for incoming connections for -client mode. */
                 if(config::fClient.load() && !fOUTGOING)
                 {
@@ -517,6 +507,8 @@ namespace LLP
             /* Once a connection is terminated, this event will be fired off. */
             case EVENTS::DISCONNECT:
             {
+                TAO::Ledger::ChainState::ForgetPeerHeight(this);
+
                 /* Track whether to mark as failure or dropped. */
                 uint8_t nState = ConnectState::DROPPED;
 
@@ -2284,6 +2276,7 @@ namespace LLP
                  * deferred until after WritePacket(ssResponse) so the near-tip
                  * inventory-owned gate can require a successfully queued GET. */
                 std::vector<std::pair<uint1024_t, uint32_t>> vPendingBestChainRecovery;
+                size_t nPendingHeightStart = 0;
 
                 /* Set our max limits to 100 notifications per packet. */
                 uint32_t nLimits = 0;
@@ -2492,25 +2485,16 @@ namespace LLP
                             /* Keep track of current height. */
                             ssPacket >> nCurrentHeight;
 
+                            /* BESTCHAIN commonly precedes its BESTHEIGHT in a
+                             * relay. Pair it before dispatching recovery. */
+                            for(; nPendingHeightStart < vPendingBestChainRecovery.size(); ++nPendingHeightStart)
+                                vPendingBestChainRecovery[nPendingHeightStart].second = nCurrentHeight;
+
                             /* If this is syncing node, cache this as our stopping block. */
                             if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                                 nSyncStop.store(nCurrentHeight);
 
-                            /* Update the global max-peer-height tracker so
-                             * local-state-dependent checks (e.g. coinbase
-                             * maturity during mempool admission) can tell the
-                             * difference between a genuinely immature coinbase
-                             * and one that is mature at network height but
-                             * appears immature because this node is 1-2 blocks
-                             * behind.  This is diagnostic and deferral only —
-                             * never used for consensus decisions. */
-                            {
-                                uint32_t nPrev = TAO::Ledger::ChainState::nMaxPeerHeight.load();
-                                while(nCurrentHeight > nPrev &&
-                                      !TAO::Ledger::ChainState::nMaxPeerHeight
-                                           .compare_exchange_weak(nPrev, nCurrentHeight))
-                                    ; /* re-read nPrev on CAS miss */
-                            }
+                            TAO::Ledger::ChainState::ObservePeerHeight(this, nCurrentHeight);
 
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::NOTIFY: BESTHEIGHT ", nCurrentHeight);
@@ -2678,8 +2662,7 @@ namespace LLP
                             if(hashBestChain != 0
                             && hashBestChain != TAO::Ledger::ChainState::hashBestChain.load())
                             {
-                                vPendingBestChainRecovery.emplace_back(
-                                    hashBestChain, nCurrentHeight);
+                                vPendingBestChainRecovery.emplace_back(hashBestChain, nCurrentHeight);
                             }
 
                             /* A sync peer is complete only when its advertised best

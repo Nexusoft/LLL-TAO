@@ -1085,10 +1085,10 @@ namespace TAO
                                 {
                                     /* Compute what confirmation count would be at the
                                      * highest peer-advertised height.  A non-zero
-                                     * nMaxPeerHeight only makes the check MORE lenient;
+                                     * the maximum peer height only makes the check MORE lenient;
                                      * if no peer height has been observed yet (== 0),
                                      * fall through to the unconditional rejection below. */
-                                    const uint32_t nPeerHeight  = ChainState::nMaxPeerHeight.load();
+                                    const uint32_t nPeerHeight  = ChainState::MaxPeerHeight();
                                     const uint32_t nLocalHeight = ChainState::nBestHeight.load();
                                     if(nPeerHeight > nLocalHeight)
                                     {

@@ -14,10 +14,22 @@ ________________________________________________________________________________
 #include <unit/catch2/catch.hpp>
 
 #include <LLP/include/graceful_shutdown.h>
+#include <LLP/include/colin_mining_agent.h>
 #include <LLP/include/stateless_miner.h>
 #include <LLP/include/opcode_utility.h>
 
 using namespace LLP;
+
+TEST_CASE("Colin report lines handle long text", "[graceful_shutdown]")
+{
+    for(size_t length : {size_t(0), size_t(63), size_t(64), size_t(65), size_t(66), size_t(500)})
+    {
+        const std::string text(length, 'x');
+        const std::string line = ColinReportBoxLine(text);
+        REQUIRE(line == "║  " + text
+            + std::string(length < 64 ? 64 - length : 0, ' ') + "║");
+    }
+}
 
 /* ═══════════════════════════════════════════════════════════════════════ */
 /* 1. NODE_SHUTDOWN opcode value                                           */

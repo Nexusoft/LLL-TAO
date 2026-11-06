@@ -62,14 +62,14 @@ namespace LLP
         /** Box width for the Colin report */
         constexpr int BOX_WIDTH = 68;
 
-        /** Print a padded report line: "║  <text>  ║" */
-        std::string BoxLine(const std::string& text)
-        {
-            int pad = BOX_WIDTH - 2 - static_cast<int>(text.size());
-            if(pad < 0) pad = 0;
-            return std::string("║  ") + text + std::string(pad - 2, ' ') + std::string("║");
-        }
     } // anonymous namespace
+
+    std::string ColinReportBoxLine(const std::string& text)
+    {
+        constexpr size_t TEXT_WIDTH = BOX_WIDTH - 4;
+        const size_t padding = text.size() < TEXT_WIDTH ? TEXT_WIDTH - text.size() : 0;
+        return std::string("║  ") + text + std::string(padding, ' ') + "║";
+    }
 
 
     /* ── PingFrame implementation ────────────────────────────────────────── */
@@ -643,10 +643,10 @@ namespace LLP
         const std::string bottom = "╚" + std::string(BOX_WIDTH - 2, '═') + "╝";
 
         debug::log(0, top);
-        debug::log(0, BoxLine(std::string("COLIN NODE MINING REPORT  [") + tbuf + "]"));
+        debug::log(0, ColinReportBoxLine(std::string("COLIN NODE MINING REPORT  [") + tbuf + "]"));
         debug::log(0, sep);
 
-        debug::log(0, BoxLine(std::string("CONNECTED MINERS: ")
+        debug::log(0, ColinReportBoxLine(std::string("CONNECTED MINERS: ")
                               + std::to_string(miners_copy.size())));
         debug::log(0, sep);
 
@@ -654,11 +654,11 @@ namespace LLP
         {
             std::vector<MiningContext> vMiners = StatelessMinerManager::Get().ListMiners();
 
-            debug::log(0, BoxLine("MINER SESSION STATE:"));
+            debug::log(0, ColinReportBoxLine("MINER SESSION STATE:"));
 
             if(vMiners.empty())
             {
-                debug::log(0, BoxLine("  No active miner sessions"));
+                debug::log(0, ColinReportBoxLine("  No active miner sessions"));
             }
             else
             {
@@ -674,13 +674,13 @@ namespace LLP
                          << " | " << (ctx.fAuthenticated ? "Falcon auth OK" : "unauthenticated")
                          << " | channel=" << channel_name << " (" << ctx.nChannel << ")";
 
-                    debug::log(0, BoxLine(line.str()));
+                    debug::log(0, ColinReportBoxLine(line.str()));
                 }
             }
 
             /* Failover count from FailoverConnectionTracker */
             uint32_t nFailoverCount = FailoverConnectionTracker::Get().GetTotalFailoverCount();
-            debug::log(0, BoxLine(std::string("  Failover connections since boot: ")
+            debug::log(0, ColinReportBoxLine(std::string("  Failover connections since boot: ")
                                   + std::to_string(nFailoverCount)));
         }
         debug::log(0, sep);
@@ -693,18 +693,18 @@ namespace LLP
                 ? " [SIM LINK: " + std::to_string(s.connection_count) + " connections]"
                 : "";
 
-            debug::log(0, BoxLine("Miner: " + s.genesis_prefix + "... @ "
+            debug::log(0, ColinReportBoxLine("Miner: " + s.genesis_prefix + "... @ "
                                   + s.remote_endpoint + simTag));
 
             if(s.connection_count > 0)
-                debug::log(0, BoxLine("  Uptime: " + FormatUptime(s.connected_at)));
+                debug::log(0, ColinReportBoxLine("  Uptime: " + FormatUptime(s.connected_at)));
 
-            debug::log(0, BoxLine(std::string("  Submitted: ")
+            debug::log(0, ColinReportBoxLine(std::string("  Submitted: ")
                                   + std::to_string(s.blocks_submitted)
                                   + "  Accepted: " + std::to_string(s.blocks_accepted)
                                   + "  Rejected: " + std::to_string(s.blocks_rejected)));
 
-            debug::log(0, BoxLine(std::string("  GET_BLOCK: ")
+            debug::log(0, ColinReportBoxLine(std::string("  GET_BLOCK: ")
                                   + std::to_string(s.get_block_count)
                                   + " requests  Rate-limited: "
                                   + std::to_string(s.get_block_rate_limited)));
@@ -718,20 +718,20 @@ namespace LLP
                       << " hash=" << s.last_hash_height
                       << " stake=" << s.last_stake_height
                       << "  (ACKs: " << s.keepalive_ack_count << ")";
-                debug::log(0, BoxLine(hline.str()));
+                debug::log(0, ColinReportBoxLine(hline.str()));
 
                 if(s.peak_fork_score > 0)
                 {
                     std::ostringstream fline;
                     fline << "  Fork canary: score=" << s.last_fork_score
                           << " peak=" << s.peak_fork_score;
-                    debug::log(0, BoxLine(fline.str()));
+                    debug::log(0, ColinReportBoxLine(fline.str()));
                 }
             }
 
             /* ── Colin PING Diagnostics ──────────────────────────────── */
             {
-                debug::log(0, BoxLine("  \xE2\x94\x80 COLIN DIAGNOSTICS (Miner: "
+                debug::log(0, ColinReportBoxLine("  \xE2\x94\x80 COLIN DIAGNOSTICS (Miner: "
                     + (s.remote_endpoint.empty() ? s.genesis_prefix : s.remote_endpoint)
                     + ") \xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80"));
 
@@ -740,7 +740,7 @@ namespace LLP
                     /* RTT with rolling-history trend */
                     std::string trend = format_rtt_trend(s.rtt_history);
                     std::string trend_part = trend.empty() ? "" : ("  (" + trend + ")");
-                    debug::log(0, BoxLine("  PING #" + std::to_string(s.last_pong.sequence)
+                    debug::log(0, ColinReportBoxLine("  PING #" + std::to_string(s.last_pong.sequence)
                         + "   RTT: " + format_rtt(s.last_pong.rtt_us)
                         + trend_part));
 
@@ -752,7 +752,7 @@ namespace LLP
                             (static_cast<uint64_t>(s.blocks_rejected) * 100) / s.blocks_submitted);
                         rej_pct_str = " (" + std::to_string(pct) + "%)";
                     }
-                    debug::log(0, BoxLine("  Submissions: "
+                    debug::log(0, ColinReportBoxLine("  Submissions: "
                         + std::to_string(s.blocks_submitted) + " sent / "
                         + std::to_string(s.blocks_accepted) + " accepted / "
                         + std::to_string(s.blocks_rejected) + " rejected" + rej_pct_str));
@@ -766,23 +766,23 @@ namespace LLP
                             << static_cast<unsigned>(s.last_pong.miner_health_flags);
                         flags_hex = fss.str();
                     }
-                    debug::log(0, BoxLine("  Miner Health: " + health_str
+                    debug::log(0, ColinReportBoxLine("  Miner Health: " + health_str
                         + "  (flags: " + flags_hex + ")"));
 
                     /* Per-miner hardware telemetry */
                     std::string temp_str = format_temp(s.last_pong.miner_temp_cdeg);
                     if(s.last_pong.miner_health_flags & PongRecord::MFLAG_TEMP_CRITICAL)
                         temp_str += " \xe2\x86\x90 CRITICAL";
-                    debug::log(0, BoxLine("    HashRate: "
+                    debug::log(0, ColinReportBoxLine("    HashRate: "
                         + std::to_string(s.last_pong.miner_hash_rate) + " kH/s"
                         + "  Temp: " + temp_str));
-                    debug::log(0, BoxLine("    Threads: "
+                    debug::log(0, ColinReportBoxLine("    Threads: "
                         + std::to_string(s.last_pong.miner_threads)
                         + "  Queue: " + std::to_string(s.last_pong.miner_queue_depth)));
                 }
                 else
                 {
-                    debug::log(0, BoxLine("  PING #" + std::to_string(s.ping_sequence)
+                    debug::log(0, ColinReportBoxLine("  PING #" + std::to_string(s.ping_sequence)
                         + "  (awaiting first PONG response...)"));
                 }
             }
@@ -790,11 +790,11 @@ namespace LLP
             if(!s.last_rejection_reason.empty() || s.last_canonical_snap_stale)
             {
                 debug::log(0, sep);
-                debug::log(0, BoxLine(std::string("  DIAGNOSTICS & WARNINGS:")));
+                debug::log(0, ColinReportBoxLine(std::string("  DIAGNOSTICS & WARNINGS:")));
                 if(!s.last_rejection_reason.empty())
-                    debug::log(0, BoxLine("  * Last rejection: " + s.last_rejection_reason));
+                    debug::log(0, ColinReportBoxLine("  * Last rejection: " + s.last_rejection_reason));
                 if(s.last_canonical_snap_stale)
-                    debug::log(0, BoxLine("  * [WARN] Canonical snapshot stale ("
+                    debug::log(0, ColinReportBoxLine("  * [WARN] Canonical snapshot stale ("
                         + std::to_string(s.last_canonical_snap_age_ms) + " ms) — miner may hold outdated template"));
             }
 
@@ -803,9 +803,9 @@ namespace LLP
 
         /* Template push stats */
         uint32_t total_pushes = global_copy.prime_pushes + global_copy.hash_pushes;
-        debug::log(0, BoxLine(std::string("TEMPLATE PUSH STATS (last ")
+        debug::log(0, ColinReportBoxLine(std::string("TEMPLATE PUSH STATS (last ")
                               + std::to_string(m_interval_s) + "s):"));
-        debug::log(0, BoxLine(std::string("  PRIME pushes: ")
+        debug::log(0, ColinReportBoxLine(std::string("  PRIME pushes: ")
                               + std::to_string(global_copy.prime_pushes)
                               + "  HASH pushes: " + std::to_string(global_copy.hash_pushes)
                               + "  Total: " + std::to_string(total_pushes)));
