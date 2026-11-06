@@ -11,9 +11,12 @@
 
 #include <atomic>
 #include <chrono>
+#include <future>
 #include <memory>
 #include <thread>
 #include <vector>
+
+#include <openssl/ssl.h>
 
 TEST_CASE("Peer recovery retries are bounded and suspendable", "[llp][peer-recovery]")
 {
@@ -451,6 +454,131 @@ TEST_CASE("A running manager recovers from a changed network path", "[llp][peer-
     REQUIRE(database.Erase(std::string("updated")));
 }
 
+TEST_CASE("Connection flush producers share the wait mutex", "[llp][peer-recovery]")
+{
+    std::mutex mutex;
+    std::condition_variable condition;
+    LLP::TimeNode peer;
+    peer.FLUSH_CONDITION = &condition;
+    peer.FLUSH_CONDITION_MUTEX = &mutex;
+    LLP::Packet packet;
+    packet.HEADER = 0;
+    packet.DATA.resize(256 * 1024, 1);
+    packet.LENGTH = packet.DATA.size();
+
+    bool queued = true;
+    SECTION("Deferred packets") { queued = true; }
+    SECTION("Buffered writes") { queued = false; }
+
+    struct Socket
+    {
+        int fd = -1;
+        ~Socket() { if(fd >= 0) closesocket(fd); }
+    } reader;
+    int sockets[2];
+    REQUIRE(::socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) == 0);
+    reader.fd = sockets[0];
+    peer.fd = sockets[1];
+    const int size = 4096;
+    REQUIRE(::setsockopt(peer.fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size)) == 0);
+    REQUIRE(::fcntl(peer.fd, F_SETFL, O_NONBLOCK) == 0);
+
+    std::unique_lock<std::mutex> lock(mutex);
+    std::promise<void> started;
+    auto ready = started.get_future();
+    auto producer = std::async(std::launch::async, [&] {
+        started.set_value();
+        if(queued)
+            peer.QueuePacket(packet);
+        else
+            peer.WritePacket(packet);
+    });
+    ready.wait();
+    const bool blocked = producer.wait_for(std::chrono::milliseconds(50)) == std::future_status::timeout;
+    const bool pendingBeforeUnlock = peer.HasQueuedPackets() || peer.Buffered();
+    lock.unlock();
+    producer.get();
+    REQUIRE(blocked);
+    REQUIRE_FALSE(pendingBeforeUnlock);
+    REQUIRE((peer.HasQueuedPackets() || peer.Buffered()));
+}
+
+TEST_CASE("Outgoing TLS requires a completed handshake", "[llp][peer-recovery][ssl]")
+{
+    bool complete = false;
+    bool invalid = false;
+    SECTION("A silent peer times out") {}
+    SECTION("A plaintext peer fails") { invalid = true; }
+    SECTION("A TLS peer completes") { complete = true; }
+
+    struct Socket
+    {
+        int fd = -1;
+        ~Socket() { if(fd >= 0) closesocket(fd); }
+    } listener;
+    listener.fd = ::socket(AF_INET, SOCK_STREAM, 0);
+    REQUIRE(listener.fd >= 0);
+    sockaddr_in local{};
+    local.sin_family = AF_INET;
+    local.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    REQUIRE(::bind(listener.fd, reinterpret_cast<sockaddr*>(&local), sizeof(local)) == 0);
+    socklen_t length = sizeof(local);
+    REQUIRE(::getsockname(listener.fd, reinterpret_cast<sockaddr*>(&local), &length) == 0);
+    REQUIRE(::listen(listener.fd, 1) == 0);
+    REQUIRE(LLP::pSSL_CTX != nullptr);
+
+    std::atomic<bool> release{false};
+    auto responder = std::async(std::launch::async, [&] {
+        pollfd waiting{};
+        waiting.fd = listener.fd;
+        waiting.events = POLLIN;
+        if(::poll(&waiting, 1, 5000) <= 0)
+            return false;
+        Socket accepted;
+        accepted.fd = ::accept(listener.fd, nullptr, nullptr);
+        if(accepted.fd < 0)
+            return false;
+        const timeval timeout{5, 0};
+        if(::setsockopt(accepted.fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) != 0
+        || ::setsockopt(accepted.fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) != 0)
+            return false;
+
+        bool success = true;
+        if(complete)
+        {
+            std::unique_ptr<SSL, decltype(&SSL_free)> ssl(SSL_new(LLP::pSSL_CTX), SSL_free);
+            if(!ssl)
+                return false;
+            SSL_set_fd(ssl.get(), accepted.fd);
+            success = SSL_accept(ssl.get()) == 1;
+        }
+        else if(invalid)
+        {
+            const char response[] = "not a TLS handshake";
+            success = ::send(accepted.fd, response, sizeof(response), 0) > 0;
+        }
+        while(!release.load())
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        return success;
+    });
+    struct ReleasePeer
+    {
+        std::atomic<bool>& flag;
+        ~ReleasePeer() { flag.store(true); }
+    } releasePeer{release};
+
+    LLP::Socket peer;
+    peer.SetSSL(true);
+    const bool connected = peer.Attempt(LLP::BaseAddress("127.0.0.1", ntohs(local.sin_port), false), 1000);
+    const bool encrypted = peer.IsSSL();
+    release.store(true);
+    REQUIRE(responder.get());
+    REQUIRE(connected == complete);
+    REQUIRE(encrypted == complete);
+    if(!complete)
+        REQUIRE(peer.IsNull());
+}
+
 TEST_CASE("A slow resolver does not block known-peer connections", "[llp][peer-recovery]")
 {
     struct Listener
@@ -497,14 +625,12 @@ TEST_CASE("A slow resolver does not block known-peer connections", "[llp][peer-r
 
     const LLP::BaseAddress address("127.0.0.1", port, false);
     server.GetAddressManager()->AddAddress(address);
-    deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-    while(!server.RandomConnection() && std::chrono::steady_clock::now() < deadline)
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    REQUIRE(server.RandomConnection());
+    std::shared_ptr<LLP::TimeNode> peer;
+    REQUIRE(server.ConnectNode(address.ToString(), peer));
+    peer = server.RandomConnection();
+    REQUIRE(peer);
+    REQUIRE(peer->Connected());
     REQUIRE(server.GetPeerRecoveryStatus().resolving);
-    while(!(server.GetAddressManager()->GetState(address) & LLP::ConnectState::CONNECTED)
-          && std::chrono::steady_clock::now() < deadline)
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     REQUIRE((server.GetAddressManager()->GetState(address) & LLP::ConnectState::CONNECTED) != 0);
     server.GetAddressManager()->RemoveAddress(address);
 }

@@ -206,16 +206,20 @@ namespace LLP
         std::condition_variable* FLUSH_CONDITION;
 
 
+        /** Mutex paired with the data thread's flush condition and predicates. **/
+        std::mutex* FLUSH_CONDITION_MUTEX;
+
+
         /** QueuePacket
          *
          *  Enqueues a pre-built packet for deferred sending by the write-service
          *  path.
          *  This decouples the caller (e.g., SendChannelNotification on the
          *  block-acceptance notification thread) from SOCKET_MUTEX contention.
-         *  The caller builds the packet and enqueues it lock-free (relative to
-         *  the socket); FLUSH_THREAD drains the queue on its next iteration,
-         *  performing the actual WritePacket() buffering without blocking the
-         *  notification thread or the DataThread's ReadPacket() path.  On
+         *  The caller builds the packet and enqueues it under the flush wait
+         *  mutex, without taking SOCKET_MUTEX. FLUSH_THREAD drains the queue on
+         *  its next iteration, performing the actual WritePacket() buffering
+         *  outside the caller's path. On
          *  Linux mining connections, EPOLLOUT-assisted DataThread service then
          *  handles kernel-facing drain of buffered bytes.
          *
@@ -224,13 +228,17 @@ namespace LLP
          **/
         void QueuePacket(const PacketType& PACKET)
         {
+            std::unique_lock<std::mutex> FLUSH_LOCK;
+            if(FLUSH_CONDITION_MUTEX)
+                FLUSH_LOCK = std::unique_lock<std::mutex>(*FLUSH_CONDITION_MUTEX);
+
             {
                 LOCK(OUTGOING_MUTEX);
                 OUTGOING_QUEUE.push(PACKET);
-            }
 
-            /* Set atomic flag so HasQueuedPackets() can check lock-free. */
-            fHasOutgoing.store(true, std::memory_order_release);
+                /* Publish under the wait mutex so the flush wakeup cannot be lost. */
+                fHasOutgoing.store(true, std::memory_order_release);
+            }
 
             /* Wake FLUSH_THREAD to drain the queue. */
             if(FLUSH_CONDITION)
@@ -263,12 +271,10 @@ namespace LLP
 
                 /* Reset the underlying queue to a clean empty state after move. */
                 OUTGOING_QUEUE = std::queue<PacketType>();
-            }
 
-            /* Clear atomic flag now that the queue is empty under lock.
-             * A concurrent QueuePacket() may re-set it immediately, which
-             * is correct — the next FLUSH_THREAD iteration will drain it. */
-            fHasOutgoing.store(false, std::memory_order_release);
+                /* Do not clear a concurrent producer's flag after releasing the queue lock. */
+                fHasOutgoing.store(false, std::memory_order_release);
+            }
 
             /* Write each packet — WritePacket() handles buffering and
              * SOCKET_MUTEX acquisition internally. */

@@ -66,6 +66,7 @@ namespace LLP
     , nDataThread     (-1)
     , nDataIndex      (-1)
     , FLUSH_CONDITION (nullptr)
+    , FLUSH_CONDITION_MUTEX(nullptr)
     , fEVENT          (false)
     , EVENT_MUTEX     ( )
     , EVENT_CONDITION ( )
@@ -89,6 +90,7 @@ namespace LLP
     , nDataThread     (-1)
     , nDataIndex      (-1)
     , FLUSH_CONDITION (nullptr)
+    , FLUSH_CONDITION_MUTEX(nullptr)
     , fEVENT          (false)
     , EVENT_MUTEX     ( )
     , EVENT_CONDITION ( )
@@ -112,6 +114,7 @@ namespace LLP
     , nDataThread     (-1)
     , nDataIndex      (-1)
     , FLUSH_CONDITION (nullptr)
+    , FLUSH_CONDITION_MUTEX(nullptr)
     , fEVENT          (false)
     , EVENT_MUTEX     ( )
     , EVENT_CONDITION ( )
@@ -187,6 +190,7 @@ namespace LLP
         nError          = 0;
         DDOS            = nullptr;
         FLUSH_CONDITION = nullptr;
+        FLUSH_CONDITION_MUTEX = nullptr;
         fDDOS           = false;
         fOUTGOING       = false;
         fCONNECTED      = false;
@@ -242,6 +246,11 @@ namespace LLP
     template <class PacketType>
     bool BaseConnection<PacketType>::WritePacket(const PacketType& PACKET, bool fPriority)
     {
+        /* Pair buffered-state changes and notification with the flush wait. */
+        std::unique_lock<std::mutex> FLUSH_LOCK;
+        if(FLUSH_CONDITION_MUTEX)
+            FLUSH_LOCK = std::unique_lock<std::mutex>(*FLUSH_CONDITION_MUTEX);
+
         bool fQueued = false;
 
         /* Per-connection buffer limit — mining connections return a larger value

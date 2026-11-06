@@ -170,6 +170,7 @@ namespace LLP
                 pnode->nDataThread     = ID;
 
                 pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
+                pnode->FLUSH_CONDITION_MUTEX = &FLUSH_CONDITION_MUTEX;
 
                 /* Check for inbound socket. Hold the condition mutex across the
                  * counter transition so a waiter cannot observe zero and then
@@ -256,6 +257,7 @@ namespace LLP
                 /* Update the indexes. */
                 pnode->nDataThread     = ID;
                 pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
+                pnode->FLUSH_CONDITION_MUTEX = &FLUSH_CONDITION_MUTEX;
 
                 /* Check for inbound socket. The condition mutex must cover this
                  * counter transition so the data-thread wait cannot miss it. */

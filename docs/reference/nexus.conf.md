@@ -364,6 +364,12 @@ no recorded event); `retry_in` is the minimum backoff remaining in seconds, not
 a promise that another lookup will be needed. Resolver calls use the operating
 system DNS service, whose timeout can delay shutdown.
 
+Known-peer connections can proceed while a seed lookup is in flight. Queued
+packets, buffered writes, and relays synchronize their flush wakeups with the
+worker's wait mutex so idle workers do not miss newly queued data. Outgoing TLS
+connections are admitted only after the handshake completes; socket readiness
+alone is not handshake success.
+
 ### `testnet`
 
 **Type:** Integer  
