@@ -271,7 +271,7 @@ namespace LLP
     }
 
 
-    bool MiningTemplatePrewarmer::ShouldDeduplicate(const WarmupRequest& candidate) const
+    bool MiningTemplatePrewarmer::ShouldDeduplicateLocked(const WarmupRequest& candidate) const
     {
         const auto matches = [&candidate](const WarmupRequest& q)
         {
@@ -337,7 +337,7 @@ namespace LLP
                 req.hashExpectedTip   = hashNewTip;
                 req.tEnqueuedAt       = tNow;
 
-                if(ShouldDeduplicate(req))
+                if(ShouldDeduplicateLocked(req))
                     continue;
 
                 if(m_queue.size() >= cap)

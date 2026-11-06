@@ -321,6 +321,86 @@ TEST_CASE("Mining readiness requires fresh distinct evidence and revokes work",
     REQUIRE(afterGap.epoch != beforeGap.epoch);
 }
 
+TEST_CASE("Mining work readiness caches evidence without delaying invalidation",
+    "[ledger][mining-readiness]")
+{
+    using namespace TAO::Ledger::ChainState;
+    MiningPeerTracker tracker;
+    const auto now = MiningPeerTracker::Clock::now();
+    int peer;
+    unsigned reads = 0;
+    auto evidence = MiningPeerEvidence::SUPPORTING;
+    const auto resolve = [&](const uint1024_t&, uint32_t)
+    {
+        ++reads;
+        return evidence;
+    };
+    const auto check = [&](auto time, uint1024_t tip = 1, uint32_t required = 1,
+                           bool bypass = false, bool synchronized = true,
+                           bool reorg = false, bool shutdown = false)
+    {
+        return tracker.CheckCached(tip, required, bypass, synchronized, reorg, shutdown, resolve, time);
+    };
+    tracker.Observe(&peer, "one", 1, 100, now);
+    const auto ready = check(now);
+    REQUIRE(ready.ready);
+    REQUIRE(reads == 1);
+    REQUIRE(check(now + std::chrono::milliseconds(999)).epoch == ready.epoch);
+    REQUIRE(reads == 1);
+    REQUIRE(check(now + std::chrono::seconds(1)).ready);
+    REQUIRE(reads == 2);
+
+    REQUIRE(check(now + std::chrono::seconds(1), 2).ready);
+    REQUIRE(reads == 3);
+    REQUIRE_FALSE(check(now + std::chrono::seconds(1), 2, 2).ready);
+    REQUIRE(reads == 4);
+    REQUIRE(check(now + std::chrono::seconds(1), 2, 2, true).ready);
+    REQUIRE(reads == 4);
+    REQUIRE_FALSE(check(now + std::chrono::seconds(1), 2, 1, false, false).ready);
+    REQUIRE_FALSE(check(now + std::chrono::seconds(1), 2, 1, false, true, true).ready);
+    REQUIRE_FALSE(check(now + std::chrono::seconds(1), 2, 1, false, true, false, true).ready);
+    REQUIRE(check(now + std::chrono::seconds(1)).ready);
+
+    auto previousReads = reads;
+    tracker.Observe(&peer, "one", 1, 100, now + std::chrono::seconds(1));
+    REQUIRE(check(now + std::chrono::seconds(1)).ready);
+    REQUIRE(reads == previousReads);
+    tracker.Observe(&peer, "renamed", 1, 100, now + std::chrono::seconds(1));
+    REQUIRE(check(now + std::chrono::seconds(1)).ready);
+    REQUIRE(reads == previousReads + 1);
+    tracker.Height(&peer, 101);
+    previousReads = reads;
+    REQUIRE(check(now + std::chrono::seconds(1)).ready);
+    REQUIRE(reads == previousReads + 1);
+
+    tracker.Remove(&peer);
+    REQUIRE_FALSE(check(now + std::chrono::seconds(1)).ready);
+    tracker.Observe(&peer, "one", 1, 100, now + std::chrono::seconds(1));
+    const auto restored = check(now + std::chrono::seconds(1));
+    REQUIRE(restored.ready);
+    REQUIRE(restored.epoch != ready.epoch);
+
+    evidence = MiningPeerEvidence::UNRESOLVED;
+    REQUIRE(check(now + std::chrono::milliseconds(1500)).ready);
+    REQUIRE_FALSE(tracker.Check(1, false, true, false, false, resolve,
+                               now + std::chrono::milliseconds(1500)).ready);
+    REQUIRE_FALSE(check(now + std::chrono::milliseconds(1500)).ready);
+    evidence = MiningPeerEvidence::SUPPORTING;
+    REQUIRE_FALSE(check(now + std::chrono::milliseconds(2499)).ready);
+    REQUIRE(check(now + std::chrono::milliseconds(2500)).ready);
+
+    const auto expiry = now + std::chrono::seconds(1) + MiningPeerTracker::MAX_AGE;
+    const auto beforeExpiry = check(expiry - std::chrono::milliseconds(500));
+    previousReads = reads;
+    REQUIRE(beforeExpiry.ready);
+    REQUIRE(check(expiry).ready);
+    REQUIRE(reads == previousReads);
+    REQUIRE_FALSE(check(expiry + std::chrono::milliseconds(1)).ready);
+    tracker.Observe(&peer, "one", 1, 100, expiry + std::chrono::milliseconds(2));
+    REQUIRE(check(expiry + std::chrono::milliseconds(2)).ready);
+    REQUIRE(check(expiry + std::chrono::milliseconds(2)).epoch != beforeExpiry.epoch);
+}
+
 TEST_CASE("Both mining lanes refuse revoked work after connectivity returns",
     "[ledger][mining-readiness]")
 {
@@ -3452,6 +3532,13 @@ TEST_CASE("Coinbase credits are deferred until the next block can include them",
     ChainState::nBestHeight.store(coinbaseBlock.nHeight + maturity - 4);
     BlockState candidate = coinbaseBlock;
     candidate.nHeight = ChainState::nBestHeight.load() + 1;
+    uint32_t tipConfirms = 0, candidateConfirms = 0;
+    REQUIRE(LLD::Ledger->ReadConfirmations(coinbase.GetHash(), tipConfirms));
+    REQUIRE(LLD::Ledger->ReadConfirmations(coinbase.GetHash(), candidateConfirms, &candidate));
+    REQUIRE(tipConfirms == maturity - 3);
+    REQUIRE(candidateConfirms == tipConfirms + 1);
+    REQUIRE(tipConfirms + 2 < maturity);
+    REQUIRE(candidateConfirms + 1 < maturity);
     REQUIRE(LLD::TxnBegin(FLAGS::BLOCK));
     cleanup.active = true;
     if(unconfirmedPredecessor)
@@ -3493,6 +3580,12 @@ TEST_CASE("Coinbase credits are deferred until the next block can include them",
 
     ChainState::nBestHeight.store(coinbaseBlock.nHeight + maturity - 3);
     candidate.nHeight = ChainState::nBestHeight.load() + 1;
+    REQUIRE(LLD::Ledger->ReadConfirmations(coinbase.GetHash(), tipConfirms));
+    REQUIRE(LLD::Ledger->ReadConfirmations(coinbase.GetHash(), candidateConfirms, &candidate));
+    REQUIRE(tipConfirms == maturity - 2);
+    REQUIRE(candidateConfirms == tipConfirms + 1);
+    REQUIRE(tipConfirms + 2 == maturity);
+    REQUIRE(candidateConfirms + 1 == maturity);
     REQUIRE(LLD::TxnBegin(FLAGS::BLOCK));
     cleanup.active = true;
     if(unconfirmedPredecessor)

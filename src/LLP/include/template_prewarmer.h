@@ -221,7 +221,8 @@ namespace LLP
         };
 
         void WorkerLoop();
-        bool ShouldDeduplicate(const WarmupRequest& candidate) const;
+        /** Caller must hold m_mutex while inspecting queued and in-flight work. */
+        bool ShouldDeduplicateLocked(const WarmupRequest& candidate) const;
 
         mutable std::mutex m_mutex;
         std::condition_variable m_cv;

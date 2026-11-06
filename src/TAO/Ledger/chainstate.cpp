@@ -75,18 +75,19 @@ namespace TAO
             miningPeers.Height(peer, height);
         }
 
-        ChainState::MiningStatus ChainState::MiningReadiness()
+        ChainState::MiningStatus ChainState::MiningReadiness(bool cached)
         {
             const bool local = config::fTestNet.load()
                 && (!config::GetBoolArg("-dns", true) || config::fHybrid.load());
             const int64_t required = config::GetArg("-miningminpeers", 2);
             const BlockState best = tStateBest.load();
-            return miningPeers.Check(required > 0 && required <= 16 ? uint32_t(required) : 0,
-                local, LLP::TritiumNode::fSynchronized.load(),
-                fChainReorg.load() || (!local && (best.IsNull()
-                    || best.GetHash() != hashBestChain.load())),
-                config::fShutdown.load(),
-                [&best](const uint1024_t& hash, uint32_t height)
+            const uint1024_t bestHash = best.GetHash();
+            const uint32_t quorum = required > 0 && required <= 16 ? uint32_t(required) : 0;
+            const bool synchronized = LLP::TritiumNode::fSynchronized.load();
+            const bool reorg = fChainReorg.load() || (!local && (best.IsNull()
+                || bestHash != hashBestChain.load()));
+            const bool shutdown = config::fShutdown.load();
+            const auto resolve = [&best](const uint1024_t& hash, uint32_t height)
                 {
                     BlockState peer;
                     if(hash == 0 || !LLD::Ledger || !LLD::Ledger->ReadBlock(hash, peer)
@@ -115,12 +116,15 @@ namespace TAO
                             return ChainState::MiningPeerEvidence::SUPPORTING;
                     }
                     return ChainState::MiningPeerEvidence::BEHIND;
-                });
+                };
+            return cached
+                ? miningPeers.CheckCached(bestHash, quorum, local, synchronized, reorg, shutdown, resolve)
+                : miningPeers.Check(quorum, local, synchronized, reorg, shutdown, resolve);
         }
 
         bool ChainState::MiningWorkCurrent(uint64_t epoch)
         {
-            const auto status = MiningReadiness();
+            const auto status = MiningReadiness(true);
             return epoch != 0 && status.ready && epoch == status.epoch;
         }
 

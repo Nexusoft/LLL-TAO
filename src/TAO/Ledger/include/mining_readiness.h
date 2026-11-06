@@ -9,6 +9,7 @@
 #include <mutex>
 #include <set>
 #include <string>
+#include <tuple>
 
 namespace TAO::Ledger::ChainState
 {
@@ -41,7 +42,10 @@ namespace TAO::Ledger::ChainState
             const auto it = observations.find(peer);
             if(it == observations.end() || it->second.hash != hash
             || it->second.height != height || it->second.address != address)
+            {
+                cacheValid = false;
                 ++epoch;
+            }
             observations[peer] = {address, hash, height, now};
         }
 
@@ -51,6 +55,7 @@ namespace TAO::Ledger::ChainState
             const auto it = observations.find(peer);
             if(it != observations.end() && it->second.height != height)
             {
+                cacheValid = false;
                 ++epoch;
                 it->second.height = height;
             }
@@ -60,7 +65,10 @@ namespace TAO::Ledger::ChainState
         {
             std::lock_guard<std::mutex> lock(mutex);
             if(observations.erase(peer))
+            {
+                cacheValid = false;
                 ++epoch;
+            }
         }
 
         template<typename Resolve>
@@ -69,6 +77,42 @@ namespace TAO::Ledger::ChainState
                            Clock::time_point now = Clock::now())
         {
             std::lock_guard<std::mutex> lock(mutex);
+            cacheValid = false;
+            return CheckLocked(required, bypass, synchronized, reorg, shutdown, resolve, now);
+        }
+
+        /* Work checks reuse evidence for at most one second. Peer changes,
+         * policy changes, tip changes and MAX_AGE expiry invalidate it sooner. */
+        template<typename Resolve>
+        MiningStatus CheckCached(const uint1024_t& tip, uint32_t required, bool bypass,
+                                 bool synchronized, bool reorg, bool shutdown, Resolve resolve,
+                                 Clock::time_point now = Clock::now())
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            const CacheKey key{tip, required, bypass, synchronized, reorg, shutdown};
+            if(cacheValid && cachedKey == key && cachedStatus.epoch == epoch
+            && now < refreshAt && now <= expireAt)
+                return cachedStatus;
+
+            cachedStatus = CheckLocked(required, bypass, synchronized, reorg, shutdown, resolve, now);
+            cachedKey = key;
+            refreshAt = now + std::chrono::seconds(1);
+            expireAt = Clock::time_point::max();
+            for(const auto& item : observations)
+            {
+                const auto expiry = item.second.observed + MAX_AGE;
+                if(expiry < expireAt)
+                    expireAt = expiry;
+            }
+            cacheValid = true;
+            return cachedStatus;
+        }
+
+    private:
+        template<typename Resolve>
+        MiningStatus CheckLocked(uint32_t required, bool bypass, bool synchronized,
+                                 bool reorg, bool shutdown, Resolve resolve, Clock::time_point now)
+        {
             Expire(now);
             MiningStatus status;
             status.bypass = bypass;
@@ -113,7 +157,6 @@ namespace TAO::Ledger::ChainState
             return status;
         }
 
-    private:
         struct Observation
         {
             std::string address;
@@ -140,11 +183,16 @@ namespace TAO::Ledger::ChainState
         std::map<const void*, Observation> observations;
         uint64_t epoch{1};
         bool wasReady{false};
+        using CacheKey = std::tuple<uint1024_t, uint32_t, bool, bool, bool, bool>;
+        CacheKey cachedKey;
+        MiningStatus cachedStatus;
+        Clock::time_point refreshAt{}, expireAt{};
+        bool cacheValid{false};
     };
 
     void ObserveMiningPeer(const void* peer, const std::string& address,
                            const uint1024_t& hash, uint32_t height);
     void UpdateMiningPeerHeight(const void* peer, uint32_t height);
-    MiningStatus MiningReadiness();
+    MiningStatus MiningReadiness(bool cached = false);
     bool MiningWorkCurrent(uint64_t epoch);
 }

@@ -1063,9 +1063,11 @@ namespace TAO
                             if(!LLD::Ledger->ReadConfirmations(hashPrev, nConfirms, pblock))
                                 return debug::error(FUNCTION, "failed to read confirmations for coinbase");
 
-                            /* Estimate the next block's confirmations using the
-                             * current tip's maturity schedule. The candidate's
-                             * version remains authoritative during block connect. */
+                            /* ReadConfirmations uses the candidate height with pblock,
+                             * but the current tip otherwise. The next block adds one
+                             * confirmation, then the existing BLOCK rule adds one more:
+                             * tip confirmations + 2 == candidate confirmations + 1.
+                             * The candidate's version controls maturity during BLOCK connect. */
                             const uint32_t nMaturity =
                                 MaturityCoinBase((pblock ? *pblock : ChainState::tStateBest.load()));
                             const bool fImmature = (nFlags == FLAGS::MEMPOOL && !pblock)
