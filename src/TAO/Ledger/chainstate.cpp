@@ -94,9 +94,22 @@ namespace TAO
                         return ChainState::MiningPeerEvidence::UNRESOLVED;
                     if(peer.IsHeavierThan(best))
                         return ChainState::MiningPeerEvidence::UNRESOLVED;
-                    if(peer.IsInMainChain() && best.nHeight >= peer.nHeight
+                    if(best.nHeight >= peer.nHeight
                     && uint64_t(peer.nHeight) + 2 >= best.nHeight)
-                        return ChainState::MiningPeerEvidence::SUPPORTING;
+                    {
+                        BlockState ancestor = best;
+                        while(ancestor.nHeight > peer.nHeight)
+                        {
+                            const uint1024_t previousHash = ancestor.hashPrevBlock;
+                            const uint32_t previousHeight = ancestor.nHeight - 1;
+                            if(!LLD::Ledger->ReadBlock(previousHash, ancestor)
+                            || ancestor.GetHash() != previousHash
+                            || ancestor.nHeight != previousHeight)
+                                return ChainState::MiningPeerEvidence::UNRESOLVED;
+                        }
+                        if(ancestor.GetHash() == hash)
+                            return ChainState::MiningPeerEvidence::SUPPORTING;
+                    }
                     return ChainState::MiningPeerEvidence::BEHIND;
                 });
         }

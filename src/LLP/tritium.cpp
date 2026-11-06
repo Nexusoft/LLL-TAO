@@ -968,6 +968,8 @@ namespace LLP
                     nUnsubscribed = 0;
                 }
 
+                uint16_t nTipNotifications = 0;
+
                 /* Set our max items we can get to 100 per packet. */
                 uint32_t nLimits = 0;
                 while(!ssPacket.End())
@@ -1056,9 +1058,7 @@ namespace LLP
                                 /* Set the best height flag. */
                                 nNotifications |= SUBSCRIPTION::BESTHEIGHT;
 
-                                /* Notify node of current block height. */
-                                PushMessage(ACTION::NOTIFY,
-                                    uint8_t(TYPES::BESTHEIGHT), TAO::Ledger::ChainState::nBestHeight.load());
+                                nTipNotifications |= SUBSCRIPTION::BESTHEIGHT;
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE::BESTHEIGHT: ", std::bitset<16>(nNotifications));
@@ -1208,9 +1208,7 @@ namespace LLP
                                 /* Set the best chain flag. */
                                 nNotifications |= SUBSCRIPTION::BESTCHAIN;
 
-                                /* Notify node of current block height. */
-                                PushMessage(ACTION::NOTIFY,
-                                    uint8_t(TYPES::BESTCHAIN), TAO::Ledger::ChainState::hashBestChain.load());
+                                nTipNotifications |= SUBSCRIPTION::BESTCHAIN;
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE::BESTCHAIN: ", std::bitset<16>(nNotifications));
@@ -1358,6 +1356,18 @@ namespace LLP
                                 DDOS->rSCORE += 50;
                         }
                     }
+                }
+
+                /* Pair requested tip fields from one snapshot, including refreshes. */
+                if(nTipNotifications != 0)
+                {
+                    const auto best = TAO::Ledger::ChainState::tStateBest.load();
+                    DataStream ssNotify(SER_NETWORK, PROTOCOL_VERSION);
+                    if(nTipNotifications & SUBSCRIPTION::BESTCHAIN)
+                        ssNotify << uint8_t(TYPES::BESTCHAIN) << best.GetHash();
+                    if(nTipNotifications & SUBSCRIPTION::BESTHEIGHT)
+                        ssNotify << uint8_t(TYPES::BESTHEIGHT) << best.nHeight;
+                    WritePacket(NewMessage(ACTION::NOTIFY, ssNotify));
                 }
 
                 /* Let node know it unsubscribed successfully. */
@@ -2297,6 +2307,7 @@ namespace LLP
                 std::vector<std::pair<uint1024_t, uint32_t>> vPendingBestChainRecovery;
                 size_t nPendingHeightStart = 0;
                 bool fBestChainObserved = false;
+                bool fBestHeightObserved = false;
 
                 /* Set our max limits to 100 notifications per packet. */
                 uint32_t nLimits = 0;
@@ -2504,6 +2515,7 @@ namespace LLP
 
                             /* Keep track of current height. */
                             ssPacket >> nCurrentHeight;
+                            fBestHeightObserved = true;
 
                             /* BESTCHAIN commonly precedes its BESTHEIGHT in a
                              * relay. Pair it before dispatching recovery. */
@@ -2515,7 +2527,6 @@ namespace LLP
                                 nSyncStop.store(nCurrentHeight);
 
                             TAO::Ledger::ChainState::ObservePeerHeight(this, nCurrentHeight);
-                            TAO::Ledger::ChainState::UpdateMiningPeerHeight(this, nCurrentHeight);
 
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::NOTIFY: BESTHEIGHT ", nCurrentHeight);
@@ -2744,7 +2755,7 @@ namespace LLP
                 if(ssResponse.size() != 0)
                     fInventoryGetQueued = WritePacket(NewMessage(ACTION::GET, ssResponse));
 
-                if(fBestChainObserved)
+                if(fBestChainObserved && fBestHeightObserved)
                     TAO::Ledger::ChainState::ObserveMiningPeer(
                         this, GetAddress().ToStringIP(), hashBestChain, nCurrentHeight);
 

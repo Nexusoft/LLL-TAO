@@ -26,7 +26,9 @@ ________________________________________________________________________________
 #include <deque>
 #include <functional>
 #include <mutex>
+#include <set>
 #include <thread>
+#include <tuple>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -226,8 +228,8 @@ namespace LLP
         std::vector<std::thread> m_threads;
         std::atomic<bool> m_running{false};
         std::deque<WarmupRequest> m_queue;
-        /* Worker-local requests remain alive until their guard removes them. */
-        std::vector<const WarmupRequest*> m_inFlight;
+        using WarmupKey = std::tuple<uint32_t, uint256_t, uint1024_t>;
+        std::set<WarmupKey> m_inFlight;
 
         BuildFn m_buildFn;
 

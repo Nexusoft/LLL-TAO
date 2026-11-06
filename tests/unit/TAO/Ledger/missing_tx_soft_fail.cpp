@@ -517,7 +517,166 @@ TEST_CASE("Mining readiness rejects a block stored under a mismatched hash",
     REQUIRE(status.peers == 2);
 }
 
+TEST_CASE("Mining readiness counts only ancestors of the best tip",
+    "[ledger][mining-readiness]")
+{
+    using namespace TAO::Ledger;
+    PublicMiningGuard guard;
+    REQUIRE(guard.written);
+    const uint32_t distance = GENERATE(0u, 1u, 2u);
+
+    BlockState grandparent = guard.tip;
+    grandparent.nHeight -= 2;
+    grandparent.nNonce++;
+    guard.extraBlocks.push_back(grandparent.GetHash());
+    REQUIRE(LLD::Ledger->WriteBlock(grandparent.GetHash(), grandparent));
+    BlockState parent = guard.tip;
+    parent.nHeight--;
+    parent.hashPrevBlock = grandparent.GetHash();
+    guard.extraBlocks.push_back(parent.GetHash());
+    REQUIRE(LLD::Ledger->WriteBlock(parent.GetHash(), parent));
+    guard.extraBlocks.push_back(guard.tip.GetHash());
+    guard.tip.hashPrevBlock = parent.GetHash();
+    REQUIRE(LLD::Ledger->WriteBlock(guard.tip.GetHash(), guard.tip));
+    ChainState::tStateBest.store(guard.tip);
+    ChainState::hashBestChain.store(guard.tip.GetHash());
+
+    const BlockState ancestor = distance == 0 ? guard.tip :
+                                distance == 1 ? parent : grandparent;
+    BlockState side = ancestor;
+    side.nNonce++;
+    side.hashNextBlock = guard.tip.GetHash();
+    guard.extraBlocks.push_back(side.GetHash());
+    REQUIRE(LLD::Ledger->WriteBlock(side.GetHash(), side));
+    REQUIRE(side.IsInMainChain());
+    REQUIRE_FALSE(side.IsHeavierThan(guard.tip));
+
+    guard.Report(0);
+    ChainState::ObserveMiningPeer(&guard.peers[1], "192.0.2.2",
+        side.GetHash(), side.nHeight);
+    const auto rejected = ChainState::MiningReadiness();
+    REQUIRE_FALSE(rejected.ready);
+    REQUIRE(rejected.peers == 1);
+    REQUIRE(rejected.reason == "insufficient-fresh-peers");
+
+    ChainState::ObserveMiningPeer(&guard.peers[1], "192.0.2.2",
+        ancestor.GetHash(), ancestor.nHeight);
+    const auto accepted = ChainState::MiningReadiness();
+    REQUIRE(accepted.ready);
+    REQUIRE(accepted.peers == 2);
+}
+
 #ifndef WIN32
+TEST_CASE("Mining evidence requires a hash and height from the same notify packet",
+    "[ledger][process][mining-readiness]")
+{
+    using namespace TAO::Ledger;
+    PublicMiningGuard guard;
+    REQUIRE(guard.written);
+    guard.Report(0);
+    int fds[2] = {-1, -1};
+    REQUIRE(socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == 0);
+    LLP::TritiumNode node;
+    struct Cleanup
+    {
+        LLP::TritiumNode& node;
+        int* fds;
+        ~Cleanup()
+        {
+            ChainState::ForgetPeerHeight(&node);
+            node.fd = -1;
+            close(fds[0]);
+            close(fds[1]);
+        }
+    } cleanup{node, fds};
+    node.fd = fds[1];
+    node.events = POLLIN;
+    node.nCurrentSession = 4321;
+    node.nProtocolVersion = LLP::PROTOCOL_VERSION;
+    node.nCurrentHeight = guard.tip.nHeight - 1;
+    node.Subscribe(LLP::TritiumNode::SUBSCRIPTION::BESTCHAIN
+                 | LLP::TritiumNode::SUBSCRIPTION::BESTHEIGHT);
+    const auto notify = [&](const DataStream& payload)
+    {
+        node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+        node.INCOMING.DATA.assign(payload.begin(), payload.end());
+        REQUIRE(node.ProcessPacket());
+    };
+    DataStream hashOnly(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    hashOnly << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << guard.tip.GetHash();
+    notify(hashOnly);
+    REQUIRE(ChainState::MiningReadiness().reason == "insufficient-fresh-peers");
+    DataStream heightOnly(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    heightOnly << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << guard.tip.nHeight;
+    notify(heightOnly);
+    REQUIRE(ChainState::MiningReadiness().peers == 1);
+
+    DataStream pair(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    SECTION("Hash precedes height")
+    {
+        pair << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << guard.tip.GetHash()
+             << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << guard.tip.nHeight;
+    }
+    SECTION("Height precedes hash")
+    {
+        pair << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << guard.tip.nHeight
+             << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << guard.tip.GetHash();
+    }
+    notify(pair);
+    const auto ready = ChainState::MiningReadiness();
+    REQUIRE(ready.ready);
+    REQUIRE(ready.peers == 2);
+
+    DataStream newerHeight(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    newerHeight << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << (guard.tip.nHeight + 1);
+    notify(newerHeight);
+    notify(hashOnly);
+    REQUIRE(ChainState::MiningReadiness().ready);
+    REQUIRE(ChainState::MiningReadiness().epoch == ready.epoch);
+
+    const auto readSent = [&]()
+    {
+        while(node.Buffered() > 0)
+            REQUIRE(node.Flush() > 0);
+        std::vector<uint8_t> sent;
+        uint8_t buffer[512];
+        for(ssize_t n = recv(fds[0], buffer, sizeof(buffer), MSG_DONTWAIT);
+            n > 0; n = recv(fds[0], buffer, sizeof(buffer), MSG_DONTWAIT))
+            sent.insert(sent.end(), buffer, buffer + n);
+        return sent;
+    };
+    readSent();
+    ChainState::nBestHeight.store(guard.tip.nHeight + 10);
+    ChainState::hashBestChain.store(guard.tip.GetHash() + 1);
+    for(const uint16_t flags : {
+        uint16_t(LLP::TritiumNode::SUBSCRIPTION::BESTCHAIN
+               | LLP::TritiumNode::SUBSCRIPTION::BESTHEIGHT),
+        uint16_t(LLP::TritiumNode::SUBSCRIPTION::BESTCHAIN),
+        uint16_t(LLP::TritiumNode::SUBSCRIPTION::BESTHEIGHT)})
+    {
+        DataStream subscription(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        DataStream expected(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        if(flags & LLP::TritiumNode::SUBSCRIPTION::BESTCHAIN)
+        {
+            subscription << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN);
+            expected << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << guard.tip.GetHash();
+        }
+        if(flags & LLP::TritiumNode::SUBSCRIPTION::BESTHEIGHT)
+        {
+            subscription << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT);
+            expected << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << guard.tip.nHeight;
+        }
+        for(int refresh = 0; refresh < 2; ++refresh)
+        {
+            node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::SUBSCRIBE;
+            node.INCOMING.DATA.assign(subscription.begin(), subscription.end());
+            REQUIRE(node.ProcessPacket());
+            REQUIRE(readSent() == LLP::TritiumNode::NewMessage(
+                LLP::TritiumNode::ACTION::NOTIFY, expected).GetBytes());
+        }
+    }
+}
+
 TEST_CASE("Idle sync finalizes when a disconnected peer's high watermark disappears",
     "[ledger][process][sync][mining-readiness]")
 {

@@ -68,8 +68,11 @@ namespace LLP
         if(!readiness.ready || epoch == 0 || epoch != readiness.epoch
         || (!tritium && !readiness.bypass))
         {
-            debug::log(1, FUNCTION, "Mining template withheld: ", readiness.reason,
-                " (template epoch=", epoch, ")");
+            const auto reason = !readiness.ready ? readiness.reason :
+                (epoch == 0 || epoch != readiness.epoch ? "template-epoch-revoked" :
+                                                         "template-epoch-unavailable");
+            debug::log(1, FUNCTION, "Mining template withheld: ", reason,
+                " (template epoch=", epoch, ", readiness epoch=", readiness.epoch, ")");
             result.eReason = GetBlockPolicyReason::TEMPLATE_NOT_READY;
             result.nRetryAfterMs = 1000;
             return result;

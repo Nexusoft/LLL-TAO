@@ -280,8 +280,8 @@ namespace LLP
             && q.hashExpectedTip == candidate.hashExpectedTip;
         };
         return std::any_of(m_queue.begin(), m_queue.end(), matches)
-            || std::any_of(m_inFlight.begin(), m_inFlight.end(),
-                           [&matches](const WarmupRequest* request) { return matches(*request); });
+            || m_inFlight.count({candidate.nChannel, candidate.hashRewardAddress,
+                                 candidate.hashExpectedTip}) != 0;
     }
 
 
@@ -405,24 +405,23 @@ namespace LLP
 
                 req = m_queue.front();
                 fnLocal = m_buildFn;
-                m_inFlight.push_back(&req);
+                m_inFlight.insert({req.nChannel, req.hashRewardAddress, req.hashExpectedTip});
                 m_queue.pop_front();
             }
 
             struct InFlightGuard
             {
                 std::mutex& mutex;
-                std::vector<const WarmupRequest*>& requests;
-                const WarmupRequest* request;
+                std::set<WarmupKey>& requests;
+                WarmupKey key;
 
                 ~InFlightGuard()
                 {
                     std::lock_guard<std::mutex> lock(mutex);
-                    const auto it = std::find(requests.begin(), requests.end(), request);
-                    if(it != requests.end())
-                        requests.erase(it);
+                    requests.erase(key);
                 }
-            } guard{m_mutex, m_inFlight, &req};
+            } guard{m_mutex, m_inFlight,
+                    {req.nChannel, req.hashRewardAddress, req.hashExpectedTip}};
 
             if(config::fShutdown.load())
                 continue;

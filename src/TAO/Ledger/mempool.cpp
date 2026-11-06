@@ -782,7 +782,7 @@ namespace TAO
             while(mapOrphans.count(hashTx))
             {
                 /* Accept removes this orphan's indexes on admission. */
-                const TAO::Ledger::Transaction tx = mapOrphans[hashTx];
+                TAO::Ledger::Transaction tx = mapOrphans[hashTx];
 
                 /* Get the previous hash. */
                 const uint512_t hashThis = tx.GetHash();
