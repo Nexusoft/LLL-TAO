@@ -46,6 +46,7 @@ This directory contains the active Nexus node documentation. Historical notes an
 - [LedgerDB hash-keyed block reads](diagrams/architecture/ledgerdb-block-reads.md)
 - [Blockchain flow alignment](BLOCKCHAIN_FLOW_ALIGNMENT.md)
 - [Block production flow](architecture/BLOCK_PRODUCTION_FLOW.md)
+- [Peer recovery and mining readiness (PRs #728–#730)](current/mining/recent-changes-summary.md#peer-recovery-and-mining-readiness-prs-728730) - incremental scope, recovery/admission diagram, and deployment limitations
 - [Mempool semantics](architecture/MEMPOOL.md)
 - [Mempool-only predecessor filter](architecture/MEMPOOL_ONLY_PREDECESSOR_FILTER.md)
 - [BuildAndAccept / build.cpp semantics](architecture/BUILD_CPP.md)

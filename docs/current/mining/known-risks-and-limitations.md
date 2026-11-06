@@ -9,6 +9,9 @@
 
 ## Chain Connectivity and Mining Readiness
 
+For the incremental scope and recovery/admission diagram covering PRs
+#728–#730, see the [recent changes summary](recent-changes-summary.md#peer-recovery-and-mining-readiness-prs-728730).
+
 **Deployment status:** These changes require controlled multi-node testing
 before live deployment. Unit regressions cannot demonstrate behavior during
 real partitions, peer churn, or prolonged recovery.
@@ -40,7 +43,8 @@ On public networks, readiness requires initial synchronization to have
 completed, a consistent committed local tip, and fresh supporting observations
 from **two distinct peer IP addresses** by default. A supporting report must
 identify a locally stored, validated main-chain block no more than two heights
-behind the current tip, with the advertised height matching that block.
+behind the current tip, with both the returned block hash and advertised height
+matching the report.
 Fresh unknown tips, mismatched hash/height reports, and locally known heavier
 branches veto readiness even if other peers support the local chain. Known
 non-heavier branches do not veto readiness, but do not count as support.

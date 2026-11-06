@@ -497,6 +497,27 @@ TEST_CASE("Local admission rechecks readiness after forced proof verification",
 }
 
 #ifndef WIN32
+TEST_CASE("Mining readiness rejects a block stored under a mismatched hash",
+    "[ledger][process][mining-readiness]")
+{
+    using namespace TAO::Ledger;
+    PublicMiningGuard guard;
+    REQUIRE(guard.written);
+    guard.Report(0);
+    guard.Report(1);
+    REQUIRE(ChainState::MiningReadiness().ready);
+
+    const uint1024_t wrongHash = guard.tip.GetHash() + 1;
+    guard.extraBlocks.push_back(wrongHash);
+    REQUIRE(LLD::Ledger->WriteBlock(wrongHash, guard.tip));
+    ChainState::ObserveMiningPeer(&guard.peers[2], "192.0.2.3",
+        wrongHash, guard.tip.nHeight);
+    const auto status = ChainState::MiningReadiness();
+    REQUIRE_FALSE(status.ready);
+    REQUIRE(status.reason == "unresolved-peer-tip");
+    REQUIRE(status.peers == 2);
+}
+
 TEST_CASE("Idle sync finalizes when a disconnected peer's high watermark disappears",
     "[ledger][process][sync][mining-readiness]")
 {
@@ -3173,9 +3194,58 @@ TEST_CASE("Coinbase credits are deferred until the next block can include them",
     coinbaseBlock.nChannel = 2;
     coinbaseBlock.nBits = 1;
     const uint1024_t blockHash = coinbaseBlock.GetHash();
+    Transaction coinbase;
+    Transaction create;
+    Transaction credit;
+    Transaction child;
+    struct Cleanup
+    {
+        uint32_t height;
+        const uint256_t& genesis;
+        const uint1024_t& blockHash;
+        const TAO::Register::Address& account;
+        const TAO::Register::Address& otherAccount;
+        Transaction& coinbase;
+        Transaction& create;
+        Transaction& credit;
+        Transaction& child;
+        bool active{false};
+        uint8_t mode{FLAGS::BLOCK};
+
+        ~Cleanup()
+        {
+            if(active)
+                LLD::TxnAbort(mode);
+            for(Transaction* tx : {&child, &credit, &create})
+            {
+                Transaction found;
+                bool conflicted = false;
+                if(mempool.Get(tx->GetHash(), found, conflicted))
+                {
+                    if(!conflicted && LLD::TxnBegin(FLAGS::MEMPOOL))
+                    {
+                        if(found.Disconnect(FLAGS::MEMPOOL))
+                            LLD::TxnCommit(FLAGS::MEMPOOL);
+                        else
+                            LLD::TxnAbort(FLAGS::MEMPOOL);
+                    }
+                }
+                mempool.Remove(tx->GetHash());
+            }
+            LLD::Ledger->EraseIndex(coinbase.GetHash());
+            LLD::Ledger->EraseTx(coinbase.GetHash());
+            LLD::Ledger->EraseTx(create.GetHash());
+            LLD::Ledger->EraseLast(genesis);
+            LLD::Ledger->EraseFirst(genesis);
+            LLD::Ledger->EraseBlock(blockHash);
+            LLD::Register->EraseState(account);
+            LLD::Register->EraseState(otherAccount);
+            ChainState::nBestHeight.store(height);
+        }
+    } cleanup{savedHeight, genesis, blockHash, account, otherAccount,
+              coinbase, create, credit, child};
     REQUIRE(LLD::Ledger->WriteBlock(blockHash, coinbaseBlock));
 
-    Transaction coinbase;
     coinbase.hashGenesis = genesis;
     coinbase.nSequence = 0;
     coinbase.nKeyType = SIGNATURE::BRAINPOOL;
@@ -3188,7 +3258,6 @@ TEST_CASE("Coinbase credits are deferred until the next block can include them",
     REQUIRE(LLD::Ledger->WriteTx(coinbase.GetHash(), coinbase));
     REQUIRE(LLD::Ledger->IndexBlock(coinbase.GetHash(), blockHash));
 
-    Transaction create;
     create.hashGenesis = genesis;
     create.nSequence = 1;
     create.hashPrevTx = coinbase.GetHash();
@@ -3208,7 +3277,6 @@ TEST_CASE("Coinbase credits are deferred until the next block can include them",
         REQUIRE(LLD::Ledger->WriteTx(create.GetHash(), create));
     }
 
-    Transaction credit;
     credit.hashGenesis = genesis;
     credit.nSequence = 2;
     credit.hashPrevTx = create.GetHash();
@@ -3226,6 +3294,7 @@ TEST_CASE("Coinbase credits are deferred until the next block can include them",
     BlockState candidate = coinbaseBlock;
     candidate.nHeight = ChainState::nBestHeight.load() + 1;
     REQUIRE(LLD::TxnBegin(FLAGS::BLOCK));
+    cleanup.active = true;
     if(unconfirmedPredecessor)
     {
         REQUIRE(create.Connect(FLAGS::BLOCK));
@@ -3233,6 +3302,7 @@ TEST_CASE("Coinbase credits are deferred until the next block can include them",
     }
     REQUIRE_FALSE(credit.Connect(FLAGS::BLOCK, &candidate));
     LLD::TxnAbort(FLAGS::BLOCK);
+    cleanup.active = false;
     REQUIRE(TakeLastConnectClass() == AdmissibilityClass::UNKNOWN);
     REQUIRE_FALSE(mempool.Accept(credit));
     REQUIRE_FALSE(mempool.Rejected(credit.GetHash()));
@@ -3241,7 +3311,6 @@ TEST_CASE("Coinbase credits are deferred until the next block can include them",
     REQUIRE(mempool.Get(credit.GetHash(), found, conflicted));
     REQUIRE(conflicted);
 
-    Transaction child;
     child.hashGenesis = genesis;
     child.nSequence = 3;
     child.hashPrevTx = credit.GetHash();
@@ -3266,6 +3335,7 @@ TEST_CASE("Coinbase credits are deferred until the next block can include them",
     ChainState::nBestHeight.store(coinbaseBlock.nHeight + maturity - 3);
     candidate.nHeight = ChainState::nBestHeight.load() + 1;
     REQUIRE(LLD::TxnBegin(FLAGS::BLOCK));
+    cleanup.active = true;
     if(unconfirmedPredecessor)
     {
         REQUIRE(create.Connect(FLAGS::BLOCK));
@@ -3273,6 +3343,7 @@ TEST_CASE("Coinbase credits are deferred until the next block can include them",
     }
     REQUIRE(credit.Connect(FLAGS::BLOCK, &candidate));
     LLD::TxnAbort(FLAGS::BLOCK);
+    cleanup.active = false;
     mempool.Check();
     conflicted = false;
     REQUIRE(mempool.Get(credit.GetHash(), found, conflicted));
@@ -3281,18 +3352,25 @@ TEST_CASE("Coinbase credits are deferred until the next block can include them",
     REQUIRE_FALSE(conflicted);
 
     REQUIRE(LLD::TxnBegin(FLAGS::MEMPOOL));
+    cleanup.mode = FLAGS::MEMPOOL;
+    cleanup.active = true;
     REQUIRE(child.Disconnect(FLAGS::MEMPOOL));
     REQUIRE(LLD::TxnCommit(FLAGS::MEMPOOL));
+    cleanup.active = false;
     REQUIRE(mempool.Remove(child.GetHash()));
     REQUIRE(LLD::TxnBegin(FLAGS::MEMPOOL));
+    cleanup.active = true;
     REQUIRE(credit.Disconnect(FLAGS::MEMPOOL));
     REQUIRE(LLD::TxnCommit(FLAGS::MEMPOOL));
+    cleanup.active = false;
     REQUIRE(mempool.Remove(credit.GetHash()));
     if(unconfirmedPredecessor)
     {
         REQUIRE(LLD::TxnBegin(FLAGS::MEMPOOL));
+        cleanup.active = true;
         REQUIRE(create.Disconnect(FLAGS::MEMPOOL));
         REQUIRE(LLD::TxnCommit(FLAGS::MEMPOOL));
+        cleanup.active = false;
         REQUIRE(mempool.Remove(create.GetHash()));
     }
     REQUIRE(LLD::Ledger->EraseIndex(coinbase.GetHash()));

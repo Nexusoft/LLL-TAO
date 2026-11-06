@@ -90,14 +90,14 @@ namespace TAO
                 {
                     BlockState peer;
                     if(hash == 0 || !LLD::Ledger || !LLD::Ledger->ReadBlock(hash, peer)
-                    || peer.nHeight != height)
-                        return MiningPeerEvidence::UNRESOLVED;
+                    || peer.GetHash() != hash || peer.nHeight != height)
+                        return ChainState::MiningPeerEvidence::UNRESOLVED;
                     if(peer.IsHeavierThan(best))
-                        return MiningPeerEvidence::UNRESOLVED;
+                        return ChainState::MiningPeerEvidence::UNRESOLVED;
                     if(peer.IsInMainChain() && best.nHeight >= peer.nHeight
                     && uint64_t(peer.nHeight) + 2 >= best.nHeight)
-                        return MiningPeerEvidence::SUPPORTING;
-                    return MiningPeerEvidence::BEHIND;
+                        return ChainState::MiningPeerEvidence::SUPPORTING;
+                    return ChainState::MiningPeerEvidence::BEHIND;
                 });
         }
 

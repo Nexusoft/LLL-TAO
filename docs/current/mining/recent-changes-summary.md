@@ -1,13 +1,105 @@
 # Recent Changes Summary — Mining Infrastructure
 
 **Version:** LLL-TAO 5.1.0+  
-**Coverage:** PRs #502–#545  
-**Last Updated:** 2026-04-11
+**Coverage:** PRs #502–#545 and #728–#730
+
+**Last Updated:** 2026-11-06
 
 ---
 
 This document catalogs all significant mining infrastructure changes for future
 developers.  Changes are organized by area rather than chronologically.
+
+---
+
+## Peer Recovery and Mining Readiness (PRs #728–#730)
+
+This series separates recovering connections, completing synchronization, and
+being ready to produce blocks. A connected peer or a completed synchronization
+is not sufficient evidence to keep public-network mining active.
+
+### Changes by PR
+
+| PR | Scope | What it does not guarantee |
+|---|---|---|
+| [#728](https://github.com/NamecoinGithub/LLL-TAO/pull/728) | Bounded, jittered DNS seed recovery and `peer_recovery` diagnostics; preserve live address state and record only successful refreshes. Fix outbound admission, connected-peer selection, immediate socket connection handling, and worker shutdown/wakeups. | Connectivity does not prove synchronization or chain quality. An OS DNS lookup can delay shutdown; independent direct connections do not share an atomic admission limit with the manager. |
+| [#729](https://github.com/NamecoinGithub/LLL-TAO/pull/729) | Track heights per connection, remove disconnected observations, and expire heights after 30 minutes. Pair deferred `BESTCHAIN` handling with `BESTHEIGHT`; fix long Colin report lines and join reporting workers before teardown. | This increment alone does not pause isolated mining, reject stale work, or independently retry unknown shorter tips. |
+| [#730](https://github.com/NamecoinGithub/LLL-TAO/pull/730) | Add fresh peer-backed mining readiness and epoch fencing, idle peer-tip retries and sync finalization, immature-credit deferral and orphan safety, and prewarmer coalescing/success accounting. | Peer agreement is not consensus. Multi-node partition/recovery acceptance testing and a clean full-suite result remain outstanding; not ready for live deployment. |
+
+### Recovery and admission flow
+
+```mermaid
+flowchart TD
+    A["Peer loss / network change"] --> B["#728 connection manager: known peers + bounded DNS recovery"]
+    B --> C["Connected Tritium peers"]
+    C --> D["BESTCHAIN + BESTHEIGHT observations"]
+    D --> E["#729 per-connection height tracking: disconnect removal / 30-minute expiry"]
+    D --> F["#730 best-tip evidence: 90-second freshness"]
+    D --> G["#730 idle report requests and unresolved-tip retries: 30-second interval"]
+    G --> D
+    G --> H["Fetch missing branches; validate locally and compare chain weight"]
+    H --> I["Committed local chain state"]
+    E --> J["#730 selected-session sync finalization: fresh matching tip + height"]
+    I --> J
+    F --> K{"#730 mining readiness"}
+    J --> K
+    I --> K
+    K -->|"Paused"| L["GET_BLOCK retry; staking pauses; revoked submissions rejected"]
+    K -->|"Ready with current epoch"| M["Template caches / best-effort prewarmer / staking"]
+    M --> N["Recheck epoch before delivery, solving and local admission"]
+    N --> O["Final readiness check under processing mutex before acceptance"]
+    F --> P["Changed, removed or expired evidence revokes work epoch"]
+    P --> L
+```
+
+On public networks, readiness requires completed initial sync, a consistent
+committed tip, no shutdown/reorganization, and fresh support from two distinct
+peer IPs by default. Resolve each advertised hash locally, verify the returned
+block's hash and height, and require a main-chain block no more than two heights
+behind the tip. Unknown/mismatched reports and locally known heavier branches
+veto readiness; known non-heavier branches do not count as support.
+`-miningminpeers=1` explicitly reduces the required evidence; values outside
+1–16 fail closed. Local-development testnets can bypass peer and initial-sync
+requirements, not shutdown/reorganization checks. Private/hybrid channel-3
+production is unchanged.
+
+Epochs are process-local, not serialized or trusted from network blocks.
+Changed, disconnected or expired evidence and ready-to-paused transitions
+revoke work; restoring readiness does not revive it. Both mining protocols,
+caches, template publication, staking and local admission check current work.
+Queued/sent bytes cannot be recalled, so stale submissions are rejected rather
+than canceled by a new miner message. The 216-byte header and consensus block
+format are unchanged.
+
+With `-peerbestchainrecovery`, unknown tips, including shorter branches, are
+retried at most once per 30 seconds until 30 minutes after the last best-chain
+advertisement. Fetching is not activation: local validation and chain weight
+remain authoritative. Height-only updates do not refresh best-tip evidence.
+
+Immature coinbase credits and their dependent sigchain tails remain in the
+bounded conflict pool for re-evaluation at the local chain height; peer heights
+cannot make a credit mature. Missing-predecessor orphans are revalidated when
+the predecessor arrives; no connected peer leaves the request queued safely.
+Prewarmer work coalesces by channel/reward/tip while queued or in flight, counts
+only non-null results, and releases keys after completion/failure/staleness.
+A notification coalesced during a failed build does not schedule its own retry.
+
+### Operator and verification notes
+
+- Perform a full clean rebuild: `TritiumBlock` and `TritiumNode` memory layouts
+  changed. Do not mix old and new objects.
+- `system/get/info.peer_recovery` describes connection recovery;
+  `mining_readiness` reports `ready`, `reason`, `epoch`, `fresh_peers`,
+  `required_peers`, and `local_bypass`. Existing sync fields are unchanged.
+- DNS controls and diagnostic meanings are documented in the
+  [configuration reference](../../reference/nexus.conf.md#network-configuration).
+- The review follow-up qualifies the nested readiness enum, explicitly checks
+  peer block identity, adds mismatched-record regression coverage, and makes
+  coinbase-maturity fixture cleanup RAII-based so failed assertions abort open
+  transactions, undo mempool overlays and restore ledger/global state.
+- See [known risks and limitations](known-risks-and-limitations.md) for current
+  deployment restrictions. Core changes do not include Interface wallet/UI
+  changes or wallet-specific acceptance tests.
 
 ---
 
