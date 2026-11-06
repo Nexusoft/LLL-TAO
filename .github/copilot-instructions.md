@@ -168,6 +168,10 @@ Copilot Coding Agent uses the Copilot setup workflow plus the shared devcontaine
 - Check for dependency issues
 - Validate code changes before merge
 
+Copilot code review uses `.github/workflows/copilot-code-review.yml` for its
+runner and build dependency setup. This configures its environment, not
+automatic review requests.
+
 ## Performance Considerations
 
 ### Build Times
