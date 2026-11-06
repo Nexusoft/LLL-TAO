@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/genesis_block.h>
+#include <TAO/Ledger/include/peer_height.h>
 #include <TAO/Ledger/include/timelocks.h>
 
 /* Global TAO namespace. */
@@ -35,8 +36,25 @@ namespace TAO
         std::atomic<uint32_t> ChainState::nBestHeight;
 
 
-        /* The highest block height advertised by any connected peer. */
-        std::atomic<uint32_t> ChainState::nMaxPeerHeight(0);
+        namespace
+        {
+            ChainState::PeerHeightTracker peerHeights;
+        }
+
+        void ChainState::ObservePeerHeight(const void* peer, uint32_t height)
+        {
+            peerHeights.Update(peer, height);
+        }
+
+        void ChainState::ForgetPeerHeight(const void* peer)
+        {
+            peerHeights.Remove(peer);
+        }
+
+        uint32_t ChainState::MaxPeerHeight()
+        {
+            return peerHeights.Max();
+        }
 
 
         /* The best trust in the chain. */

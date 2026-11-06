@@ -17,12 +17,14 @@ ________________________________________________________________________________
 
 #include <LLP/types/tritium.h>
 #include <LLP/include/version.h>
+#include <LLP/templates/events.h>
 #include <LLP/templates/socket.h>
 #include <LLP/include/base_address.h>
 
 #include <TAO/Ledger/include/admissibility.h>
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/peer_height.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -1949,6 +1951,52 @@ TEST_CASE("BESTCHAIN recovery second notify emits no LIST while throttled",
 }
 
 
+#ifndef WIN32
+TEST_CASE("BESTCHAIN recovery uses the height later in the same notification",
+    "[ledger][process][bestchain][notify-order]")
+{
+    LedgerGuard env;
+    TAO::Ledger::mapLastOrphanRequest.clear();
+    const uint32_t savedHeight = TAO::Ledger::ChainState::nBestHeight.load();
+    TAO::Ledger::ChainState::nBestHeight.store(1000);
+    const uint1024_t tip(0xBC01000000000111ULL);
+    const uint1024_t behindTip(0xBC01000000000112ULL);
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(tip));
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(behindTip));
+
+    int fds[2] = {-1, -1};
+    REQUIRE(socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == 0);
+    LLP::TritiumNode node;
+    node.fd = fds[1];
+    node.events = POLLIN;
+    node.nCurrentSession = 1;
+    node.nProtocolVersion = LLP::PROTOCOL_VERSION;
+    node.nCurrentHeight = 500;
+    node.Subscribe(LLP::TritiumNode::SUBSCRIPTION::BESTCHAIN
+                 | LLP::TritiumNode::SUBSCRIPTION::BESTHEIGHT);
+
+    DataStream payload(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    payload << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << tip
+            << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << uint32_t(1001)
+            << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << behindTip
+            << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << uint32_t(999);
+    node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+    node.INCOMING.DATA.assign(payload.begin(), payload.end());
+    REQUIRE(node.ProcessPacket());
+    REQUIRE(node.nCurrentHeight == 999);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(tip) == 1);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(behindTip) == 0);
+
+    TAO::Ledger::ChainState::ForgetPeerHeight(&node);
+    TAO::Ledger::ChainState::nBestHeight.store(savedHeight);
+    TAO::Ledger::mapLastOrphanRequest.clear();
+    node.fd = -1;
+    close(fds[0]);
+    close(fds[1]);
+}
+#endif
+
+
 TEST_CASE("BESTCHAIN recovery ignores unknown tip from behind peer",
 "[ledger][process][a1][bestchain][height-gate]")
 {
@@ -2534,42 +2582,23 @@ TEST_CASE("Post-sync state: nSyncSession==0 and fSynchronized==true after Sync()
 
 TEST_CASE("Sync completion height guard prevents stale half-chain finalization", "[ledger][process]")
 {
-    const uint32_t nSavedBestHeight    = TAO::Ledger::ChainState::nBestHeight.load();
-    const uint32_t nSavedMaxPeerHeight = TAO::Ledger::ChainState::nMaxPeerHeight.load();
-
-    /* Model the completion guard in src/LLP/tritium.cpp:
-     *   local_best >= sync_peer_height
-     *   && sync_peer_height + tolerance >= global_max_peer_height
-     *
-     * This prevents declaring full sync when the active sync peer is still far
-     * behind the strongest advertised peer height (the half-chain stale-state
-     * failure mode). */
-    constexpr uint32_t nTolerance = 2;
-
-    TAO::Ledger::ChainState::nBestHeight.store(500000);
-    TAO::Ledger::ChainState::nMaxPeerHeight.store(900000);
-    const uint32_t nSyncPeerHeight = 500000;
-
-    const bool fCanFinalizeWithStaleSyncPeer =
-        (TAO::Ledger::ChainState::nBestHeight.load() >= nSyncPeerHeight)
-        && (static_cast<uint64_t>(nSyncPeerHeight) + nTolerance
-            >= static_cast<uint64_t>(TAO::Ledger::ChainState::nMaxPeerHeight.load()));
-
-    REQUIRE_FALSE(fCanFinalizeWithStaleSyncPeer);
-
-    TAO::Ledger::ChainState::nBestHeight.store(900000);
-    TAO::Ledger::ChainState::nMaxPeerHeight.store(900001);
-    const uint32_t nNearTipSyncPeerHeight = 900000;
-
-    const bool fCanFinalizeNearTip =
-        (TAO::Ledger::ChainState::nBestHeight.load() >= nNearTipSyncPeerHeight)
-        && (static_cast<uint64_t>(nNearTipSyncPeerHeight) + nTolerance
-            >= static_cast<uint64_t>(TAO::Ledger::ChainState::nMaxPeerHeight.load()));
-
-    REQUIRE(fCanFinalizeNearTip);
-
-    TAO::Ledger::ChainState::nBestHeight.store(nSavedBestHeight);
-    TAO::Ledger::ChainState::nMaxPeerHeight.store(nSavedMaxPeerHeight);
+    using namespace TAO::Ledger::ChainState;
+    PeerHeightTracker heights;
+    int syncPeer = 0;
+    int otherPeer = 0;
+    heights.Update(&syncPeer, 500000);
+    heights.Update(&otherPeer, 900000);
+    REQUIRE_FALSE(CanFinalizeSyncFromPeer(500000, 500000, heights.Max()));
+    heights.Remove(&otherPeer);
+    REQUIRE(CanFinalizeSyncFromPeer(500000, 500000, heights.Max()));
+    heights.Update(&otherPeer, 500002);
+    REQUIRE(CanFinalizeSyncFromPeer(500000, 500000, heights.Max()));
+    heights.Update(&otherPeer, 500003);
+    REQUIRE_FALSE(CanFinalizeSyncFromPeer(500000, 500000, heights.Max()));
+    REQUIRE_FALSE(CanFinalizeSyncFromPeer(499999, 500000, heights.Max()));
+    REQUIRE(CanFinalizeSyncFromPeer(100, 100, 0));
+    REQUIRE_FALSE(CanFinalizeSyncFromPeer(100, 101, 0));
+    REQUIRE(CanFinalizeSyncFromPeer(UINT32_MAX, UINT32_MAX, UINT32_MAX));
 }
 
 
@@ -2637,35 +2666,32 @@ TEST_CASE("AdmissibilityClass thread-local side-channel set/take semantics", "[l
 }
 
 
-TEST_CASE("nMaxPeerHeight is distinct from nBestHeight", "[ledger][process]")
+TEST_CASE("Peer height observations expire and follow connection updates", "[ledger][process]")
 {
-    /* nMaxPeerHeight is the highest height any connected peer has advertised.
-     * It must be accessible and independently settable from nBestHeight so
-     * the coinbase-maturity deferral logic can tell the difference between
-     * "immature at local height" and "would be mature at peer height". */
+    using TAO::Ledger::ChainState::PeerHeightTracker;
+    PeerHeightTracker heights;
+    const auto now = PeerHeightTracker::Clock::now();
+    int first = 0;
+    int second = 0;
+    heights.Update(&first, 900, now);
+    heights.Update(&second, 100, now + std::chrono::minutes(1));
+    REQUIRE(heights.Max(now + PeerHeightTracker::MAX_AGE) == 900);
+    REQUIRE(heights.Max(now + PeerHeightTracker::MAX_AGE + std::chrono::seconds(1)) == 100);
+    heights.Update(&first, 80, now + PeerHeightTracker::MAX_AGE + std::chrono::seconds(1));
+    REQUIRE(heights.Max(now + PeerHeightTracker::MAX_AGE + std::chrono::seconds(1)) == 100);
+    heights.Remove(&second);
+    REQUIRE(heights.Max(now + PeerHeightTracker::MAX_AGE + std::chrono::seconds(1)) == 80);
+    heights.Remove(&first);
+    REQUIRE(heights.Max(now + PeerHeightTracker::MAX_AGE + std::chrono::seconds(1)) == 0);
+}
 
-    const uint32_t nSavedLocal = TAO::Ledger::ChainState::nBestHeight.load();
-    const uint32_t nSavedPeer  = TAO::Ledger::ChainState::nMaxPeerHeight.load();
-
-    /* Simulate local height 100, peer height 102. */
-    TAO::Ledger::ChainState::nBestHeight.store(100);
-    TAO::Ledger::ChainState::nMaxPeerHeight.store(102);
-
-    REQUIRE(TAO::Ledger::ChainState::nBestHeight.load()    == 100);
-    REQUIRE(TAO::Ledger::ChainState::nMaxPeerHeight.load() == 102);
-    REQUIRE(TAO::Ledger::ChainState::nMaxPeerHeight.load() >
-            TAO::Ledger::ChainState::nBestHeight.load());
-
-    /* The gap between peer height and local height is the number of extra
-     * confirmations a coinbase would have at network height. */
-    const uint32_t nExtraConfs =
-        TAO::Ledger::ChainState::nMaxPeerHeight.load() -
-        TAO::Ledger::ChainState::nBestHeight.load();
-    REQUIRE(nExtraConfs == 2);
-
-    /* Restore. */
-    TAO::Ledger::ChainState::nBestHeight.store(nSavedLocal);
-    TAO::Ledger::ChainState::nMaxPeerHeight.store(nSavedPeer);
+TEST_CASE("Tritium disconnect removes its peer height observation", "[ledger][process][peer-height]")
+{
+    LLP::TritiumNode node;
+    TAO::Ledger::ChainState::ObservePeerHeight(&node, UINT32_MAX);
+    REQUIRE(TAO::Ledger::ChainState::MaxPeerHeight() == UINT32_MAX);
+    node.Event(LLP::EVENTS::DISCONNECT, LLP::DISCONNECT::PEER);
+    REQUIRE(TAO::Ledger::ChainState::MaxPeerHeight() < UINT32_MAX);
 }
 
 

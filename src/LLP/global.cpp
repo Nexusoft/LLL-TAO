@@ -718,6 +718,9 @@ namespace LLP
             debug::error(FUNCTION, "Graceful miner shutdown phase failed: unknown exception");
         }
 
+        /* Join both report workers while their dependencies still exist. */
+        ColinMiningAgent::Get().stop();
+
         /* Shutdown Falcon Auth. */
         FalconAuth::Shutdown();
 
