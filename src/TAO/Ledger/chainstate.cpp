@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/genesis_block.h>
 #include <TAO/Ledger/include/peer_height.h>
+#include <TAO/Ledger/include/mining_readiness.h>
 #include <TAO/Ledger/include/timelocks.h>
 
 /* Global TAO namespace. */
@@ -39,6 +40,7 @@ namespace TAO
         namespace
         {
             ChainState::PeerHeightTracker peerHeights;
+            ChainState::MiningPeerTracker miningPeers;
         }
 
         void ChainState::ObservePeerHeight(const void* peer, uint32_t height)
@@ -49,11 +51,81 @@ namespace TAO
         void ChainState::ForgetPeerHeight(const void* peer)
         {
             peerHeights.Remove(peer);
+            miningPeers.Remove(peer);
         }
 
         uint32_t ChainState::MaxPeerHeight()
         {
             return peerHeights.Max();
+        }
+
+        bool ChainState::FreshPeerHeight(const void* peer, uint32_t& height)
+        {
+            return peerHeights.Get(peer, height, PeerHeightTracker::Clock::now(), MiningPeerTracker::MAX_AGE);
+        }
+
+        void ChainState::ObserveMiningPeer(const void* peer, const std::string& address,
+                                           const uint1024_t& hash, uint32_t height)
+        {
+            miningPeers.Observe(peer, address, hash, height);
+        }
+
+        void ChainState::UpdateMiningPeerHeight(const void* peer, uint32_t height)
+        {
+            miningPeers.Height(peer, height);
+        }
+
+        ChainState::MiningStatus ChainState::MiningReadiness(bool cached)
+        {
+            const bool local = config::fTestNet.load()
+                && (!config::GetBoolArg("-dns", true) || config::fHybrid.load());
+            const int64_t required = config::GetArg("-miningminpeers", 2);
+            const BlockState best = tStateBest.load();
+            const uint1024_t bestHash = best.GetHash();
+            const uint32_t quorum = required > 0 && required <= 16 ? uint32_t(required) : 0;
+            const bool synchronized = LLP::TritiumNode::fSynchronized.load();
+            const bool reorg = fChainReorg.load() || (!local && (best.IsNull()
+                || bestHash != hashBestChain.load()));
+            const bool shutdown = config::fShutdown.load();
+            const auto resolve = [&best](const uint1024_t& hash, uint32_t height)
+                {
+                    BlockState peer;
+                    if(hash == 0 || !LLD::Ledger || !LLD::Ledger->ReadBlock(hash, peer)
+                    || peer.GetHash() != hash || peer.nHeight != height)
+                        return ChainState::MiningPeerEvidence::UNRESOLVED;
+                    if(peer.IsHeavierThan(best))
+                        return ChainState::MiningPeerEvidence::UNRESOLVED;
+                    if(best.nHeight >= peer.nHeight
+                    && uint64_t(peer.nHeight) + 2 >= best.nHeight)
+                    {
+                        BlockState ancestor = best;
+                        while(ancestor.nHeight > peer.nHeight)
+                        {
+                            const uint1024_t previousHash = ancestor.hashPrevBlock;
+                            const uint32_t previousHeight = ancestor.nHeight - 1;
+                            if(previousHeight == peer.nHeight)
+                                return previousHash == hash
+                                    ? ChainState::MiningPeerEvidence::SUPPORTING
+                                    : ChainState::MiningPeerEvidence::BEHIND;
+                            if(!LLD::Ledger->ReadBlock(previousHash, ancestor)
+                            || ancestor.GetHash() != previousHash
+                            || ancestor.nHeight != previousHeight)
+                                return ChainState::MiningPeerEvidence::UNRESOLVED;
+                        }
+                        if(ancestor.GetHash() == hash)
+                            return ChainState::MiningPeerEvidence::SUPPORTING;
+                    }
+                    return ChainState::MiningPeerEvidence::BEHIND;
+                };
+            return cached
+                ? miningPeers.CheckCached(bestHash, quorum, local, synchronized, reorg, shutdown, resolve)
+                : miningPeers.Check(quorum, local, synchronized, reorg, shutdown, resolve);
+        }
+
+        bool ChainState::MiningWorkCurrent(uint64_t epoch)
+        {
+            const auto status = MiningReadiness(true);
+            return epoch != 0 && status.ready && epoch == status.epoch;
         }
 
 

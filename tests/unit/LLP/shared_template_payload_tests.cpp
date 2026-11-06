@@ -5,6 +5,7 @@
 #include <LLP/include/stateless_get_block_handler.h>
 
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/mining_readiness.h>
 #include <TAO/Ledger/types/tritium.h>
 
 #include <Util/include/convert.h>
@@ -43,6 +44,7 @@ namespace
         pBlock->nHeight = 123;
         pBlock->nBits = 0x1a2b3c4d;
         pBlock->hashMerkleRoot = uint512_t(456);
+        pBlock->nMiningEpoch = TAO::Ledger::ChainState::MiningReadiness().epoch;
         return pBlock;
     }
 }
@@ -65,7 +67,8 @@ TEST_CASE("Shared template payload exposes the snapshot used for metadata", "[ll
 
     REQUIRE(result.fSuccess);
     REQUIRE(result.nUnifiedHeight == 321u);
-    REQUIRE(result.hashBestChain == uint1024_t(654));
+    REQUIRE(result.hashBestChain == stateBest.GetHash());
+    REQUIRE(result.hashBestChain != TAO::Ledger::ChainState::hashBestChain.load());
     REQUIRE(result.nBlockBits == pBlock->nBits);
     REQUIRE(result.vPayload.size() >= 12u);
     REQUIRE(convert::bytes2uint(result.vPayload, 0) == result.nUnifiedHeight);
@@ -97,7 +100,7 @@ TEST_CASE("Lane GET_BLOCK helpers propagate shared template anchors", "[llp][tem
         const LLP::LegacyGetBlockResult result = LLP::LegacyGetBlockHandler(req);
         REQUIRE(result.fSuccess);
         REQUIRE(result.nUnifiedHeight == 777u);
-        REQUIRE(result.hashBestChain == uint1024_t(888));
+        REQUIRE(result.hashBestChain == stateBest.GetHash());
         REQUIRE(convert::bytes2uint(result.vPayload, 0) == result.nUnifiedHeight);
         REQUIRE(convert::bytes2uint(result.vPayload, 4) == result.nChannelHeight);
         REQUIRE(convert::bytes2uint(result.vPayload, 8) == result.nBlockBits);
@@ -116,7 +119,7 @@ TEST_CASE("Lane GET_BLOCK helpers propagate shared template anchors", "[llp][tem
         const LLP::StatelessGetBlockResult result = LLP::StatelessGetBlockHandler(req);
         REQUIRE(result.fSuccess);
         REQUIRE(result.nUnifiedHeight == 777u);
-        REQUIRE(result.hashBestChain == uint1024_t(888));
+        REQUIRE(result.hashBestChain == stateBest.GetHash());
         REQUIRE(convert::bytes2uint(result.vPayload, 0) == result.nUnifiedHeight);
         REQUIRE(convert::bytes2uint(result.vPayload, 4) == result.nChannelHeight);
         REQUIRE(convert::bytes2uint(result.vPayload, 8) == result.nBlockBits);

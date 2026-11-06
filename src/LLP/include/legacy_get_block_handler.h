@@ -89,6 +89,7 @@ namespace LLP
         uint32_t nBlockChannel  = 0;
         uint32_t nBlockHeight   = 0;
         uint32_t nBlockBits     = 0;
+        uint64_t nMiningEpoch   = 0;
     };
 
 

@@ -34,6 +34,7 @@ namespace LLP
         result.nBlockChannel = shared.nBlockChannel;
         result.nBlockHeight  = shared.nBlockHeight;
         result.nBlockBits    = shared.nBlockBits;
+        result.nMiningEpoch  = shared.nMiningEpoch;
         return result;
     }
 

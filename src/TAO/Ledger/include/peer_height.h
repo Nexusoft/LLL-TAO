@@ -58,6 +58,18 @@ namespace TAO::Ledger::ChainState
             return maximum;
         }
 
+        bool Get(const void* peer, uint32_t& height, Clock::time_point now = Clock::now(),
+                 Clock::duration maxAge = MAX_AGE)
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            PruneExpired(now);
+            const auto it = observations.find(peer);
+            if(it == observations.end() || now - it->second.second > maxAge)
+                return false;
+            height = it->second.first;
+            return true;
+        }
+
     private:
         void PruneExpired(Clock::time_point now)
         {

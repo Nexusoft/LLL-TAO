@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/system.h>
 #include <TAO/API/types/commands/ledger.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/mining_readiness.h>
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -355,6 +356,12 @@ namespace TAO
             /* Flag indicating whether this node is currently syncrhonizing */
             jRet["synchronized"]    = !TAO::Ledger::ChainState::Synchronizing();
             jRet["syncing"]         = false; // default sync value
+            const auto mining = TAO::Ledger::ChainState::MiningReadiness();
+            jRet["mining_readiness"] = {
+                {"ready", mining.ready}, {"reason", mining.reason},
+                {"epoch", mining.epoch}, {"fresh_peers", mining.peers},
+                {"required_peers", mining.required}, {"local_bypass", mining.bypass}
+            };
 
             /* Populate our sync related data. */
             if(TAO::Ledger::nSyncSession.load() != 0)

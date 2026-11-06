@@ -24,6 +24,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/authentication.h>
 
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/mining_readiness.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/process.h>
@@ -607,8 +608,11 @@ namespace TAO
         /* Attempt to solve the hashing algorithm at the current staking difficulty for the candidate block */
         bool StakeMinter::HashBlock(const cv::softdouble nRequired)
         {
+            if(!ChainState::MiningWorkCurrent(block.nMiningEpoch))
+                return false;
             uint64_t nTimeStart = 0;
             uint64_t nHeartbeatLast = 0;
+            uint64_t nReadinessLast = runtime::unifiedtimestamp();
 
             /* Calculate the target value based on difficulty. */
             LLC::CBigNum bnTarget;
@@ -622,6 +626,15 @@ namespace TAO
                 && hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load())
             {
                 const uint64_t nHeartbeatNow = runtime::unifiedtimestamp();
+                if(nHeartbeatNow != nReadinessLast)
+                {
+                    nReadinessLast = nHeartbeatNow;
+                    if(!ChainState::MiningWorkCurrent(block.nMiningEpoch))
+                    {
+                        debug::log(1, FUNCTION, "Staking paused: mining readiness changed");
+                        return false;
+                    }
+                }
                 if(nHeartbeatLast == 0
                 || (nHeartbeatNow > nHeartbeatLast
                     && (nHeartbeatNow - nHeartbeatLast) >= TAO::Ledger::STAKE_MINTER_HEARTBEAT_INTERVAL_SECONDS))
@@ -705,6 +718,8 @@ namespace TAO
 
         bool StakeMinter::ProcessBlock()
         {
+            if(!ChainState::MiningWorkCurrent(block.nMiningEpoch))
+                return debug::error(FUNCTION, "Stake work epoch revoked");
             /* Calculate coinstake reward for producer.
              * Reward is based on final block time for block. Block time is updated with each iteration so we
              * have deferred reward calculation until after the block is found to get the exact correct amount.
@@ -777,7 +792,7 @@ namespace TAO
                 {
                     /* Process the block and relay to network if it gets accepted */
                     uint8_t nStatus = 0;
-                    TAO::Ledger::Process(block, nStatus);
+                    TAO::Ledger::Process(block, nStatus, nullptr, false, block.nMiningEpoch);
 
                     /* Check the statues. */
                     if(!(nStatus & PROCESS::ACCEPTED))

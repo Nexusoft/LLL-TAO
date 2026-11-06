@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 
 #include <LLP/include/network.h>
+#include <LLP/include/peer_best_retry.h>
 #include <LLP/include/version.h>
 #include <LLP/include/tx_response_window.h>
 #include <LLP/packets/message.h>
@@ -476,6 +477,9 @@ namespace LLP
 
     private:
 
+        PeerBestRetry m_peerBestRetry;
+        bool TryFinalizeSync();
+        void Sync(uint64_t nExpectedSession);
 
         /** Per-connection rate tracker for ACTION::GET flood prevention. **/
         GetRequestRateTracker m_getTracker;
@@ -593,6 +597,14 @@ namespace LLP
 
         /** Default Destructor **/
         virtual ~TritiumNode();
+
+#ifdef UNIT_TESTS
+        void MakePeerBestRetryDueForTests()
+        {
+            m_peerBestRetry.Reset();
+            m_peerBestRetry.Observe(PeerBestRetry::Clock::now() - PeerBestRetry::INTERVAL);
+        }
+#endif
 
 
         /** Counter to keep track of the last time a ping was made. **/

@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/ambassador.h>
 #include <TAO/Ledger/include/developer.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/mining_readiness.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/enum.h>
@@ -153,6 +154,7 @@ namespace TAO::Ledger
              * BeginOrJoinInFlightBuild() to orphan stale handles whose
              * tip no longer matches the current chain — see Follow-up #1. */
             uint1024_t hashBuildTip{0};
+            uint64_t nMiningEpoch{0};
         };
         using InFlightPtr = std::shared_ptr<InFlightBuild>;
 
@@ -208,7 +210,9 @@ namespace TAO::Ledger
             auto pNew = std::make_shared<const MiningTemplateCacheEntry>(entry);
 
             std::unique_lock<std::shared_mutex> lock(m_mutex);
-            if(!TipCurrent(hashBuildTip))
+            if(!TipCurrent(hashBuildTip)
+            || (entry.block.nMiningEpoch != 0
+                && !ChainState::MiningWorkCurrent(entry.block.nMiningEpoch)))
                 return false;
 
             for(auto it = m_entries.begin(); it != m_entries.end(); ++it)
@@ -279,16 +283,16 @@ namespace TAO::Ledger
          * unit-test helpers that don't track a tip). */
         InFlightPtr BeginOrJoinInFlightBuild(const uint256_t& hashDynamicGenesis,
                                              const uint1024_t& hashBuildTip,
-                                             bool& fIsOwner)
+                                             bool& fIsOwner, uint64_t nMiningEpoch = 0)
         {
             std::unique_lock<std::shared_mutex> lock(m_mutex);
             const auto it = m_inflight.find(hashDynamicGenesis);
             if(it != m_inflight.end())
             {
                 /* Tip match (or either side opted out with 0): join. */
-                if(hashBuildTip == 0
+                if(it->second->nMiningEpoch == nMiningEpoch && (hashBuildTip == 0
                 || it->second->hashBuildTip == 0
-                || it->second->hashBuildTip == hashBuildTip)
+                || it->second->hashBuildTip == hashBuildTip))
                 {
                     fIsOwner = false;
                     return it->second;
@@ -303,6 +307,7 @@ namespace TAO::Ledger
             pHandle->tStarted = std::chrono::steady_clock::now();
             pHandle->hashDynamicGenesis = hashDynamicGenesis;
             pHandle->hashBuildTip = hashBuildTip;
+            pHandle->nMiningEpoch = nMiningEpoch;
             m_inflight.emplace(hashDynamicGenesis, pHandle);
             fIsOwner = true;
             return pHandle;
@@ -345,7 +350,9 @@ namespace TAO::Ledger
             bool fPublished = false;
             {
                 std::unique_lock<std::shared_mutex> lock(m_mutex);
-                fPublished = TipCurrent(pHandle->hashBuildTip);
+                fPublished = TipCurrent(pHandle->hashBuildTip)
+                    && (finalEntry.block.nMiningEpoch == 0
+                        || ChainState::MiningWorkCurrent(finalEntry.block.nMiningEpoch));
 
                 if(fPublished)
                 {
@@ -1121,7 +1128,7 @@ namespace TAO::Ledger
 
     /* Create a new block object from the chain. */
     bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
-        const uint32_t nChannel, TAO::Ledger::TritiumBlock &rBlockRet, const uint64_t nExtraNonce, Legacy::Coinbase *pCoinbaseRecipients,
+        const uint32_t nChannel, TAO::Ledger::TritiumBlock &rBlockRet, const uint64_t nExtraNonceIn, Legacy::Coinbase *pCoinbaseRecipients,
         const uint256_t& hashDynamicGenesis, bool* pfTipRaceRetry)
     {
         /* Cache key: always the signing wallet's genesis (node operator sigchain).
@@ -1137,6 +1144,18 @@ namespace TAO::Ledger
 
         /* Set the block to null. */
         rBlockRet.SetNull();
+
+        const auto readiness = ChainState::MiningReadiness();
+        if(nChannel != 3 && !readiness.ready)
+            return debug::error(FUNCTION, "Mining paused: ", readiness.reason);
+        if(nChannel != 3 && !readiness.bypass && nExtraNonceIn > UINT32_MAX)
+            return debug::error(FUNCTION, "Mining extra nonce exceeds the 32-bit epoch namespace");
+        const uint64_t nMiningEpoch = nChannel == 3 ? 0 : readiness.epoch;
+        /* Reserve the upper word for the admission epoch so a same-tip
+         * rebuild cannot resurrect a previously issued merkle root. */
+        const uint64_t nExtraNonce = nChannel == 3 || readiness.bypass ? nExtraNonceIn
+            : (nMiningEpoch << 32) | uint32_t(nExtraNonceIn);
+        rBlockRet.nMiningEpoch = nMiningEpoch;
 
         /* Modulate the Block Versions if they correspond to their proper time stamp */
         /* Normally, if condition is true and block version is current version unless an activation is pending */
@@ -1169,7 +1188,7 @@ namespace TAO::Ledger
             ChainState::tStateBest.load();
 
         /* Event-driven cache invalidation: check each condition individually. */
-        bool fNeedsNewBlock = false;
+        bool fNeedsNewBlock = tBlockCached.nMiningEpoch != nMiningEpoch;
 
         /* Primary check: Has the blockchain advanced? */
         if(ChainState::hashBestChain.load() != tBlockCached.hashPrevBlock)
@@ -1388,12 +1407,15 @@ namespace TAO::Ledger
 
             bool fSingleflightOwner = false;
             auto pInFlight = tBlockCache[nChannel].BeginOrJoinInFlightBuild(
-                hashDynamicGenesis, hashBuildTip, fSingleflightOwner);
+                hashDynamicGenesis, hashBuildTip, fSingleflightOwner, nMiningEpoch);
 
-            auto TryApplyPublishedTemplate = [&rBlockRet, &nChannel, &nExtraNonce, &hashDynamicGenesis](
+            auto TryApplyPublishedTemplate = [&rBlockRet, &nChannel, &nExtraNonce, &hashDynamicGenesis, nMiningEpoch](
                 const MiningTemplateCacheTable::EntryPtr& pPublished, const int64_t nWaitMs) -> bool
             {
                 if(!(pPublished && pPublished->hashDynamicGenesis == hashDynamicGenesis))
+                    return false;
+                if(pPublished->block.nMiningEpoch != nMiningEpoch
+                || (nMiningEpoch != 0 && !ChainState::MiningWorkCurrent(nMiningEpoch)))
                     return false;
 
                 const uint1024_t hashBestChain = ChainState::hashBestChain.load();
@@ -1442,7 +1464,7 @@ namespace TAO::Ledger
                     return true;
 
                 pInFlight = tBlockCache[nChannel].BeginOrJoinInFlightBuild(
-                    hashDynamicGenesis, hashBuildTip, fSingleflightOwner);
+                    hashDynamicGenesis, hashBuildTip, fSingleflightOwner, nMiningEpoch);
                 if(!fSingleflightOwner)
                 {
                     const auto tRetryWaitStart = std::chrono::steady_clock::now();
@@ -1565,6 +1587,8 @@ namespace TAO::Ledger
         }
 
         /* Update the time for the newly created block. */
+        if(nMiningEpoch != 0 && !ChainState::MiningWorkCurrent(nMiningEpoch))
+            return debug::error(FUNCTION, "Mining readiness changed during template construction");
         rBlockRet.UpdateTime();
         
         /* ✅ FINAL VERIFICATION: Ensure nChannel is correct before returning
@@ -1950,6 +1974,10 @@ namespace TAO::Ledger
 
         /* Set the block to null. */
         block.SetNull();
+        const auto readiness = ChainState::MiningReadiness();
+        if(!readiness.ready)
+            return debug::error(FUNCTION, "Staking paused: ", readiness.reason);
+        block.nMiningEpoch = readiness.epoch;
 
         /* Modulate the Block Versions if they correspond to their proper time stamp */
         /* Normally, if condition is true and block version is current version unless an activation is pending */

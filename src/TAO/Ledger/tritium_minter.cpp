@@ -24,6 +24,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/mining_readiness.h>
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -363,12 +364,11 @@ namespace TAO::Ledger
 
         debug::log(0, FUNCTION, "Stake Minter Started");
         pTritiumMinter->nSleepTime = 5000;
-        bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
 
         /* If the system is still syncing/connecting on startup, wait to run minter.
          * Local testnet does not wait for connections.
          */
-        while((TAO::Ledger::ChainState::Synchronizing() || (LLP::TRITIUM_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))
+        while(!TAO::Ledger::ChainState::MiningReadiness().ready
                 && !StakeMinter::fStop.load() && !config::fShutdown.load())
         {
             runtime::sleep(pTritiumMinter->nSleepTime);
@@ -411,6 +411,8 @@ namespace TAO::Ledger
 
             /* Record that the minting loop is still alive and making progress, for external stall detection. */
             pTritiumMinter->UpdateLastActive();
+            if(!TAO::Ledger::ChainState::MiningReadiness().ready)
+                continue;
 
             /* Save the current best block hash immediately in case it changes while we do setup */
             pTritiumMinter->hashLastBlock = TAO::Ledger::ChainState::hashBestChain.load();

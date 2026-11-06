@@ -74,6 +74,7 @@ namespace TAO
         , producer  (block.producer)
         , ssSystem  (block.ssSystem)
         , vtx       (block.vtx)
+        , nMiningEpoch(block.nMiningEpoch)
         {
         }
 
@@ -85,6 +86,7 @@ namespace TAO
         , producer  (std::move(block.producer))
         , ssSystem  (std::move(block.ssSystem))
         , vtx       (std::move(block.vtx))
+        , nMiningEpoch(block.nMiningEpoch)
         {
         }
 
@@ -108,6 +110,7 @@ namespace TAO
             nTime          = block.nTime;
             ssSystem       = block.ssSystem;
             vtx            = block.vtx;
+            nMiningEpoch   = block.nMiningEpoch;
 
             producer   = block.producer;
 
@@ -134,6 +137,7 @@ namespace TAO
             nTime          = std::move(block.nTime);
             ssSystem       = std::move(block.ssSystem);
             vtx            = std::move(block.vtx);
+            nMiningEpoch   = block.nMiningEpoch;
 
             producer   = std::move(block.producer);
 
@@ -285,6 +289,7 @@ namespace TAO
         void TritiumBlock::SetNull()
         {
             Block::SetNull();
+            nMiningEpoch = 0;
 
             vtx.clear();
             producer = Transaction();

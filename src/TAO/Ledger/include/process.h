@@ -273,9 +273,12 @@ namespace TAO
          *             already been validated by ValidateMinedBlock() prior to
          *             calling this function. Avoids redundant PoW verification
          *             for locally-mined blocks. Default is false (full validation).
+         *  @param[in] nMiningEpoch Nonzero for local work; rechecked under
+         *             PROCESSING_MUTEX before admission. Network blocks use zero.
          *
          **/
-        void Process(const TAO::Ledger::Block& block, uint8_t &nStatus, LLP::TritiumNode* pnode = nullptr, bool fSkipCheck = false);
+        void Process(const TAO::Ledger::Block& block, uint8_t &nStatus, LLP::TritiumNode* pnode = nullptr,
+                     bool fSkipCheck = false, uint64_t nMiningEpoch = 0);
 
 
         /** TrackLocalMinedAcceptedBlock

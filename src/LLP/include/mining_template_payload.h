@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <LLP/include/round_state_utility.h>
 
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/mining_readiness.h>
+#include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/block.h>
 #include <TAO/Ledger/types/state.h>
 
@@ -46,6 +48,7 @@ namespace LLP
         uint32_t nBlockChannel = 0;
         uint32_t nBlockHeight = 0;
         uint32_t nBlockBits = 0;
+        uint64_t nMiningEpoch = 0;
     };
 
 
@@ -59,6 +62,21 @@ namespace LLP
         TAO::Ledger::Block* pBlock, std::string_view strLaneLabel)
     {
         SharedTemplatePayloadResult result;
+        const auto readiness = TAO::Ledger::ChainState::MiningReadiness();
+        const auto* tritium = dynamic_cast<const TAO::Ledger::TritiumBlock*>(pBlock);
+        const uint64_t epoch = tritium ? tritium->nMiningEpoch : readiness.epoch;
+        if(!readiness.ready || epoch == 0 || epoch != readiness.epoch
+        || (!tritium && !readiness.bypass))
+        {
+            const auto reason = !readiness.ready ? readiness.reason :
+                (epoch == 0 || epoch != readiness.epoch ? "template-epoch-revoked" :
+                                                         "template-epoch-unavailable");
+            debug::log(1, FUNCTION, "Mining template withheld: ", reason,
+                " (template epoch=", epoch, ", readiness epoch=", readiness.epoch, ")");
+            result.eReason = GetBlockPolicyReason::TEMPLATE_NOT_READY;
+            result.nRetryAfterMs = 1000;
+            return result;
+        }
 
         if(pBlock == nullptr)
         {
@@ -123,6 +141,7 @@ namespace LLP
         result.nBlockChannel = pBlock->nChannel;
         result.nBlockHeight = pBlock->nHeight;
         result.nBlockBits = pBlock->nBits;
+        result.nMiningEpoch = epoch;
 
         return result;
     }
@@ -139,6 +158,15 @@ namespace LLP
     inline SharedTemplatePayloadResult BuildSharedTemplatePayloadWithRetry(
         CreateBlockFn&& fnCreateBlock, std::string_view strLaneLabel)
     {
+        const auto readiness = TAO::Ledger::ChainState::MiningReadiness();
+        if(!readiness.ready)
+        {
+            debug::log(1, FUNCTION, "Mining paused: ", readiness.reason);
+            SharedTemplatePayloadResult result;
+            result.eReason = GetBlockPolicyReason::TEMPLATE_NOT_READY;
+            result.nRetryAfterMs = 1000;
+            return result;
+        }
         TAO::Ledger::Block* pBlock = fnCreateBlock();
         if(!pBlock)
         {

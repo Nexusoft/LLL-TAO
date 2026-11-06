@@ -72,6 +72,7 @@ static TAO::Ledger::TritiumBlock MakeHashTestBlock(
     block.nBits     = 0x04000000u;
     block.nTime     = 1700001000u;  // fixed timestamp
     block.vOffsets  = vOffsets;
+    block.nMiningEpoch = 77;
     return block;
 }
 
@@ -308,6 +309,13 @@ TEST_CASE("Hash and Prime solved candidates share common invariants", "[hash][si
     {
         REQUIRE(solvedHash.nTime  == tmplHash.nTime);
         REQUIRE(solvedPrime.nTime == tmplPrime.nTime);
+    }
+
+    SECTION("Both helpers preserve the server's admission epoch")
+    {
+        REQUIRE(solvedHash.nMiningEpoch == tmplHash.nMiningEpoch);
+        REQUIRE(solvedPrime.nMiningEpoch == tmplPrime.nMiningEpoch);
+        REQUIRE(solvedHash.nMiningEpoch != 0);
     }
 }
 

@@ -46,6 +46,7 @@ namespace TAO
             void ObservePeerHeight(const void* peer, uint32_t height);
             void ForgetPeerHeight(const void* peer);
             uint32_t MaxPeerHeight();
+            bool FreshPeerHeight(const void* peer, uint32_t& height);
 
 
             /** The best trust in the chain. **/

@@ -26,10 +26,17 @@ ________________________________________________________________________________
 #include <deque>
 #include <functional>
 #include <mutex>
+#include <set>
 #include <thread>
+#include <tuple>
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
+namespace TAO::Ledger
+{
+    class TritiumBlock;
+}
 
 namespace LLP
 {
@@ -133,7 +140,7 @@ namespace LLP
 
     /** MiningTemplatePrewarmer
      *
-     *  Single-threaded background warmer that, on every chain tip advance,
+     *  Background worker pool that, on every chain tip advance,
      *  invokes the wallet-signed block template builder for each recently
      *  seen (channel, reward) tuple.  The builder writes into the per-channel
      *  mining template cache.  When the lane's per-connection async PUSH
@@ -154,8 +161,7 @@ namespace LLP
      *    so that on a node with 100–200 miners the prewarmer can sign
      *    several producers in parallel and still keep up with the Prime
      *    channel's ~50 s tip cadence.  Each worker pops from the same
-     *    bounded deque, so adding workers is a pure throughput knob with
-     *    no coalescing impact.
+     *    bounded deque. Requests matching queued or in-flight work coalesce.
      *
      **/
     class MiningTemplatePrewarmer
@@ -181,7 +187,7 @@ namespace LLP
         /** Whether the worker pool is currently running.  Lock-free. */
         bool IsRunning() const { return m_running.load(std::memory_order_acquire); }
 
-        /** Called from BlockState::SetBest() after EnqueuePushEvent.
+        /** Called from BlockState::SetBest() before EnqueuePushEvent.
          *
          *  For every fresh registered (channel, reward) tuple, enqueues a
          *  warm-up request targeting the new tip.  Returns immediately;
@@ -194,8 +200,8 @@ namespace LLP
 
         /** Hook for unit tests: replace the real CreateBlockForStatelessMining
          *  call with a callback so tests can observe warm requests without a
-         *  live blockchain. */
-        using BuildFn = std::function<void(uint32_t /*nChannel*/,
+         *  live blockchain. Ownership of a returned block passes to the worker. */
+        using BuildFn = std::function<TAO::Ledger::TritiumBlock*(uint32_t /*nChannel*/,
                                             const uint256_t& /*hashRewardAddress*/,
                                             const uint1024_t& /*hashExpectedTip*/)>;
         void SetBuildFnForTesting(BuildFn fn);
@@ -215,13 +221,16 @@ namespace LLP
         };
 
         void WorkerLoop();
-        bool ShouldDeduplicate(const WarmupRequest& candidate) const;
+        /** Caller must hold m_mutex while inspecting queued and in-flight work. */
+        bool ShouldDeduplicateLocked(const WarmupRequest& candidate) const;
 
         mutable std::mutex m_mutex;
         std::condition_variable m_cv;
         std::vector<std::thread> m_threads;
         std::atomic<bool> m_running{false};
         std::deque<WarmupRequest> m_queue;
+        using WarmupKey = std::tuple<uint32_t, uint256_t, uint1024_t>;
+        std::set<WarmupKey> m_inFlight;
 
         BuildFn m_buildFn;
 
