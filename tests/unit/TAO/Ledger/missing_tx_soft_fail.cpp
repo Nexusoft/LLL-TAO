@@ -496,7 +496,6 @@ TEST_CASE("Local admission rechecks readiness after forced proof verification",
     REQUIRE_FALSE(LLD::Ledger->HasBlock(block.GetHash()));
 }
 
-#ifndef WIN32
 TEST_CASE("Mining readiness rejects a block stored under a mismatched hash",
     "[ledger][process][mining-readiness]")
 {
@@ -518,6 +517,7 @@ TEST_CASE("Mining readiness rejects a block stored under a mismatched hash",
     REQUIRE(status.peers == 2);
 }
 
+#ifndef WIN32
 TEST_CASE("Idle sync finalizes when a disconnected peer's high watermark disappears",
     "[ledger][process][sync][mining-readiness]")
 {
