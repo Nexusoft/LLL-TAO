@@ -149,9 +149,9 @@ namespace LLP
     , RELAY           (util::atomic::lock_unique_ptr<std::queue<std::pair<typename ProtocolType::message_t, DataStream>> >
         (new std::queue<std::pair<typename ProtocolType::message_t, DataStream>>()))
     , CONDITION       ( )
-    , DATA_THREAD     (std::bind(&DataThread::Thread, this))
+    , DATA_THREAD     ( )
     , FLUSH_CONDITION ( )
-    , FLUSH_THREAD    (std::bind(&DataThread::Flush, this))
+    , FLUSH_THREAD    ( )
 #ifdef __linux__
     , m_nEpollFd      (-1)
 #endif
@@ -175,6 +175,29 @@ namespace LLP
                 debug::log(1, FUNCTION, "Mining DataThread ", nID, " using epoll fd=", m_nEpollFd);
         }
 #endif
+        try
+        {
+            DATA_THREAD = std::thread(std::bind(&DataThread::Thread, this));
+            FLUSH_THREAD = std::thread(std::bind(&DataThread::Flush, this));
+        }
+        catch(...)
+        {
+            {
+                std::scoped_lock lock(DATA_CONDITION_MUTEX, FLUSH_CONDITION_MUTEX);
+                fDestruct = true;
+            }
+            CONDITION.notify_all();
+            FLUSH_CONDITION.notify_all();
+            if(DATA_THREAD.joinable())
+                DATA_THREAD.join();
+            if(FLUSH_THREAD.joinable())
+                FLUSH_THREAD.join();
+#ifdef __linux__
+            if(m_nEpollFd >= 0)
+                ::close(m_nEpollFd);
+#endif
+            throw;
+        }
     }
 
 
@@ -184,7 +207,10 @@ namespace LLP
     {
         debug::log(2, FUNCTION, "Shutting down data thread ", ID);
 
-        fDestruct = true;
+        {
+            std::scoped_lock lock(DATA_CONDITION_MUTEX, FLUSH_CONDITION_MUTEX);
+            fDestruct = true;
+        }
         CONDITION.notify_all();
         FLUSH_CONDITION.notify_all();
 
@@ -247,12 +273,20 @@ namespace LLP
             /* Update the indexes. */
             pnode->nDataThread     = ID;
             pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
+            pnode->FLUSH_CONDITION_MUTEX = &FLUSH_CONDITION_MUTEX;
 
-            /* Check for inbound socket. */
+            /* Check for inbound socket. The condition mutex must cover this
+             * counter transition so the data-thread wait cannot miss it. */
             if(pnode->Incoming())
+            {
+                std::scoped_lock lock(DATA_CONDITION_MUTEX);
                 ++nIncoming;
+            }
             else
+            {
+                std::scoped_lock lock(DATA_CONDITION_MUTEX);
                 ++nOutbound;
+            }
 
             /* Find an avilable data thread slot. */
             const uint32_t nSlot = find_slot();
@@ -272,7 +306,10 @@ namespace LLP
             epoll_sync_write_interest(pnode->fd, nSlot, pnode->NeedsWriteService());
 
             /* Notify data thread to wake up. */
-            CONDITION.notify_all();
+            {
+                std::scoped_lock lock(DATA_CONDITION_MUTEX);
+                CONDITION.notify_all();
+            }
 
         }
         catch(const std::runtime_error& e)
@@ -361,9 +398,6 @@ namespace LLP
                 return 100;
         }();
 
-        /* The mutex for the condition. */
-        std::mutex CONDITION_MUTEX;
-
         /* This mirrors CONNECTIONS with pollfd settings for passing to poll methods.
          * Windows throws SOCKET_ERROR intermittently if pass CONNECTIONS directly.
          */
@@ -380,7 +414,7 @@ namespace LLP
              * Will wait until have one or more connections, DataThread is disposed, or system shutdown
              * While loop catches potential for spurious wakeups. Also has the effect of skipping the wait() call after connections established.
              */
-            std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
+            std::unique_lock<std::mutex> CONDITION_LOCK(DATA_CONDITION_MUTEX);
             CONDITION.wait(CONDITION_LOCK,
             [this]
             {
@@ -397,6 +431,7 @@ namespace LLP
                 /* Wake up if there are active connections to process. */
                 return nIncoming.load() > 0 || nOutbound.load() > 0;
             });
+            CONDITION_LOCK.unlock();
 
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown.load())
@@ -733,9 +768,6 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::Flush()
     {
-        /* The mutex for the condition. */
-        std::mutex CONDITION_MUTEX;
-
         /* The main connection handler loop. */
         while(!fDestruct.load() && !config::fShutdown.load())
         {
@@ -743,7 +775,7 @@ namespace LLP
              * Will wait until have one or more connections, DataThread is disposed, or system shutdown
              * While loop catches potential for spurious wakeups. Also has the effect of skipping the wait() call after connections established.
              */
-            std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
+            std::unique_lock<std::mutex> CONDITION_LOCK(FLUSH_CONDITION_MUTEX);
             FLUSH_CONDITION.wait(CONDITION_LOCK,
             [this]
             {
@@ -799,6 +831,7 @@ namespace LLP
 
                 return false;
             });
+            CONDITION_LOCK.unlock();
 
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown.load())
@@ -815,12 +848,15 @@ namespace LLP
             std::pair<typename ProtocolType::message_t, DataStream> qRelay =
                 std::make_pair(typename ProtocolType::message_t(), DataStream(SER_NETWORK, MIN_PROTO_VERSION));
 
-            /* Grab data from queue. */
-            if(!RELAY->empty())
+            /* Grab data under the producer mutex, then release it before processing connections. */
             {
-                /* Make a copy of the relay data. */
-                qRelay = RELAY->front();
-                RELAY->pop();
+                std::scoped_lock lock(FLUSH_CONDITION_MUTEX);
+                if(!RELAY->empty())
+                {
+                    /* Make a copy of the relay data. */
+                    qRelay = RELAY->front();
+                    RELAY->pop();
+                }
             }
 
             /* Check all connections for data and packets. */
@@ -1190,9 +1226,6 @@ namespace LLP
          * a stack-allocated buffer, so it's effectively free. */
         constexpr int32_t MAX_EPOLL_EVENTS = 128;
 
-        /* The mutex for the condition. */
-        std::mutex CONDITION_MUTEX;
-
         /* Timestamp of last full health sweep. */
         auto tLastHealthSweep = std::chrono::steady_clock::now();
 
@@ -1204,7 +1237,7 @@ namespace LLP
         {
             /* Keep data threads waiting for work.
              * Same condition as poll() path: wait until connections exist. */
-            std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
+            std::unique_lock<std::mutex> CONDITION_LOCK(DATA_CONDITION_MUTEX);
             CONDITION.wait(CONDITION_LOCK,
             [this]
             {
@@ -1216,6 +1249,7 @@ namespace LLP
 
                 return nIncoming.load() > 0 || nOutbound.load() > 0;
             });
+            CONDITION_LOCK.unlock();
 
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown.load())

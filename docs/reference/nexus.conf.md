@@ -344,6 +344,32 @@ mininglegacytimeout=300
 
 ## Network Configuration
 
+The connection manager refreshes DNS seed addresses on the `dnsupdate` interval
+(default 86400 seconds) and retries with backoff when outbound connectivity
+remains degraded. Failed lookups do not advance the last successful refresh.
+`nodns=1` disables these manager-driven refreshes; `seedconnect=0` separately
+disables the direct seed connections made at startup. `manager=0` disables the
+Tritium connection manager. Existing peer connections are not restarted or
+cleared by recovery. The manager respects `maxconnections` when deciding
+whether to initiate a connection; independent direct connection paths do not
+share an atomic admission limit with it.
+
+`system/get/info` includes `peer_recovery` for the Tritium server: `enabled`,
+`suspended`, `resolving`, `state`, `last_succeeded`, `incoming`, `outgoing`,
+`eligible`, `last_attempt`, `last_success`, and `retry_in`. `state` is
+`disabled`, `suspended`, `resolving`, `at_capacity`, `degraded`, or `connected`;
+it is not a chain synchronization guarantee. `last_succeeded` describes the
+last attempt in the current process. The timestamps are Unix seconds (`0` means
+no recorded event); `retry_in` is the minimum backoff remaining in seconds, not
+a promise that another lookup will be needed. Resolver calls use the operating
+system DNS service, whose timeout can delay shutdown.
+
+Known-peer connections can proceed while a seed lookup is in flight. Queued
+packets, buffered writes, and relays synchronize their flush wakeups with the
+worker's wait mutex so idle workers do not miss newly queued data. Outgoing TLS
+connections are admitted only after the handshake completes; socket readiness
+alone is not handshake success.
+
 ### `testnet`
 
 **Type:** Integer  

@@ -135,6 +135,9 @@ namespace LLP
         int m_nEpollFd;
 #endif
 
+        std::mutex DATA_CONDITION_MUTEX;
+        std::mutex FLUSH_CONDITION_MUTEX;
+
 
         /** Default Constructor. **/
         DataThread(const uint32_t nID, const bool ffDDOSIn, const uint32_t rScore, const uint32_t cScore,
@@ -167,19 +170,27 @@ namespace LLP
                 pnode->nDataThread     = ID;
 
                 pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
+                pnode->FLUSH_CONDITION_MUTEX = &FLUSH_CONDITION_MUTEX;
 
-                /* Check for inbound socket. */
+                /* Check for inbound socket. Hold the condition mutex across the
+                 * counter transition so a waiter cannot observe zero and then
+                 * miss the notification before it blocks. */
                 if(pnode->Incoming())
                 {
-                    /* Increment internal incoming counter. */
-                    ++nIncoming;
+                    {
+                        std::scoped_lock lock(DATA_CONDITION_MUTEX);
+                        ++nIncoming;
+                    }
 
                     /* Increment meters value. */
                     if(fMETER)
                         ++pnode->CONNECTIONS;
                 }
                 else
+                {
+                    std::scoped_lock lock(DATA_CONDITION_MUTEX);
                     ++nOutbound;
+                }
 
                 /* Find an avilable data thread slot. */
                 const uint32_t nSlot = find_slot();
@@ -201,7 +212,10 @@ namespace LLP
                 epoll_sync_write_interest(pnode->fd, nSlot, pnode->NeedsWriteService());
 
                 /* Notify data thread to wake up. */
-                CONDITION.notify_all();
+                {
+                    std::scoped_lock lock(DATA_CONDITION_MUTEX);
+                    CONDITION.notify_all();
+                }
             }
             catch(const std::runtime_error& e)
             {
@@ -243,12 +257,20 @@ namespace LLP
                 /* Update the indexes. */
                 pnode->nDataThread     = ID;
                 pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
+                pnode->FLUSH_CONDITION_MUTEX = &FLUSH_CONDITION_MUTEX;
 
-                /* Check for inbound socket. */
+                /* Check for inbound socket. The condition mutex must cover this
+                 * counter transition so the data-thread wait cannot miss it. */
                 if(pnode->Incoming())
+                {
+                    std::scoped_lock lock(DATA_CONDITION_MUTEX);
                     ++nIncoming;
+                }
                 else
+                {
+                    std::scoped_lock lock(DATA_CONDITION_MUTEX);
                     ++nOutbound;
+                }
 
                 /* Find an avilable data thread slot. */
                 const uint32_t nSlot = find_slot();
@@ -268,7 +290,10 @@ namespace LLP
                 epoll_sync_write_interest(pnode->fd, nSlot, pnode->NeedsWriteService());
 
                 /* Notify data thread to wake up. */
-                CONDITION.notify_all();
+                {
+                    std::scoped_lock lock(DATA_CONDITION_MUTEX);
+                    CONDITION.notify_all();
+                }
 
             }
             catch(const std::runtime_error& e)
@@ -343,11 +368,14 @@ namespace LLP
             DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
             ((ssData << args), ...);
 
-            /* Push the relay message to outbound queue. */
-            RELAY->push(std::make_pair(message, ssData));
-
-            /* Wake up the flush thread. */
-            FLUSH_CONDITION.notify_all();
+            /* Push and notify under the same mutex the flush thread waits on.
+             * Otherwise the waiter can observe an empty queue and then sleep
+             * through this notification. */
+            {
+                std::scoped_lock lock(FLUSH_CONDITION_MUTEX);
+                RELAY->push(std::make_pair(message, ssData));
+                FLUSH_CONDITION.notify_all();
+            }
         }
 
 
@@ -359,11 +387,12 @@ namespace LLP
         template<typename MessageType>
         void _Relay(const MessageType& message, const DataStream& ssData)
         {
-            /* Push the relay message to outbound queue. */
-            RELAY->push(std::make_pair(message, ssData));
-
-            /* Wake up the flush thread. */
-            FLUSH_CONDITION.notify_all();
+            /* Push and notify under the same mutex the flush thread waits on. */
+            {
+                std::scoped_lock lock(FLUSH_CONDITION_MUTEX);
+                RELAY->push(std::make_pair(message, ssData));
+                FLUSH_CONDITION.notify_all();
+            }
         }
 
 

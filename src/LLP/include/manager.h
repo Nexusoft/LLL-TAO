@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <vector>
 #include <cstdint>
 #include <mutex>
+#include <functional>
+#include <string>
 
 /* forward declarations */
 namespace LLD
@@ -104,6 +106,8 @@ namespace LLP
          **/
         uint32_t Count(const uint8_t nFlags = CONNECT_FLAGS_ALL);
 
+        uint32_t EligibleCount() const;
+
 
         /** AddAddress
          *
@@ -161,6 +165,14 @@ namespace LLP
          *
          **/
         void AddSeedAddresses(bool fTestnet = false);
+
+        using SeedResolver = std::function<bool(const std::string&, std::vector<BaseAddress>&)>;
+
+        /* Resolves seeds afresh and persists usable addresses without resetting live state. */
+        bool RefreshSeedAddresses(bool fTestnet, const SeedResolver& resolver,
+                                  const std::function<bool()>& stop = {});
+
+        bool ReadLastDNSUpdate(uint64_t& nUpdated) const;
 
 
         /** Has
@@ -321,7 +333,7 @@ namespace LLP
          *  @param[in] nFlags Specify which types of connections to get the info from.
          *
          **/
-        uint32_t count(const uint8_t nFlags = CONNECT_FLAGS_ALL) const;
+        uint32_t count(const uint8_t nFlags = CONNECT_FLAGS_ALL, const uint8_t nNotFlags = 0) const;
 
 
         /** total_count

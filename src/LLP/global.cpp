@@ -128,6 +128,12 @@ namespace LLP
     {
         servers.Reset();
 
+        fManagersStarting.store(true);
+        struct ReleaseManagerStart
+        {
+            ~ReleaseManagerStart() { fManagersStarting.store(false); }
+        } releaseManagerStart;
+
         /* Initialize the underlying network resources such as sockets, etc */
         if(!NetworkInitialize())
             return debug::error(FUNCTION, "NetworkInitialize: Failed initializing network resources.");
@@ -411,6 +417,7 @@ namespace LLP
         }
 
         servers.SyncAliases();
+        fManagersStarting.store(false);
 
         return true;
     }

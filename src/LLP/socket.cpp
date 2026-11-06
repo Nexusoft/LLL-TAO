@@ -397,7 +397,7 @@ namespace LLP
              * If it doesn't return that, it means it connected immediately and connection was successful. (very unusual, but possible)
              */
             RECURSIVE(SOCKET_MUTEX);
-            fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
+            fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) != SOCKET_ERROR);
         }
         else
         {
@@ -413,16 +413,17 @@ namespace LLP
             }
 
             RECURSIVE(SOCKET_MUTEX);
-            fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
+            fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) != SOCKET_ERROR);
         }
 
         /* Handle final socket checks if connection established with no errors. */
-        if(fConnected)
+        if(!fConnected)
         {
             /* Check for errors. */
             int32_t nError = WSAGetLastError();
 
-            /* We would expect to get WSAEWOULDBLOCK/WSAEINPROGRESS here in the normal case of attempting a connection. */
+            /* We would expect to get WSAEWOULDBLOCK/WSAEINPROGRESS here in the normal case of attempting a connection.
+             * Do not mark the socket connected until poll reports completion and SO_ERROR is clear. */
             if(nError == WSAEWOULDBLOCK || nError == WSAEALREADY || nError == WSAEINPROGRESS)
             {
                 /* Setup poll objects. */
@@ -445,25 +446,28 @@ namespace LLP
 
                     /* Check poll for errors. */
                     if(nPoll < 0)
-                    {
                         debug::log(3, FUNCTION, "poll failed ", addrDest.ToString(), " (", nError, ")");
-                        fConnected = false;
-                    }
                 }
 
                 /* Check for timeout. */
                 if(nPoll == 0)
                 {
-                    fConnected = false;
                     debug::log(3, FUNCTION, "poll timeout ", addrDest.ToString(), " (", nError, ")");
                 }
-                else if((fds[0].revents & POLLERR) || (fds[0].revents & POLLHUP))
+                else if(nPoll > 0)
                 {
-                    fConnected = false;
-                    debug::log(3, FUNCTION, "Connection failed ", addrDest.ToString());
+                    /* Writable/readable is not success. A completed connect can
+                     * still carry a kernel error that only SO_ERROR reports. */
+                    const int32_t nSocketError = RefreshSocketError();
+                    if(nSocketError != 0 || (fds[0].revents & POLLERR) || (fds[0].revents & POLLHUP))
+                        debug::log(3, FUNCTION, "Connection failed ", addrDest.ToString(), " (", nSocketError, ")");
+                    else
+                        fConnected = true;
                 }
             }
-            else if (nError != WSAEISCONN)
+            else if (nError == WSAEISCONN)
+                fConnected = true;
+            else
             {
                 fConnected = false;
                 debug::log(3, FUNCTION, "Connection failed ", addrDest.ToString(), " (", nError, ")");
@@ -500,18 +504,19 @@ namespace LLP
             /* Setup poll objects. */
             pollfd fds[1];
             fds[0].events = POLLOUT;
+            fds[0].revents = 0;
             fds[0].fd     = fd;
 
-            /* Track our accept status. */
+            /* Only SSL_connect returning 1 completes the handshake; poll is readiness only. */
             int32_t nStatus = 0; //set to poll timeout
 
             /* Loop until success or timeout (50 max cycles for 5 seconds). */
             for(uint32_t nSeconds = 0; nSeconds < 50 && !config::fShutdown.load() && nStatus == 0; ++nSeconds)
             {
-                /* Attempt to accept incoming SSL. */
+                /* Attempt the outgoing SSL handshake. */
                 const int32_t nConnect = SSL_connect(pSSL);
 
-                /* Check for successful accept */
+                /* Check for a completed handshake. */
                 if(nConnect == 1)
                 {
                     nStatus = 1;
@@ -525,24 +530,16 @@ namespace LLP
                 /* Check our error messages now. */
                 switch(nErrors)
                 {
-                    /* We will get this signal if the SSL_accept is waiting for data to read. */
+                    /* Wait for the direction requested by SSL_connect. */
                     case SSL_ERROR_WANT_READ:
                     {
-                        nStatus = 0; // Wait for more activity
+                        fds[0].events = POLLIN;
                         break;
                     }
 
-                    /* We will get this signal if the SSL_accept is waiting for data to write. */
                     case SSL_ERROR_WANT_WRITE:
                     {
-                        nStatus = 0; // Wait for more activity
-                        break;
-                    }
-
-                    /* We will get this signal if we succeeded. */
-                    case SSL_ERROR_NONE:
-                    {
-                        nStatus = 1; // success!
+                        fds[0].events = POLLOUT;
                         break;
                     }
 
@@ -574,16 +571,17 @@ namespace LLP
                 if(nStatus == 0)
                 {
 #ifdef WIN32
-                    nStatus = WSAPoll(&fds[0], 1, 100);
+                    const int32_t nPoll = WSAPoll(&fds[0], 1, 100);
 #else
-                    nStatus = poll(&fds[0], 1, 100);
+                    const int32_t nPoll = poll(&fds[0], 1, 100);
 #endif
 
                     /* Check poll for errors. */
-                    if(nStatus < 0)
+                    if(nPoll < 0 || (fds[0].revents & (POLLERR | POLLHUP | POLLNVAL)))
                     {
                         debug::log(3, FUNCTION, "SSL Handshake: poll failed for ", addrDest.ToString());
                         nError.store(SOCKET_ERROR);
+                        nStatus = -1;
                         break;
                     }
                 }
@@ -596,19 +594,15 @@ namespace LLP
                 nError.store(SOCKET_ERROR);
             }
 
-            /* Check for any poll errors now. */
-            if((fds[0].revents & POLLERR) || (fds[0].revents & POLLHUP))
-            {
-                debug::log(3, FUNCTION, "SSL Handshake: poll errors for ", addrDest.ToString());
-                nError.store(SOCKET_ERROR);
-            }
-
             /* Make sure our socket is in a clean state. */
             if(nStatus != 1) //this is our connected flag
             {
                 /* Free the SSL resources */
                 SSL_free(pSSL);
                 pSSL = nullptr;
+                closesocket(fd);
+                fd = INVALID_SOCKET;
+                return false;
             }
             else
                 debug::log(3, FUNCTION, "SSL Connection Established ", SSL_get_cipher(pSSL));

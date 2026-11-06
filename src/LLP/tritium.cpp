@@ -4670,14 +4670,19 @@ namespace LLP
         /* Reset the current sync node. */
         TAO::Ledger::nSyncSession.store(0);
 
-        /* Logging to verify (for debugging). */
-        debug::log(0, FUNCTION, "No Sync Nodes Available, reconnecting to DNS seeds in 15 seconds...");
-
-        /* Wait for timeouts and then restart. */
-        runtime::sleep(15000);
-
-        /* Reconnect to our seed nodes. */
-        LLP::MakeConnections(TRITIUM_SERVER);
+        if(TRITIUM_SERVER && TRITIUM_SERVER->GetAddressManager()
+           && !config::GetBoolArg("-nodns") && !config::HasArg("-connect")
+           && !config::HasArg("-addnode"))
+        {
+            debug::log(0, FUNCTION, "No sync nodes available; requesting peer recovery");
+            TRITIUM_SERVER->RequestPeerRecovery();
+        }
+        else
+        {
+            debug::log(0, FUNCTION, "No sync nodes available, reconnecting in 15 seconds");
+            runtime::sleep(15000);
+            LLP::MakeConnections(TRITIUM_SERVER);
+        }
     }
 
 
