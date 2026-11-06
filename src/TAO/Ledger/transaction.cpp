@@ -1048,7 +1048,8 @@ namespace TAO
             for(const auto& contract : vContracts)
             {
                 /* Check for dependants. */
-                if(contract.Dependant(hashPrev, nContract) && nFlags == FLAGS::BLOCK)
+                if((nFlags == FLAGS::BLOCK || nFlags == FLAGS::MEMPOOL)
+                && contract.Dependant(hashPrev, nContract))
                 {
                     /* Read previous transaction from disk. */
                     const TAO::Operation::Contract dependant = LLD::Ledger->ReadContract(hashPrev, nContract, nFlags);
@@ -1062,48 +1063,20 @@ namespace TAO
                             if(!LLD::Ledger->ReadConfirmations(hashPrev, nConfirms, pblock))
                                 return debug::error(FUNCTION, "failed to read confirmations for coinbase");
 
-                            /* Check that the previous TX has reached sig chain maturity.
-                             *
-                             * CONSENSUS CONSTRAINT: when pblock != nullptr (block-connect
-                             * validation), this check is unchanged — reject immediately.
-                             *
-                             * MEMPOOL ADMISSION (pblock == nullptr): if the coinbase
-                             * appears immature at local height but would be mature at the
-                             * best height advertised by any connected peer, the node is
-                             * merely stale (1-2 blocks behind).  Classify as
-                             * DEFERRED_LOCAL_STATE so Mempool::Accept() retains the
-                             * transaction instead of permanently blacklisting it — the
-                             * immature-coinbase feedback loop that wedges the node at a
-                             * fixed height is broken by this path.  The block-connect
-                             * path (pblock != nullptr) still enforces maturity
-                             * unconditionally, preserving consensus semantics. */
+                            /* Estimate the next block's confirmations using the
+                             * current tip's maturity schedule. The candidate's
+                             * version remains authoritative during block connect. */
                             const uint32_t nMaturity =
                                 MaturityCoinBase((pblock ? *pblock : ChainState::tStateBest.load()));
-                            if(nConfirms + 1 < nMaturity)
+                            const bool fImmature = (nFlags == FLAGS::MEMPOOL && !pblock)
+                                ? uint64_t(nConfirms) + 2 < nMaturity
+                                : nConfirms + 1 < nMaturity;
+                            if(fImmature)
                             {
-                                if(!pblock)
+                                if(nFlags == FLAGS::MEMPOOL)
                                 {
-                                    /* Compute what confirmation count would be at the
-                                     * highest peer-advertised height.  A non-zero
-                                     * the maximum peer height only makes the check MORE lenient;
-                                     * if no peer height has been observed yet (== 0),
-                                     * fall through to the unconditional rejection below. */
-                                    const uint32_t nPeerHeight  = ChainState::MaxPeerHeight();
-                                    const uint32_t nLocalHeight = ChainState::nBestHeight.load();
-                                    if(nPeerHeight > nLocalHeight)
-                                    {
-                                        const uint32_t nPeerConfs = nConfirms + (nPeerHeight - nLocalHeight);
-                                        if(nPeerConfs + 1 >= nMaturity)
-                                        {
-                                            /* Mark this as a local-state-dependent failure
-                                             * so Accept() knows not to permanently reject. */
-                                            TAO::Ledger::SetLastConnectClass(
-                                                TAO::Ledger::AdmissibilityClass::DEFERRED_LOCAL_STATE);
-                                            return debug::error(FUNCTION,
-                                                "coinbase is immature ", nConfirms,
-                                                " (DEFERRED: mature at peer height ", nPeerHeight, ")");
-                                        }
-                                    }
+                                    TAO::Ledger::SetLastConnectClass(
+                                        TAO::Ledger::AdmissibilityClass::DEFERRED_LOCAL_STATE);
                                 }
                                 return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
                             }
@@ -1113,7 +1086,7 @@ namespace TAO
                     }
 
                     /* Check that the previous transaction is indexed. */
-                    if(!LLD::Ledger->HasIndex(hashPrev))
+                    if(nFlags == FLAGS::BLOCK && !LLD::Ledger->HasIndex(hashPrev))
                         return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
                 }
 

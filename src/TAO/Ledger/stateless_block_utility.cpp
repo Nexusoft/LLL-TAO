@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/stateless_block_utility.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/mining_readiness.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/prime.h>
@@ -192,6 +193,13 @@ namespace TAO::Ledger
         }
         
         /* Validate input nChannel parameter (defense in depth) */
+        const auto readiness = ChainState::MiningReadiness();
+        if(!readiness.ready)
+        {
+            debug::log(1, FUNCTION, "Mining paused: ", readiness.reason);
+            return nullptr;
+        }
+
         if(nChannel == 0)
         {
             debug::error(FUNCTION, "❌ Invalid input: nChannel is 0");
@@ -487,6 +495,12 @@ namespace TAO::Ledger
         result.nHeight = block.nHeight;
         result.nUnifiedHeight = block.nHeight;  // block.nHeight is unified height (NexusMiner #169)
         result.hashBlock = block.hashMerkleRoot;
+
+        if(!ChainState::MiningWorkCurrent(block.nMiningEpoch))
+        {
+            result.reason = "mining paused or work epoch revoked";
+            return result;
+        }
 
         debug::log(2, FUNCTION, "Centralized validation for block ", block.hashMerkleRoot.SubString(),
                    " channel=", block.nChannel, " unified_height=", block.nHeight);
@@ -906,6 +920,12 @@ namespace TAO::Ledger
         result.nUnifiedHeight = block.nHeight;  // block.nHeight is unified height (NexusMiner #169)
         result.hashBlock = block.hashMerkleRoot;
 
+        if(!ChainState::MiningWorkCurrent(block.nMiningEpoch))
+        {
+            result.reason = "mining paused or work epoch revoked";
+            return result;
+        }
+
         debug::log(2, FUNCTION, "Centralized acceptance for block ", block.hashMerkleRoot.SubString(),
                    " channel=", block.nChannel, " unified_height=", block.nHeight);
 
@@ -940,7 +960,7 @@ namespace TAO::Ledger
          * (including the expensive VerifyWork() / PrimeCheck() consensus validation).
          * Skipping the redundant Check() inside Process() eliminates the double
          * PoW verification that caused the triple-PrimeCheck stall in production. */
-        TAO::Ledger::Process(block, nStatus, nullptr, true);
+        TAO::Ledger::Process(block, nStatus, nullptr, true, block.nMiningEpoch);
         result.status = nStatus;
         result.accepted = (nStatus & TAO::Ledger::PROCESS::ACCEPTED);
 

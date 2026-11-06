@@ -311,10 +311,10 @@ namespace TAO
                     debug::log(0, FUNCTION, "CONFLICT-DEPENDENT tx ",
                         hashThis.SubString(), " not re-admitted: ",
                         debug::GetLastError());
-                    /* Drop any remaining parked tail under hashThis so it
-                     * cannot sit unreachable until BoundConflictDAG clears.
-                     * Peers can re-offer the chain after the root recovers. */
-                    DropConflictDependents(hashThis);
+                    /* A deferred child becomes a new root; keep its tail
+                     * attached for the next reconciliation. */
+                    if(!mapConflicts.count(hashThis))
+                        DropConflictDependents(hashThis);
                     return;
                 }
 
@@ -405,8 +405,10 @@ namespace TAO
                     //return debug::error(FUNCTION, "part of rejected transaction orphan chain");
                 }
 
-                /* If we are already an ORPHAN, skip over. */
-                if(mapOrphans.count(tx.hashPrevTx))
+                /* Re-evaluate queued orphans once their predecessor is live. */
+                if(mapOrphans.count(tx.hashPrevTx)
+                && !mapLedger.count(tx.hashPrevTx)
+                && !LLD::Ledger->HasTx(tx.hashPrevTx, FLAGS::BLOCK))
                     return true;
 
                 /* Print the transaction here. */
@@ -448,8 +450,10 @@ namespace TAO
                 /* Check for orphans and conflicts when not first transaction. */
                 if(!tx.IsFirst())
                 {
-                    /* Check memory and disk for previous transaction. */
-                    if(!LLD::Ledger->HasTx(tx.hashPrevTx, FLAGS::MEMPOOL))
+                    /* HasTx(MEMPOOL) also includes parked orphans/conflicts;
+                     * only a live or confirmed predecessor can be executed. */
+                    if(!mapLedger.count(tx.hashPrevTx) && !IsConflictNode(tx.hashPrevTx)
+                    && !LLD::Ledger->HasTx(tx.hashPrevTx, FLAGS::BLOCK))
                     {
                         /* Debug output. */
                         debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ",
@@ -473,7 +477,10 @@ namespace TAO
                                 LLP::TRITIUM_SERVER->RandomConnection();
 
                             /* Ask the random node for our orphan data. */
-                            pCheck->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), tx.hashPrevTx);
+                            if(pCheck && pCheck->Connected())
+                                pCheck->PushMessage(LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), tx.hashPrevTx);
+                            else
+                                debug::log(1, FUNCTION, "No connected peer to request orphan predecessor ", tx.hashPrevTx.SubString());
                         }
 
                         return false;
@@ -665,18 +672,13 @@ namespace TAO
                     LLD::TxnAbort(FLAGS::MEMPOOL);
                     fMempoolTxnActive = false;
 
-                    /* Check if Transaction::Connect() classified this as a
-                     * local-state-dependent failure (e.g. coinbase appears
-                     * immature at our stale local height but would pass at
-                     * the peer-advertised best height).  In that case do NOT
-                     * add the tx to mapRejected — the blacklist would prevent
-                     * re-admission once the node catches up, turning a
-                     * transient staleness into a permanent wedge.  Simply
-                     * return false; the peer will re-offer the tx, and once
-                     * our height advances the next Accept() call will succeed. */
+                    /* Retain local-state-dependent failures in the bounded
+                     * conflict DAG for re-admission when the chain advances. */
                     const AdmissibilityClass nClass = TakeLastConnectClass();
                     if(nClass == AdmissibilityClass::DEFERRED_LOCAL_STATE)
                     {
+                        AddConflictRoot(tx);
+                        depTailGuard.Disarm();
                         debug::warning(FUNCTION,
                             "=== STRANDED_STATE_DETECTED === tx ", hashTx.SubString(),
                             " deferred (local state stale): ", debug::GetLastError(),
@@ -694,6 +696,11 @@ namespace TAO
 
                 /* Set the internal memory. */
                 mapLedger[hashTx] = tx;
+                const auto orphan = mapOrphans.find(tx.hashPrevTx);
+                if(orphan != mapOrphans.end() && orphan->second.GetHash() == hashTx)
+                    mapOrphans.erase(orphan);
+                setOrphansByIndex.erase(hashTx);
+                mapOrphansByIndex.erase(hashTx);
 
                 /* Update map claimed if not first tx. */
                 if(!tx.IsFirst())
@@ -774,8 +781,8 @@ namespace TAO
             uint512_t hashTx = hash;
             while(mapOrphans.count(hashTx))
             {
-                /* Get the transaction from map. */
-                const TAO::Ledger::Transaction& tx = mapOrphans[hashTx];
+                /* Accept removes this orphan's indexes on admission. */
+                const TAO::Ledger::Transaction tx = mapOrphans[hashTx];
 
                 /* Get the previous hash. */
                 const uint512_t hashThis = tx.GetHash();
@@ -1415,8 +1422,15 @@ namespace TAO
                                * missing disk tip must not abort reconciliation
                                * for every subsequent genesis in this sweep. */
 
+                /* A maturity-deferred transaction can follow a live mempool
+                 * predecessor rather than the committed sigchain tip. */
+                uint512_t hashLastMemory = 0;
+                const bool fAtMemoryTip =
+                    LLD::Ledger->ReadLast(rTransaction.first, hashLastMemory, FLAGS::MEMPOOL)
+                    && vtx[0].hashPrevTx == hashLastMemory;
+
                 /* Check if our conflict chain needs to be evicted. */
-                if(vtx[0].hashPrevTx != hashLastDisk)
+                if(vtx[0].hashPrevTx != hashLastDisk && !fAtMemoryTip)
                 {
                     const uint256_t& hashGenesis = rTransaction.first;
                     const ForkDivergenceInfo tInfo =
@@ -1641,7 +1655,7 @@ namespace TAO
                         {
                             ProcessConflictDependents(hashTx);
                         }
-                        else
+                        else if(!mapConflicts.count(hashTx))
                         {
                             debug::log(0, FUNCTION, "failed to re-admit resolved conflicted tx ", hashTx.SubString(),
                                 " for genesis ", tx.hashGenesis.SubString(), ": ", debug::GetLastError());

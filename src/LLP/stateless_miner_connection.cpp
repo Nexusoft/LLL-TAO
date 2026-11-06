@@ -50,6 +50,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/mining_readiness.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -831,6 +832,8 @@ namespace LLP
          * takes SOCKET_MUTEX). Async PUSH uses QueuePacket() so packet construction
          * stays off DataThread; queue insertion is synchronized on OUTGOING_MUTEX,
          * while socket-write contention is deferred to flush/write service paths. */
+        if(!TAO::Ledger::ChainState::MiningWorkCurrent(sharedTemplate.nMiningEpoch))
+            return false;
         QueuePacket(blockPacket);
         const auto tQueued = std::chrono::steady_clock::now();
         const int64_t nQueuePacketMs =
@@ -1703,6 +1706,11 @@ namespace LLP
                            " height=", gbResult.nBlockHeight,
                            " nBits=", gbResult.nBlockBits, "]");
 
+                if(!TAO::Ledger::ChainState::MiningWorkCurrent(gbResult.nMiningEpoch))
+                {
+                    SendGetBlockControlResponse(GetBlockPolicyReason::TEMPLATE_NOT_READY, 1000, true);
+                    return true;
+                }
                 SendGetBlockDataResponse(gbResult.vPayload, true);
 
                 debug::log(0, "   ✅ Packet sent!");
@@ -3308,7 +3316,9 @@ namespace LLP
                     if(mapBlocks.count(hashMerkleKey))
                     {
                         const TemplateMetadata& meta = mapBlocks[hashMerkleKey];
-                        if(meta.IsStale())
+                        const auto* cached = dynamic_cast<const TAO::Ledger::TritiumBlock*>(meta.pBlock.get());
+                        if(meta.IsStale() || !cached
+                        || !TAO::Ledger::ChainState::MiningWorkCurrent(cached->nMiningEpoch))
                         {
                             debug::log(1, FUNCTION, "Cached template is STALE — creating fresh template");
                             debug::log(1, FUNCTION, "   Cached merkle: ", hashMerkleKey.SubString());

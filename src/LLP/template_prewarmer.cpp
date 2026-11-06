@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <thread>
 #include <vector>
@@ -272,14 +273,15 @@ namespace LLP
 
     bool MiningTemplatePrewarmer::ShouldDeduplicate(const WarmupRequest& candidate) const
     {
-        for(const auto& q : m_queue)
+        const auto matches = [&candidate](const WarmupRequest& q)
         {
-            if(q.nChannel == candidate.nChannel
+            return q.nChannel == candidate.nChannel
             && q.hashRewardAddress == candidate.hashRewardAddress
-            && q.hashExpectedTip == candidate.hashExpectedTip)
-                return true;
-        }
-        return false;
+            && q.hashExpectedTip == candidate.hashExpectedTip;
+        };
+        return std::any_of(m_queue.begin(), m_queue.end(), matches)
+            || std::any_of(m_inFlight.begin(), m_inFlight.end(),
+                           [&matches](const WarmupRequest* request) { return matches(*request); });
     }
 
 
@@ -402,9 +404,25 @@ namespace LLP
                     continue;
 
                 req = m_queue.front();
-                m_queue.pop_front();
                 fnLocal = m_buildFn;
+                m_inFlight.push_back(&req);
+                m_queue.pop_front();
             }
+
+            struct InFlightGuard
+            {
+                std::mutex& mutex;
+                std::vector<const WarmupRequest*>& requests;
+                const WarmupRequest* request;
+
+                ~InFlightGuard()
+                {
+                    std::lock_guard<std::mutex> lock(mutex);
+                    const auto it = std::find(requests.begin(), requests.end(), request);
+                    if(it != requests.end())
+                        requests.erase(it);
+                }
+            } guard{m_mutex, m_inFlight, &req};
 
             if(config::fShutdown.load())
                 continue;
@@ -424,10 +442,11 @@ namespace LLP
 
             try
             {
+                std::unique_ptr<TAO::Ledger::TritiumBlock> pBlock;
                 if(fnLocal)
                 {
                     /* Unit-test injection path. */
-                    fnLocal(req.nChannel, req.hashRewardAddress, req.hashExpectedTip);
+                    pBlock.reset(fnLocal(req.nChannel, req.hashRewardAddress, req.hashExpectedTip));
                 }
                 else
                 {
@@ -445,13 +464,19 @@ namespace LLP
                      * tuple.  We discard the returned pointer because the
                      * cache is what the per-connection workers will pick up.
                      */
-                    TAO::Ledger::TritiumBlock* pBlock =
+                    pBlock.reset(
                         TAO::Ledger::CreateBlockForStatelessMining(
                             req.nChannel,
                             /*nExtraNonce=*/0,
-                            req.hashRewardAddress);
-                    if(pBlock != nullptr)
-                        delete pBlock;
+                            req.hashRewardAddress));
+                }
+
+                if(!pBlock)
+                {
+                    debug::log(3, FUNCTION, "[PREWARM] skip warm: template not created"
+                               " channel=", req.nChannel,
+                               " reward=", req.hashRewardAddress.SubString());
+                    continue;
                 }
 
                 m_warmed_total.fetch_add(1, std::memory_order_relaxed);

@@ -15,444 +15,504 @@ ________________________________________________________________________________
 
 #include <LLP/include/mining_session_health.h>
 #include <LLP/include/template_prewarmer.h>
-
+#include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/types/tritium.h>
 #include <Util/include/args.h>
 
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <functional>
 #include <map>
 #include <mutex>
+#include <stdexcept>
+#include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace
 {
-    /* Helper: build a non-zero uint256 with a recognisable Tritium Genesis
-     * type byte (0xA1) so the registry's IsValidGenesisType filter accepts it. */
     uint256_t MakeReward(uint8_t nDistinguisher)
     {
-        uint256_t r = 0;
-        /* uint256 stores little-endian; byte 0 is the type byte for
-         * GetType().  TritiumGenesis == 0xA1. */
-        std::vector<uint8_t> bytes(32, 0);
-        bytes[0] = 0xA1;
-        bytes[1] = nDistinguisher;
-        bytes[31] = 0xCC;
-        r.SetBytes(bytes);
-        return r;
+        uint256_t reward = nDistinguisher;
+        reward.SetType(TAO::Ledger::GENESIS::UserType());
+        return reward;
     }
 
-    uint1024_t MakeTip(uint8_t nDistinguisher)
+    uint1024_t CurrentTip()
     {
-        uint1024_t r = 0;
-        std::vector<uint8_t> bytes(128, 0);
-        bytes[0] = nDistinguisher;
-        bytes[127] = 0xDD;
-        r.SetBytes(bytes);
-        return r;
+        return TAO::Ledger::ChainState::hashBestChain.load();
     }
+
+    template<typename Predicate>
+    bool WaitUntil(Predicate predicate)
+    {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+        while(std::chrono::steady_clock::now() < deadline)
+        {
+            if(predicate())
+                return true;
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        return predicate();
+    }
+
+    struct Gate
+    {
+        std::mutex mutex;
+        std::condition_variable cv;
+        std::size_t entered{0};
+        bool released{false};
+
+        void Enter()
+        {
+            std::unique_lock<std::mutex> lock(mutex);
+            ++entered;
+            cv.notify_all();
+            cv.wait(lock, [this] { return released; });
+        }
+
+        bool WaitFor(std::size_t count)
+        {
+            std::unique_lock<std::mutex> lock(mutex);
+            return cv.wait_for(lock, std::chrono::seconds(3),
+                               [this, count] { return entered >= count; });
+        }
+
+        void Release()
+        {
+            {
+                std::lock_guard<std::mutex> lock(mutex);
+                released = true;
+            }
+            cv.notify_all();
+        }
+    };
+
+    class PrewarmerFixture
+    {
+    public:
+        LLP::RecentRewardRegistry& registry = LLP::RecentRewardRegistry::Instance();
+        LLP::MiningTemplatePrewarmer& warmer = LLP::MiningTemplatePrewarmer::Instance();
+
+        explicit PrewarmerFixture(std::function<void()> release = {})
+            : wasRunning(warmer.IsRunning()), releaseWorkers(std::move(release))
+        {
+            warmer.Stop();
+            for(const auto& key : keys)
+            {
+                const auto it = config::mapArgs.find(key);
+                if(it != config::mapArgs.end())
+                {
+                    savedArgs.emplace(it->first, it->second);
+                    config::mapArgs.erase(it);
+                }
+            }
+            warmer.ResetBuildFnForTesting();
+            registry.ClearForTesting();
+        }
+
+        ~PrewarmerFixture()
+        {
+            if(releaseWorkers)
+                releaseWorkers();
+            warmer.Stop();
+            warmer.ResetBuildFnForTesting();
+            registry.ClearForTesting();
+            for(const auto& key : keys)
+                config::mapArgs.erase(key);
+            for(const auto& arg : savedArgs)
+                config::mapArgs[arg.first] = arg.second;
+            if(wasRunning)
+                warmer.Start();
+        }
+
+    private:
+        const std::vector<std::string> keys{
+            "-prewarm", "-prewarm.reward_ttl", "-prewarm.queue_max", "-prewarm.workers"};
+        bool wasRunning;
+        std::function<void()> releaseWorkers;
+        std::map<std::string, std::string> savedArgs;
+    };
 }
 
 
 TEST_CASE("RecentRewardRegistry deduplicates and respects TTL",
           "[template_prewarmer][registry]")
 {
-    auto& reg = LLP::RecentRewardRegistry::Instance();
-    reg.ClearForTesting();
+    PrewarmerFixture fixture;
+    auto& reg = fixture.registry;
 
     const uint256_t rA = MakeReward(1);
     const uint256_t rB = MakeReward(2);
+    REQUIRE(rA.GetType() == TAO::Ledger::GENESIS::UserType());
 
-    /* Channel 0 (PoS) is rejected. */
     reg.Register(0, rA);
-    REQUIRE(reg.SnapshotFresh(std::chrono::seconds(60)).empty());
-
-    /* Zero reward is rejected. */
     reg.Register(1, uint256_t(0));
+    uint256_t invalid = rA;
+    invalid.SetType(TAO::Ledger::GENESIS::UserType() ^ 1);
+    reg.Register(1, invalid);
     REQUIRE(reg.SnapshotFresh(std::chrono::seconds(60)).empty());
 
-    /* Two distinct (channel, reward) tuples land as two entries; a repeat
-     * of the same tuple does not duplicate. */
     reg.Register(1, rA);
     reg.Register(2, rA);
     reg.Register(1, rA);
-
-    auto vEntries = reg.SnapshotFresh(std::chrono::seconds(60));
-    REQUIRE(vEntries.size() == 2);
-
-    /* TTL = 0 nanoseconds discards every entry. */
+    REQUIRE(reg.SnapshotFresh(std::chrono::seconds(60)).size() == 2);
     REQUIRE(reg.SnapshotFresh(std::chrono::seconds(0)).empty());
 
     reg.Register(1, rB);
     REQUIRE(reg.SnapshotFresh(std::chrono::seconds(60)).size() == 3);
-
-    /* Prune with TTL=0 must clear everything. */
     reg.Prune(std::chrono::seconds(0));
     REQUIRE(reg.SnapshotFresh(std::chrono::seconds(60)).empty());
-
-    reg.ClearForTesting();
 }
 
 
 TEST_CASE("MiningTemplatePrewarmer warms one request per registered tuple per tip",
           "[template_prewarmer][warm]")
 {
-    /* Ensure deterministic behaviour even if a previous test mutated args. */
-    config::mapArgs.erase("-prewarm");
-    config::mapArgs.erase("-prewarm.reward_ttl");
-    config::mapArgs.erase("-prewarm.queue_max");
-
-    auto& reg     = LLP::RecentRewardRegistry::Instance();
-    auto& warmer  = LLP::MiningTemplatePrewarmer::Instance();
-    reg.ClearForTesting();
-
-    /* Record build callbacks. */
     struct Record
     {
-        uint32_t   nChannel;
-        uint256_t  hashReward;
-        uint1024_t hashTip;
+        uint32_t channel;
+        uint256_t reward;
+        uint1024_t tip;
     };
-    std::mutex                m_records_mutex;
-    std::condition_variable   m_records_cv;
-    std::vector<Record>       records;
-    std::atomic<std::size_t>  nBuilds{0};
+    std::mutex mutex;
+    std::condition_variable cv;
+    std::vector<Record> records;
+    PrewarmerFixture fixture;
+    auto& warmer = fixture.warmer;
+    auto& reg = fixture.registry;
 
-    warmer.SetBuildFnForTesting([&](uint32_t nChannel,
-                                    const uint256_t& hashReward,
-                                    const uint1024_t& hashTip)
+    warmer.SetBuildFnForTesting([&](uint32_t channel, const uint256_t& reward, const uint1024_t& tip)
     {
-        std::lock_guard<std::mutex> lock(m_records_mutex);
-        records.push_back({nChannel, hashReward, hashTip});
-        nBuilds.fetch_add(1, std::memory_order_release);
-        m_records_cv.notify_all();
+        std::lock_guard<std::mutex> lock(mutex);
+        records.push_back({channel, reward, tip});
+        cv.notify_all();
+        return new TAO::Ledger::TritiumBlock();
     });
-
     warmer.Start();
-    REQUIRE(warmer.IsRunning());
 
-    const uint256_t rA   = MakeReward(11);
-    const uint256_t rB   = MakeReward(12);
-    const uint1024_t tip = MakeTip(0x10);
-
+    const uint256_t rA = MakeReward(11);
+    const uint256_t rB = MakeReward(12);
+    const uint1024_t tip = CurrentTip();
+    REQUIRE(tip != 0);
     reg.Register(1, rA);
     reg.Register(2, rA);
     reg.Register(1, rB);
 
-    const auto statsBefore = warmer.GetStats();
-    warmer.NotifyTipAdvance(/*nUnifiedHeight=*/100, tip);
-
-    /* Wait for the worker to drain the three requests we just enqueued. */
+    const auto before = warmer.GetStats();
+    warmer.NotifyTipAdvance(100, tip);
     {
-        std::unique_lock<std::mutex> lock(m_records_mutex);
-        const bool ok = m_records_cv.wait_for(lock, std::chrono::seconds(2),
-            [&] { return nBuilds.load(std::memory_order_acquire) >= 3; });
-        REQUIRE(ok);
+        std::unique_lock<std::mutex> lock(mutex);
+        REQUIRE(cv.wait_for(lock, std::chrono::seconds(3), [&] { return records.size() == 3; }));
     }
+    warmer.Stop();
 
-    /* Validate we warmed exactly the three registered tuples — duplicates
-     * are coalesced and PoS (channel 0) entries never reach the registry. */
     std::map<std::pair<uint32_t, uint256_t>, std::size_t> counts;
+    for(const auto& record : records)
     {
-        std::lock_guard<std::mutex> lock(m_records_mutex);
-        for(const auto& r : records)
-        {
-            REQUIRE(r.hashTip == tip);
-            ++counts[{r.nChannel, r.hashReward}];
-        }
+        REQUIRE(record.tip == tip);
+        ++counts[{record.channel, record.reward}];
     }
     REQUIRE(counts.size() == 3);
     REQUIRE(counts[{1, rA}] == 1);
     REQUIRE(counts[{2, rA}] == 1);
     REQUIRE(counts[{1, rB}] == 1);
-
-    const auto statsAfter = warmer.GetStats();
-    REQUIRE(statsAfter.nEnqueued >= statsBefore.nEnqueued + 3);
-    REQUIRE(statsAfter.nWarmed   >= statsBefore.nWarmed   + 3);
-
-    warmer.Stop();
-    REQUIRE_FALSE(warmer.IsRunning());
-
-    /* Cleanup for sibling tests. */
-    warmer.ResetBuildFnForTesting();
-    reg.ClearForTesting();
+    const auto after = warmer.GetStats();
+    REQUIRE(after.nEnqueued == before.nEnqueued + 3);
+    REQUIRE(after.nWarmed == before.nWarmed + 3);
 }
 
 
-TEST_CASE("MiningTemplatePrewarmer deduplicates same-tip requests in the queue",
+TEST_CASE("MiningTemplatePrewarmer coalesces queued and in-flight requests",
           "[template_prewarmer][coalesce]")
 {
-    config::mapArgs.erase("-prewarm");
-    config::mapArgs.erase("-prewarm.reward_ttl");
-    config::mapArgs.erase("-prewarm.queue_max");
-    /* Pin to a single worker so the queue-coalescing semantics are
-     * deterministic.  Pool-sizing is exercised by the dedicated
-     * [template_prewarmer][pool] test below. */
+    Gate gate;
+    PrewarmerFixture fixture([&] { gate.Release(); });
+    auto& warmer = fixture.warmer;
+    auto& reg = fixture.registry;
     config::mapArgs["-prewarm.workers"] = "1";
-
-    auto& reg    = LLP::RecentRewardRegistry::Instance();
-    auto& warmer = LLP::MiningTemplatePrewarmer::Instance();
-    reg.ClearForTesting();
-
-    /* Throttle the worker so multiple NotifyTipAdvance() calls land in the
-     * queue before the first one is drained.  We do that by holding the
-     * builder until the test releases it. */
-    std::mutex              m_gate_mutex;
-    std::condition_variable m_gate_cv;
-    std::atomic<bool>       fReleased{false};
-    std::atomic<std::size_t> nBuilds{0};
-
     warmer.SetBuildFnForTesting([&](uint32_t, const uint256_t&, const uint1024_t&)
     {
-        std::unique_lock<std::mutex> lock(m_gate_mutex);
-        m_gate_cv.wait(lock, [&] { return fReleased.load(std::memory_order_acquire); });
-        nBuilds.fetch_add(1, std::memory_order_release);
+        gate.Enter();
+        return new TAO::Ledger::TritiumBlock();
     });
-
     warmer.Start();
 
-    const uint256_t rA   = MakeReward(21);
-    const uint1024_t tip = MakeTip(0x21);
-    reg.Register(1, rA);
+    const uint1024_t tip = CurrentTip();
+    REQUIRE(tip != 0);
+    reg.Register(1, MakeReward(21));
+    const auto before = warmer.GetStats();
+    warmer.NotifyTipAdvance(200, tip);
+    REQUIRE(gate.WaitFor(1));
 
-    const auto statsBefore = warmer.GetStats();
-
-    /* Fire three notifications for the same tip+reward; the second and
-     * third must coalesce against the first (still pending) request. */
+    reg.Register(1, MakeReward(22));
+    reg.Register(2, MakeReward(21));
     warmer.NotifyTipAdvance(200, tip);
     warmer.NotifyTipAdvance(200, tip);
-    warmer.NotifyTipAdvance(200, tip);
+    std::vector<std::jthread> notifiers;
+    for(int i = 0; i < 8; ++i)
+        notifiers.emplace_back([&] { warmer.NotifyTipAdvance(200, tip); });
+    for(auto& notifier : notifiers)
+        notifier.join();
+    REQUIRE(warmer.GetStats().nEnqueued == before.nEnqueued + 3);
 
-    /* Release the gate so the worker drains. */
-    {
-        std::lock_guard<std::mutex> lock(m_gate_mutex);
-        fReleased.store(true, std::memory_order_release);
-    }
-    m_gate_cv.notify_all();
+    gate.Release();
+    REQUIRE(gate.WaitFor(3));
+    REQUIRE(WaitUntil([&] { return warmer.GetStats().nWarmed == before.nWarmed + 3; }));
 
-    /* Give the worker a moment to settle. */
-    for(int i = 0; i < 100 && nBuilds.load(std::memory_order_acquire) < 1; ++i)
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
-    const auto statsAfter = warmer.GetStats();
-    REQUIRE(statsAfter.nEnqueued == statsBefore.nEnqueued + 1);
-    REQUIRE(nBuilds.load(std::memory_order_acquire) == 1);
-
-    warmer.Stop();
-    warmer.ResetBuildFnForTesting();
     reg.ClearForTesting();
-    config::mapArgs.erase("-prewarm.workers");
+    reg.Register(1, MakeReward(21));
+    REQUIRE(WaitUntil([&]
+    {
+        warmer.NotifyTipAdvance(200, tip);
+        return warmer.GetStats().nEnqueued == before.nEnqueued + 4;
+    }));
+    REQUIRE(gate.WaitFor(4));
+    warmer.Stop();
+    REQUIRE(warmer.GetStats().nWarmed == before.nWarmed + 4);
+}
+
+
+TEST_CASE("MiningTemplatePrewarmer retries after failed or throwing builds",
+          "[template_prewarmer][failure]")
+{
+    bool throwFirst = false;
+    SECTION("builder returns no template") {}
+    SECTION("builder throws") { throwFirst = true; }
+
+    std::atomic<std::size_t> attempts{0};
+    PrewarmerFixture fixture;
+    auto& warmer = fixture.warmer;
+    config::mapArgs["-prewarm.workers"] = "1";
+    warmer.SetBuildFnForTesting([&](uint32_t, const uint256_t&, const uint1024_t&) -> TAO::Ledger::TritiumBlock*
+    {
+        if(attempts.fetch_add(1) == 0)
+        {
+            if(throwFirst)
+                throw std::runtime_error("test prewarmer failure");
+            return nullptr;
+        }
+        return new TAO::Ledger::TritiumBlock();
+    });
+    warmer.Start();
+
+    const uint1024_t tip = CurrentTip();
+    REQUIRE(tip != 0);
+    fixture.registry.Register(1, MakeReward(23));
+    const auto before = warmer.GetStats();
+    warmer.NotifyTipAdvance(200, tip);
+    REQUIRE(WaitUntil([&] { return attempts.load() == 1; }));
+    REQUIRE(warmer.GetStats().nWarmed == before.nWarmed);
+
+    REQUIRE(WaitUntil([&]
+    {
+        warmer.NotifyTipAdvance(200, tip);
+        return warmer.GetStats().nEnqueued == before.nEnqueued + 2;
+    }));
+    REQUIRE(WaitUntil([&] { return warmer.GetStats().nWarmed == before.nWarmed + 1; }));
+    warmer.Stop();
+    REQUIRE(attempts.load() == 2);
+    REQUIRE(warmer.GetStats().nWarmed == before.nWarmed + 1);
+}
+
+
+TEST_CASE("MiningTemplatePrewarmer keeps different tip requests independent",
+          "[template_prewarmer][coalesce][stale]")
+{
+    Gate gate;
+    PrewarmerFixture fixture([&] { gate.Release(); });
+    auto& warmer = fixture.warmer;
+    config::mapArgs["-prewarm.workers"] = "1";
+    warmer.SetBuildFnForTesting([&](uint32_t, const uint256_t&, const uint1024_t&)
+    {
+        gate.Enter();
+        return new TAO::Ledger::TritiumBlock();
+    });
+    warmer.Start();
+
+    const uint1024_t tip = CurrentTip();
+    REQUIRE(tip != 0);
+    uint1024_t staleTip = tip;
+    staleTip.SetType(tip.GetType() ^ 1);
+    REQUIRE(staleTip != 0);
+    fixture.registry.Register(1, MakeReward(26));
+    const auto before = warmer.GetStats();
+    warmer.NotifyTipAdvance(200, tip);
+    REQUIRE(gate.WaitFor(1));
+    warmer.NotifyTipAdvance(201, staleTip);
+    warmer.NotifyTipAdvance(200, tip);
+    REQUIRE(warmer.GetStats().nEnqueued == before.nEnqueued + 2);
+
+    gate.Release();
+    REQUIRE(WaitUntil([&] { return warmer.GetStats().nStaleTipSkipped == before.nStaleTipSkipped + 1; }));
+    warmer.Stop();
+    REQUIRE(warmer.GetStats().nWarmed == before.nWarmed + 1);
+}
+
+
+TEST_CASE("MiningTemplatePrewarmer releases stale requests",
+          "[template_prewarmer][stale]")
+{
+    std::atomic<std::size_t> builds{0};
+    PrewarmerFixture fixture;
+    auto& warmer = fixture.warmer;
+    config::mapArgs["-prewarm.workers"] = "1";
+    warmer.SetBuildFnForTesting([&](uint32_t, const uint256_t&, const uint1024_t&)
+    {
+        ++builds;
+        return new TAO::Ledger::TritiumBlock();
+    });
+    warmer.Start();
+
+    uint1024_t staleTip = CurrentTip();
+    REQUIRE(staleTip != 0);
+    staleTip.SetType(staleTip.GetType() ^ 1);
+    fixture.registry.Register(1, MakeReward(24));
+    const auto before = warmer.GetStats();
+    warmer.NotifyTipAdvance(200, staleTip);
+    REQUIRE(WaitUntil([&] { return warmer.GetStats().nStaleTipSkipped == before.nStaleTipSkipped + 1; }));
+    REQUIRE(WaitUntil([&]
+    {
+        warmer.NotifyTipAdvance(200, staleTip);
+        return warmer.GetStats().nEnqueued == before.nEnqueued + 2;
+    }));
+    REQUIRE(WaitUntil([&] { return warmer.GetStats().nStaleTipSkipped == before.nStaleTipSkipped + 2; }));
+    warmer.Stop();
+    REQUIRE(builds.load() == 0);
+    REQUIRE(warmer.GetStats().nWarmed == before.nWarmed);
+}
+
+
+TEST_CASE("MiningTemplatePrewarmer releases in-flight requests across stop and restart",
+          "[template_prewarmer][lifecycle]")
+{
+    Gate gate;
+    PrewarmerFixture fixture([&] { gate.Release(); });
+    auto& warmer = fixture.warmer;
+    config::mapArgs["-prewarm.workers"] = "1";
+    warmer.SetBuildFnForTesting([&](uint32_t, const uint256_t&, const uint1024_t&)
+    {
+        gate.Enter();
+        return new TAO::Ledger::TritiumBlock();
+    });
+    warmer.Start();
+
+    const uint1024_t tip = CurrentTip();
+    REQUIRE(tip != 0);
+    fixture.registry.Register(1, MakeReward(25));
+    const auto before = warmer.GetStats();
+    warmer.NotifyTipAdvance(200, tip);
+    REQUIRE(gate.WaitFor(1));
+    std::thread stopper([&] { warmer.Stop(); });
+    const bool stopped = WaitUntil([&] { return !warmer.IsRunning(); });
+    gate.Release();
+    stopper.join();
+    REQUIRE(stopped);
+
+    warmer.Start();
+    warmer.NotifyTipAdvance(200, tip);
+    REQUIRE(gate.WaitFor(2));
+    warmer.Stop();
+    const auto after = warmer.GetStats();
+    REQUIRE(after.nEnqueued == before.nEnqueued + 2);
+    REQUIRE(after.nWarmed == before.nWarmed + 2);
 }
 
 
 TEST_CASE("MiningTemplatePrewarmer worker pool warms in parallel",
           "[template_prewarmer][pool]")
 {
-    config::mapArgs.erase("-prewarm");
-    config::mapArgs.erase("-prewarm.reward_ttl");
-    config::mapArgs.erase("-prewarm.queue_max");
-    /* Force a 4-worker pool so the test is deterministic regardless of the
-     * host machine's hardware concurrency. */
+    Gate gate;
+    PrewarmerFixture fixture([&] { gate.Release(); });
+    auto& warmer = fixture.warmer;
     config::mapArgs["-prewarm.workers"] = "4";
-
-    auto& reg    = LLP::RecentRewardRegistry::Instance();
-    auto& warmer = LLP::MiningTemplatePrewarmer::Instance();
-    reg.ClearForTesting();
-
-    /* Block every worker in the builder until we observe peak concurrency,
-     * then release them all.  This proves that more than one builder ran
-     * at the same wall-clock instant — the whole point of the thread pool. */
-    std::mutex                m_gate_mutex;
-    std::condition_variable   m_observed_cv;
-    std::condition_variable   m_release_cv;
-    std::atomic<std::size_t>  nConcurrent{0};
-    std::atomic<std::size_t>  nPeakConcurrent{0};
-    std::atomic<bool>         fRelease{false};
-    std::atomic<std::size_t>  nBuilds{0};
-
     warmer.SetBuildFnForTesting([&](uint32_t, const uint256_t&, const uint1024_t&)
     {
-        const std::size_t now = nConcurrent.fetch_add(1, std::memory_order_acq_rel) + 1;
-        std::size_t prev = nPeakConcurrent.load(std::memory_order_relaxed);
-        /* Standard CAS retry: keep trying to publish `now` as the new
-         * peak until either we win the race or another thread has already
-         * pushed the peak past `now`. */
-        while(now > prev
-           && !nPeakConcurrent.compare_exchange_weak(prev, now,
-                                                      std::memory_order_acq_rel))
-            ;
-        {
-            std::lock_guard<std::mutex> lock(m_gate_mutex);
-            m_observed_cv.notify_all();
-        }
-        {
-            std::unique_lock<std::mutex> lock(m_gate_mutex);
-            m_release_cv.wait(lock, [&] { return fRelease.load(std::memory_order_acquire); });
-        }
-        nConcurrent.fetch_sub(1, std::memory_order_acq_rel);
-        nBuilds.fetch_add(1, std::memory_order_release);
+        gate.Enter();
+        return new TAO::Ledger::TritiumBlock();
     });
-
     warmer.Start();
-
-    /* Stats expose the pool size so the operator can verify it from RPC. */
     REQUIRE(warmer.GetStats().nWorkers == 4);
 
-    /* Register four distinct rewards so all four workers can pick up work
-     * in parallel. */
+    const uint1024_t tip = CurrentTip();
+    REQUIRE(tip != 0);
     for(uint8_t i = 0; i < 4; ++i)
-        reg.Register(1, MakeReward(51 + i));
-
-    warmer.NotifyTipAdvance(500, MakeTip(0x50));
-
-    /* Wait until peak concurrency reaches 4 (the whole pool is busy in
-     * the builder simultaneously). */
-    {
-        std::unique_lock<std::mutex> lock(m_gate_mutex);
-        const bool ok = m_observed_cv.wait_for(lock, std::chrono::seconds(2),
-            [&] { return nPeakConcurrent.load(std::memory_order_acquire) >= 4; });
-        REQUIRE(ok);
-    }
-    REQUIRE(nPeakConcurrent.load(std::memory_order_acquire) == 4);
-
-    /* Release the gate and wait for all builds to complete. */
-    {
-        std::lock_guard<std::mutex> lock(m_gate_mutex);
-        fRelease.store(true, std::memory_order_release);
-    }
-    m_release_cv.notify_all();
-
-    for(int i = 0; i < 200 && nBuilds.load(std::memory_order_acquire) < 4; ++i)
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    REQUIRE(nBuilds.load(std::memory_order_acquire) == 4);
-
+        fixture.registry.Register(1, MakeReward(51 + i));
+    const auto before = warmer.GetStats();
+    warmer.NotifyTipAdvance(500, tip);
+    REQUIRE(gate.WaitFor(4));
+    gate.Release();
     warmer.Stop();
-    warmer.ResetBuildFnForTesting();
-    reg.ClearForTesting();
-    config::mapArgs.erase("-prewarm.workers");
+    REQUIRE(warmer.GetStats().nWarmed == before.nWarmed + 4);
 }
 
 
 TEST_CASE("MiningTemplatePrewarmer drops oldest when queue exceeds cap",
           "[template_prewarmer][drop_oldest]")
 {
-    /* Tiny cap forces immediate overflow. */
+    Gate gate;
+    PrewarmerFixture fixture([&] { gate.Release(); });
+    auto& warmer = fixture.warmer;
     config::mapArgs["-prewarm.queue_max"] = "2";
-    /* Pin to a single worker so requests pile up in the queue
-     * deterministically before the worker drains them. */
     config::mapArgs["-prewarm.workers"] = "1";
-
-    auto& reg    = LLP::RecentRewardRegistry::Instance();
-    auto& warmer = LLP::MiningTemplatePrewarmer::Instance();
-    reg.ClearForTesting();
-
-    std::mutex              m_gate_mutex;
-    std::condition_variable m_gate_cv;
-    std::atomic<bool>       fReleased{false};
-    std::atomic<std::size_t> nBuilds{0};
-
     warmer.SetBuildFnForTesting([&](uint32_t, const uint256_t&, const uint1024_t&)
     {
-        std::unique_lock<std::mutex> lock(m_gate_mutex);
-        m_gate_cv.wait(lock, [&] { return fReleased.load(std::memory_order_acquire); });
-        nBuilds.fetch_add(1, std::memory_order_release);
+        gate.Enter();
+        return new TAO::Ledger::TritiumBlock();
     });
-
     warmer.Start();
 
-    /* Five distinct rewards on one channel. */
+    const uint1024_t tip = CurrentTip();
+    REQUIRE(tip != 0);
     for(uint8_t i = 0; i < 5; ++i)
-        reg.Register(1, MakeReward(31 + i));
-
-    const auto statsBefore = warmer.GetStats();
-    warmer.NotifyTipAdvance(300, MakeTip(0x31));
-
-    /* Release the gate. */
-    {
-        std::lock_guard<std::mutex> lock(m_gate_mutex);
-        fReleased.store(true, std::memory_order_release);
-    }
-    m_gate_cv.notify_all();
-
-    /* Allow the worker to drain whatever survived. */
-    for(int i = 0; i < 200 && nBuilds.load(std::memory_order_acquire) < 2; ++i)
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
-    const auto statsAfter = warmer.GetStats();
-    /* With cap=2 and 5 candidates, exactly 3 must have been dropped before
-     * the worker started servicing.  We tolerate the case where the worker
-     * picks one off before the next NotifyTipAdvance entry slides in (which
-     * keeps the queue tip-coalesced), so the lower bound is what matters. */
-    REQUIRE(statsAfter.nDropped >= statsBefore.nDropped + 3);
-    REQUIRE(nBuilds.load(std::memory_order_acquire) >= 2);
-
+        fixture.registry.Register(1, MakeReward(31 + i));
+    const auto before = warmer.GetStats();
+    warmer.NotifyTipAdvance(300, tip);
+    REQUIRE(warmer.GetStats().nDropped == before.nDropped + 3);
+    gate.Release();
+    REQUIRE(gate.WaitFor(2));
     warmer.Stop();
-    warmer.ResetBuildFnForTesting();
-    reg.ClearForTesting();
-    config::mapArgs.erase("-prewarm.queue_max");
-    config::mapArgs.erase("-prewarm.workers");
+    const auto after = warmer.GetStats();
+    REQUIRE(after.nEnqueued == before.nEnqueued + 5);
+    REQUIRE(after.nWarmed == before.nWarmed + 2);
 }
 
 
 TEST_CASE("MiningTemplatePrewarmer is a no-op when -prewarm=false",
           "[template_prewarmer][disabled]")
 {
+    std::atomic<std::size_t> builds{0};
+    PrewarmerFixture fixture;
     config::mapArgs["-prewarm"] = "0";
-
-    auto& reg    = LLP::RecentRewardRegistry::Instance();
-    auto& warmer = LLP::MiningTemplatePrewarmer::Instance();
-    reg.ClearForTesting();
-
-    std::atomic<std::size_t> nBuilds{0};
-    warmer.SetBuildFnForTesting([&](uint32_t, const uint256_t&, const uint1024_t&)
+    fixture.warmer.SetBuildFnForTesting([&](uint32_t, const uint256_t&, const uint1024_t&)
     {
-        nBuilds.fetch_add(1, std::memory_order_release);
+        ++builds;
+        return new TAO::Ledger::TritiumBlock();
     });
-
-    warmer.Start();
-    reg.Register(1, MakeReward(41));
-    warmer.NotifyTipAdvance(400, MakeTip(0x41));
-
-    /* Give the worker time it would have used to warm. */
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    REQUIRE(nBuilds.load(std::memory_order_acquire) == 0);
-
-    warmer.Stop();
-    warmer.ResetBuildFnForTesting();
-    reg.ClearForTesting();
-    config::mapArgs.erase("-prewarm");
+    fixture.warmer.Start();
+    fixture.registry.Register(1, MakeReward(41));
+    const auto before = fixture.warmer.GetStats();
+    fixture.warmer.NotifyTipAdvance(400, CurrentTip());
+    fixture.warmer.Stop();
+    REQUIRE(builds.load() == 0);
+    REQUIRE(fixture.warmer.GetStats().nEnqueued == before.nEnqueued);
 }
 
 
 TEST_CASE("MiningTemplatePrewarmer skips notify/build when default session is unavailable",
           "[template_prewarmer][session]")
 {
-    config::mapArgs.erase("-prewarm");
-    config::mapArgs.erase("-prewarm.reward_ttl");
-    config::mapArgs.erase("-prewarm.queue_max");
-    config::mapArgs.erase("-prewarm.workers");
-
+    PrewarmerFixture fixture;
     REQUIRE_FALSE(LLP::IsDefaultSessionReady());
-
-    auto& reg    = LLP::RecentRewardRegistry::Instance();
-    auto& warmer = LLP::MiningTemplatePrewarmer::Instance();
-    reg.ClearForTesting();
-    warmer.ResetBuildFnForTesting();
-
-    warmer.Start();
-    const auto statsBefore = warmer.GetStats();
-
-    reg.Register(1, MakeReward(42));
-    warmer.NotifyTipAdvance(420, MakeTip(0x42));
-
-    /* Allow worker wakeups to occur if anything was enqueued unexpectedly. */
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-    const auto statsAfter = warmer.GetStats();
-    REQUIRE(statsAfter.nEnqueued == statsBefore.nEnqueued);
-    REQUIRE(statsAfter.nWarmed == statsBefore.nWarmed);
-
-    warmer.Stop();
-    reg.ClearForTesting();
+    fixture.warmer.Start();
+    const auto before = fixture.warmer.GetStats();
+    fixture.registry.Register(1, MakeReward(42));
+    fixture.warmer.NotifyTipAdvance(420, CurrentTip());
+    fixture.warmer.Stop();
+    const auto after = fixture.warmer.GetStats();
+    REQUIRE(after.nEnqueued == before.nEnqueued);
+    REQUIRE(after.nWarmed == before.nWarmed);
 }

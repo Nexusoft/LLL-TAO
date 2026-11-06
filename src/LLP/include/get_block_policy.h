@@ -26,7 +26,8 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    // Node MUST always return BLOCK_DATA for authenticated miners within this window.
+    // In-budget authenticated miners receive BLOCK_DATA only while mining is ready.
+    // Paused mining returns the existing retryable TEMPLATE_NOT_READY control.
     // AUTHORITATIVE: This is the enforced limit. See static_assert in
     // stateless_miner_connection.h which enforces alignment with this value.
     constexpr std::size_t GET_BLOCK_ROLLING_LIMIT_PER_MINUTE = 25;

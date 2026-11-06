@@ -51,6 +51,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/mining_readiness.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/retarget.h>
@@ -528,6 +529,8 @@ namespace LLP
          * PUSH stays on QueuePacket() so worker build time is off DataThread;
          * queue insertion is synchronized on OUTGOING_MUTEX, and socket-write
          * contention is deferred to flush/write service paths. */
+        if(!TAO::Ledger::ChainState::MiningWorkCurrent(sharedTemplate.nMiningEpoch))
+            return false;
         QueuePacket(blockPacket);
         const auto tQueued = std::chrono::steady_clock::now();
         const int64_t nQueuePacketMs =
@@ -746,6 +749,7 @@ namespace LLP
                 uint1024_t hashBlock;
                 std::vector<uint8_t> vData;
                 TAO::Ledger::Block *pBlock = nullptr;
+                uint64_t nWorkEpoch = 0;
 
                 for(uint32_t i = 0; i < count; ++i)
                 {
@@ -763,6 +767,8 @@ namespace LLP
                         }
 
                         /* Serialize the block vData */
+                        const auto* tritium = dynamic_cast<const TAO::Ledger::TritiumBlock*>(pBlock);
+                        nWorkEpoch = tritium ? tritium->nMiningEpoch : 0;
                         vData = pBlock->Serialize();
 
                         /* Get the block hash for display purposes */
@@ -770,6 +776,8 @@ namespace LLP
                     }
 
                     /* Create and send a packet response */
+                    if(!TAO::Ledger::ChainState::MiningWorkCurrent(nWorkEpoch))
+                        return;
                     respond(BLOCK_DATA, vData);
 
                     /* Debug output with channel height */
@@ -2881,6 +2889,8 @@ namespace LLP
         Packet blockPacket(BLOCK_DATA);
         blockPacket.DATA = sharedTemplate.vPayload;
         blockPacket.LENGTH = static_cast<uint32_t>(blockPacket.DATA.size());
+        if(!TAO::Ledger::ChainState::MiningWorkCurrent(sharedTemplate.nMiningEpoch))
+            return;
         QueuePacket(blockPacket);
 
         debug::log(2, FUNCTION, "✅ Legacy template sent (",
@@ -2989,6 +2999,12 @@ namespace LLP
         debug::log(3, FUNCTION, "BLOCK_DATA (request-response) → ", strPeer,
                    " session=", nSessionIdSnapshot, " payload=", result.vPayload.size(), " bytes");
 
+        if(!TAO::Ledger::ChainState::MiningWorkCurrent(result.nMiningEpoch))
+        {
+            respond_auto(BLOCK_REJECTED,
+                BuildGetBlockControlPayload(GetBlockPolicyReason::TEMPLATE_NOT_READY, 1000));
+            return true;
+        }
         respond_auto(BLOCK_DATA, result.vPayload);
 
         /* Update last template unified height after sending template.

@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/mining_readiness.h>
 #include <TAO/Ledger/include/create.h>
 
 #include <TAO/Ledger/types/locator.h>
@@ -1198,9 +1199,18 @@ namespace TAO
 
         /* Processes a block incoming over the network. */
         static uint64_t nProcessedBlocks = 0;
-        void Process(const TAO::Ledger::Block& block, uint8_t &nStatus, LLP::TritiumNode* pnode, bool fSkipCheck)
+        void Process(const TAO::Ledger::Block& block, uint8_t &nStatus, LLP::TritiumNode* pnode,
+                     bool fSkipCheck, uint64_t nMiningEpoch)
         {
             LOCK(PROCESSING_MUTEX);
+
+            if(nMiningEpoch != 0 && (!ChainState::MiningWorkCurrent(nMiningEpoch)
+            || block.hashPrevBlock != ChainState::hashBestChain.load()))
+            {
+                nStatus = PROCESS::IGNORED;
+                debug::log(0, FUNCTION, "Local mining work revoked before admission");
+                return;
+            }
 
             /* Get the block's hash. */
             const uint1024_t hashBlock = block.GetHash();
@@ -1491,7 +1501,7 @@ namespace TAO
 
                 /* Check if the block is valid. Skip when already validated by ValidateMinedBlock().
                  *
-                 * Do NOT force full proof here (fForceProof=false). This is the main
+                 * Do NOT force full proof for network work (epoch zero). This is the main
                  * network/sync ingestion path -- every block received during initial
                  * block download (IBD) passes through here, not just newly mined tips.
                  * Forcing fForceProof=true short-circuits the `fForceProof ||
@@ -1503,9 +1513,10 @@ namespace TAO
                  * restores the intended behavior: Synchronizing()==true skips the
                  * expensive re-verification of history already agreed upon by the
                  * network, while Synchronizing()==false (caught up) or a locally
-                 * mined/submitted block (via ValidateMinedBlock()'s explicit
-                 * Check(true)) still gets full verification. */
-                if(!fSkipCheck && !block.Check())
+                 * mined/submitted block still gets full verification. External
+                 * submissions use ValidateMinedBlock()'s Check(true); local
+                 * staking forces proof here using its nonzero mining epoch. */
+                if(!fSkipCheck && !block.Check(nMiningEpoch != 0))
                 {
                     /* [Option C] Negative/retry cache for Check()-rejected blocks.
                      * Count consecutive rejections for this exact block hash. */
@@ -1731,6 +1742,12 @@ namespace TAO
                         debug::log(2, block.ToString());
 
                     /* Attempt to accept block when we have all the transactions. */
+                    if(nMiningEpoch != 0 && !ChainState::MiningWorkCurrent(nMiningEpoch))
+                    {
+                        nStatus = PROCESS::IGNORED;
+                        debug::log(0, FUNCTION, "Local mining work revoked during validation");
+                        return;
+                    }
                     if(!block.Accept())
                     {
                         /* Set the status. */

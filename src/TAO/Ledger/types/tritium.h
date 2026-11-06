@@ -73,6 +73,9 @@ namespace TAO
              **/
             std::vector<std::pair<uint8_t, uint512_t> > vtx;
 
+            /** Memory-only admission epoch; never serialized or hashed. **/
+            uint64_t nMiningEpoch{0};
+
 
             /** Serialization **/
             IMPLEMENT_SERIALIZE

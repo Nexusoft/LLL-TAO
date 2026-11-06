@@ -1,27 +1,130 @@
 # Known Risks and Limitations — Mining Infrastructure
 
 **Version:** LLL-TAO 5.1.0+  
-**Last Updated:** 2026-04-11  
+**Last Updated:** 2026-11-06
+
 **Status:** Living document — update as risks are mitigated or new ones identified
 
 ---
 
 ## Chain Connectivity and Mining Readiness
 
-The existing synchronization predicate is not a network-health or
-mining-readiness check. A recently updated tip or a previously completed sync
-can leave mining enabled after peers disappear or a competing branch appears.
-Operators should not assume that available work proves the node is on the best
-chain. A separate readiness gate for both mining protocols and staking,
-including rejection of previously issued work, remains to be implemented.
+**Deployment status:** These changes require controlled multi-node testing
+before live deployment. Unit regressions cannot demonstrate behavior during
+real partitions, peer churn, or prolonged recovery.
 
-Sync completion and mempool deferral use the greatest recent `BESTHEIGHT`
-advertised by connected peers. Observations are removed on disconnect and
-expire 30 minutes after their last height notification; an idle peer does not
-refresh that observation merely by remaining connected. A connected peer can
-still advertise an erroneous height, and no peer height or peer agreement
-proves that a chain is best. Fork activation remains subject to local
-validation and chain weight.
+**Build requirement:** Use a full clean rebuild. `TritiumBlock` and
+`TritiumNode` gained memory-only fields; mixing old and new object layouts is
+unsafe.
+
+Verification covers a forced unit rebuild, production-mode syntax checks,
+and 143 selected mining/ledger regression cases (12,572 assertions), including
+the formerly crashing mempool suite. The prewarmer and solo-stake fixtures
+now use the current reward-type, worker-lifecycle, and trust-read semantics.
+The related prewarmer, staking, template, readiness, and mempool selection
+passed 57 cases; a clean full-suite result is still outstanding.
+
+Prewarmer requests coalesce while the same channel, reward, and tip are queued
+or being built. Failed, stale, and completed requests release their in-flight
+key, allowing a later notification to retry; a notification coalesced during a
+failed build does not itself schedule another attempt. The `warmed` counter and
+log now count only non-null template results. Warming remains best-effort and
+does not replace the mining-readiness or stale-work checks.
+
+Mining now has a separate readiness gate; the existing synchronization
+predicate and its consensus proof-verification fast paths are unchanged.
+Both external mining protocols and staking pause when the gate is closed.
+Private/hybrid channel-3 production is unchanged.
+
+On public networks, readiness requires initial synchronization to have
+completed, a consistent committed local tip, and fresh supporting observations
+from **two distinct peer IP addresses** by default. A supporting report must
+identify a locally stored, validated main-chain block no more than two heights
+behind the current tip, with the advertised height matching that block.
+Fresh unknown tips, mismatched hash/height reports, and locally known heavier
+branches veto readiness even if other peers support the local chain. Known
+non-heavier branches do not veto readiness, but do not count as support.
+
+For an intentional single-peer deployment, set `-miningminpeers=1`; this is an
+explicit reduction in network evidence, not authentication of that peer.
+Values 1 through 16 are accepted; other values fail closed. Local-development
+testnets (`-testnet` with `-dns=0`, or hybrid testnet mode) bypass the peer and
+initial-sync requirements, but not shutdown/reorganization checks. Neither a
+recent tip nor `-sync=0` bypasses public-network evidence requirements.
+
+Best-chain evidence expires after **90 seconds**. Core requests current
+`BESTCHAIN`/`BESTHEIGHT` reports every **30 seconds**, including from idle peers,
+using the existing subscription protocol. Disconnect/destruction removes that
+connection's observations. A height report alone does not refresh the age of
+its best-chain evidence.
+
+An in-memory work epoch revokes existing work when observations change,
+disconnect, or expire, or when a readiness check detects a ready-to-paused
+transition. Identical timely reports do not revoke work. Both mining lanes
+check the epoch before issuing templates and validating submissions, and
+local block admission checks again under the processing mutex immediately
+before acceptance. Staking checks while hashing and before admission.
+Readiness restoration does not revalidate revoked work.
+
+Shared and connection-local caches reject revoked epochs; in-flight builds
+cannot publish them as current. On public networks the producer extra nonce
+uses the epoch in its upper 32 bits and the caller's nonce in its lower 32 bits
+(larger caller nonces are rejected, not silently truncated),
+so rebuilding at the same tip after an interruption cannot resurrect an old
+merkle root. Epoch exhaustion pauses mining. Epochs are process-local and are
+not serialized, hashed, or trusted from network blocks; restarting also drops
+the server's issued-template maps. The 216-byte mining header and consensus
+block format are unchanged.
+
+Paused GET_BLOCK requests use the existing retryable `TEMPLATE_NOT_READY`
+control with a 1000 ms hint. Already queued/sent bytes cannot be recalled, and
+there is no new miner-side cancellation message: old work is rejected on
+submission. `system/get/info` now includes `mining_readiness` with `ready`,
+`reason`, `epoch`, `fresh_peers` (supporting distinct IPs), `required_peers`, and
+`local_bypass`. Existing `synchronized`/`syncing` fields are unchanged and need
+not agree with mining readiness; no Interface display change is included.
+
+Distinct IPs are not proof of independent peers or the global best chain.
+An unresolved minority report can deliberately pause mining, an availability
+tradeoff. Admission uses a final point-in-time check, not an atomic guarantee
+against connectivity changing immediately afterward.
+
+Sync completion uses the greatest recent `BESTHEIGHT` advertised by connected
+peers. Observations are removed on disconnect and
+expire 30 minutes after their last height notification. Periodic report
+requests allow responsive idle peers to refresh their observations. Sync
+completion is re-evaluated by generic events, not just block notifications,
+so removal/expiry of an obstructing height does not require another block.
+Completion requires the selected session's recently observed best hash to
+match the active tip and a matching height report no older than 90 seconds.
+Selection and completion coordinate session ownership so a stale attempt cannot reopen
+completed sync or clear another selected session. A connected peer can
+still advertise an erroneous height; repeated excessive advertisements can
+still delay sync completion. No peer height or peer agreement proves that a
+chain is best. Fork activation remains subject to local validation and chain
+weight.
+
+When `-peerbestchainrecovery` is enabled, a connected peer's unresolved best
+tip is retried at most once per 30 seconds, including an unknown shorter tip.
+Retries stop 30 minutes after the last best-chain advertisement. A successful
+inventory request is not assumed to have delivered the block. Unknown shorter
+branches are fetched for local validation and channel-weight comparison,
+not activated by height or peer agreement.
+
+Coinbase credits that appear immature at the next local height, using the
+current tip's maturity schedule, are retained in the bounded conflict pool for
+re-evaluation as the local chain advances. The next block's version can change
+the schedule at an upgrade; block validation remains authoritative.
+Peer-advertised heights do not make a credit mature or change block validation.
+Deferred roots and their dependent sigchain tails remain queued for bounded
+reconciliation; eviction still applies. An orphan request with no available
+connected peer is logged and left queued rather than dereferencing a null
+connection.
+Orphan admission distinguishes an available live/confirmed predecessor from
+an entry that is merely known in a parked queue. When the predecessor arrives,
+queued children are actually revalidated and admitted; their orphan indexes
+are removed only on successful admission. Conflict-root deferral remains
+separate from ordinary missing-predecessor handling.
 
 ---
 

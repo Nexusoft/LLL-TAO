@@ -964,8 +964,11 @@ TEST_CASE( "Mempool and memory sequencing tests", "[mempool]")
             //accept all transactions in random ordering
             for(auto& tx : vTX)
             {
+                if(TAO::Ledger::mempool.InPool(tx.GetHash()))
+                    continue;
+
                 //all tx's with no prev and not the first should fail because they will all be ORPHAN
-                if(!TAO::Ledger::mempool.Has(tx.hashPrevTx) && tx.nSequence != 0)
+                if(!TAO::Ledger::mempool.InPool(tx.hashPrevTx) && tx.nSequence != 0)
                 {
                     REQUIRE_FALSE(TAO::Ledger::mempool.Accept(tx));
                 }
@@ -977,7 +980,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[mempool]")
 
             /* Every queued orphan must be admitted once its predecessor arrives. */
             for(const auto& tx : vTX)
-                REQUIRE(TAO::Ledger::mempool.Has(tx.GetHash()));
+                REQUIRE(TAO::Ledger::mempool.InPool(tx.GetHash()));
 
             //check mempool list sequencing
             std::vector<uint512_t> vHashes;

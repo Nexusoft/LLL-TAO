@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <LLP/types/tritium.h>
 #include <LLP/include/version.h>
+#include <LLP/include/peer_best_retry.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/socket.h>
 #include <LLP/include/base_address.h>
@@ -24,7 +25,13 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/admissibility.h>
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/peer_height.h>
+#include <TAO/Ledger/include/mining_readiness.h>
+#include <TAO/Ledger/include/create.h>
+#include <TAO/Ledger/include/stateless_block_utility.h>
+#include <LLP/include/legacy_get_block_handler.h>
+#include <LLP/include/stateless_get_block_handler.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -37,6 +44,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/address.h>
 #include <TAO/Register/types/object.h>
+#include <TAO/Register/include/create.h>
 
 #include <Util/include/args.h>
 #include <Util/include/filesystem.h>
@@ -182,7 +190,375 @@ namespace
             return false;
         }
     };
+
+    struct PublicMiningGuard
+    {
+        const bool testnet = config::fTestNet.load();
+        const bool hybrid = config::fHybrid.load();
+        const bool synchronized = LLP::TritiumNode::fSynchronized.load();
+        const bool reorg = TAO::Ledger::ChainState::fChainReorg.load();
+        const uint64_t syncSession = TAO::Ledger::nSyncSession.load();
+        const uint32_t height = TAO::Ledger::ChainState::nBestHeight.load();
+        const TAO::Ledger::BlockState best = TAO::Ledger::ChainState::tStateBest.load();
+        const uint1024_t hashBest = TAO::Ledger::ChainState::hashBestChain.load();
+        const bool hadPolicy = config::mapArgs.count("-miningminpeers");
+        const std::string policy = hadPolicy ? config::mapArgs["-miningminpeers"] : "";
+        int peers[3]{};
+        TAO::Ledger::BlockState tip;
+        bool written = false;
+        std::vector<uint1024_t> extraBlocks;
+
+        PublicMiningGuard()
+        {
+            config::fTestNet.store(false);
+            config::fHybrid.store(false);
+            config::mapArgs.erase("-miningminpeers");
+            LLP::TritiumNode::fSynchronized.store(true);
+            TAO::Ledger::ChainState::fChainReorg.store(false);
+            TAO::Ledger::nSyncSession.store(0);
+            tip.nVersion = 7;
+            tip.nHeight = 200;
+            tip.nChannel = 1;
+            tip.nChannelHeight = 1;
+            tip.nBits = 0x8001ffff;
+            tip.nNonce = LLC::GetRand();
+            written = LLD::Ledger->WriteBlock(tip.GetHash(), tip);
+            TAO::Ledger::ChainState::tStateBest.store(tip);
+            TAO::Ledger::ChainState::hashBestChain.store(tip.GetHash());
+            TAO::Ledger::ChainState::nBestHeight.store(tip.nHeight);
+        }
+
+        void Report(size_t i)
+        {
+            TAO::Ledger::ChainState::ObserveMiningPeer(&peers[i],
+                "192.0.2." + std::to_string(i + 1), tip.GetHash(), tip.nHeight);
+        }
+
+        ~PublicMiningGuard()
+        {
+            for(auto& peer : peers)
+                TAO::Ledger::ChainState::ForgetPeerHeight(&peer);
+            config::fTestNet.store(testnet);
+            config::fHybrid.store(hybrid);
+            LLP::TritiumNode::fSynchronized.store(synchronized);
+            TAO::Ledger::ChainState::fChainReorg.store(reorg);
+            TAO::Ledger::nSyncSession.store(syncSession);
+            TAO::Ledger::ChainState::tStateBest.store(best);
+            TAO::Ledger::ChainState::hashBestChain.store(hashBest);
+            TAO::Ledger::ChainState::nBestHeight.store(height);
+            if(hadPolicy)
+                config::mapArgs["-miningminpeers"] = policy;
+            else
+                config::mapArgs.erase("-miningminpeers");
+            TAO::Ledger::ClearMiningTemplateCaches("mining readiness test cleanup");
+            if(written)
+                LLD::Ledger->EraseBlock(tip.GetHash());
+            for(const auto& hash : extraBlocks)
+                LLD::Ledger->EraseBlock(hash);
+        }
+    };
 }
+
+TEST_CASE("Mining readiness requires fresh distinct evidence and revokes work",
+    "[ledger][mining-readiness]")
+{
+    using namespace TAO::Ledger::ChainState;
+    MiningPeerTracker tracker;
+    const auto now = MiningPeerTracker::Clock::now();
+    int a, b, c;
+    auto evidence = [](const uint1024_t& hash, uint32_t)
+    {
+        return hash == 1 ? MiningPeerEvidence::SUPPORTING :
+               hash == 2 ? MiningPeerEvidence::BEHIND : MiningPeerEvidence::UNRESOLVED;
+    };
+    auto check = [&](auto time)
+    {
+        return tracker.Check(2, false, true, false, false, evidence, time);
+    };
+    REQUIRE_FALSE(check(now).ready);
+    tracker.Observe(&a, "one", 1, 100, now);
+    REQUIRE_FALSE(check(now).ready);
+    tracker.Observe(&b, "one", 1, 100, now);
+    REQUIRE_FALSE(check(now).ready);
+    tracker.Observe(&b, "two", 1, 100, now);
+    const auto ready = check(now);
+    REQUIRE(ready.ready);
+    REQUIRE(ready.peers == 2);
+    tracker.Observe(&a, "one", 1, 100, now + std::chrono::seconds(1));
+    REQUIRE(check(now + std::chrono::seconds(1)).epoch == ready.epoch);
+    tracker.Remove(&a);
+    tracker.Observe(&a, "one", 1, 100, now + std::chrono::seconds(1));
+    REQUIRE(check(now + std::chrono::seconds(1)).ready);
+    REQUIRE(check(now + std::chrono::seconds(1)).epoch != ready.epoch);
+
+    tracker.Observe(&c, "three", 0xDEAD, 10, now);
+    REQUIRE(check(now).reason == "unresolved-peer-tip");
+    tracker.Observe(&c, "three", 2, 10, now);
+    REQUIRE(check(now).ready);
+    REQUIRE(check(now + MiningPeerTracker::MAX_AGE).ready);
+    const auto expired = now + MiningPeerTracker::MAX_AGE + std::chrono::seconds(2);
+    REQUIRE_FALSE(check(expired).ready);
+    const auto oldEpoch = check(expired).epoch;
+    tracker.Observe(&a, "one", 1, 100, expired);
+    tracker.Observe(&b, "two", 1, 100, expired);
+    REQUIRE(check(expired).ready);
+    REQUIRE(check(expired).epoch != oldEpoch);
+    REQUIRE_FALSE(tracker.Check(2, false, false, false, false, evidence, expired).ready);
+    REQUIRE_FALSE(tracker.Check(2, false, true, true, false, evidence, expired).ready);
+    REQUIRE_FALSE(tracker.Check(2, true, true, false, true, evidence, expired).ready);
+    REQUIRE(tracker.Check(2, true, false, false, false, evidence, expired).ready);
+    REQUIRE_FALSE(tracker.Check(0, false, true, false, false, evidence, expired).ready);
+
+    MiningPeerTracker idle;
+    idle.Observe(&a, "one", 1, 100, now);
+    idle.Observe(&b, "two", 1, 100, now);
+    const auto beforeGap = idle.Check(2, false, true, false, false, evidence, now);
+    REQUIRE(beforeGap.ready);
+    idle.Observe(&a, "one", 1, 100, expired);
+    idle.Observe(&b, "two", 1, 100, expired);
+    const auto afterGap = idle.Check(2, false, true, false, false, evidence, expired);
+    REQUIRE(afterGap.ready);
+    REQUIRE(afterGap.epoch != beforeGap.epoch);
+}
+
+TEST_CASE("Both mining lanes refuse revoked work after connectivity returns",
+    "[ledger][mining-readiness]")
+{
+    using namespace TAO::Ledger;
+    PublicMiningGuard guard;
+    REQUIRE(guard.written);
+    REQUIRE_FALSE(ChainState::MiningReadiness().ready);
+    memory::encrypted_ptr<Credentials> noCredentials;
+    TritiumBlock stake;
+    REQUIRE_FALSE(CreateStakeBlock(noCredentials, "", stake));
+    guard.Report(0);
+    REQUIRE_FALSE(ChainState::MiningReadiness().ready);
+    config::mapArgs["-miningminpeers"] = "1";
+    REQUIRE(ChainState::MiningReadiness().ready);
+    config::mapArgs.erase("-miningminpeers");
+    guard.Report(1);
+    auto ready = ChainState::MiningReadiness();
+    REQUIRE(ready.ready);
+    REQUIRE(ready.required == 2);
+    const bool validationSync = ChainState::Synchronizing();
+    TritiumBlock work;
+    work.nMiningEpoch = ready.epoch;
+    work.nVersion = 9;
+    work.nChannel = 2;
+    work.nHeight = guard.tip.nHeight + 1;
+    work.nBits = 0x1f00ffff;
+    work.hashPrevBlock = guard.tip.GetHash();
+    work.hashMerkleRoot = 123;
+    LLP::LegacyGetBlockRequest legacy;
+    legacy.fnCreateBlock = [&]() -> Block* { return &work; };
+    LLP::StatelessGetBlockRequest stateless;
+    stateless.fnCreateBlock = legacy.fnCreateBlock;
+    REQUIRE(LLP::LegacyGetBlockHandler(legacy).fSuccess);
+    REQUIRE(LLP::StatelessGetBlockHandler(stateless).fSuccess);
+
+    ChainState::ForgetPeerHeight(&guard.peers[0]);
+    REQUIRE_FALSE(ChainState::MiningReadiness().ready);
+    REQUIRE_FALSE(LLP::LegacyGetBlockHandler(legacy).fSuccess);
+    guard.Report(0);
+    REQUIRE(ChainState::MiningReadiness().ready);
+    REQUIRE_FALSE(ChainState::MiningWorkCurrent(work.nMiningEpoch));
+    REQUIRE_FALSE(LLP::LegacyGetBlockHandler(legacy).fSuccess);
+    REQUIRE_FALSE(LLP::StatelessGetBlockHandler(stateless).fSuccess);
+    REQUIRE(ValidateMinedBlock(work).reason == "mining paused or work epoch revoked");
+    REQUIRE_FALSE(AcceptMinedBlock(work).accepted);
+    uint8_t status = 0;
+    Process(work, status, nullptr, true, work.nMiningEpoch);
+    REQUIRE(status == PROCESS::IGNORED);
+    REQUIRE(ChainState::Synchronizing() == validationSync);
+    REQUIRE(LLP::TritiumNode::fSynchronized.load());
+
+    work.nMiningEpoch = ChainState::MiningReadiness().epoch;
+    REQUIRE(LLP::LegacyGetBlockHandler(legacy).fSuccess);
+    REQUIRE(LLP::StatelessGetBlockHandler(stateless).fSuccess);
+    DataStream serialized(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    serialized << work;
+    TritiumBlock copied = work;
+    REQUIRE(copied.nMiningEpoch == work.nMiningEpoch);
+    copied.nMiningEpoch++;
+    DataStream serializedCopy(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    serializedCopy << copied;
+    REQUIRE(std::vector<uint8_t>(serializedCopy.begin(), serializedCopy.end())
+        == std::vector<uint8_t>(serialized.begin(), serialized.end()));
+    REQUIRE(copied.GetHash() == work.GetHash());
+    TritiumBlock decoded;
+    serializedCopy >> decoded;
+    REQUIRE(decoded.nMiningEpoch == 0);
+
+    ChainState::ObserveMiningPeer(&guard.peers[2], "192.0.2.3", 0xBAD, 1);
+    REQUIRE(ChainState::MiningReadiness().reason == "unresolved-peer-tip");
+    REQUIRE_FALSE(LLP::StatelessGetBlockHandler(stateless).fSuccess);
+}
+
+TEST_CASE("Same-tip mining cache rebuilds identity after an evidence interruption",
+    "[ledger][mining-readiness][template_freshness]")
+{
+    using namespace TAO::Ledger;
+    PublicMiningGuard guard;
+    REQUIRE(guard.written);
+    guard.Report(0);
+    guard.Report(1);
+    REQUIRE(ChainState::MiningReadiness().ready);
+    memory::encrypted_ptr<Credentials> user =
+        new Credentials(LLC::GetRand256().ToString().c_str(), "readiness-test");
+    TritiumBlock oversized;
+    REQUIRE_FALSE(CreateBlock(user, "1234", 1, oversized, uint64_t(UINT32_MAX) + 1));
+    TritiumBlock first;
+    REQUIRE(CreateBlock(user, "1234", 1, first, 42));
+    REQUIRE(ChainState::MiningWorkCurrent(first.nMiningEpoch));
+    ChainState::ForgetPeerHeight(&guard.peers[0]);
+    guard.Report(0);
+    TritiumBlock next;
+    REQUIRE(CreateBlock(user, "1234", 1, next, 42));
+    REQUIRE(next.hashPrevBlock == first.hashPrevBlock);
+    REQUIRE(next.nMiningEpoch != first.nMiningEpoch);
+    REQUIRE(next.hashMerkleRoot != first.hashMerkleRoot);
+    REQUIRE_FALSE(ChainState::MiningWorkCurrent(first.nMiningEpoch));
+    REQUIRE(ChainState::MiningWorkCurrent(next.nMiningEpoch));
+}
+
+TEST_CASE("Mining evidence uses local weights and exact hash-height pairing",
+    "[ledger][mining-readiness]")
+{
+    using namespace TAO::Ledger;
+    PublicMiningGuard guard;
+    REQUIRE(guard.written);
+    guard.Report(0);
+    guard.Report(1);
+    REQUIRE(ChainState::MiningReadiness().ready);
+    ChainState::ObserveMiningPeer(&guard.peers[0], "192.0.2.1",
+        guard.tip.GetHash(), guard.tip.nHeight + 1);
+    REQUIRE(ChainState::MiningReadiness().reason == "unresolved-peer-tip");
+    guard.Report(0);
+    BlockState shorter = guard.tip;
+    shorter.nHeight--;
+    shorter.nNonce++;
+    const uint1024_t hashShorter = shorter.GetHash();
+    REQUIRE(LLD::Ledger->WriteBlock(hashShorter, shorter));
+    guard.extraBlocks.push_back(hashShorter);
+    ChainState::ObserveMiningPeer(&guard.peers[2], "192.0.2.3",
+        hashShorter, shorter.nHeight);
+    REQUIRE(ChainState::MiningReadiness().ready);
+    shorter.nChannelWeight[0] = 100;
+    shorter.nChannelWeight[1] = 100;
+    REQUIRE(shorter.IsHeavierThan(guard.tip));
+    REQUIRE(LLD::Ledger->WriteBlock(hashShorter, shorter));
+    REQUIRE(ChainState::MiningReadiness().reason == "unresolved-peer-tip");
+}
+
+TEST_CASE("Local admission rechecks readiness after forced proof verification",
+    "[ledger][process][mining-readiness][stake]")
+{
+    using namespace TAO::Ledger;
+    PublicMiningGuard guard;
+    REQUIRE(guard.written);
+    guard.Report(0);
+    guard.Report(1);
+    const auto ready = ChainState::MiningReadiness();
+    REQUIRE(ready.ready);
+    class RevokedBlock final : public Block
+    {
+    public:
+        const void* peer = nullptr;
+        mutable bool forceProof = false;
+        mutable bool accepted = false;
+        RevokedBlock* Clone() const override
+        {
+            return new RevokedBlock(*this);
+        }
+        bool Check(bool force) const override
+        {
+            forceProof = force;
+            ChainState::ForgetPeerHeight(peer);
+            return true;
+        }
+        bool Accept() const override
+        {
+            accepted = true;
+            return true;
+        }
+    } block;
+    block.peer = &guard.peers[0];
+    block.nVersion = 7;
+    block.nChannel = 0;
+    block.nHeight = guard.tip.nHeight + 1;
+    block.nNonce = LLC::GetRand();
+    block.hashPrevBlock = guard.tip.GetHash();
+    uint8_t status = 0;
+    Process(block, status, nullptr, false, ready.epoch);
+    REQUIRE(block.forceProof);
+    REQUIRE_FALSE(block.accepted);
+    REQUIRE(status == PROCESS::IGNORED);
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(block.GetHash()));
+}
+
+#ifndef WIN32
+TEST_CASE("Idle sync finalizes when a disconnected peer's high watermark disappears",
+    "[ledger][process][sync][mining-readiness]")
+{
+    using namespace TAO::Ledger;
+    PublicMiningGuard guard;
+    REQUIRE(guard.written);
+    int fds[2] = {-1, -1};
+    REQUIRE(socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == 0);
+    LLP::TritiumNode node;
+    struct Cleanup
+    {
+        LLP::TritiumNode& node;
+        int* fds;
+        ~Cleanup()
+        {
+            ChainState::ForgetPeerHeight(&node);
+            node.fd = -1;
+            close(fds[0]);
+            close(fds[1]);
+        }
+    } cleanup{node, fds};
+    node.fd = fds[1];
+    node.events = POLLIN;
+    node.nCurrentSession = 4321;
+    node.nProtocolVersion = LLP::PROTOCOL_VERSION;
+    node.nLastPing.store(runtime::unifiedtimestamp());
+    node.Subscribe(LLP::TritiumNode::SUBSCRIPTION::BESTCHAIN
+                 | LLP::TritiumNode::SUBSCRIPTION::BESTHEIGHT);
+    LLP::TritiumNode::fSynchronized.store(false);
+    nSyncSession.store(node.nCurrentSession);
+    ChainState::ObservePeerHeight(&guard.peers[2], UINT32_MAX);
+    DataStream payload(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    payload << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << guard.tip.GetHash()
+            << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << guard.tip.nHeight;
+    node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+    node.INCOMING.DATA.assign(payload.begin(), payload.end());
+    REQUIRE(node.ProcessPacket());
+    REQUIRE_FALSE(LLP::TritiumNode::fSynchronized.load());
+    REQUIRE(nSyncSession.load() == node.nCurrentSession);
+    ChainState::ForgetPeerHeight(&guard.peers[2]);
+    nSyncSession.store(9876);
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    REQUIRE_FALSE(LLP::TritiumNode::fSynchronized.load());
+    node.Sync();
+    REQUIRE(nSyncSession.load() == 9876);
+    nSyncSession.store(node.nCurrentSession);
+    ChainState::ForgetPeerHeight(&node);
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    REQUIRE_FALSE(LLP::TritiumNode::fSynchronized.load());
+    node.nCurrentHeight = guard.tip.nHeight - 1;
+    ChainState::ObservePeerHeight(&node, node.nCurrentHeight);
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    REQUIRE_FALSE(LLP::TritiumNode::fSynchronized.load());
+    node.nCurrentHeight = guard.tip.nHeight;
+    ChainState::ObservePeerHeight(&node, guard.tip.nHeight);
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    REQUIRE(LLP::TritiumNode::fSynchronized.load());
+    REQUIRE(nSyncSession.load() == 0);
+    node.Sync();
+    REQUIRE(nSyncSession.load() == 0);
+}
+#endif
 
 
 TEST_CASE("Missing transactions yield a soft INCOMPLETE, never a REJECT", "[ledger][process]")
@@ -2357,9 +2733,9 @@ TEST_CASE("Process primary path does not force PrimeCheck on IBD (source guard)"
 "[ledger][process][primecheck]")
 {
     /* Regression guard for the multi-day sync collapse: the primary
-     * Process() ingestion path must call block.Check() with the default
-     * fForceProof=false so Synchronizing() can skip full PrimeCheck.
-     * The recovery retry may still use Check(true). */
+     * network ingestion (epoch zero) must keep fForceProof=false so
+     * Synchronizing() can skip full PrimeCheck. Local mining epochs
+     * and the recovery retry must still force verification. */
     const char* vCandidates[] = {
         "src/TAO/Ledger/process.cpp",
         "./src/TAO/Ledger/process.cpp",
@@ -2387,8 +2763,7 @@ TEST_CASE("Process primary path does not force PrimeCheck on IBD (source guard)"
         return;
     }
 
-    /* Primary path must use default Check() (no forced proof). */
-    REQUIRE(strSource.find("if(!fSkipCheck && !block.Check())") != std::string::npos);
+    REQUIRE(strSource.find("if(!fSkipCheck && !block.Check(nMiningEpoch != 0))") != std::string::npos);
 
     /* Must NOT reintroduce a forced-proof primary call of the form
      * if(!fSkipCheck && !block.Check(true)). */
@@ -2675,6 +3050,13 @@ TEST_CASE("Peer height observations expire and follow connection updates", "[led
     int second = 0;
     heights.Update(&first, 900, now);
     heights.Update(&second, 100, now + std::chrono::minutes(1));
+    uint32_t selected = 0;
+    REQUIRE(heights.Get(&first, selected, now + std::chrono::seconds(90),
+        std::chrono::seconds(90)));
+    REQUIRE(selected == 900);
+    REQUIRE_FALSE(heights.Get(&first, selected, now + std::chrono::seconds(91),
+        std::chrono::seconds(90)));
+    REQUIRE(heights.Max(now + std::chrono::seconds(91)) == 900);
     REQUIRE(heights.Max(now + PeerHeightTracker::MAX_AGE) == 900);
     REQUIRE(heights.Max(now + PeerHeightTracker::MAX_AGE + std::chrono::seconds(1)) == 100);
     heights.Update(&first, 80, now + PeerHeightTracker::MAX_AGE + std::chrono::seconds(1));
@@ -2683,6 +3065,246 @@ TEST_CASE("Peer height observations expire and follow connection updates", "[led
     REQUIRE(heights.Max(now + PeerHeightTracker::MAX_AGE + std::chrono::seconds(1)) == 80);
     heights.Remove(&first);
     REQUIRE(heights.Max(now + PeerHeightTracker::MAX_AGE + std::chrono::seconds(1)) == 0);
+}
+
+TEST_CASE("Peer best retry is bounded and expires without fresh advertisements",
+    "[ledger][process][bestchain][retry]")
+{
+    LLP::PeerBestRetry retry;
+    const auto now = LLP::PeerBestRetry::Clock::now();
+    REQUIRE(retry.RefreshDue(now));
+    REQUIRE_FALSE(retry.RefreshDue(now + LLP::PeerBestRetry::INTERVAL - std::chrono::seconds(1)));
+    REQUIRE(retry.RefreshDue(now + LLP::PeerBestRetry::INTERVAL));
+    REQUIRE_FALSE(retry.Due(now));
+    retry.Observe(now);
+    REQUIRE_FALSE(retry.Due(now + LLP::PeerBestRetry::INTERVAL - std::chrono::seconds(1)));
+    REQUIRE(retry.Due(now + LLP::PeerBestRetry::INTERVAL));
+    REQUIRE_FALSE(retry.Due(now + LLP::PeerBestRetry::INTERVAL));
+    retry.Observe(now + LLP::PeerBestRetry::INTERVAL + std::chrono::seconds(1));
+    REQUIRE_FALSE(retry.Due(now + 2 * LLP::PeerBestRetry::INTERVAL - std::chrono::seconds(1)));
+    REQUIRE(retry.Due(now + 2 * LLP::PeerBestRetry::INTERVAL));
+    const auto expired = now + LLP::PeerBestRetry::MAX_AGE
+                       + LLP::PeerBestRetry::INTERVAL + std::chrono::seconds(2);
+    REQUIRE_FALSE(retry.Due(expired));
+    retry.Observe(expired);
+    REQUIRE(retry.Due(expired));
+    retry.Reset();
+    REQUIRE(retry.RefreshDue(now));
+    REQUIRE_FALSE(retry.Due(now + LLP::PeerBestRetry::MAX_AGE + 2 * LLP::PeerBestRetry::INTERVAL));
+}
+
+#ifndef WIN32
+TEST_CASE("Idle peer retries an unknown shorter best chain",
+    "[ledger][process][bestchain][retry]")
+{
+    LedgerGuard env;
+    const uint32_t savedHeight = TAO::Ledger::ChainState::nBestHeight.load();
+    const bool savedSynchronized = LLP::TritiumNode::fSynchronized.load();
+    TAO::Ledger::ChainState::nBestHeight.store(1000);
+    LLP::TritiumNode::fSynchronized.store(false);
+    TAO::Ledger::mapLastOrphanRequest.clear();
+
+    int fds[2] = {-1, -1};
+    REQUIRE(socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == 0);
+    REQUIRE(fcntl(fds[1], F_SETFL, O_NONBLOCK) == 0);
+    LLP::TritiumNode node;
+    node.fd = fds[1];
+    node.events = POLLIN;
+    node.nCurrentSession = 1;
+    node.nProtocolVersion = LLP::PROTOCOL_VERSION;
+    node.nLastPing.store(runtime::unifiedtimestamp());
+    node.Subscribe(LLP::TritiumNode::SUBSCRIPTION::BESTCHAIN
+                 | LLP::TritiumNode::SUBSCRIPTION::BESTHEIGHT);
+
+    const uint1024_t tip(0xBC01000000000135ULL);
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(tip));
+    DataStream payload(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    payload << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << uint32_t(500)
+            << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << tip;
+    node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+    node.INCOMING.DATA.assign(payload.begin(), payload.end());
+    REQUIRE(node.ProcessPacket());
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(tip) == 0);
+
+    uint8_t sent[65536];
+    while(recv(fds[0], sent, sizeof(sent), MSG_DONTWAIT) > 0) {}
+    node.MakePeerBestRetryDueForTests();
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(tip) == 1);
+    REQUIRE(recv(fds[0], sent, sizeof(sent), MSG_DONTWAIT) > 0);
+    TAO::Ledger::mapLastOrphanRequest.clear();
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.empty());
+    node.MakePeerBestRetryDueForTests();
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(tip) == 1);
+    REQUIRE(recv(fds[0], sent, sizeof(sent), MSG_DONTWAIT) > 0);
+
+    TAO::Ledger::ChainState::ForgetPeerHeight(&node);
+    TAO::Ledger::mapLastOrphanRequest.clear();
+    TAO::Ledger::ChainState::nBestHeight.store(savedHeight);
+    LLP::TritiumNode::fSynchronized.store(savedSynchronized);
+    node.fd = -1;
+    close(fds[0]);
+    close(fds[1]);
+}
+#endif
+
+TEST_CASE("Coinbase credits are deferred until the next block can include them",
+    "[ledger][mempool][coinbase-maturity]")
+{
+    using namespace TAO::Ledger;
+    using namespace TAO::Operation;
+
+    const bool unconfirmedPredecessor = GENERATE(false, true);
+    const uint32_t savedHeight = ChainState::nBestHeight.load();
+    const uint256_t genesis = Credentials::Genesis(
+        std::string("coinbase-maturity-" + std::to_string(LLC::GetRand())).c_str());
+    const uint512_t key1 = LLC::GetRand512();
+    const uint512_t key2 = LLC::GetRand512();
+    const uint512_t key3 = LLC::GetRand512();
+    const uint512_t key4 = LLC::GetRand512();
+    const TAO::Register::Address account(TAO::Register::Address::ACCOUNT);
+    const TAO::Register::Address otherAccount(TAO::Register::Address::ACCOUNT);
+
+    BlockState coinbaseBlock;
+    coinbaseBlock.nHeight = 100;
+    coinbaseBlock.nVersion = 7;
+    coinbaseBlock.nChannel = 2;
+    coinbaseBlock.nBits = 1;
+    const uint1024_t blockHash = coinbaseBlock.GetHash();
+    REQUIRE(LLD::Ledger->WriteBlock(blockHash, coinbaseBlock));
+
+    Transaction coinbase;
+    coinbase.hashGenesis = genesis;
+    coinbase.nSequence = 0;
+    coinbase.nKeyType = SIGNATURE::BRAINPOOL;
+    coinbase.nNextType = SIGNATURE::BRAINPOOL;
+    coinbase.NextHash(key2);
+    coinbase[0] << uint8_t(OP::COINBASE) << genesis << uint64_t(1000) << uint64_t(0);
+    REQUIRE(coinbase.Build());
+    coinbase.Sign(key1);
+    REQUIRE(coinbase.Connect(FLAGS::BLOCK));
+    REQUIRE(LLD::Ledger->WriteTx(coinbase.GetHash(), coinbase));
+    REQUIRE(LLD::Ledger->IndexBlock(coinbase.GetHash(), blockHash));
+
+    Transaction create;
+    create.hashGenesis = genesis;
+    create.nSequence = 1;
+    create.hashPrevTx = coinbase.GetHash();
+    create.nKeyType = SIGNATURE::BRAINPOOL;
+    create.nNextType = SIGNATURE::BRAINPOOL;
+    create.NextHash(key3);
+    const TAO::Register::Object object = TAO::Register::CreateAccount(0);
+    create[0] << uint8_t(OP::CREATE) << account
+              << uint8_t(TAO::Register::REGISTER::OBJECT) << object.GetState();
+    REQUIRE(create.Build());
+    create.Sign(key2);
+    if(unconfirmedPredecessor)
+        REQUIRE(mempool.Accept(create));
+    else
+    {
+        REQUIRE(create.Connect(FLAGS::BLOCK));
+        REQUIRE(LLD::Ledger->WriteTx(create.GetHash(), create));
+    }
+
+    Transaction credit;
+    credit.hashGenesis = genesis;
+    credit.nSequence = 2;
+    credit.hashPrevTx = create.GetHash();
+    credit.nKeyType = SIGNATURE::BRAINPOOL;
+    credit.nNextType = SIGNATURE::BRAINPOOL;
+    credit.NextHash(key4);
+    credit[0] << uint8_t(OP::CREDIT) << coinbase.GetHash() << uint32_t(0)
+              << account << genesis << uint64_t(1000);
+    REQUIRE(credit.Build());
+    credit.Sign(key3);
+
+    const uint32_t maturity = MaturityCoinBase(coinbaseBlock);
+    REQUIRE(maturity > 3);
+    ChainState::nBestHeight.store(coinbaseBlock.nHeight + maturity - 4);
+    BlockState candidate = coinbaseBlock;
+    candidate.nHeight = ChainState::nBestHeight.load() + 1;
+    REQUIRE(LLD::TxnBegin(FLAGS::BLOCK));
+    if(unconfirmedPredecessor)
+    {
+        REQUIRE(create.Connect(FLAGS::BLOCK));
+        REQUIRE(LLD::Ledger->WriteTx(create.GetHash(), create));
+    }
+    REQUIRE_FALSE(credit.Connect(FLAGS::BLOCK, &candidate));
+    LLD::TxnAbort(FLAGS::BLOCK);
+    REQUIRE(TakeLastConnectClass() == AdmissibilityClass::UNKNOWN);
+    REQUIRE_FALSE(mempool.Accept(credit));
+    REQUIRE_FALSE(mempool.Rejected(credit.GetHash()));
+    Transaction found;
+    bool conflicted = false;
+    REQUIRE(mempool.Get(credit.GetHash(), found, conflicted));
+    REQUIRE(conflicted);
+
+    Transaction child;
+    child.hashGenesis = genesis;
+    child.nSequence = 3;
+    child.hashPrevTx = credit.GetHash();
+    child.nKeyType = SIGNATURE::BRAINPOOL;
+    child.nNextType = SIGNATURE::BRAINPOOL;
+    child.NextHash(LLC::GetRand512());
+    child[0] << uint8_t(OP::CREATE) << otherAccount
+             << uint8_t(TAO::Register::REGISTER::OBJECT) << object.GetState();
+    REQUIRE(child.Build());
+    child.Sign(key4);
+    REQUIRE_FALSE(mempool.Accept(child));
+    conflicted = false;
+    REQUIRE(mempool.Get(child.GetHash(), found, conflicted));
+    REQUIRE(conflicted);
+
+    mempool.Check();
+    REQUIRE(mempool.Get(credit.GetHash(), found, conflicted));
+    REQUIRE(conflicted);
+    REQUIRE(mempool.Get(child.GetHash(), found, conflicted));
+    REQUIRE(conflicted);
+
+    ChainState::nBestHeight.store(coinbaseBlock.nHeight + maturity - 3);
+    candidate.nHeight = ChainState::nBestHeight.load() + 1;
+    REQUIRE(LLD::TxnBegin(FLAGS::BLOCK));
+    if(unconfirmedPredecessor)
+    {
+        REQUIRE(create.Connect(FLAGS::BLOCK));
+        REQUIRE(LLD::Ledger->WriteTx(create.GetHash(), create));
+    }
+    REQUIRE(credit.Connect(FLAGS::BLOCK, &candidate));
+    LLD::TxnAbort(FLAGS::BLOCK);
+    mempool.Check();
+    conflicted = false;
+    REQUIRE(mempool.Get(credit.GetHash(), found, conflicted));
+    REQUIRE_FALSE(conflicted);
+    REQUIRE(mempool.Get(child.GetHash(), found, conflicted));
+    REQUIRE_FALSE(conflicted);
+
+    REQUIRE(LLD::TxnBegin(FLAGS::MEMPOOL));
+    REQUIRE(child.Disconnect(FLAGS::MEMPOOL));
+    REQUIRE(LLD::TxnCommit(FLAGS::MEMPOOL));
+    REQUIRE(mempool.Remove(child.GetHash()));
+    REQUIRE(LLD::TxnBegin(FLAGS::MEMPOOL));
+    REQUIRE(credit.Disconnect(FLAGS::MEMPOOL));
+    REQUIRE(LLD::TxnCommit(FLAGS::MEMPOOL));
+    REQUIRE(mempool.Remove(credit.GetHash()));
+    if(unconfirmedPredecessor)
+    {
+        REQUIRE(LLD::TxnBegin(FLAGS::MEMPOOL));
+        REQUIRE(create.Disconnect(FLAGS::MEMPOOL));
+        REQUIRE(LLD::TxnCommit(FLAGS::MEMPOOL));
+        REQUIRE(mempool.Remove(create.GetHash()));
+    }
+    REQUIRE(LLD::Ledger->EraseIndex(coinbase.GetHash()));
+    REQUIRE(LLD::Ledger->EraseTx(coinbase.GetHash()));
+    if(!unconfirmedPredecessor)
+        REQUIRE(LLD::Ledger->EraseTx(create.GetHash()));
+    REQUIRE(LLD::Ledger->EraseLast(genesis));
+    REQUIRE(LLD::Ledger->EraseFirst(genesis));
+    REQUIRE(LLD::Ledger->EraseBlock(blockHash));
+    if(!unconfirmedPredecessor)
+        REQUIRE(LLD::Register->EraseState(account));
+    ChainState::nBestHeight.store(savedHeight);
 }
 
 TEST_CASE("Tritium disconnect removes its peer height observation", "[ledger][process][peer-height]")
