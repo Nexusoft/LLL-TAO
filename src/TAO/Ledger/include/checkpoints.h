@@ -16,8 +16,10 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEDGER_INCLUDE_CHECKPOINTS_H
 
 #include <map>
+#include <vector>
 
 #include <LLC/types/uint1024.h>
+#include <TAO/Ledger/types/state.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -61,6 +63,14 @@ namespace TAO
          *
          **/
         bool HardenCheckpoint(const BlockState& state);
+
+
+        /** Harden checkpoints crossed by connected blocks, in connection order.
+         *
+         *  @param[in] vConnect The connected block states in descending order.
+         *
+         **/
+        void HardenConnectedCheckpoints(const std::vector<BlockState>& vConnect);
 
 
         /** Checkpoint Height.

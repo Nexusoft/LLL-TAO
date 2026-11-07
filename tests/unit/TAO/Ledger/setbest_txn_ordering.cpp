@@ -1355,11 +1355,7 @@ TEST_CASE("Checkpoint hardening preserves an intermediate connected block's time
     /* SetBest stores vConnect in descending order and visits every parent
      * in ascending connection order after the chain transaction commits. */
     std::vector<TAO::Ledger::BlockState> vConnect{blocks[4], blocks[3], blocks[2]};
-    size_t hardened = 0;
-    for(auto state = vConnect.rbegin(); state != vConnect.rend(); ++state)
-        hardened += TAO::Ledger::HardenCheckpoint(state->Prev()) ? 1 : 0;
-
-    REQUIRE(hardened == 1);
+    TAO::Ledger::HardenConnectedCheckpoints(vConnect);
     REQUIRE(TAO::Ledger::ChainState::hashCheckpoint.load() == blocks[0].GetHash());
     REQUIRE(TAO::Ledger::ChainState::nCheckpointHeight.load() == blocks[0].nHeight);
 }
