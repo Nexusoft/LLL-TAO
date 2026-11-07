@@ -2705,7 +2705,7 @@ namespace LLP
                             const uint1024_t hashLocalBest = TAO::Ledger::ChainState::hashBestChain.load();
                             if(hashPreviousBest != 0 && hashPreviousBest == hashLocalBest)
                                 m_peerBestRetry.Resolved();
-                            m_peerBestRetry.Observe();
+                            m_peerBestRetry.Observe(hashPreviousBest != hashBestChain);
                             if(hashBestChain == hashLocalBest)
                                 m_peerBestRetry.Resolved();
                             fBestChainObserved = true;

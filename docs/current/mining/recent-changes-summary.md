@@ -10,6 +10,9 @@
 This document catalogs all significant mining infrastructure changes for future
 developers.  Changes are organized by area rather than chronologically.
 
+For the integrated runtime flow and source map covering PRs #728–#733, see
+[PeerRecovery, PeerBestRetry and ChainState::MiningReadiness](../node/PeerRecovery-PeerBestRetry-ChainState.rst).
+
 ---
 
 ## Peer Recovery and Mining Readiness (PRs #728–#730)
@@ -73,9 +76,9 @@ format are unchanged.
 
 With `-peerbestchainrecovery`, unknown tips, including shorter branches, are
 retried at most once per 30 seconds until 30 minutes after the last best-chain
-advertisement. Newly unresolved tips receive a 30-second retry grace period;
-hash changes do not extend body or branch retry deadlines until the advertised
-tip is resolved as the local best. Near-tip
+advertisement. Changed advertised hashes receive a fresh 30-second branch retry
+grace period and five-second body retry interval; repeated reports of the same
+hash do not extend either deadline. Near-tip
 unknowns are fetched as blocks first, while orphan and larger-gap recovery
 remains immediate. Fetching is not activation: local validation and chain weight
 remain authoritative. Height-only updates do not refresh best-tip evidence.

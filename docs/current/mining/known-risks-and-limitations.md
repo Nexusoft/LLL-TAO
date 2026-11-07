@@ -110,9 +110,10 @@ weight.
 
 When `-peerbestchainrecovery` is enabled, a connected peer's unresolved best
 tip is retried at most once per 30 seconds, including an unknown shorter tip.
-Each newly unresolved tip gets a 30-second opportunity to arrive before an
-idle retry; neither repeated nor changed hashes restart the body or branch retry
-timers until the advertised tip is resolved as the local best.
+Each changed advertised hash gets a 30-second opportunity to arrive before an
+idle branch retry and a fresh five-second body retry interval; repeated reports
+of the same hash do not restart either timer. Continually changing unknown tips
+can postpone idle retries; orphan and larger-gap recovery remain immediate.
 Near-tip unknowns are requested directly as blocks, including when a refresh
 contains no block inventory. Orphans and larger gaps still enter branch recovery.
 Retries stop 30 minutes after the last best-chain advertisement. A successful

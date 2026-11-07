@@ -84,15 +84,15 @@ TEST_CASE("Block retries do not expedite the branch recovery deadline",
     LLP::PeerBestRetry retry;
     const auto now = LLP::PeerBestRetry::Clock::now();
     REQUIRE_FALSE(retry.BlockDue(now));
-    retry.Observe(now);
+    retry.Observe(true, now);
     for(unsigned int seconds = 1; seconds <= 30; ++seconds)
     {
         const auto tick = now + std::chrono::seconds(seconds);
-        retry.Observe(tick);
+        retry.Observe(false, tick);
         REQUIRE(retry.BlockDue(tick) == (seconds % 5 == 0));
         REQUIRE(retry.Due(tick) == (seconds == 30));
     }
-    retry.Observe(now + std::chrono::seconds(31));
+    retry.Observe(false, now + std::chrono::seconds(31));
     REQUIRE(retry.BlockDue(now + std::chrono::seconds(35)));
     REQUIRE_FALSE(retry.BlockDue(now + std::chrono::seconds(36)));
     REQUIRE(retry.Due(now + std::chrono::seconds(60)));
@@ -101,25 +101,37 @@ TEST_CASE("Block retries do not expedite the branch recovery deadline",
     REQUIRE_FALSE(retry.BlockDue(now + std::chrono::seconds(100)));
 }
 
-TEST_CASE("Changing unresolved peer tips cannot postpone body or branch retries",
+TEST_CASE("Changed peer tips reset body and branch grace without resetting report refresh",
     "[llp][peer-recovery][block-requests]")
 {
     LLP::PeerBestRetry retry;
     const auto now = LLP::PeerBestRetry::Clock::now();
-    retry.Observe(now);
-    for(unsigned int seconds = 1; seconds <= 90; ++seconds)
-    {
-        const auto tick = now + std::chrono::seconds(seconds);
-        retry.Observe(tick);
-        REQUIRE(retry.BlockDue(tick) == (seconds % 5 == 0));
-        REQUIRE(retry.Due(tick) == (seconds % 30 == 0));
-    }
+    retry.Observe(true, now);
+    REQUIRE(retry.RefreshDue(now));
+    const auto changed = now + std::chrono::seconds(31);
+    retry.Observe(true, changed);
+    REQUIRE_FALSE(retry.BlockDue(changed));
+    REQUIRE_FALSE(retry.Due(changed));
+    REQUIRE(retry.RefreshDue(changed));
+    retry.Observe(false, changed + std::chrono::seconds(4));
+    REQUIRE_FALSE(retry.BlockDue(changed + std::chrono::seconds(4)));
+    REQUIRE(retry.BlockDue(changed + std::chrono::seconds(5)));
+    REQUIRE_FALSE(retry.Due(changed + std::chrono::seconds(29)));
+    retry.Observe(false, changed + std::chrono::seconds(29));
+    REQUIRE(retry.Due(changed + std::chrono::seconds(30)));
+    retry.Observe(true, changed + std::chrono::seconds(30));
+    REQUIRE_FALSE(retry.BlockDue(changed + std::chrono::seconds(30)));
+    REQUIRE_FALSE(retry.Due(changed + std::chrono::seconds(30)));
+    REQUIRE(retry.RefreshDue(changed + std::chrono::seconds(30)));
+    retry.Observe(true, changed + std::chrono::seconds(31));
+    REQUIRE_FALSE(retry.RefreshDue(changed + std::chrono::seconds(31)));
+    REQUIRE(retry.RefreshDue(changed + std::chrono::seconds(60)));
 
     retry.Resolved();
-    REQUIRE(retry.Fresh(now + std::chrono::seconds(90)));
+    REQUIRE(retry.Fresh(now + std::chrono::seconds(91)));
     REQUIRE_FALSE(retry.BlockDue(now + std::chrono::seconds(100)));
     REQUIRE_FALSE(retry.Due(now + std::chrono::seconds(120)));
-    retry.Observe(now + std::chrono::seconds(120));
+    retry.Observe(false, now + std::chrono::seconds(120));
     REQUIRE_FALSE(retry.BlockDue(now + std::chrono::seconds(124)));
     REQUIRE(retry.BlockDue(now + std::chrono::seconds(125)));
     REQUIRE_FALSE(retry.Due(now + std::chrono::seconds(149)));
