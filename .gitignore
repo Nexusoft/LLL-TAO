@@ -20,3 +20,4 @@ nexus
 /.settings/
 _codeql_detected_source_root
 build.err
+/build/compiler-scratch/
