@@ -602,7 +602,7 @@ namespace LLP
         void MakePeerBestRetryDueForTests()
         {
             m_peerBestRetry.Reset();
-            m_peerBestRetry.Observe(false, PeerBestRetry::Clock::now() - PeerBestRetry::INTERVAL);
+            m_peerBestRetry.Observe(PeerBestRetry::Clock::now() - PeerBestRetry::INTERVAL);
         }
 #endif
 

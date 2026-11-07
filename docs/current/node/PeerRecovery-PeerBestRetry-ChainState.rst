@@ -89,8 +89,8 @@ which chain is best; local block validation and chain weight remain authoritativ
 
     BESTCHAIN(hash)
       |
-      +-- changed hash ---- Observe(true): fresh body and branch deadlines
-      +-- same hash ------- Observe(false): refresh age, preserve deadlines
+      +-- first mismatch -- Observe(): initialize body and branch deadlines
+      +-- still mismatched- Observe(): refresh age, preserve deadlines
       +-- local best ------ Resolved(): disable body and branch retries
       |
       +-- unknown, not orphan, peer at/ahead within one height
@@ -105,18 +105,27 @@ which chain is best; local block validation and chain weight remain authoritativ
              Due at 30s ---> branch recovery, including unknown shorter tips
 
 The five-second body interval and 30-second branch grace are independent.
-Changing unresolved tip A to B gives B its own deadlines, even if A was overdue.
-Repeated B announcements cannot postpone B's retry. Report-refresh scheduling
-is independent of both timers; retries expire 30 minutes after the last
-BESTCHAIN observation. Continually changing unknown tips can postpone idle
-escalation; orphan and larger-gap notification recovery are not grace-delayed.
+Changing unresolved tip A to B preserves A's deadlines, even if A was overdue.
+Repeated reports and hash churn cannot postpone retries during a continuous
+mismatch. Resolution as the local best enables a fresh grace period for the
+next mismatch. Report-refresh scheduling is independent of both timers; retries
+expire 30 minutes after the last BESTCHAIN observation. Orphan and larger-gap
+notification recovery are not grace-delayed.
 
 ``QueueBlockGet`` shares ``BlockInventoryRequests`` with inventory handling.
-Reservations are atomic per hash/peer, expire after five seconds, and are bounded
-to 4096 hashes and 32 peers per hash. Different peers can each hold a reservation
-for the same hash; this is not a global one-request-per-hash prohibition.
-Failed/throwing sends, block responses and peer teardown release reservations.
-Client GETs include ``SPECIFIER::CLIENT``.
+Reservations are atomic per hash/peer and expire after five seconds. Each of at
+most 512 tracked peers can reserve eight hashes, bounding active entries to
+4096; a hash can be requested from at most 32 peers. One peer cannot consume
+another's active quota. Different peers can each hold a reservation for the same
+hash; this is not a global one-request-per-hash prohibition.
+
+Capacity and duplicate results are distinct. Capacity-limited inventory enters
+a bounded per-peer queue of 128 hashes and retries on generic events at
+five-second intervals, without requiring a BESTCHAIN announcement. Failed
+inventory sends remain queued for retry; queue/tracked-peer exhaustion is an
+explicit connection failure, not a silently discarded notification. Block
+responses and peer teardown remove tracking. Client GETs include
+``SPECIFIER::CLIENT``.
 
 Branch recovery uses the coordinator's throttle and result enum, preserving
 ``SPECIFIER::TRANSACTIONS`` on post-sync LIST requests. Queued/throttled recovery
@@ -144,9 +153,17 @@ block identity before publishing it, including the atomic overload.
 Journal replay also preserves erase-then-write ordering: subsequent writes
 remove their keys from ``setErasedData`` so the later write survives.
 **This is not crash-safe cross-database atomicity.** ``LLD::TxnCommit`` commits
-databases separately and releases journals even after partial failure; recovery
-still requires complete consensus journals. A coordinated durable commit and
-recovery protocol remains outstanding.
+databases separately. Owned physical commits create a ``commit-incomplete``
+directory in the data directory before applying changes. A checkpoint, commit,
+release or marker-removal failure requests shutdown, rejects subsequent
+transaction begins and best-chain transitions, and retains the marker and
+remaining journals rather than publishing an unconfirmed tip. Restart refuses
+the marker before journal recovery can discard evidence. Journal replay commit
+failures also retain the fence and stop startup. Restore a known-good
+backup or rebuild the chain databases; do not simply remove the marker and
+assume the databases agree. Successful commits release journals and remove the
+marker. This conservative fence does not add fsync guarantees or coordinated
+durable recovery; a crash-safe cross-database protocol remains outstanding.
 
 5. ChainState::MiningReadiness: fence work against the committed tip
 ------------------------------------------------------------------

@@ -41,20 +41,66 @@ TEST_CASE("Block GET reservations expire without duplicate deadline extension",
     REQUIRE_FALSE(requests.Contains(hash, &other, now + std::chrono::seconds(5)));
 }
 
-TEST_CASE("Block GET reservations bound hashes and peers and prune expired capacity",
+TEST_CASE("Block GET reservations partition capacity fairly and prune expired capacity",
     "[llp][peer-recovery][block-requests]")
 {
     LLP::BlockInventoryRequests requests;
     const auto now = LLP::BlockInventoryRequests::Clock::now();
-    int peers[LLP::BlockInventoryRequests::MAX_PEERS_PER_HASH + 1]{};
+    using Requests = LLP::BlockInventoryRequests;
+    int peers[Requests::MAX_PEERS + 1]{};
     for(size_t i = 0; i < LLP::BlockInventoryRequests::MAX_PEERS_PER_HASH; ++i)
         REQUIRE(requests.Add(uint1024_t(1), &peers[i], now));
     REQUIRE_FALSE(requests.Add(uint1024_t(1), &peers[LLP::BlockInventoryRequests::MAX_PEERS_PER_HASH], now));
-    for(size_t i = 2; i <= LLP::BlockInventoryRequests::MAX_HASHES; ++i)
+    for(size_t i = 2; i <= Requests::MAX_HASHES_PER_PEER; ++i)
         REQUIRE(requests.Add(uint1024_t(i), &peers[0], now));
-    REQUIRE_FALSE(requests.Add(uint1024_t(LLP::BlockInventoryRequests::MAX_HASHES + 1), &peers[0], now));
-    REQUIRE(requests.Add(uint1024_t(LLP::BlockInventoryRequests::MAX_HASHES + 1),
+    REQUIRE(requests.Reserve(uint1024_t(1), &peers[0], now) == Requests::Result::Duplicate);
+    REQUIRE(requests.Reserve(uint1024_t(99), &peers[0], now) == Requests::Result::Capacity);
+    REQUIRE(requests.Add(uint1024_t(99), &peers[Requests::MAX_PEERS_PER_HASH], now));
+    REQUIRE(requests.Add(uint1024_t(99),
         &peers[0], now + LLP::BlockInventoryRequests::TIMEOUT));
+
+    Requests full;
+    for(size_t p = 0; p < Requests::MAX_PEERS; ++p)
+        for(size_t h = 0; h < Requests::MAX_HASHES_PER_PEER; ++h)
+            REQUIRE(full.Add(uint1024_t(1 + p * Requests::MAX_HASHES_PER_PEER + h), &peers[p], now));
+    REQUIRE(full.Reserve(uint1024_t(9999), &peers[Requests::MAX_PEERS], now) == Requests::Result::Capacity);
+    REQUIRE_FALSE(full.Defer(uint1024_t(9999), &peers[Requests::MAX_PEERS], now));
+    full.RemovePeer(&peers[0]);
+    REQUIRE(full.Add(uint1024_t(9999), &peers[Requests::MAX_PEERS], now));
+}
+
+TEST_CASE("Inventory-only capacity deferrals retry in bounded FIFO batches",
+    "[llp][peer-recovery][block-requests]")
+{
+    using Requests = LLP::BlockInventoryRequests;
+    Requests requests;
+    int peer = 0, other = 0;
+    const auto now = Requests::Clock::now();
+    for(size_t i = 0; i < Requests::MAX_HASHES_PER_PEER; ++i)
+        REQUIRE(requests.Add(uint1024_t(i + 1), &peer, now));
+    for(size_t i = 0; i < Requests::MAX_PENDING_PER_PEER; ++i)
+        REQUIRE(requests.Defer(uint1024_t(i + 100), &peer, now));
+    REQUIRE(requests.Defer(uint1024_t(100), &peer, now + std::chrono::seconds(4)));
+    REQUIRE_FALSE(requests.Defer(uint1024_t(9999), &peer, now));
+    REQUIRE(requests.Add(uint1024_t(9999), &other, now));
+    REQUIRE(requests.Defer(uint1024_t(10000), &other, now));
+    REQUIRE(requests.Pending(&peer, now + std::chrono::seconds(4)).empty());
+    const auto due = now + Requests::TIMEOUT;
+    const auto pending = requests.Pending(&peer, due);
+    REQUIRE(pending.size() == Requests::MAX_PENDING_PER_PEER);
+    REQUIRE(pending.front() == uint1024_t(100));
+    REQUIRE(requests.Pending(&peer, due).empty());
+    size_t queued = 0;
+    for(const auto& hash : pending)
+        if(requests.Reserve(hash, &peer, due) == Requests::Result::Added)
+            ++queued;
+    REQUIRE(queued == Requests::MAX_HASHES_PER_PEER);
+    const auto next = requests.Pending(&peer, due + Requests::TIMEOUT);
+    REQUIRE(next.size() == Requests::MAX_PENDING_PER_PEER - queued);
+    REQUIRE(next.front() == uint1024_t(100 + queued));
+    requests.RemovePeer(&peer);
+    REQUIRE(requests.Pending(&peer, due + Requests::TIMEOUT * 2).empty());
+    REQUIRE(requests.Pending(&other, due).size() == 1);
 }
 
 TEST_CASE("Concurrent block GET reservations deduplicate each peer independently",
@@ -84,15 +130,15 @@ TEST_CASE("Block retries do not expedite the branch recovery deadline",
     LLP::PeerBestRetry retry;
     const auto now = LLP::PeerBestRetry::Clock::now();
     REQUIRE_FALSE(retry.BlockDue(now));
-    retry.Observe(true, now);
+    retry.Observe(now);
     for(unsigned int seconds = 1; seconds <= 30; ++seconds)
     {
         const auto tick = now + std::chrono::seconds(seconds);
-        retry.Observe(false, tick);
+        retry.Observe(tick);
         REQUIRE(retry.BlockDue(tick) == (seconds % 5 == 0));
         REQUIRE(retry.Due(tick) == (seconds == 30));
     }
-    retry.Observe(false, now + std::chrono::seconds(31));
+    retry.Observe(now + std::chrono::seconds(31));
     REQUIRE(retry.BlockDue(now + std::chrono::seconds(35)));
     REQUIRE_FALSE(retry.BlockDue(now + std::chrono::seconds(36)));
     REQUIRE(retry.Due(now + std::chrono::seconds(60)));
@@ -101,37 +147,27 @@ TEST_CASE("Block retries do not expedite the branch recovery deadline",
     REQUIRE_FALSE(retry.BlockDue(now + std::chrono::seconds(100)));
 }
 
-TEST_CASE("Changed peer tips reset body and branch grace without resetting report refresh",
+TEST_CASE("Continuously unresolved peer tips retain bounded body and branch deadlines",
     "[llp][peer-recovery][block-requests]")
 {
     LLP::PeerBestRetry retry;
     const auto now = LLP::PeerBestRetry::Clock::now();
-    retry.Observe(true, now);
+    retry.Observe(now);
     REQUIRE(retry.RefreshDue(now));
-    const auto changed = now + std::chrono::seconds(31);
-    retry.Observe(true, changed);
-    REQUIRE_FALSE(retry.BlockDue(changed));
-    REQUIRE_FALSE(retry.Due(changed));
-    REQUIRE(retry.RefreshDue(changed));
-    retry.Observe(false, changed + std::chrono::seconds(4));
-    REQUIRE_FALSE(retry.BlockDue(changed + std::chrono::seconds(4)));
-    REQUIRE(retry.BlockDue(changed + std::chrono::seconds(5)));
-    REQUIRE_FALSE(retry.Due(changed + std::chrono::seconds(29)));
-    retry.Observe(false, changed + std::chrono::seconds(29));
-    REQUIRE(retry.Due(changed + std::chrono::seconds(30)));
-    retry.Observe(true, changed + std::chrono::seconds(30));
-    REQUIRE_FALSE(retry.BlockDue(changed + std::chrono::seconds(30)));
-    REQUIRE_FALSE(retry.Due(changed + std::chrono::seconds(30)));
-    REQUIRE(retry.RefreshDue(changed + std::chrono::seconds(30)));
-    retry.Observe(true, changed + std::chrono::seconds(31));
-    REQUIRE_FALSE(retry.RefreshDue(changed + std::chrono::seconds(31)));
-    REQUIRE(retry.RefreshDue(changed + std::chrono::seconds(60)));
+    for(unsigned int seconds = 1; seconds <= 90; ++seconds)
+    {
+        const auto tick = now + std::chrono::seconds(seconds);
+        retry.Observe(tick);
+        REQUIRE(retry.BlockDue(tick) == (seconds % 5 == 0));
+        REQUIRE(retry.Due(tick) == (seconds % 30 == 0));
+        REQUIRE(retry.RefreshDue(tick) == (seconds % 30 == 0));
+    }
 
     retry.Resolved();
     REQUIRE(retry.Fresh(now + std::chrono::seconds(91)));
     REQUIRE_FALSE(retry.BlockDue(now + std::chrono::seconds(100)));
     REQUIRE_FALSE(retry.Due(now + std::chrono::seconds(120)));
-    retry.Observe(false, now + std::chrono::seconds(120));
+    retry.Observe(now + std::chrono::seconds(120));
     REQUIRE_FALSE(retry.BlockDue(now + std::chrono::seconds(124)));
     REQUIRE(retry.BlockDue(now + std::chrono::seconds(125)));
     REQUIRE_FALSE(retry.Due(now + std::chrono::seconds(149)));

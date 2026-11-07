@@ -270,8 +270,9 @@ namespace LLP
 
     bool TritiumNode::QueueBlockGet(const uint1024_t& hash)
     {
-        if(!blockInventoryRequests.Add(hash, this))
-            return blockInventoryRequests.Contains(hash, this);
+        const auto reservation = blockInventoryRequests.Reserve(hash, this);
+        if(reservation != BlockInventoryRequests::Result::Added)
+            return reservation == BlockInventoryRequests::Result::Duplicate;
 
         try
         {
@@ -386,6 +387,39 @@ namespace LLP
 
             case EVENTS::GENERIC:
             {
+                if(nCurrentSession != 0 && !config::fSuspended.load())
+                {
+                    for(const auto& hash : blockInventoryRequests.Pending(this))
+                    {
+                        const bool known = config::fClient.load()
+                            ? LLD::Client->HasBlock(hash) : LLD::Ledger->HasBlock(hash);
+                        if(known)
+                        {
+                            blockInventoryRequests.Remove(hash, this);
+                            continue;
+                        }
+                        bool queued = false;
+                        try
+                        {
+                            queued = QueueBlockGet(hash);
+                        }
+                        catch(...)
+                        {
+                            blockInventoryRequests.Defer(hash, this);
+                            throw;
+                        }
+                        if(!queued)
+                        {
+                            if(!blockInventoryRequests.Defer(hash, this))
+                            {
+                                debug::notice(NODE, "block inventory retry capacity reached");
+                                Disconnect();
+                                return;
+                            }
+                        }
+                    }
+                }
+
                 /* Check if no version message within first 5 seconds. */
                 if(nCurrentSession == 0 && nLastPing + 10 < runtime::unifiedtimestamp())
                 {
@@ -2350,7 +2384,10 @@ namespace LLP
                     {
                         if(!queued)
                             for(const auto& hash : hashes)
+                            {
                                 blockInventoryRequests.Remove(hash, peer);
+                                blockInventoryRequests.Defer(hash, peer);
+                            }
                     }
                 } inventoryRollback{this, setBlockInventoryGets, fInventoryGetQueued};
 
@@ -2402,10 +2439,16 @@ namespace LLP
                                 if(!LLD::Client->HasBlock(hashBlock)
                                 && setBlockInventoryGets.insert(hashBlock).second)
                                 {
-                                    if(blockInventoryRequests.Add(hashBlock, this))
+                                    const auto reservation = blockInventoryRequests.Reserve(hashBlock, this);
+                                    if(reservation == BlockInventoryRequests::Result::Added)
                                         ssResponse << uint8_t(SPECIFIER::CLIENT) << uint8_t(TYPES::BLOCK) << hashBlock;
                                     else
+                                    {
                                         setBlockInventoryGets.erase(hashBlock);
+                                        if(reservation == BlockInventoryRequests::Result::Capacity
+                                        && !blockInventoryRequests.Defer(hashBlock, this))
+                                            return debug::drop(NODE, "block inventory capacity reached");
+                                    }
                                 }
 
                                 /* Debug output. */
@@ -2417,10 +2460,16 @@ namespace LLP
                                 if(!LLD::Ledger->HasBlock(hashBlock)
                                 && setBlockInventoryGets.insert(hashBlock).second)
                                 {
-                                    if(blockInventoryRequests.Add(hashBlock, this))
+                                    const auto reservation = blockInventoryRequests.Reserve(hashBlock, this);
+                                    if(reservation == BlockInventoryRequests::Result::Added)
                                         ssResponse << uint8_t(TYPES::BLOCK) << hashBlock;
                                     else
+                                    {
                                         setBlockInventoryGets.erase(hashBlock);
+                                        if(reservation == BlockInventoryRequests::Result::Capacity
+                                        && !blockInventoryRequests.Defer(hashBlock, this))
+                                            return debug::drop(NODE, "block inventory capacity reached");
+                                    }
                                 }
 
                                 /* Debug output. */
@@ -2705,7 +2754,7 @@ namespace LLP
                             const uint1024_t hashLocalBest = TAO::Ledger::ChainState::hashBestChain.load();
                             if(hashPreviousBest != 0 && hashPreviousBest == hashLocalBest)
                                 m_peerBestRetry.Resolved();
-                            m_peerBestRetry.Observe(hashPreviousBest != hashBestChain);
+                            m_peerBestRetry.Observe();
                             if(hashBestChain == hashLocalBest)
                                 m_peerBestRetry.Resolved();
                             fBestChainObserved = true;
@@ -2811,7 +2860,11 @@ namespace LLP
                 if(!fInventoryGetQueued)
                 {
                     for(const auto& hash : setBlockInventoryGets)
+                    {
                         blockInventoryRequests.Remove(hash, this);
+                        if(!blockInventoryRequests.Defer(hash, this))
+                            return debug::drop(NODE, "block inventory retry capacity reached");
+                    }
                     setBlockInventoryGets.clear();
                 }
 

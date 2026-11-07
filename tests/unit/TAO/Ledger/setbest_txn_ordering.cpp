@@ -23,10 +23,8 @@ ________________________________________________________________________________
  *  2. LLD::TxnCommit() returns true when all selected instances have active
  *     transactions that complete successfully.
  *
- *  3. All selected instances are attempted even when an earlier one fails — no
- *     short-circuit — confirmed by verifying that a later-selected instance with
- *     a valid transaction still has its data committed after the overall return
- *     value is false.
+ *  3. Checkpoint failure prevents disk commits; partial commit failure retains
+ *     journals and fences both further admission and restart.
  *
  * The TxnCommit return-value tests use inline simulation / ordering-assertion
  * infrastructure so that they compile and run without a live LLD database or
@@ -62,6 +60,7 @@ ________________________________________________________________________________
 #include <atomic>
 #include <chrono>
 #include <exception>
+#include <filesystem>
 #include <functional>
 #include <stdexcept>
 #include <string>
@@ -72,6 +71,24 @@ ________________________________________________________________________________
 
 namespace
 {
+    /* Failure tests deliberately trip the process-wide restart fence. Only
+     * tests may discard this evidence and resume using the fixture databases. */
+    struct CommitFailureCleanup
+    {
+        bool savedShutdown{config::fShutdown.load()};
+        ~CommitFailureCleanup()
+        {
+            if(LLD::Contract) LLD::Contract->TxnRelease();
+            if(LLD::Register) LLD::Register->TxnRelease();
+            if(LLD::Ledger) LLD::Ledger->TxnRelease();
+            if(LLD::Trust) LLD::Trust->TxnRelease();
+            if(LLD::Legacy) LLD::Legacy->TxnRelease();
+            std::error_code ec;
+            std::filesystem::remove(std::filesystem::path(config::GetDataDir()) / "commit-incomplete", ec);
+            config::fShutdown.store(savedShutdown);
+        }
+    };
+
     /*  Lightweight guard that creates a temporary LedgerDB when the global
      *  test suite hasn't initialized one.  On destruction it deletes only what
      *  it created, leaving the global state untouched if it was already set up. */
@@ -332,8 +349,9 @@ TEST_CASE("LLD::TxnCommit aggregates results: one failure makes overall false",
 {
     LedgerGuard ledgerGuard;
     TrustGuard  trustGuard;
+    CommitFailureCleanup cleanup;
 
-    SECTION("Ledger succeeds, released Trust transaction fails → overall false")
+    SECTION("A missing Trust checkpoint stops before any disk commit")
     {
         /* Open both selected transactions, then remove Trust's transaction so
          * its commit fails while Ledger still commits successfully. */
@@ -343,29 +361,65 @@ TEST_CASE("LLD::TxnCommit aggregates results: one failure makes overall false",
         /* Aggregated result must include Trust's commit failure. */
         const bool fResult = LLD::TxnCommit(0, LLD::INSTANCES::LEDGER | LLD::INSTANCES::TRUST);
         REQUIRE_FALSE(fResult);
+        REQUIRE(config::fShutdown.load());
+        REQUIRE(LLD::Ledger->HasTransaction());
+        REQUIRE_FALSE(LLD::TxnBegin(0, LLD::INSTANCES::LEDGER));
     }
 
-    SECTION("No short-circuit: Ledger commits despite the released Trust transaction")
+    SECTION("Ledger commits before an invalid Trust index fails and restart is fenced")
     {
-        /* Open both selected transactions, then remove Trust's transaction so
-         * its commit fails while Ledger still commits successfully. */
-        LLD::TxnBegin(0, LLD::INSTANCES::LEDGER | LLD::INSTANCES::TRUST);
-        LLD::Trust->TxnRelease();
+        REQUIRE(LLD::TxnBegin(0, LLD::INSTANCES::LEDGER | LLD::INSTANCES::TRUST));
+        const std::string missing = "txncommit-missing-index-target";
+        REQUIRE_FALSE(LLD::Trust->Exists(missing));
+        REQUIRE(LLD::Trust->Index(std::string("txncommit-invalid-index"), missing));
 
-        /* Ledger MUST still be committed — no short-circuit allowed. */
         const bool fResult = LLD::TxnCommit(0, LLD::INSTANCES::LEDGER | LLD::INSTANCES::TRUST);
-        REQUIRE_FALSE(fResult); /* overall false because Trust failed */
-
-        /* After the call, opening a fresh transaction on Ledger must succeed
-         * cleanly.  If TxnCommit had short-circuited before reaching Ledger,
-         * Ledger->pTransaction would still be set (left over from TxnBegin) and
-         * TxnRelease would not have run for it.  TxnBegin internally deletes any
-         * stale pTransaction, so we verify by immediately committing the empty new
-         * transaction — this must return true (a valid empty transaction). */
-        LLD::TxnBegin(0, LLD::INSTANCES::LEDGER);
-        const bool fSecondCommit = LLD::TxnCommit(0, LLD::INSTANCES::LEDGER);
-        REQUIRE(fSecondCommit);
+        REQUIRE_FALSE(fResult);
+        REQUIRE_FALSE(LLD::Ledger->HasTransaction());
+        REQUIRE(LLD::Trust->HasTransaction());
+        REQUIRE(config::fShutdown.load());
+        REQUIRE_FALSE(LLD::TxnBegin(0, LLD::INSTANCES::LEDGER));
+        REQUIRE(filesystem::size(config::GetDataDir() + "_LEDGER/journal.dat") > 0);
+        LLD::TxnAbort(0, LLD::INSTANCES::LEDGER | LLD::INSTANCES::TRUST);
+        REQUIRE(LLD::Trust->HasTransaction());
+        REQUIRE(filesystem::size(config::GetDataDir() + "_LEDGER/journal.dat") > 0);
+        REQUIRE_THROWS_AS(LLD::TxnRecovery(), std::runtime_error);
+        REQUIRE(filesystem::size(config::GetDataDir() + "_LEDGER/journal.dat") > 0);
     }
+}
+
+TEST_CASE("Journal recovery fail-stops when a replay commit fails",
+          "[lld][txncommit][journal]")
+{
+    LedgerGuard ledgerGuard;
+    TrustGuard trustGuard;
+    CommitFailureCleanup cleanup;
+    /* Produce complete consensus checkpoints without a global owner, as on
+     * startup. An invalid Trust index fails only when the journal is applied. */
+    auto Checkpoint = [](auto* db)
+    {
+        if(db)
+        {
+            db->TxnBegin();
+            REQUIRE(db->TxnCheckpoint());
+        }
+    };
+    Checkpoint(LLD::Contract);
+    Checkpoint(LLD::Register);
+    Checkpoint(LLD::Ledger);
+    Checkpoint(LLD::Legacy);
+    LLD::Trust->TxnBegin();
+    REQUIRE_FALSE(LLD::Trust->Exists(std::string("recovery-missing-index-target")));
+    REQUIRE(LLD::Trust->Index(std::string("recovery-invalid-index"),
+        std::string("recovery-missing-index-target")));
+    REQUIRE(LLD::Trust->TxnCheckpoint());
+    REQUIRE_THROWS_AS(LLD::TxnRecovery(), std::runtime_error);
+    REQUIRE(config::fShutdown.load());
+    REQUIRE(std::filesystem::exists(std::filesystem::path(config::GetDataDir()) / "commit-incomplete"));
+    REQUIRE(filesystem::size(config::GetDataDir() + "_LEDGER/journal.dat") > 0);
+    LLD::TxnAbort(0, LLD::INSTANCES::CONSENSUS);
+    REQUIRE(filesystem::size(config::GetDataDir() + "_LEDGER/journal.dat") > 0);
+    REQUIRE_THROWS_AS(LLD::TxnRecovery(), std::runtime_error);
 }
 
 
@@ -1448,6 +1502,78 @@ TEST_CASE("SetBest publishes the staged block state on extension and rewind",
     REQUIRE(TAO::Ledger::ChainState::nBestHeight.load() == 0);
     REQUIRE(LLD::Ledger->ReadBestChain(persistedBest));
     REQUIRE(persistedBest == hashGenesis);
+}
+
+TEST_CASE("Real SetBest fail-stops after Ledger commits but Trust fails",
+          "[ledger][setbest_txn][real][commit-failure]")
+{
+    RealCodeLedgerGuard ledgerGuard;
+    TrustGuard trustGuard;
+    ChainStateGuard chainGuard;
+    CommitFailureCleanup failureCleanup;
+
+    uint1024_t savedBest;
+    REQUIRE(LLD::Ledger->ReadBestChain(savedBest));
+    TAO::Ledger::BlockState genesis;
+    genesis.nVersion = 4;
+    genesis.nChannel = 2;
+    genesis.nBits = 1;
+    genesis.nNonce = 46201;
+    const uint1024_t hashGenesis = genesis.GetHash();
+    TAO::Ledger::BlockState candidate;
+    candidate.nVersion = 4;
+    candidate.nChannel = 2;
+    candidate.nBits = 1;
+    candidate.nNonce = 46202;
+    candidate.nHeight = 1;
+    candidate.nChainTrust = 1;
+    candidate.hashPrevBlock = hashGenesis;
+    const uint1024_t hashCandidate = candidate.GetHash();
+    struct DiskCleanup
+    {
+        uint1024_t savedBest, genesis, candidate;
+        ~DiskCleanup()
+        {
+            LLD::Ledger->WriteBestChain(savedBest);
+            LLD::Ledger->EraseBlock(genesis);
+            LLD::Ledger->EraseBlock(candidate);
+        }
+    } diskCleanup{savedBest, hashGenesis, hashCandidate};
+    REQUIRE(LLD::Ledger->WriteBlock(hashGenesis, genesis));
+    REQUIRE(LLD::Ledger->WriteBestChain(hashGenesis));
+    TAO::Ledger::ChainState::tStateGenesis = genesis;
+    TAO::Ledger::ChainState::tStateBest = genesis;
+    TAO::Ledger::ChainState::hashBestChain = hashGenesis;
+    TAO::Ledger::ChainState::nBestHeight = 0;
+    TAO::Ledger::ChainState::nBestChainTrust = 0;
+
+    REQUIRE(LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS));
+    REQUIRE_FALSE(LLD::Trust->Exists(std::string("setbest-missing-index-target")));
+    REQUIRE(LLD::Trust->Index(std::string("setbest-invalid-index"),
+        std::string("setbest-missing-index-target")));
+    const auto mempoolSize = TAO::Ledger::mempool.Size();
+    REQUIRE_FALSE(candidate.SetBest());
+    REQUIRE(config::fShutdown.load());
+    REQUIRE_FALSE(LLD::ThreadOwnsTransaction(TAO::Ledger::FLAGS::BLOCK));
+    REQUIRE(TAO::Ledger::ChainState::hashBestChain.load() == hashGenesis);
+    REQUIRE(TAO::Ledger::ChainState::tStateBest.load().GetHash() == hashGenesis);
+    REQUIRE(TAO::Ledger::ChainState::nBestHeight.load() == 0);
+    REQUIRE(TAO::Ledger::mempool.Size() == mempoolSize);
+    uint1024_t persistedBest;
+    REQUIRE(LLD::Ledger->ReadBestChain(persistedBest));
+    REQUIRE(persistedBest == hashCandidate);
+    REQUIRE_FALSE(genesis.SetBest());
+    REQUIRE_FALSE(LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS));
+    REQUIRE_FALSE(LLD::TxnBegin(TAO::Ledger::FLAGS::MEMPOOL));
+    REQUIRE(filesystem::size(config::GetDataDir() + "_LEDGER/journal.dat") > 0);
+    LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS);
+    REQUIRE(LLD::Trust->HasTransaction());
+    REQUIRE_THROWS_AS(LLD::TxnRecovery(), std::runtime_error);
+    REQUIRE(filesystem::size(config::GetDataDir() + "_LEDGER/journal.dat") > 0);
+    REQUIRE_THROWS_AS(LLD::Initialize(), std::runtime_error);
+    /* Even absent journals cannot make a partial commit safe to accept. */
+    LLD::Ledger->TxnRelease();
+    REQUIRE_THROWS_AS(LLD::TxnRecovery(), std::runtime_error);
 }
 
 
