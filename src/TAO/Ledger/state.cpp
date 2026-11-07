@@ -1123,11 +1123,6 @@ namespace TAO
                 if(fGenesisChanged && !LLD::Ledger->ReadBlock(hashGenesis, stateGenesis))
                     return debug::error(FUNCTION, "failed to read staged genesis");
 
-                #ifndef UNIT_TESTS
-                const BlockState stateCheckpointParent = vConnect.empty()
-                    ? BlockState() : stateCommitted.Prev();
-                #endif
-
                 if(!LLD::Ledger->WriteBestChain(hash))
                     return debug::error(FUNCTION, "failed to stage best chain");
 
@@ -1293,10 +1288,10 @@ namespace TAO
                     TAO::Ledger::MarkLocalMinedBlockDisconnected(state, *this);
 
                 #ifndef UNIT_TESTS
-                if(!vConnect.empty())
+                for(auto state = vConnect.rbegin(); state != vConnect.rend(); ++state)
                 {
                     const uint1024_t hashCheckpointBefore = ChainState::hashCheckpoint.load();
-                    HardenCheckpoint(stateCheckpointParent);
+                    HardenCheckpoint(state->Prev());
                     const uint1024_t hashCheckpointAfter = ChainState::hashCheckpoint.load();
                     if(hashCheckpointBefore != hashCheckpointAfter)
                         debug::log(0, FUNCTION, "Checkpoint hardened: ",
