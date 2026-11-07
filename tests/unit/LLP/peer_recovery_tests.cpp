@@ -123,6 +123,7 @@ TEST_CASE("Failed and throwing direct block GETs release their reservations",
     REQUIRE_FALSE(node.QueueBlockGet(hash));
 
     node.nProtocolVersion = LLP::PROTOCOL_VERSION;
+    node.nCurrentSession = 1;
     node.Subscribe(LLP::TritiumNode::SUBSCRIPTION::BLOCK);
     DataStream inventory(SER_NETWORK, LLP::PROTOCOL_VERSION);
     inventory << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << hash;

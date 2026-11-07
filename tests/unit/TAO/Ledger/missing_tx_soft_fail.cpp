@@ -2863,6 +2863,7 @@ TEST_CASE("BESTCHAIN recovery skips near-tip unknown race",
             LLP::TritiumNode::ACTION::GET, expectedClient).GetBytes());
 
         node.nProtocolVersion = LLP::PROTOCOL_VERSION;
+        node.nCurrentSession = 1;
         node.Subscribe(LLP::TritiumNode::SUBSCRIPTION::BLOCK
                      | LLP::TritiumNode::SUBSCRIPTION::BESTCHAIN);
         while(node.Buffered() > 0)
