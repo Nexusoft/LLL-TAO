@@ -40,8 +40,8 @@ ________________________________________________________________________________
 #include <unistd.h>
 #endif
 
-/* Forward declarations for mining protocol types used by is_mining_data_thread_v. */
-namespace LLP { class Miner; class StatelessMinerConnection; }
+/* Forward declarations for protocol-specific data-thread handling. */
+namespace LLP { class Miner; class StatelessMinerConnection; class TimeNode; }
 
 
 namespace LLP
@@ -50,6 +50,7 @@ namespace LLP
     class Socket;
     class DDOS_Filter;
     class BaseAddress;
+    class AddressManager;
 
 
     /** Compile-time trait: true for mining protocol types (Miner, StatelessMinerConnection).
@@ -100,6 +101,9 @@ namespace LLP
         uint32_t TIMEOUT;
         uint32_t DDOS_rSCORE;
         uint32_t DDOS_cSCORE;
+        /* Set before connections are created; the owning server destroys its
+         * data threads before the address manager. */
+        AddressManager* pTimeAddressManager{nullptr};
 
 
         /* Vector to store Connections. */
@@ -164,6 +168,8 @@ namespace LLP
             {
                 /* Create a new pointer on the heap. */
                 ProtocolType* pnode = new ProtocolType(SOCKET, DDOS, fDDOS, std::forward<Args>(args)...);
+                if constexpr(std::is_same_v<ProtocolType, TimeNode>)
+                    pnode->pAddressManager = pTimeAddressManager;
                 pnode->fCONNECTED.store(true);
 
                 /* Update the indexes. */
@@ -243,6 +249,8 @@ namespace LLP
             {
                 /* Create a new pointer on the heap. */
                 ProtocolType* pnode = new ProtocolType(nullptr, false, std::forward<Args>(args)...); //turn off DDOS for outgoing connections
+                if constexpr(std::is_same_v<ProtocolType, TimeNode>)
+                    pnode->pAddressManager = pTimeAddressManager;
 
                 /* Set the SSL flag */
                 pnode->SetSSL(fSSL);

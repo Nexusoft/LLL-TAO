@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLD/cache/binary_key.h>
 
 #include <LLP/types/tritium.h>
+#include <LLP/include/block_inventory_requests.h>
 #include <LLP/include/global.h>
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/manager.h>
@@ -77,6 +78,8 @@ namespace LLP
 {
     /* Inventory class to track recent relays with expiring cache. */
     TritiumNode::Inventory TritiumNode::tInventory;
+
+    static BlockInventoryRequests blockInventoryRequests;
 
 
     /* [Option 3] Global cooldown timestamp for the periodic, chain-tip-independent
@@ -261,6 +264,7 @@ namespace LLP
     /** Default Destructor **/
     TritiumNode::~TritiumNode()
     {
+        blockInventoryRequests.RemovePeer(this);
         TAO::Ledger::ChainState::ForgetPeerHeight(this);
     }
 
@@ -273,6 +277,7 @@ namespace LLP
             /* Once a new connection is established, this event is fired off. */
             case EVENTS::CONNECT:
             {
+                blockInventoryRequests.RemovePeer(this);
                 TAO::Ledger::ChainState::ForgetPeerHeight(this);
                 m_peerBestRetry.Reset();
 
@@ -525,6 +530,7 @@ namespace LLP
             /* Once a connection is terminated, this event will be fired off. */
             case EVENTS::DISCONNECT:
             {
+                blockInventoryRequests.RemovePeer(this);
                 TAO::Ledger::ChainState::ForgetPeerHeight(this);
                 m_peerBestRetry.Reset();
 
@@ -2663,10 +2669,9 @@ namespace LLP
                              *                          (+ optional fanout peer)
                              *                          only when peer height is
                              *                          at/ahead of local
-                             *                          (near-tip +0/+1 races skip
-                             *                          only when a matching BLOCK
-                             *                          inventory GET was actually
-                             *                          queued from this NOTIFY)
+                             *                          (near-tip races defer while
+                             *                          a matching BLOCK GET is
+                             *                          outstanding)
                              *   - known side-branch  → throttled fallback LIST until
                              *                          local best matches
                              * Chatty BESTCHAIN must not unthrottled-LIST or double-
@@ -2755,6 +2760,16 @@ namespace LLP
                 if(ssResponse.size() != 0)
                     fInventoryGetQueued = WritePacket(NewMessage(ACTION::GET, ssResponse));
 
+                if(fInventoryGetQueued)
+                {
+                    for(const auto& hash : setBlockInventoryGets)
+                    {
+                        if(!blockInventoryRequests.Add(hash, this))
+                            debug::warning(NODE, "block inventory request tracking is full for ",
+                                hash.SubString());
+                    }
+                }
+
                 if(fBestChainObserved && fBestHeightObserved)
                     TAO::Ledger::ChainState::ObserveMiningPeer(
                         this, GetAddress().ToStringIP(), hashBestChain, nCurrentHeight);
@@ -2763,8 +2778,13 @@ namespace LLP
                  * queueing outcome is known. */
                 for(const auto& pending : vPendingBestChainRecovery)
                 {
-                    const bool fMatchingBlockGet = fInventoryGetQueued
-                        && (setBlockInventoryGets.count(pending.first) != 0);
+                    const bool fMatchingBlockGet =
+                        (fInventoryGetQueued && setBlockInventoryGets.count(pending.first) != 0)
+                        || blockInventoryRequests.Contains(pending.first);
+                    const uint32_t nLocalHeight = TAO::Ledger::ChainState::nBestHeight.load();
+                    if(fMatchingBlockGet && pending.second >= nLocalHeight
+                    && pending.second - nLocalHeight <= TAO::Ledger::BESTCHAIN_NEAR_TIP_HEIGHT_SLACK)
+                        m_peerBestRetry.Expedite(BlockInventoryRequests::TIMEOUT);
                     TAO::Ledger::RequestBestChainBranchRecovery(
                         pending.first, pending.second, NODE.c_str(), this,
                         /*pfBranchSyncQueued=*/nullptr, fMatchingBlockGet);
@@ -2899,6 +2919,7 @@ namespace LLP
                         /* Get the block from the stream. */
                         Legacy::LegacyBlock block;
                         ssPacket >> block;
+                        blockInventoryRequests.Remove(block.GetHash(), this);
                         CloseTxResponseWindowForBlock(block.GetHash());
 
                         /* Process the block. */
@@ -2917,6 +2938,7 @@ namespace LLP
                         /* Get the block from the stream. */
                         TAO::Ledger::TritiumBlock block;
                         ssPacket >> block;
+                        blockInventoryRequests.Remove(block.GetHash(), this);
                         CloseTxResponseWindowForBlock(block.GetHash());
 
                         /* [DoS prefilter] Reject oversized Prime vOffsets before
@@ -3254,6 +3276,7 @@ namespace LLP
                         /* Get the block from the stream. */
                         TAO::Ledger::SyncBlock block;
                         ssPacket >> block;
+                        blockInventoryRequests.Remove(block.GetHash(), this);
 
                         /* Check version switch. */
                         if(block.nVersion >= 7)
@@ -3291,6 +3314,7 @@ namespace LLP
                         /* Get the block from the stream. */
                         TAO::Ledger::ClientBlock block;
                         ssPacket >> block;
+                        blockInventoryRequests.Remove(block.GetHash(), this);
 
                         /* [DoS prefilter] Reject oversized Prime vOffsets before
                          * they reach Check() / GetPrimeBits() and trigger expensive

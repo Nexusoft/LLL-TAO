@@ -679,15 +679,6 @@ namespace TAO
                  * SPECIFIER::TRANSACTIONS so the peer pushes inline txs then the
                  * block tagged SPECIFIER::TRITIUM.  SYNC would be rejected as
                  * "unsolicited" on an already-synced receiver. */
-                debug::warning(FUNCTION,
-                    ANSI_COLOR_BRIGHT_YELLOW, "=== PEER_BEST_RECOVERY ===", ANSI_COLOR_RESET,
-                    " source=", (pszSource ? pszSource : "peer"),
-                    " peer_best=", hashPeerBest.SubString(),
-                    " peer_height=", nPeerHeight,
-                    " not_on_disk=true",
-                    " in_orphan_pool=", (fInOrphanPool ? "yes has_gap=true" : "no"),
-                    " action=locator-branch-sync-request");
-
                 /* Use the calling node; fall back to a random connection. */
                 LLP::TritiumNode* pSend = pnode;
                 std::shared_ptr<LLP::TritiumNode> pPrimaryRandom;
@@ -738,7 +729,17 @@ namespace TAO
                             pSend->RollbackTxResponseWindow(nWindowRequest);
                     }
                     else
+                    {
                         fPrimaryQueued = true;
+                        debug::warning(FUNCTION,
+                            ANSI_COLOR_BRIGHT_YELLOW, "=== PEER_BEST_RECOVERY ===", ANSI_COLOR_RESET,
+                            " source=", (pszSource ? pszSource : "peer"),
+                            " peer_best=", hashPeerBest.SubString(),
+                            " peer_height=", nPeerHeight,
+                            " not_on_disk=true",
+                            " in_orphan_pool=", (fInOrphanPool ? "yes has_gap=true" : "no"),
+                            " action=locator-branch-sync-request");
+                    }
                     }
                     catch(...)
                     {
