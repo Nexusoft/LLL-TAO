@@ -823,6 +823,7 @@ namespace LLD
                 ssJournal >> vKey;
 
                 /* Write the key. */
+                pTransaction->setErasedData.erase(vKey);
                 pTransaction->setKeychain.insert(vKey);
 
                 /* Debug output. */
@@ -839,6 +840,7 @@ namespace LLD
                 ssJournal >> vData;
 
                 /* Write the sector data. */
+                pTransaction->setErasedData.erase(vKey);
                 pTransaction->mapTransactions[vKey] = vData;
 
                 /* Debug output. */
@@ -855,6 +857,7 @@ namespace LLD
                 ssJournal >> vIndex;
 
                 /* Set the indexing key. */
+                pTransaction->setErasedData.erase(vKey);
                 pTransaction->mapIndex[vKey] = vIndex;
 
                 /* Debug output. */

@@ -310,44 +310,52 @@ TEST_CASE("Zero-difficulty values are rejected before caching or payload creatio
 
     SECTION("BuildSharedTemplatePayload: block with nBits==0 returns INTERNAL_RETRY")
     {
-        auto* pBlock = new TAO::Ledger::TritiumBlock();
-        pBlock->nVersion = 9;
-        pBlock->nChannel = TAO::Ledger::CHANNEL::PRIME;
-        pBlock->nHeight  = 500;
-        pBlock->nBits    = 0;  /* deliberately zero */
-        pBlock->hashMerkleRoot = uint512_t(0x12345678u);
+        const auto readiness = TAO::Ledger::ChainState::MiningReadiness();
+        REQUIRE(readiness.ready);
+        REQUIRE(readiness.epoch != 0);
+
+        TAO::Ledger::TritiumBlock block;
+        block.nVersion = 9;
+        block.nChannel = TAO::Ledger::CHANNEL::PRIME;
+        block.nHeight  = 500;
+        block.nBits    = 0;
+        block.hashMerkleRoot = uint512_t(0x12345678u);
 
         LLP::SharedTemplatePayloadResult result =
-            LLP::BuildSharedTemplatePayload(pBlock, "test");
+            LLP::BuildSharedTemplatePayload(&block, "test");
 
-        REQUIRE(result.fSuccess == false);
+        REQUIRE_FALSE(result.fSuccess);
+        REQUIRE(result.eReason == LLP::GetBlockPolicyReason::TEMPLATE_NOT_READY);
+
+        block.nMiningEpoch = readiness.epoch;
+        result = LLP::BuildSharedTemplatePayload(&block, "test");
+
+        REQUIRE_FALSE(result.fSuccess);
         REQUIRE(result.eReason == LLP::GetBlockPolicyReason::INTERNAL_RETRY);
         REQUIRE(result.nRetryAfterMs > 0u);
         REQUIRE(result.vPayload.empty());
-
-        delete pBlock;
     }
 
     SECTION("BuildSharedTemplatePayload: block with non-zero nBits succeeds (after serialize)")
     {
-        /* Note: this section only checks that a non-zero nBits passes the guard.
-         * Full payload construction also requires a valid chain state + Serialize();
-         * an empty Serialize() from a default block triggers TEMPLATE_NOT_READY,
-         * which is a different (expected) failure mode. */
-        auto* pBlock = new TAO::Ledger::TritiumBlock();
-        pBlock->nVersion = 9;
-        pBlock->nChannel = TAO::Ledger::CHANNEL::PRIME;
-        pBlock->nHeight  = 500;
-        pBlock->nBits    = 0x1a2b3c4du;  /* non-zero */
-        pBlock->hashMerkleRoot = uint512_t(0x12345678u);
+        const auto readiness = TAO::Ledger::ChainState::MiningReadiness();
+        REQUIRE(readiness.ready);
+        REQUIRE(readiness.epoch != 0);
+
+        TAO::Ledger::TritiumBlock block;
+        block.nVersion = 9;
+        block.nChannel = TAO::Ledger::CHANNEL::PRIME;
+        block.nHeight  = 500;
+        block.nBits    = 0x1a2b3c4du;
+        block.hashMerkleRoot = uint512_t(0x12345678u);
+        block.nMiningEpoch = readiness.epoch;
 
         LLP::SharedTemplatePayloadResult result =
-            LLP::BuildSharedTemplatePayload(pBlock, "test");
-
-        /* Must NOT be an INTERNAL_RETRY due to zero-nBits */
-        REQUIRE(result.eReason != LLP::GetBlockPolicyReason::INTERNAL_RETRY);
-
-        delete pBlock;
+            LLP::BuildSharedTemplatePayload(&block, "test");
+        REQUIRE(result.fSuccess);
+        REQUIRE(result.eReason == LLP::GetBlockPolicyReason::NONE);
+        REQUIRE(result.nBlockBits == block.nBits);
+        REQUIRE_FALSE(result.vPayload.empty());
     }
 }
 

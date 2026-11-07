@@ -259,6 +259,8 @@ namespace LLP
         {
             /* Create a new pointer on the heap. */
             ProtocolType* pnode = new ProtocolType(nullptr, false); //turn off DDOS for outgoing connections
+            if constexpr(std::is_same_v<ProtocolType, TimeNode>)
+                pnode->pAddressManager = pTimeAddressManager;
 
             /* Set the SSL flag */
             pnode->SetSSL(fSSL);

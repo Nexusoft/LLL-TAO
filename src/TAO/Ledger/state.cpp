@@ -985,11 +985,6 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to disconnect ", state.GetHash().SubString());
                     }
 
-                    /* If this disconnect orphaned a locally accepted mined block,
-                     * emit a prominent diagnostic before continuing the normal
-                     * SetBest() reorg path. */
-                    TAO::Ledger::MarkLocalMinedBlockDisconnected(state, *this);
-
                     /* Erase block if not connecting anything. */
                     if(vConnect.empty())
                     {
@@ -1061,21 +1056,6 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to connect ", state->GetHash().SubString());
                     }
 
-                    /* Harden a checkpoint if there is any. */
-                    #ifndef UNIT_TESTS
-                    {
-                        const uint1024_t hashCheckpointBefore = ChainState::hashCheckpoint.load();
-                        HardenCheckpoint(Prev());
-                        const uint1024_t hashCheckpointAfter = ChainState::hashCheckpoint.load();
-                        if(hashCheckpointBefore != hashCheckpointAfter)
-                        {
-                            debug::log(0, FUNCTION, "Checkpoint hardened: ",
-                                hashCheckpointBefore.SubString(), " -> ", hashCheckpointAfter.SubString(),
-                                " at height ", ChainState::nCheckpointHeight.load());
-                        }
-                    }
-                    #endif
-
                     /* Debug output if we are debugging reorgs */
                     if(fDebugReorg)
                     {
@@ -1119,6 +1099,33 @@ namespace TAO
                 const uint32_t nTotalConnected =
                     (vDelete.size() - vConnect.size());
 
+                /* Read the state as modified by Connect/Disconnect, not the
+                 * candidate copy passed to SetBest. This also handles rewinds. */
+                BlockState stateCommitted;
+                if(!LLD::Ledger->ReadBlock(hash, stateCommitted))
+                    return debug::error(FUNCTION, "failed to read staged best block");
+
+                if(stateCommitted.hashNextBlock != 0)
+                {
+                    stateCommitted.hashNextBlock = 0;
+                    if(!LLD::Ledger->WriteBlock(hash, stateCommitted))
+                        return debug::error(FUNCTION, "failed to clear staged best successor");
+                }
+
+                const uint1024_t hashGenesis = ChainState::Genesis();
+                bool fGenesisChanged = false;
+                for(const auto& state : vDisconnect)
+                    fGenesisChanged |= (state.hashPrevBlock == hashGenesis);
+                for(const auto& state : vConnect)
+                    fGenesisChanged |= (state.hashPrevBlock == hashGenesis);
+
+                BlockState stateGenesis;
+                if(fGenesisChanged && !LLD::Ledger->ReadBlock(hashGenesis, stateGenesis))
+                    return debug::error(FUNCTION, "failed to read staged genesis");
+
+                if(!LLD::Ledger->WriteBestChain(hash))
+                    return debug::error(FUNCTION, "failed to stage best chain");
+
                 /* [B1] Emit a prominent, easily greppable tripwire warning if the reorg critical
                  * section above (disconnect + connect, all held under the caller's PROCESSING_MUTEX
                  * with no yield point) took longer than -reorgwarnms or processed more than
@@ -1144,28 +1151,21 @@ namespace TAO
                             " was blocked for the duration");
                 }
 
-                /* All disk writes (disconnect + connect) are complete. Commit the transaction
-                 * durably before touching mempool or in-memory ChainState atomics.  This is the
-                 * transactional boundary: everything above is rollback-safe; everything below is
-                 * in-memory-only and runs only after the durable commit succeeds.
-                 *
-                 * Self-containment: when fOwnedTxn=true SetBest() opened this transaction itself
-                 * (the caller had no active transaction).  When fOwnedTxn=false an outer caller
-                 * (legacy.cpp/tritium.cpp Accept(), or chainstate.cpp) already opened TxnBegin()
-                 * before calling SetBest(); that outer transaction — which may also include vtx
-                 * writes made before Index() was called — is committed atomically here together
-                 * with the full disconnect/connect transition.  The caller's subsequent
-                 * TxnCommit() call is a harmless no-op (pTransaction is null once committed).
-                 * TxnCommit aggregates per-instance results; a false return means at least one
-                 * instance's commit failed, so the chain transition is aborted. */
+                /* Commit the staged transition before publishing chain state.
+                 * LLD commits its databases separately; a failure can leave
+                 * some instances committed and cannot be treated as a rollback. */
                 if(!LLD::TxnCommit(FLAGS::BLOCK, LLD::INSTANCES::CONSENSUS))
-                    return debug::error(FUNCTION, "disk transaction commit failed; aborting chain transition");
+                    return debug::error(FUNCTION, "disk transaction commit failed; chain databases may be inconsistent");
 
-                /* The durable commit released this owner. Later throws are
+                /* The successful commit released this owner. Later throws are
                  * post-commit and must not abort a new transaction. */
                 selfTxn.Release();
 
-                /* -- POST-COMMIT: mempool mutations (safe now that disk is durable) -- */
+                *this = stateCommitted;
+                if(fGenesisChanged)
+                    ChainState::tStateGenesis = stateGenesis;
+
+                /* -- POST-COMMIT: mempool mutations -- */
 
                 /* Track sigchains whose head resurrect transaction has already conflicted in this
                  * batch. Mempool::Accept() rejects any transaction whose hashPrevTx is itself
@@ -1277,12 +1277,19 @@ namespace TAO
                         " mempool_size=", TAO::Ledger::mempool.Size());
 
                 /* Set the best chain variables. */
-                ChainState::tStateBest          = *this; //XXX: we are not getting all the data from connect, consider using pointer
+                ChainState::tStateBest          = *this;
                 ChainState::hashBestChain      = hash;
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;
 
                 ClearMiningTemplateCaches("committed best-chain change");
+
+                for(const auto& state : vDisconnect)
+                    TAO::Ledger::MarkLocalMinedBlockDisconnected(state, *this);
+
+                #ifndef UNIT_TESTS
+                HardenConnectedCheckpoints(vConnect);
+                #endif
 
                 /* Capture whether this SetBest invocation was completing a chain reorganization.
                  * Must be read before fChainReorg is cleared so the value is preserved for the
@@ -1300,10 +1307,6 @@ namespace TAO
 
                 /* Set our chain cache update now. */
                 TAO::API::nBlockCounter.store(nHeight);
-
-                /* Write the best chain pointer. */
-                if(!LLD::Ledger->WriteBestChain(hash))
-                    return debug::error(FUNCTION, "failed to write best chain");
 
                 /* Reset contract meters. */
                 nTotalContracts = 0;
@@ -1597,10 +1600,6 @@ namespace TAO
                 prev.hashNextBlock = hashBlock;
                 if(!LLD::Ledger->WriteBlock(hashPrevBlock, prev))
                     return debug::error(FUNCTION, "failed to update previous block state");
-
-                /* If we just updated hashNextBlock for genesis block, update the in-memory genesis */
-                if(hashPrevBlock == ChainState::Genesis())
-                    ChainState::tStateGenesis = prev;
             }
 
             return true;

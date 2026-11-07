@@ -38,6 +38,12 @@ namespace LLP
             return true;
         }
 
+        void Expedite(Clock::duration delay, Clock::time_point now = Clock::now())
+        {
+            if(Fresh(now) && now + delay < nextRetry)
+                nextRetry = now + delay;
+        }
+
         bool Fresh(Clock::time_point now = Clock::now(), Clock::duration maxAge = MAX_AGE) const
         {
             return observed && now - lastObserved <= maxAge;
