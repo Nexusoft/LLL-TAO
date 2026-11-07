@@ -3734,6 +3734,7 @@ TEST_CASE("Resolved peer tips get fresh grace but unresolved changes retain reco
     REQUIRE(readSent().empty());
     node.Event(LLP::EVENTS::GENERIC, 0);
     REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(secondTip) == 1);
+    readSent();
 
     /* Changing an unresolved tip must not mask an overdue retry either. */
     TAO::Ledger::mapLastOrphanRequest.clear();
