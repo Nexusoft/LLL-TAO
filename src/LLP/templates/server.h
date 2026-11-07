@@ -250,9 +250,11 @@ namespace LLP
                 return false;
             }
 
-            /* Add the address to the address manager if it exists. */
-            if(pAddressManager)
-                pAddressManager->AddAddress(addrConnect, ConnectState::CONNECTED);
+            /* TimeNode records CONNECTED before data-thread publication, so a
+             * fast disconnect cannot be overwritten here. */
+            if constexpr(!std::is_same_v<ProtocolType, TimeNode>)
+                if(pAddressManager)
+                    pAddressManager->AddAddress(addrConnect, ConnectState::CONNECTED);
 
             return true;
         }

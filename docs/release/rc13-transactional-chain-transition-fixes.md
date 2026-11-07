@@ -5,6 +5,13 @@
 **Related issue:** [Nexusoft/LLL-TAO#254](https://github.com/Nexusoft/LLL-TAO/issues/254) — *Part 1: Local Stake/Local Mined NODE Autocorrect for Accepted but Losing Network Consensus Blocks (PR #640) and Part 2: Stake Block Burst Cooldown Proposal*
 **Pull requests fixed in this RC:** [#651](https://github.com/NamecoinGithub/LLL-TAO/pull/651) · [#652](https://github.com/NamecoinGithub/LLL-TAO/pull/652) · [#653](https://github.com/NamecoinGithub/LLL-TAO/pull/653) · [#654](https://github.com/NamecoinGithub/LLL-TAO/pull/654)
 
+> **Current implementation note:** This document describes the historical RC13
+> changes, not a cross-database atomicity guarantee. `SetBest()` now stages
+> `WriteBestChain` in the ledger transaction, but LLD still commits its database
+> instances separately. A failure or crash during that sequence can leave the
+> instances inconsistent; the existing per-database journals do not yet provide
+> a coordinated crash-recovery protocol.
+
 ---
 
 ## Why this document exists
@@ -41,11 +48,13 @@ in `chainstate.cpp`. It performs three categories of mutation:
 3. **In-memory `ChainState` phase** — publishes the new best-chain hash/height atomics
    that every other subsystem (RPC, mining templates, LLP broadcast) reads.
 
-These three phases **must** be atomic relative to a disk-write failure: if the disk
-phase fails partway through, phases 2 and 3 must never run, and any partial disk writes
-must be rolled back via `LLD::TxnAbort()`. If they aren't atomic, the node can end up
-with mempool or in-memory state that disagrees with what's actually on disk — the root
-cause of the historical "Doom Loop" defect referenced in PR #651.
+A correct transition requires these three phases to stay consistent if a disk write
+fails. Phases 2 and 3 must not publish the new tip when phase 1 fails, and any partial
+disk writes must be recovered or rolled back before the node continues. The current
+`LLD::TxnAbort()` discards staged writes; it does **not** undo a partial physical
+multi-database commit. If the phases disagree, the node can end up with mempool or
+in-memory state that differs from disk — the root cause of the historical "Doom Loop"
+defect referenced in PR #651.
 
 ```
 Doom Loop shape (generic pattern, not specific to this RC):

@@ -137,6 +137,10 @@ namespace LLP
             if(!pAddressManager)
                 debug::warning(FUNCTION, "memory allocation failed for manager on port ", CONFIG.PORT_BASE);
 
+            if constexpr(std::is_same_v<ProtocolType, TimeNode>)
+                for(auto* thread : THREADS_DATA)
+                    thread->pTimeAddressManager = pAddressManager;
+
             THREAD_MANAGER = std::thread((std::bind(&Server::Manager, this)));
         }
 
@@ -417,9 +421,11 @@ namespace LLP
          if(!dt->NewConnection(addrConnect, CONFIG.ENABLE_DDOS ? DDOS_MAP->at(addrConnect) : nullptr, false, pNodeRet))
              return debug::drop(FUNCTION, "connection attempt for address ", addrConnect.ToStringIP(), " failed");
 
-         /* Add the address to the address manager if it exists. */
-         if(pAddressManager)
-             pAddressManager->AddAddress(addrConnect, ConnectState::CONNECTED);
+         /* TimeNode records CONNECTED before data-thread publication, so a
+          * fast disconnect cannot be overwritten here. */
+         if constexpr(!std::is_same_v<ProtocolType, TimeNode>)
+             if(pAddressManager)
+                 pAddressManager->AddAddress(addrConnect, ConnectState::CONNECTED);
 
          return true;
     }

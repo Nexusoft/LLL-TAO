@@ -279,9 +279,11 @@ namespace LLP
             if(config::nVerbose >= 5)
                 PrintHex(vBytes);
 
-            /* Partial writes and temporary backpressure are buffered by
-             * Socket::Write; fatal errors do not queue the payload. */
-            if(Write(vBytes, vBytes.size(), fPriority) >= 0)
+            /* A fatal socket error means no payload was queued. Partial writes
+             * and temporary backpressure are buffered by Socket::Write. */
+            if(Write(vBytes, vBytes.size(), fPriority) < 0)
+                debug::log(1, NODE, "packet could not be sent or buffered");
+            else
             {
                 ++PACKETS;
                 fQueued = true;

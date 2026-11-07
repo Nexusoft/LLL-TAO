@@ -6,6 +6,7 @@
 #include <LLP/include/block_inventory_requests.h>
 #include <LLP/include/peer_best_retry.h>
 #include <LLP/include/network.h>
+#include <LLP/include/global.h>
 #include <LLP/templates/server.h>
 #include <LLP/types/miner.h>
 #include <LLP/types/time.h>
@@ -496,7 +497,6 @@ TEST_CASE("A running manager recovers after seed connectivity returns", "[llp][p
         if(!available)
             return false;
         out.emplace_back("127.0.0.1", port, false);
-        out.emplace_back("127.0.0.2", port, false);
         return true;
     });
     server->RequestPeerRecovery();
@@ -516,6 +516,8 @@ TEST_CASE("A running manager recovers after seed connectivity returns", "[llp][p
     REQUIRE(server->GetConnectionCount() == 1);
     REQUIRE(server->RandomConnection());
     REQUIRE(server->GetAddressManager()->ReadLastDNSUpdate(updated));
+    const LLP::BaseAddress spare("127.0.0.2", port, false);
+    server->GetAddressManager()->AddAddress(spare, LLP::ConnectState::NEW);
     deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
     while(server->GetAddressManager()->EligibleCount() != 1 && std::chrono::steady_clock::now() < deadline)
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -529,9 +531,102 @@ TEST_CASE("A running manager recovers after seed connectivity returns", "[llp][p
     REQUIRE(status.outgoing == 1);
     REQUIRE(status.state == "at_capacity");
     server->GetAddressManager()->RemoveAddress(LLP::BaseAddress("127.0.0.1", port, false));
-    server->GetAddressManager()->RemoveAddress(LLP::BaseAddress("127.0.0.2", port, false));
+    server->GetAddressManager()->RemoveAddress(spare);
     server.reset();
     LLD::AddressDB database(port, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    REQUIRE(database.Erase(std::string("updated")));
+}
+
+TEST_CASE("A time peer disconnect updates its owning server's address manager",
+          "[llp][peer-recovery]")
+{
+    const bool reconnect = GENERATE(false, true);
+    struct Socket
+    {
+        int fd = -1;
+        ~Socket() { if(fd >= 0) closesocket(fd); }
+        void Close() { if(fd >= 0) { closesocket(fd); fd = -1; } }
+    } listener, accepted;
+    listener.fd = ::socket(AF_INET, SOCK_STREAM, 0);
+    REQUIRE(listener.fd >= 0);
+    sockaddr_in local{};
+    local.sin_family = AF_INET;
+    local.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    REQUIRE(::bind(listener.fd, reinterpret_cast<sockaddr*>(&local), sizeof(local)) == 0);
+    socklen_t length = sizeof(local);
+    REQUIRE(::getsockname(listener.fd, reinterpret_cast<sockaddr*>(&local), &length) == 0);
+    REQUIRE(::listen(listener.fd, 4) == 0);
+    const uint16_t port = ntohs(local.sin_port);
+    const LLP::BaseAddress address("127.0.0.1", port, false);
+
+    LLP::AddressManager* globalManager = LLP::TIME_SERVER
+        ? LLP::TIME_SERVER->GetAddressManager() : nullptr;
+    const bool globalHadAddress = globalManager && globalManager->Has(address);
+    struct GlobalCleanup
+    {
+        LLP::AddressManager* manager;
+        const LLP::BaseAddress& address;
+        bool existed;
+        ~GlobalCleanup() { if(manager && !existed) manager->RemoveAddress(address); }
+    } globalCleanup{globalManager, address, globalHadAddress};
+
+    LLP::Config config(port);
+    config.ENABLE_LISTEN = false;
+    config.ENABLE_MANAGER = true;
+    config.ENABLE_METERS = false;
+    config.MAX_INCOMING = 0;
+    config.MAX_CONNECTIONS = 1;
+    config.MAX_THREADS = 1;
+    config.MANAGER_SLEEP = 1000;
+    auto server = std::make_unique<LLP::Server<LLP::TimeNode>>(config,
+        [&](const std::string&, std::vector<LLP::BaseAddress>& out) {
+            out.push_back(address);
+            return true;
+        });
+
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(8);
+    std::shared_ptr<LLP::TimeNode> peer;
+    while(!(peer = server->RandomConnection()) && std::chrono::steady_clock::now() < deadline)
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    REQUIRE(peer);
+    accepted.fd = ::accept(listener.fd, nullptr, nullptr);
+    REQUIRE(accepted.fd >= 0);
+
+    LLP::TrustAddress state;
+    deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while((!server->GetAddressManager()->Get(address, state) || state.nConnected == 0)
+          && std::chrono::steady_clock::now() < deadline)
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    REQUIRE(state.nConnected == 1);
+    if(!reconnect)
+    {
+        server->RequestManagerStop();
+        listener.Close();
+    }
+    REQUIRE(::shutdown(accepted.fd, SHUT_RDWR) == 0);
+    accepted.Close();
+    peer.reset();
+
+    deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while(server->GetAddressManager()->Get(address, state)
+          && (state.nDropped == 0 || (reconnect && state.nConnected < 2))
+          && std::chrono::steady_clock::now() < deadline)
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    REQUIRE(state.nDropped == 1);
+    if(reconnect)
+    {
+        REQUIRE(state.nConnected >= 2);
+        REQUIRE((state.nState & LLP::ConnectState::CONNECTED) != 0);
+    }
+    else
+        REQUIRE((state.nState & LLP::ConnectState::CONNECTED) == 0);
+    if(globalManager && !globalHadAddress)
+        REQUIRE_FALSE(globalManager->Has(address));
+
+    server->RequestManagerStop();
+    server.reset();
+    LLD::AddressDB database(port, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    REQUIRE(database.EraseTrustAddress(address.GetHash()));
     REQUIRE(database.Erase(std::string("updated")));
 }
 
@@ -543,6 +638,61 @@ TEST_CASE("A running manager recovers from a changed network path", "[llp][peer-
         ~Socket() { if(fd >= 0) closesocket(fd); }
         void Close() { if(fd >= 0) { closesocket(fd); fd = -1; } }
     } oldListener, newListener, accepted;
+
+    std::vector<std::string> candidates{"127.0.0.2"};
+    ifaddrs* rawInterfaces = nullptr;
+    REQUIRE(::getifaddrs(&rawInterfaces) == 0);
+    std::unique_ptr<ifaddrs, decltype(&freeifaddrs)> interfaces(rawInterfaces, freeifaddrs);
+    for(const ifaddrs* interface = interfaces.get(); interface; interface = interface->ifa_next)
+    {
+        if(!interface->ifa_addr || interface->ifa_addr->sa_family != AF_INET
+           || !(interface->ifa_flags & IFF_UP))
+            continue;
+
+        char buffer[INET_ADDRSTRLEN]{};
+        const auto* address = reinterpret_cast<const sockaddr_in*>(interface->ifa_addr);
+        REQUIRE(::inet_ntop(AF_INET, &address->sin_addr, buffer, sizeof(buffer)));
+        const LLP::BaseAddress candidate(buffer, 1, false);
+        if(candidate.IsValid() && !candidate.IsRoutable() && std::string(buffer) != "127.0.0.1")
+            candidates.emplace_back(buffer);
+    }
+
+    std::string newAddress;
+    for(const auto& candidate : candidates)
+    {
+        Socket listener, client;
+        listener.fd = ::socket(AF_INET, SOCK_STREAM, 0);
+        if(listener.fd < 0)
+            continue;
+        sockaddr_in probe{};
+        probe.sin_family = AF_INET;
+        if(::inet_pton(AF_INET, candidate.c_str(), &probe.sin_addr) != 1
+           || ::bind(listener.fd, reinterpret_cast<sockaddr*>(&probe), sizeof(probe)) != 0
+           || ::listen(listener.fd, 1) != 0)
+            continue;
+        socklen_t probeLength = sizeof(probe);
+        if(::getsockname(listener.fd, reinterpret_cast<sockaddr*>(&probe), &probeLength) != 0)
+            continue;
+        client.fd = ::socket(AF_INET, SOCK_STREAM, 0);
+        if(client.fd < 0 || ::fcntl(client.fd, F_SETFL, O_NONBLOCK) != 0)
+            continue;
+        if(::connect(client.fd, reinterpret_cast<sockaddr*>(&probe), sizeof(probe)) != 0)
+        {
+            if(errno != EINPROGRESS)
+                continue;
+            pollfd ready{client.fd, POLLOUT, 0};
+            int error = 0;
+            socklen_t errorLength = sizeof(error);
+            if(::poll(&ready, 1, 1000) <= 0
+               || ::getsockopt(client.fd, SOL_SOCKET, SO_ERROR, &error, &errorLength) != 0
+               || error != 0)
+                continue;
+        }
+        newAddress = candidate;
+        break;
+    }
+    INFO("A second reachable local IPv4 address is required");
+    REQUIRE_FALSE(newAddress.empty());
 
     oldListener.fd = ::socket(AF_INET, SOCK_STREAM, 0);
     REQUIRE(oldListener.fd >= 0);
@@ -569,7 +719,7 @@ TEST_CASE("A running manager recovers from a changed network path", "[llp][peer-
     config.MANAGER_SLEEP = 1000;
     auto server = std::make_unique<LLP::Server<LLP::TimeNode>>(config, [&](const std::string&, std::vector<LLP::BaseAddress>& out) {
         ++lookups;
-        out.emplace_back(changed.load() ? "127.0.0.2" : "127.0.0.1", port, false);
+        out.emplace_back(changed.load() ? newAddress : "127.0.0.1", port, false);
         return true;
     });
 
@@ -595,7 +745,7 @@ TEST_CASE("A running manager recovers from a changed network path", "[llp][peer-
     newListener.fd = ::socket(AF_INET, SOCK_STREAM, 0);
     REQUIRE(newListener.fd >= 0);
     REQUIRE(::setsockopt(newListener.fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) == 0);
-    local.sin_addr.s_addr = htonl(INADDR_ANY);
+    REQUIRE(::inet_pton(AF_INET, newAddress.c_str(), &local.sin_addr) == 1);
     REQUIRE(::bind(newListener.fd, reinterpret_cast<sockaddr*>(&local), sizeof(local)) == 0);
     REQUIRE(::listen(newListener.fd, 4) == 0);
     deadline = std::chrono::steady_clock::now() + std::chrono::seconds(50);
@@ -603,7 +753,7 @@ TEST_CASE("A running manager recovers from a changed network path", "[llp][peer-
     while(std::chrono::steady_clock::now() < deadline)
     {
         peer = server->RandomConnection();
-        if(peer && peer->GetAddress().ToStringIP() == "127.0.0.2")
+        if(peer && peer->GetAddress().ToStringIP() == newAddress)
         {
             recovered = true;
             break;
@@ -619,10 +769,11 @@ TEST_CASE("A running manager recovers from a changed network path", "[llp][peer-
     REQUIRE(lookups.load() > beforeChange);
     REQUIRE(server->GetConnectionCount() == 1);
     peer.reset();
-    server->GetAddressManager()->RemoveAddress(LLP::BaseAddress("127.0.0.1", port, false));
-    server->GetAddressManager()->RemoveAddress(LLP::BaseAddress("127.0.0.2", port, false));
+    server->RequestManagerStop();
     server.reset();
     LLD::AddressDB database(port, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    REQUIRE(database.EraseTrustAddress(LLP::BaseAddress("127.0.0.1", port, false).GetHash()));
+    REQUIRE(database.EraseTrustAddress(LLP::BaseAddress(newAddress, port, false).GetHash()));
     REQUIRE(database.Erase(std::string("updated")));
 }
 

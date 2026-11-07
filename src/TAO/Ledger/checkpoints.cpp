@@ -172,5 +172,21 @@ namespace TAO
 
             return true;
         }
+
+
+        /* Harden checkpoint boundaries for connected blocks in ascending order. */
+        void HardenConnectedCheckpoints(const std::vector<BlockState>& vConnect)
+        {
+            for(auto state = vConnect.rbegin(); state != vConnect.rend(); ++state)
+            {
+                const uint1024_t hashCheckpointBefore = ChainState::hashCheckpoint.load();
+                HardenCheckpoint(state->Prev());
+                const uint1024_t hashCheckpointAfter = ChainState::hashCheckpoint.load();
+                if(hashCheckpointBefore != hashCheckpointAfter)
+                    debug::log(0, FUNCTION, "Checkpoint hardened: ",
+                        hashCheckpointBefore.SubString(), " -> ", hashCheckpointAfter.SubString(),
+                        " at height ", ChainState::nCheckpointHeight.load());
+            }
+        }
     }
 }

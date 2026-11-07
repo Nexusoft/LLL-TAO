@@ -452,7 +452,7 @@ namespace TAO
          *       - unknown tips are fetched only when the peer is at or ahead
          *         of local height (historical BESTCHAIN height gate).  Equal-
          *         height / +1 unknown tips may be the normal tip-advance race
-         *         (BLOCK inventory already GETs the body; BESTHEIGHT in the
+         *         (BLOCK inventory may already GET the body; BESTHEIGHT in the
          *         same NOTIFY often still lags by one), but that shortcut is
          *         handled with a direct block GET when not already queued by
          *         inventory. Body GETs retry after five seconds; branch recovery
@@ -476,10 +476,10 @@ namespace TAO
          *  @param[in]  pnode         Notifying peer (required for LIST paths).
          *  @param[out] pfBranchSyncQueued  Optional. Set true when a primary
          *                    locator LIST was successfully queued on pnode.
-         *  @param[in]  fMatchingBlockInventoryGet  True when this NOTIFY successfully
-         *                    queued (WritePacket returned true) an ACTION::GET
-         *                    for hashPeerBest, including an outstanding tracked
-         *                    GET from this peer. Avoids a duplicate near-tip GET.
+         *  @param[in]  fMatchingBlockInventoryGet  True when an ACTION::GET
+         *                    for hashPeerBest was successfully queued and is
+         *                    still tracked for this peer.
+         *                    Avoids a duplicate near-tip GET.
          *                    Callers must not pass true merely because the GET
          *                    was appended to a response stream that has not yet
          *                    been written — a full send buffer drops the packet.

@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLD/cache/binary_key.h>
 
 #include <LLP/types/tritium.h>
+#include <LLP/include/block_inventory_requests.h>
 #include <LLP/include/global.h>
 #include <LLP/include/falcon_constants.h>
 #include <LLP/include/manager.h>
@@ -2711,9 +2712,9 @@ namespace LLP
                              *                          (+ optional fanout peer)
                              *                          only when peer height is
                              *                          at/ahead of local
-                             *                          (near-tip +0/+1 races skip
-                             *                          after a BLOCK GET, even if
-                             *                          inventory was not included)
+                             *                          (near-tip races defer to a
+                             *                          direct BLOCK GET if none
+                             *                          is already queued)
                              *   - known side-branch  → throttled fallback LIST until
                              *                          local best matches
                              * Chatty BESTCHAIN must not unthrottled-LIST or double-

@@ -44,9 +44,13 @@ ________________________________________________________________________________
 
 /* Real-code test headers (Gap 2 tests below) */
 #include <LLD/include/global.h>
+#include <LLD/cache/binary_lru.h>
+#include <LLD/keychain/hashmap.h>
+#include <LLD/templates/sector.h>
 #include <LLD/types/trust.h>
 
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/types/client.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -180,6 +184,62 @@ namespace
     };
 
 } /* anonymous namespace */
+
+TEST_CASE("Sector journal replay preserves writes and indexes after an erase",
+    "[ledger][setbest_txn][journal]")
+{
+    using Database = LLD::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU>;
+    Database db("journal-replay-regression", LLD::FLAGS::CREATE | LLD::FLAGS::FORCE,
+        257, 1024 * 1024);
+    const std::string dataKey = "replay-data";
+    const std::string flagKey = "replay-flag";
+    const std::string indexKey = "replay-index";
+    const std::string targetKey = "replay-target";
+    struct Cleanup
+    {
+        Database& db;
+        const std::string& dataKey;
+        const std::string& flagKey;
+        const std::string& indexKey;
+        const std::string& targetKey;
+        ~Cleanup()
+        {
+            db.TxnRelease();
+            db.Erase(dataKey);
+            db.Erase(flagKey);
+            db.Erase(indexKey);
+            db.Erase(targetKey);
+        }
+    } cleanup{db, dataKey, flagKey, indexKey, targetKey};
+
+    REQUIRE(db.Write(dataKey, std::string("old")));
+    REQUIRE(db.Write(flagKey));
+    REQUIRE(db.Write(indexKey, std::string("old-index")));
+    REQUIRE(db.Write(targetKey, std::string("target")));
+    db.TxnBegin();
+    REQUIRE(db.Erase(dataKey));
+    REQUIRE(db.Erase(flagKey));
+    REQUIRE(db.Erase(indexKey));
+    REQUIRE(db.Write(dataKey, std::string("new")));
+    REQUIRE(db.Write(flagKey));
+    REQUIRE(db.Index(indexKey, targetKey));
+
+    auto CheckState = [&]()
+    {
+        std::string value;
+        REQUIRE(db.Read(dataKey, value));
+        REQUIRE(value == "new");
+        REQUIRE(db.Exists(flagKey));
+        REQUIRE(db.Read(indexKey, value));
+        REQUIRE(value == "target");
+    };
+    CheckState();
+    REQUIRE(db.TxnCheckpoint());
+    REQUIRE(db.TxnRecovery());
+    CheckState();
+    REQUIRE(db.TxnCommit());
+    CheckState();
+}
 
 
 /* ===========================================================================
@@ -1239,6 +1299,156 @@ namespace
     };
 
 } /* anonymous namespace */
+
+
+TEST_CASE("Checkpoint hardening preserves an intermediate connected block's timespan boundary",
+          "[ledger][setbest_txn][checkpoints][real]")
+{
+    RealCodeLedgerGuard ledgerGuard;
+
+    struct Cleanup
+    {
+        uint1024_t savedCheckpoint{TAO::Ledger::ChainState::hashCheckpoint.load()};
+        uint32_t savedHeight{TAO::Ledger::ChainState::nCheckpointHeight.load()};
+        std::vector<uint1024_t> hashes;
+
+        ~Cleanup()
+        {
+            TAO::Ledger::ChainState::nCheckpointHeight = savedHeight;
+            TAO::Ledger::ChainState::hashCheckpoint = savedCheckpoint;
+            for(const auto& hash : hashes)
+                LLD::Ledger->EraseBlock(hash);
+        }
+    } cleanup;
+
+    /* The intermediate parent crosses 30 minutes; the final two parents
+     * remain in the same minute, so checking only the final parent misses it. */
+    std::vector<TAO::Ledger::BlockState> blocks(5);
+    const uint64_t times[] = {100000, 101799, 101800, 101810, 101820};
+    for(size_t i = 0; i < blocks.size(); ++i)
+    {
+        auto& state = blocks[i];
+        state.nVersion = 7;
+        state.nChannel = 2;
+        state.nHeight = i;
+        state.nBits = 1;
+        state.nNonce = 46130 + i;
+        state.nTime = times[i];
+        if(i > 0)
+        {
+            state.hashPrevBlock = blocks[i - 1].GetHash();
+            state.hashCheckpoint = blocks[0].GetHash();
+        }
+
+        const uint1024_t hash = state.GetHash();
+        REQUIRE_FALSE(LLD::Ledger->HasBlock(hash));
+        cleanup.hashes.push_back(hash);
+        REQUIRE(LLD::Ledger->WriteBlock(hash, state));
+    }
+
+    TAO::Ledger::ChainState::hashCheckpoint = blocks[1].GetHash();
+    TAO::Ledger::ChainState::nCheckpointHeight = blocks[1].nHeight;
+    REQUIRE(TAO::Ledger::IsNewTimespan(blocks[2]));
+    REQUIRE_FALSE(TAO::Ledger::HardenCheckpoint(blocks.back().Prev()));
+    REQUIRE(TAO::Ledger::ChainState::hashCheckpoint.load() == blocks[1].GetHash());
+
+    /* SetBest stores vConnect in descending order and visits every parent
+     * in ascending connection order after the chain transaction commits. */
+    std::vector<TAO::Ledger::BlockState> vConnect{blocks[4], blocks[3], blocks[2]};
+    TAO::Ledger::HardenConnectedCheckpoints(vConnect);
+    REQUIRE(TAO::Ledger::ChainState::hashCheckpoint.load() == blocks[0].GetHash());
+    REQUIRE(TAO::Ledger::ChainState::nCheckpointHeight.load() == blocks[0].nHeight);
+}
+
+
+TEST_CASE("SetBest publishes the staged block state on extension and rewind",
+          "[ledger][setbest_txn][real]")
+{
+    RealCodeLedgerGuard ledgerGuard;
+    ChainStateGuard chainGuard;
+
+    uint1024_t savedBest;
+    REQUIRE(LLD::Ledger->ReadBestChain(savedBest));
+
+    TAO::Ledger::BlockState genesis;
+    genesis.nVersion = 4;
+    genesis.nChannel = 2;
+    genesis.nHeight = 0;
+    genesis.nBits = 1;
+    genesis.nNonce = 46119;
+    genesis.nMoneySupply = 100000;
+    const uint1024_t hashGenesis = genesis.GetHash();
+
+    TAO::Ledger::BlockState candidate;
+    candidate.nVersion = 4;
+    candidate.hashPrevBlock = hashGenesis;
+    candidate.nChannel = 2;
+    candidate.nHeight = 1;
+    candidate.nBits = 1;
+    candidate.nNonce = 46120;
+    candidate.nMint = 25;
+    candidate.nChainTrust = 1;
+    candidate.hashNextBlock = uint1024_t(0x46122);
+    const uint1024_t hashCandidate = candidate.GetHash();
+
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hashGenesis));
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hashCandidate));
+    struct Cleanup
+    {
+        uint1024_t savedBest;
+        uint1024_t genesis;
+        uint1024_t candidate;
+        ~Cleanup()
+        {
+            LLD::Ledger->WriteBestChain(savedBest);
+            LLD::Ledger->EraseBlock(candidate);
+            LLD::Ledger->EraseBlock(genesis);
+        }
+    } cleanup{savedBest, hashGenesis, hashCandidate};
+
+    REQUIRE(LLD::Ledger->WriteBlock(hashGenesis, genesis));
+    TAO::Ledger::ChainState::tStateGenesis = genesis;
+    TAO::Ledger::ChainState::tStateBest = genesis;
+    TAO::Ledger::ChainState::hashBestChain = hashGenesis;
+    TAO::Ledger::ChainState::nBestHeight.store(0);
+    TAO::Ledger::ChainState::nBestChainTrust.store(0);
+
+    REQUIRE(candidate.SetBest());
+    TAO::Ledger::BlockState stored;
+    REQUIRE(LLD::Ledger->ReadBlock(hashCandidate, stored));
+    REQUIRE(stored.nMoneySupply == 100025);
+    REQUIRE(stored.hashNextBlock == 0);
+    REQUIRE(TAO::Ledger::ChainState::tStateBest.load().nMoneySupply == stored.nMoneySupply);
+    REQUIRE(TAO::Ledger::ChainState::tStateBest.load().hashNextBlock == 0);
+    REQUIRE(candidate.nMoneySupply == stored.nMoneySupply);
+    REQUIRE(TAO::Ledger::ChainState::nBestHeight.load() == 1);
+    uint1024_t persistedBest;
+    REQUIRE(LLD::Ledger->ReadBestChain(persistedBest));
+    REQUIRE(persistedBest == hashCandidate);
+
+    TAO::Ledger::BlockState bad;
+    bad.nVersion = 4;
+    bad.hashPrevBlock = hashCandidate;
+    bad.nChannel = 2;
+    bad.nHeight = 2;
+    bad.nBits = 1;
+    bad.nNonce = 46121;
+    bad.vtx.push_back({TAO::Ledger::TRANSACTION::TRITIUM, uint512_t(0x46121)});
+    REQUIRE_FALSE(bad.SetBest());
+    REQUIRE(TAO::Ledger::ChainState::hashBestChain.load() == hashCandidate);
+    REQUIRE(LLD::Ledger->ReadBestChain(persistedBest));
+    REQUIRE(persistedBest == hashCandidate);
+
+    REQUIRE(LLD::Ledger->ReadBlock(hashGenesis, genesis));
+    REQUIRE(genesis.hashNextBlock == hashCandidate);
+    REQUIRE(genesis.SetBest());
+    REQUIRE(LLD::Ledger->ReadBlock(hashGenesis, stored));
+    REQUIRE(stored.hashNextBlock == 0);
+    REQUIRE(TAO::Ledger::ChainState::tStateBest.load().hashNextBlock == 0);
+    REQUIRE(TAO::Ledger::ChainState::nBestHeight.load() == 0);
+    REQUIRE(LLD::Ledger->ReadBestChain(persistedBest));
+    REQUIRE(persistedBest == hashGenesis);
+}
 
 
 /* ===========================================================================
