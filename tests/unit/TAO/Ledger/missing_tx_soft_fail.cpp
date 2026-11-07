@@ -3397,6 +3397,38 @@ TEST_CASE("Peer height observations expire and follow connection updates", "[led
     REQUIRE(heights.Max(now + PeerHeightTracker::MAX_AGE + std::chrono::seconds(1)) == 0);
 }
 
+TEST_CASE("Shutdown rejects block processing and peer-best recovery",
+    "[ledger][process][shutdown]")
+{
+    const bool savedShutdown = config::fShutdown.load();
+    struct RestoreShutdown
+    {
+        bool saved;
+        ~RestoreShutdown() { config::fShutdown.store(saved); }
+    } restore{savedShutdown};
+    config::fShutdown.store(true);
+
+    PassBlock block;
+    uint8_t status = 0;
+    TAO::Ledger::Process(block, status, nullptr);
+    REQUIRE(status == TAO::Ledger::PROCESS::IGNORED);
+
+    LLP::TritiumNode node;
+    const uint1024_t tip(0xBC01000000000170ULL);
+    bool queued = true;
+    REQUIRE(TAO::Ledger::AttemptPeerBestChainRecovery(tip, 1000, "shutdown-test",
+        &node, &queued) == TAO::Ledger::PeerBestRecoveryResult::SKIPPED);
+    REQUIRE_FALSE(queued);
+    queued = true;
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(tip, 1000,
+        "shutdown-test", &node, &queued));
+    REQUIRE_FALSE(queued);
+
+    const auto packets = node.PACKETS.load();
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    REQUIRE(node.PACKETS.load() == packets);
+}
+
 TEST_CASE("Peer best retry is bounded and expires without fresh advertisements",
     "[ledger][process][bestchain][retry]")
 {

@@ -56,6 +56,8 @@ namespace LLP
             auto& state = it->second;
             if(state.active.count(hash))
                 return Result::Duplicate;
+            if(!state.pending.empty() && state.pending.front() != hash)
+                return Result::Capacity;
             if(state.active.size() >= MAX_HASHES_PER_PEER)
                 return Result::Capacity;
             std::size_t peers = 0;
@@ -64,10 +66,31 @@ namespace LLP
             if(peers >= MAX_PEERS_PER_HASH)
                 return Result::Capacity;
             state.active.emplace(hash, now + TIMEOUT);
-            const auto pending = std::find(state.pending.begin(), state.pending.end(), hash);
-            if(pending != state.pending.end())
-                state.pending.erase(pending);
             return Result::Added;
+        }
+
+        void Sent(const uint1024_t& hash, const void* peer)
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            const auto it = requests.find(peer);
+            if(it == requests.end())
+                return;
+            auto& pending = it->second.pending;
+            const auto deferred = std::find(pending.begin(), pending.end(), hash);
+            if(deferred != pending.end())
+                pending.erase(deferred);
+        }
+
+        void RotatePending(const uint1024_t& hash, const void* peer)
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            const auto it = requests.find(peer);
+            if(it != requests.end() && !it->second.pending.empty()
+            && it->second.pending.front() == hash)
+            {
+                it->second.pending.pop_front();
+                it->second.pending.push_back(hash);
+            }
         }
 
         bool Defer(const uint1024_t& hash, const void* peer, Clock::time_point now = Clock::now())
@@ -117,7 +140,7 @@ namespace LLP
             return false;
         }
 
-        void Remove(const uint1024_t& hash, const void* peer)
+        void Remove(const uint1024_t& hash, const void* peer, bool preserveDeferred = false)
         {
             std::lock_guard<std::mutex> lock(mutex);
             const auto it = requests.find(peer);
@@ -126,7 +149,7 @@ namespace LLP
             it->second.active.erase(hash);
             auto& pending = it->second.pending;
             const auto deferred = std::find(pending.begin(), pending.end(), hash);
-            if(deferred != pending.end())
+            if(!preserveDeferred && deferred != pending.end())
                 pending.erase(deferred);
             if(Empty(it->second))
                 requests.erase(it);

@@ -37,6 +37,8 @@ namespace LLD
     TrustDB*      Trust;
     LegacyDB*     Legacy;
 
+    static bool TxnReleaseSelected(const uint16_t nInstances);
+
     static std::filesystem::path CommitMarker()
     {
         return std::filesystem::path(config::GetDataDir()) / "commit-incomplete";
@@ -275,8 +277,13 @@ namespace LLD
                     CheckRecoveredCommit(Logical->TxnCommit());
             }
 
-            /* Abort all the transactions. */
-            TxnAbort(TAO::Ledger::FLAGS::BLOCK, INSTANCES::MERKLE);
+            if(fRecovery)
+            {
+                if(!TxnReleaseSelected(INSTANCES::MERKLE))
+                    throw std::runtime_error("LLD recovery journal release failed; retaining commit-incomplete marker");
+            }
+            else
+                TxnAbort(TAO::Ledger::FLAGS::BLOCK, INSTANCES::MERKLE);
         }
 
         /* Regular mainnet mode recovery. */
@@ -329,8 +336,13 @@ namespace LLD
                     CheckRecoveredCommit(Legacy->TxnCommit());
             }
 
-            /* Abort all the transactions. */
-            TxnAbort(TAO::Ledger::FLAGS::BLOCK, INSTANCES::CONSENSUS);
+            if(fRecovery)
+            {
+                if(!TxnReleaseSelected(INSTANCES::CONSENSUS))
+                    throw std::runtime_error("LLD recovery journal release failed; retaining commit-incomplete marker");
+            }
+            else
+                TxnAbort(TAO::Ledger::FLAGS::BLOCK, INSTANCES::CONSENSUS);
         }
         if(recoveryGuard.fArmed)
         {
@@ -747,7 +759,8 @@ namespace LLD
 
                 try
                 {
-                    pDB->TxnRelease();
+                    if(!pDB->TxnRelease())
+                        debug::error(FUNCTION, "failed to release journal during begin rollback");
                 }
                 catch(...)
                 {
@@ -809,7 +822,11 @@ namespace LLD
 
             try
             {
-                pDB->TxnRelease();
+                if(!pDB->TxnRelease())
+                {
+                    debug::error(FUNCTION, "failed to release ", strName, " DB transaction");
+                    fSucceeded = false;
+                }
             }
             catch(...)
             {

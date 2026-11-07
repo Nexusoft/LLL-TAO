@@ -830,8 +830,10 @@ namespace LLD
          *
          *  Release the transaction checkpoint.
          *
+         *  @return True if journal truncation and close succeeded.
+         *
          **/
-        void TxnRelease();
+        bool TxnRelease();
 
 
         /** TxnCommit

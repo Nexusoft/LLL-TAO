@@ -280,12 +280,14 @@ namespace LLP
                 ? PushMessage(ACTION::GET, uint8_t(SPECIFIER::CLIENT), uint8_t(TYPES::BLOCK), hash)
                 : PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), hash);
             if(!queued)
-                blockInventoryRequests.Remove(hash, this);
+                blockInventoryRequests.Remove(hash, this, true);
+            else
+                blockInventoryRequests.Sent(hash, this);
             return queued;
         }
         catch(...)
         {
-            blockInventoryRequests.Remove(hash, this);
+            blockInventoryRequests.Remove(hash, this, true);
             throw;
         }
     }
@@ -387,6 +389,9 @@ namespace LLP
 
             case EVENTS::GENERIC:
             {
+                if(config::fShutdown.load())
+                    return;
+
                 if(nCurrentSession != 0 && !config::fSuspended.load())
                 {
                     for(const auto& hash : blockInventoryRequests.Pending(this))
@@ -416,6 +421,7 @@ namespace LLP
                                 Disconnect();
                                 return;
                             }
+                            blockInventoryRequests.RotatePending(hash, this);
                         }
                     }
                 }
@@ -2385,8 +2391,9 @@ namespace LLP
                         if(!queued)
                             for(const auto& hash : hashes)
                             {
-                                blockInventoryRequests.Remove(hash, peer);
-                                blockInventoryRequests.Defer(hash, peer);
+                                blockInventoryRequests.Remove(hash, peer, true);
+                                if(!blockInventoryRequests.Defer(hash, peer))
+                                    peer->Disconnect();
                             }
                     }
                 } inventoryRollback{this, setBlockInventoryGets, fInventoryGetQueued};
@@ -2857,11 +2864,16 @@ namespace LLP
                 if(ssResponse.size() != 0)
                     fInventoryGetQueued = WritePacket(NewMessage(ACTION::GET, ssResponse));
 
-                if(!fInventoryGetQueued)
+                if(fInventoryGetQueued)
+                {
+                    for(const auto& hash : setBlockInventoryGets)
+                        blockInventoryRequests.Sent(hash, this);
+                }
+                else
                 {
                     for(const auto& hash : setBlockInventoryGets)
                     {
-                        blockInventoryRequests.Remove(hash, this);
+                        blockInventoryRequests.Remove(hash, this, true);
                         if(!blockInventoryRequests.Defer(hash, this))
                             return debug::drop(NODE, "block inventory retry capacity reached");
                     }

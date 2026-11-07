@@ -62,6 +62,8 @@ ________________________________________________________________________________
 #include <exception>
 #include <filesystem>
 #include <functional>
+#include <fstream>
+#include <streambuf>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -201,6 +203,99 @@ namespace
     };
 
 } /* anonymous namespace */
+
+TEST_CASE("Sector transaction success checks journal and sector I/O",
+          "[ledger][setbest_txn][journal][io-failure]")
+{
+    using Database = LLD::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU>;
+    struct TestDatabase : Database
+    {
+        using Database::Database;
+        std::fstream* CurrentStream()
+        {
+            std::fstream* stream = nullptr;
+            fileCache->Get(nCurrentFile, stream);
+            return stream;
+        }
+        std::filesystem::path JournalPath() const
+        {
+            return std::filesystem::path(config::GetDataDir()) / strName / "journal.dat";
+        }
+    } db("transaction-io-regression", LLD::FLAGS::CREATE | LLD::FLAGS::FORCE,
+        257, 1024 * 1024);
+
+    SECTION("a failed sector flush is not success or an append fallback")
+    {
+        REQUIRE(db.Write(std::string("old"), std::string("old-value")));
+        std::fstream* stream = db.CurrentStream();
+        REQUIRE(stream);
+        struct FailingFlush : std::streambuf
+        {
+            std::streamsize xsputn(const char*, std::streamsize count) override { return count; }
+            int_type overflow(int_type c) override { return traits_type::not_eof(c); }
+            pos_type seekoff(off_type offset, std::ios_base::seekdir, std::ios_base::openmode) override
+            { return pos_type(offset); }
+            pos_type seekpos(pos_type position, std::ios_base::openmode) override { return position; }
+            int sync() override { return -1; }
+        } failing;
+        struct Restore
+        {
+            std::fstream& stream;
+            std::streambuf* saved;
+            ~Restore()
+            {
+                static_cast<std::iostream&>(stream).rdbuf(saved);
+                stream.clear();
+            }
+        } restore{*stream, static_cast<std::iostream&>(*stream).rdbuf(&failing)};
+        REQUIRE_FALSE(db.Write(std::string("old"), std::string("new-value")));
+        stream->clear();
+        REQUIRE_FALSE(db.Write(std::string("new"), std::string("new-value")));
+    }
+
+    SECTION("checkpoint and release report an unopenable journal")
+    {
+        const auto journal = db.JournalPath();
+        std::filesystem::remove(journal);
+        REQUIRE(std::filesystem::create_directory(journal));
+        struct Restore
+        {
+            std::filesystem::path journal;
+            ~Restore()
+            {
+                std::error_code ec;
+                std::filesystem::remove(journal, ec);
+            }
+        } restore{journal};
+        db.TxnBegin();
+        REQUIRE(db.Write(std::string("pending"), std::string("value")));
+        REQUIRE_FALSE(db.TxnCheckpoint());
+        REQUIRE_FALSE(db.TxnRelease());
+        REQUIRE(db.HasTransaction());
+    }
+
+#ifdef __linux__
+    SECTION("buffered checkpoint write failure is reported")
+    {
+        const auto journal = db.JournalPath();
+        std::filesystem::remove(journal);
+        std::filesystem::create_symlink("/dev/full", journal);
+        struct Restore
+        {
+            std::filesystem::path journal;
+            ~Restore()
+            {
+                std::error_code ec;
+                std::filesystem::remove(journal, ec);
+            }
+        } restore{journal};
+        db.TxnBegin();
+        REQUIRE(db.Write(std::string("pending"), std::string("value")));
+        REQUIRE_FALSE(db.TxnCheckpoint());
+        REQUIRE(db.HasTransaction());
+    }
+#endif
+}
 
 TEST_CASE("Sector journal replay preserves writes and indexes after an erase",
     "[ledger][setbest_txn][journal]")
@@ -364,6 +459,28 @@ TEST_CASE("LLD::TxnCommit aggregates results: one failure makes overall false",
         REQUIRE(config::fShutdown.load());
         REQUIRE(LLD::Ledger->HasTransaction());
         REQUIRE_FALSE(LLD::TxnBegin(0, LLD::INSTANCES::LEDGER));
+    }
+
+    SECTION("Journal open failure is propagated to the restart fence")
+    {
+        REQUIRE(LLD::TxnBegin(0, LLD::INSTANCES::LEDGER | LLD::INSTANCES::TRUST));
+        const auto journal = std::filesystem::path(config::GetDataDir()) / "_TRUST" / "journal.dat";
+        std::filesystem::remove(journal);
+        REQUIRE(std::filesystem::create_directory(journal));
+        struct Restore
+        {
+            std::filesystem::path journal;
+            ~Restore()
+            {
+                std::error_code ec;
+                std::filesystem::remove(journal, ec);
+            }
+        } restore{journal};
+        REQUIRE_FALSE(LLD::TxnCommit(0, LLD::INSTANCES::LEDGER | LLD::INSTANCES::TRUST));
+        REQUIRE(config::fShutdown.load());
+        REQUIRE(LLD::Ledger->HasTransaction());
+        REQUIRE(LLD::Trust->HasTransaction());
+        REQUIRE_THROWS_AS(LLD::TxnRecovery(), std::runtime_error);
     }
 
     SECTION("Ledger commits before an invalid Trust index fails and restart is fenced")

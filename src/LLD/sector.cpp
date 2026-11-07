@@ -267,9 +267,6 @@ namespace LLD
         if(nSize != key.nSectorSize)
             return false;
 
-        /* Write the data into the memory cache. */
-        cachePool->Put(key, vKey, vData, false);
-
         {
             WRITE_LOCK(SECTOR_MUTEX);
 
@@ -303,7 +300,11 @@ namespace LLD
             if(!pstream->write((char*) &vData[0], vData.size()))
                 return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes written");
 
-            pstream->flush();
+            if(!pstream->flush())
+                return debug::error(FUNCTION, "failed to flush updated sector data");
+
+            /* Publish the cache entry only after the write succeeds. */
+            cachePool->Put(key, vKey, vData, false);
 
             /* Records flushed indicator. */
             ++nRecordsFlushed;
@@ -323,7 +324,16 @@ namespace LLD
     template<class KeychainType, class CacheType>
     bool SectorDatabase<KeychainType, CacheType>::Force(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
     {
-        if(nFlags & FLAGS::APPEND || !Update(vKey, vData))
+        /* An applicable update that fails I/O must not be mistaken for an
+         * absent or differently sized record and retried as an append. */
+        if(!(nFlags & FLAGS::APPEND))
+        {
+            SectorKey existing;
+            if(pSectorKeys->Get(vKey, existing)
+            && existing.nSectorSize == vData.size() + GetSizeOfCompactSize(vData.size()))
+                return Update(vKey, vData);
+        }
+
         {
             /* Sector key built inside the lock so that nCurrentFile and
              * nCurrentFileSize are read and updated atomically. */
@@ -345,7 +355,11 @@ namespace LLD
                         debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile),
                         std::ios::out | std::ios::binary | std::ios::trunc
                     );
+                    if(!stream.is_open())
+                        return debug::error(FUNCTION, "failed to create sector file");
                     stream.close();
+                    if(!stream)
+                        return debug::error(FUNCTION, "failed to close new sector file");
                 }
 
                 /* Find the file stream for LRU cache. */
@@ -378,7 +392,8 @@ namespace LLD
                 if(!pstream->write((char*) &vData[0], vData.size()))
                     return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes written");
 
-                pstream->flush();
+                if(!pstream->flush())
+                    return debug::error(FUNCTION, "failed to flush sector data");
 
                 /* Get current size */
                 const uint64_t nSize =
@@ -679,7 +694,14 @@ namespace LLD
         /* Write to the file.  */
         const std::vector<uint8_t>& vBytes = pTransaction->ssJournal.Bytes();
         stream.write((char*)&vBytes[0], vBytes.size());
+        if(!stream)
+            return debug::error(FUNCTION, "failed to write journal file");
+        stream.flush();
+        if(!stream)
+            return debug::error(FUNCTION, "failed to flush journal file");
         stream.close();
+        if(!stream)
+            return debug::error(FUNCTION, "failed to close journal file");
 
         return true;
     }
@@ -687,9 +709,18 @@ namespace LLD
 
     /*  Release the transaction checkpoint. */
     template<class KeychainType, class CacheType>
-    void SectorDatabase<KeychainType, CacheType>::TxnRelease()
+    bool SectorDatabase<KeychainType, CacheType>::TxnRelease()
     {
         LOCK(TRANSACTION_MUTEX);
+
+        /* Keep the transaction object on failure. The global commit fence must
+         * remain armed if journal truncation or close could not complete. */
+        std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::trunc);
+        if(!stream.is_open())
+            return debug::error(FUNCTION, "failed to truncate journal file");
+        stream.close();
+        if(!stream)
+            return debug::error(FUNCTION, "failed to close truncated journal file");
 
         /** Delete the previous transaction pointer if applicable. **/
         if(pTransaction)
@@ -698,9 +729,7 @@ namespace LLD
         /** Set the transaction pointer to null also acting like a flag **/
         pTransaction = nullptr;
 
-        /* Delete the transaction journal file. */
-        std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::trunc);
-        stream.close();
+        return true;
     }
 
 

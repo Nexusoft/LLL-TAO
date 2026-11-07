@@ -539,6 +539,9 @@ namespace TAO
             if(pfBranchSyncQueued)
                 *pfBranchSyncQueued = false;
 
+            if(config::fShutdown.load())
+                return PeerBestRecoveryResult::SKIPPED;
+
             /* Re-entrancy guard: this function releases PROCESSING_MUTEX and
              * calls Process(), which re-acquires it.  That is safe today
              * because nothing inside Process() calls back into this function.
@@ -589,6 +592,9 @@ namespace TAO
 
                 {
                     LOCK(PROCESSING_MUTEX);
+
+                    if(config::fShutdown.load())
+                        return PeerBestRecoveryResult::SKIPPED;
 
                     fInOrphanPool = mapOrphans.Contains(hashPeerBest);
                     if(fInOrphanPool)
@@ -809,6 +815,9 @@ namespace TAO
 
             LOCK(PROCESSING_MUTEX);
 
+            if(config::fShutdown.load())
+                return PeerBestRecoveryResult::SKIPPED;
+
             const TAO::Ledger::BlockState stateBest = ChainState::tStateBest.load();
             if(hashPeerBest == stateBest.GetHash())
                 return PeerBestRecoveryResult::SKIPPED;
@@ -956,7 +965,7 @@ namespace TAO
             if(pfBranchSyncQueued)
                 *pfBranchSyncQueued = false;
 
-            if(hashPeerBest == 0 || !pnode)
+            if(config::fShutdown.load() || hashPeerBest == 0 || !pnode)
                 return false;
 
             bool fBranchSyncQueued = false;
@@ -1000,6 +1009,8 @@ namespace TAO
             bool fInOrphanPool = false;
             {
                 LOCK(PROCESSING_MUTEX);
+                if(config::fShutdown.load())
+                    return false;
                 fInOrphanPool = mapOrphans.Contains(hashPeerBest);
             }
 
@@ -1211,6 +1222,12 @@ namespace TAO
                      bool fSkipCheck, uint64_t nMiningEpoch)
         {
             LOCK(PROCESSING_MUTEX);
+
+            if(config::fShutdown.load())
+            {
+                nStatus = PROCESS::IGNORED;
+                return;
+            }
 
             if(nMiningEpoch != 0 && (!ChainState::MiningWorkCurrent(nMiningEpoch)
             || block.hashPrevBlock != ChainState::hashBestChain.load()))

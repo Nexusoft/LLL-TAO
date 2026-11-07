@@ -93,7 +93,10 @@ TEST_CASE("Inventory-only capacity deferrals retry in bounded FIFO batches",
     size_t queued = 0;
     for(const auto& hash : pending)
         if(requests.Reserve(hash, &peer, due) == Requests::Result::Added)
+        {
+            requests.Sent(hash, &peer);
             ++queued;
+        }
     REQUIRE(queued == Requests::MAX_HASHES_PER_PEER);
     const auto next = requests.Pending(&peer, due + Requests::TIMEOUT);
     REQUIRE(next.size() == Requests::MAX_PENDING_PER_PEER - queued);
@@ -101,6 +104,22 @@ TEST_CASE("Inventory-only capacity deferrals retry in bounded FIFO batches",
     requests.RemovePeer(&peer);
     REQUIRE(requests.Pending(&peer, due + Requests::TIMEOUT * 2).empty());
     REQUIRE(requests.Pending(&other, due).size() == 1);
+
+    Requests failed;
+    REQUIRE(failed.Defer(uint1024_t(1), &peer, now));
+    REQUIRE(failed.Reserve(uint1024_t(1), &peer, now) == Requests::Result::Added);
+    failed.Remove(uint1024_t(1), &peer, true);
+    REQUIRE_FALSE(failed.Contains(uint1024_t(1), &peer, now));
+    REQUIRE(failed.Reserve(uint1024_t(2), &peer, now) == Requests::Result::Capacity);
+    REQUIRE(failed.Pending(&peer, due) == std::vector<uint1024_t>{uint1024_t(1)});
+    REQUIRE(failed.Defer(uint1024_t(2), &peer, due));
+    failed.RotatePending(uint1024_t(1), &peer);
+    REQUIRE(failed.Reserve(uint1024_t(2), &peer, due) == Requests::Result::Added);
+    failed.Sent(uint1024_t(2), &peer);
+    REQUIRE(failed.Reserve(uint1024_t(1), &peer, due) == Requests::Result::Added);
+    failed.Remove(uint1024_t(1), &peer, true);
+    REQUIRE(failed.Pending(&peer, due + Requests::TIMEOUT)
+        == std::vector<uint1024_t>{uint1024_t(1)});
 }
 
 TEST_CASE("Concurrent block GET reservations deduplicate each peer independently",

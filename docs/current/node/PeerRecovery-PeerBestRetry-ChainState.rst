@@ -162,7 +162,10 @@ the marker before journal recovery can discard evidence. Journal replay commit
 failures also retain the fence and stop startup. Restore a known-good
 backup or rebuild the chain databases; do not simply remove the marker and
 assume the databases agree. Successful commits release journals and remove the
-marker. This conservative fence does not add fsync guarantees or coordinated
+marker. Sector writes, keychain updates, journal checkpoints and journal release
+check ordinary stream write/flush/close errors; these failures must not be
+reported as successful commits. This conservative fence does not add fsync
+guarantees or coordinated
 durable recovery; a crash-safe cross-database protocol remains outstanding.
 
 5. ChainState::MiningReadiness: fence work against the committed tip
