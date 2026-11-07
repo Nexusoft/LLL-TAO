@@ -84,21 +84,46 @@ TEST_CASE("Block retries do not expedite the branch recovery deadline",
     LLP::PeerBestRetry retry;
     const auto now = LLP::PeerBestRetry::Clock::now();
     REQUIRE_FALSE(retry.BlockDue(now));
-    retry.Observe(true, now);
+    retry.Observe(now);
     for(unsigned int seconds = 1; seconds <= 30; ++seconds)
     {
         const auto tick = now + std::chrono::seconds(seconds);
-        retry.Observe(false, tick);
+        retry.Observe(tick);
         REQUIRE(retry.BlockDue(tick) == (seconds % 5 == 0));
         REQUIRE(retry.Due(tick) == (seconds == 30));
     }
-    retry.Observe(true, now + std::chrono::seconds(31));
-    REQUIRE_FALSE(retry.BlockDue(now + std::chrono::seconds(35)));
-    REQUIRE(retry.BlockDue(now + std::chrono::seconds(36)));
-    REQUIRE_FALSE(retry.Due(now + std::chrono::seconds(60)));
+    retry.Observe(now + std::chrono::seconds(31));
+    REQUIRE(retry.BlockDue(now + std::chrono::seconds(35)));
+    REQUIRE_FALSE(retry.BlockDue(now + std::chrono::seconds(36)));
+    REQUIRE(retry.Due(now + std::chrono::seconds(60)));
     REQUIRE_FALSE(retry.BlockDue(now + LLP::PeerBestRetry::MAX_AGE + std::chrono::seconds(32)));
     retry.Reset();
     REQUIRE_FALSE(retry.BlockDue(now + std::chrono::seconds(100)));
+}
+
+TEST_CASE("Changing unresolved peer tips cannot postpone body or branch retries",
+    "[llp][peer-recovery][block-requests]")
+{
+    LLP::PeerBestRetry retry;
+    const auto now = LLP::PeerBestRetry::Clock::now();
+    retry.Observe(now);
+    for(unsigned int seconds = 1; seconds <= 90; ++seconds)
+    {
+        const auto tick = now + std::chrono::seconds(seconds);
+        retry.Observe(tick);
+        REQUIRE(retry.BlockDue(tick) == (seconds % 5 == 0));
+        REQUIRE(retry.Due(tick) == (seconds % 30 == 0));
+    }
+
+    retry.Resolved();
+    REQUIRE(retry.Fresh(now + std::chrono::seconds(90)));
+    REQUIRE_FALSE(retry.BlockDue(now + std::chrono::seconds(100)));
+    REQUIRE_FALSE(retry.Due(now + std::chrono::seconds(120)));
+    retry.Observe(now + std::chrono::seconds(120));
+    REQUIRE_FALSE(retry.BlockDue(now + std::chrono::seconds(124)));
+    REQUIRE(retry.BlockDue(now + std::chrono::seconds(125)));
+    REQUIRE_FALSE(retry.Due(now + std::chrono::seconds(149)));
+    REQUIRE(retry.Due(now + std::chrono::seconds(150)));
 }
 
 TEST_CASE("Failed and throwing direct block GETs release their reservations",

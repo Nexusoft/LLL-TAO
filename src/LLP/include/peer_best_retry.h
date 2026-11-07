@@ -24,10 +24,11 @@ namespace LLP
         static constexpr auto INTERVAL = std::chrono::seconds(30);
         static constexpr auto MAX_AGE = std::chrono::minutes(30);
 
-        void Observe(bool tipChanged, Clock::time_point now = Clock::now())
+        void Observe(Clock::time_point now = Clock::now())
         {
-            if(!observed || tipChanged)
+            if(!retryScheduled)
             {
+                retryScheduled = true;
                 nextRetry = now + INTERVAL;
                 nextBlockRetry = now + BlockInventoryRequests::TIMEOUT;
             }
@@ -37,7 +38,7 @@ namespace LLP
 
         bool Due(Clock::time_point now = Clock::now())
         {
-            if(!Fresh(now) || now < nextRetry)
+            if(!retryScheduled || !Fresh(now) || now < nextRetry)
                 return false;
             nextRetry = now + INTERVAL;
             return true;
@@ -50,7 +51,7 @@ namespace LLP
 
         bool BlockDue(Clock::time_point now = Clock::now())
         {
-            if(!Fresh(now) || now < nextBlockRetry)
+            if(!retryScheduled || !Fresh(now) || now < nextBlockRetry)
                 return false;
             nextBlockRetry = now + BlockInventoryRequests::TIMEOUT;
             return true;
@@ -65,14 +66,21 @@ namespace LLP
             return true;
         }
 
+        void Resolved()
+        {
+            retryScheduled = false;
+        }
+
         void Reset()
         {
+            Resolved();
             observed = false;
             refreshScheduled = false;
         }
 
     private:
         bool observed{false};
+        bool retryScheduled{false};
         Clock::time_point lastObserved{};
         Clock::time_point nextRetry{};
         Clock::time_point nextBlockRetry{};

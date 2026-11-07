@@ -517,6 +517,9 @@ namespace LLP
                             hashBestChain, nCurrentHeight, NODE.c_str(), this,
                             nullptr, false, /*fNearTipOnly=*/true);
                 }
+                else if(hashBestChain != 0
+                     && hashBestChain == TAO::Ledger::ChainState::hashBestChain.load())
+                    m_peerBestRetry.Resolved();
                 TryFinalizeSync();
 
 
@@ -2699,7 +2702,12 @@ namespace LLP
                             /* Keep track of current checkpoint. */
                             const uint1024_t hashPreviousBest = hashBestChain;
                             ssPacket >> hashBestChain;
-                            m_peerBestRetry.Observe(hashBestChain != hashPreviousBest);
+                            const uint1024_t hashLocalBest = TAO::Ledger::ChainState::hashBestChain.load();
+                            if(hashPreviousBest != 0 && hashPreviousBest == hashLocalBest)
+                                m_peerBestRetry.Resolved();
+                            m_peerBestRetry.Observe();
+                            if(hashBestChain == hashLocalBest)
+                                m_peerBestRetry.Resolved();
                             fBestChainObserved = true;
 
                             /* Debug output. */
