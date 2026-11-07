@@ -73,7 +73,9 @@ format are unchanged.
 
 With `-peerbestchainrecovery`, unknown tips, including shorter branches, are
 retried at most once per 30 seconds until 30 minutes after the last best-chain
-advertisement. Fetching is not activation: local validation and chain weight
+advertisement. New hashes receive a 30-second retry grace period; near-tip
+unknowns are fetched as blocks first, while orphan and larger-gap recovery
+remains immediate. Fetching is not activation: local validation and chain weight
 remain authoritative. Height-only updates do not refresh best-tip evidence.
 
 Immature coinbase credits and their dependent sigchain tails remain in the

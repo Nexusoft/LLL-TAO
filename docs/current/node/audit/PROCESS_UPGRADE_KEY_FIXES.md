@@ -112,20 +112,20 @@ Full decision trees: [process-upgrade-series.md](../../../diagrams/audit/process
 
 ---
 
-### KF-5 — Near-tip race skip is inventory-owned only
+### KF-5 — Near-tip race uses a block GET before recovery
 
 | | |
 |--|--|
 | **Problem** | After #694, every subscribed peer emitted PEER_BEST_RECOVERY + LIST + fanout for the normal tip-advance race (BLOCK + BESTCHAIN + BESTHEIGHT ordering with stale height). |
 | **Fix (step 1)** | Skip coordinator when unknown tip is within `BESTCHAIN_NEAR_TIP_HEIGHT_SLACK` (1) of local height. |
-| **Fix (step 2)** | Skip **only if** the NOTIFY handler already queued a matching **BLOCK inventory GET** (`fMatchingBlockInventoryGet`). Sync() / relay without BLOCK still recovers. |
-| **Invariant** | Near-tip skip is a **race optimization**, not a gap detector. |
+| **Fix (step 2)** | If no matching inventory GET was queued, request the block directly. A new peer-tip hash gets a 30-second grace period before idle branch recovery; repeated advertisements of the same hash do not extend it. |
+| **Invariant** | Near-tip block fetch is a **race optimization**, not a gap detector; orphan tips and larger gaps still recover. |
 
 ```
   equal / +1 height unknown tip
         │
-        ├─ matching BLOCK GET queued?  no  → recover
-        └─ yes → inventory owns race → SKIP LIST spam
+        ├─ matching BLOCK GET queued?  no  → request block
+        └─ yes → wait for block; retry unresolved tip after grace period
 ```
 
 ---
@@ -138,7 +138,7 @@ Full decision trees: [process-upgrade-series.md](../../../diagrams/audit/process
 | **Fix** | Under `PROCESSING_MUTEX`, if `mapOrphans.Contains(hashPeerBest)`, **do not** take the near-tip shortcut — always enter `AttemptPeerBestChainRecovery`. |
 | **Tests** | `BESTCHAIN recovery skips near-tip unknown race` — orphan-seeded near-tip still queues LIST; throttle key = orphan `hashPrevBlock`. |
 | **Foot gun** | FOOT_GUNS **FG-20** |
-| **Invariant** | Inventory shortcut requires: not on disk, **not in orphan pool**, peer at/ahead, height delta ≤ slack, matching BLOCK GET. |
+| **Invariant** | Near-tip shortcut requires: not on disk, **not in orphan pool**, peer at/ahead, height delta ≤ slack. A missing inventory GET is issued directly. |
 
 ```
   tip in mapOrphans + near-tip + matching GET
@@ -247,7 +247,7 @@ Chooser scoreboard: [NODE_AUDIT_2026-08-10.md](NODE_AUDIT_2026-08-10.md).
 |-----------|---------|
 | `=== PEER_BEST_RECOVERY ===` … `locator-branch-sync-request` | A1/coordinator active fetch |
 | `=== PEER_BEST_RECOVERED ===` | Orphan walkback or heavier activation advanced tip |
-| `BESTCHAIN near-tip race; deferring recovery to block inventory` | Inventory-owned skip (should be rare in logs at level 2) |
+| `BESTCHAIN near-tip race; deferring recovery to block GET` | Direct or inventory-owned fetch (level 2) |
 | `BESTCHAIN differs; requesting branch` | Fallback LIST after SKIPPED |
 | missing-tx retry / branch escalation warnings | KF-1 escalation path |
 

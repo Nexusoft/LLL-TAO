@@ -2294,16 +2294,13 @@ namespace LLP
                 /* Create response data stream. */
                 DataStream ssResponse(SER_NETWORK, PROTOCOL_VERSION);
 
-                /* Block hashes from this NOTIFY that were appended to
-                 * ssResponse for an ACTION::GET.  BESTCHAIN near-tip skip is
-                 * inventory-owned only when WritePacket succeeds below and the
-                 * matching tip hash is present here (append alone is not a
-                 * queued send — a full buffer drops the packet). */
+                /* Block hashes appended to ssResponse for an ACTION::GET.
+                 * They are queued only if WritePacket succeeds below. */
                 std::set<uint1024_t> setBlockInventoryGets;
 
                 /* Foreign BESTCHAIN tips seen in this NOTIFY.  Recovery is
                  * deferred until after WritePacket(ssResponse) so the near-tip
-                 * inventory-owned gate can require a successfully queued GET. */
+                 * handler can avoid sending a duplicate GET. */
                 std::vector<std::pair<uint1024_t, uint32_t>> vPendingBestChainRecovery;
                 size_t nPendingHeightStart = 0;
                 bool fBestChainObserved = false;
@@ -2649,8 +2646,9 @@ namespace LLP
                                 return debug::drop(NODE, "BESTCHAIN: unsolicited notification");
 
                             /* Keep track of current checkpoint. */
+                            const uint1024_t hashPreviousBest = hashBestChain;
                             ssPacket >> hashBestChain;
-                            m_peerBestRetry.Observe();
+                            m_peerBestRetry.Observe(hashBestChain != hashPreviousBest);
                             fBestChainObserved = true;
 
                             /* Debug output. */
@@ -2664,9 +2662,8 @@ namespace LLP
                              *                          only when peer height is
                              *                          at/ahead of local
                              *                          (near-tip +0/+1 races skip
-                             *                          only when a matching BLOCK
-                             *                          inventory GET was actually
-                             *                          queued from this NOTIFY)
+                             *                          after a BLOCK GET, even if
+                             *                          inventory was not included)
                              *   - known side-branch  → throttled fallback LIST until
                              *                          local best matches
                              * Chatty BESTCHAIN must not unthrottled-LIST or double-
@@ -2747,10 +2744,8 @@ namespace LLP
                     }
                 }
 
-                /* Push a request for the data from notifications.
-                 * WritePacket returns false when the send buffer is full and
-                 * the packet is dropped — near-tip skip must not treat that as
-                 * an inventory-owned race. */
+                /* WritePacket returns false if the send buffer is full, so a
+                 * staged inventory GET must not be treated as queued. */
                 bool fInventoryGetQueued = false;
                 if(ssResponse.size() != 0)
                     fInventoryGetQueued = WritePacket(NewMessage(ACTION::GET, ssResponse));
