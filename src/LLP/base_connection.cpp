@@ -279,12 +279,13 @@ namespace LLP
             if(config::nVerbose >= 5)
                 PrintHex(vBytes);
 
-            /* Write the packet to socket buffer. */
-            Write(vBytes, vBytes.size(), fPriority);
-
-            /* Update packet count. */
-            ++PACKETS;
-            fQueued = true;
+            /* Partial writes and temporary backpressure are buffered by
+             * Socket::Write; fatal errors do not queue the payload. */
+            if(Write(vBytes, vBytes.size(), fPriority) >= 0)
+            {
+                ++PACKETS;
+                fQueued = true;
+            }
         }
         else
         {

@@ -78,6 +78,8 @@ namespace LLP
     /* Inventory class to track recent relays with expiring cache. */
     TritiumNode::Inventory TritiumNode::tInventory;
 
+    static BlockInventoryRequests blockInventoryRequests;
+
 
     /* [Option 3] Global cooldown timestamp for the periodic, chain-tip-independent
      * mempool conflict-reconciliation sweep (see EVENTS::GENERIC below). File-scope
@@ -261,7 +263,29 @@ namespace LLP
     /** Default Destructor **/
     TritiumNode::~TritiumNode()
     {
+        blockInventoryRequests.RemovePeer(this);
         TAO::Ledger::ChainState::ForgetPeerHeight(this);
+    }
+
+    bool TritiumNode::QueueBlockGet(const uint1024_t& hash)
+    {
+        if(!blockInventoryRequests.Add(hash, this))
+            return blockInventoryRequests.Contains(hash, this);
+
+        try
+        {
+            const bool queued = config::fClient.load()
+                ? PushMessage(ACTION::GET, uint8_t(SPECIFIER::CLIENT), uint8_t(TYPES::BLOCK), hash)
+                : PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), hash);
+            if(!queued)
+                blockInventoryRequests.Remove(hash, this);
+            return queued;
+        }
+        catch(...)
+        {
+            blockInventoryRequests.Remove(hash, this);
+            throw;
+        }
     }
 
 
@@ -273,6 +297,7 @@ namespace LLP
             /* Once a new connection is established, this event is fired off. */
             case EVENTS::CONNECT:
             {
+                blockInventoryRequests.RemovePeer(this);
                 TAO::Ledger::ChainState::ForgetPeerHeight(this);
                 m_peerBestRetry.Reset();
 
@@ -481,11 +506,15 @@ namespace LLP
                     Subscribe(SUBSCRIPTION::BESTCHAIN | SUBSCRIPTION::BESTHEIGHT);
 
                 if(LLD::Ledger && nCurrentSession != 0 && hashBestChain != 0
-                && hashBestChain != TAO::Ledger::ChainState::hashBestChain.load()
-                && m_peerBestRetry.Due())
+                && hashBestChain != TAO::Ledger::ChainState::hashBestChain.load())
                 {
-                    TAO::Ledger::AttemptPeerBestChainRecovery(
-                        hashBestChain, nCurrentHeight, NODE.c_str(), this);
+                    if(m_peerBestRetry.Due())
+                        TAO::Ledger::AttemptPeerBestChainRecovery(
+                            hashBestChain, nCurrentHeight, NODE.c_str(), this);
+                    else if(m_peerBestRetry.BlockDue())
+                        TAO::Ledger::RequestBestChainBranchRecovery(
+                            hashBestChain, nCurrentHeight, NODE.c_str(), this,
+                            nullptr, false, /*fNearTipOnly=*/true);
                 }
                 TryFinalizeSync();
 
@@ -525,6 +554,7 @@ namespace LLP
             /* Once a connection is terminated, this event will be fired off. */
             case EVENTS::DISCONNECT:
             {
+                blockInventoryRequests.RemovePeer(this);
                 TAO::Ledger::ChainState::ForgetPeerHeight(this);
                 m_peerBestRetry.Reset();
 
@@ -2305,6 +2335,20 @@ namespace LLP
                 size_t nPendingHeightStart = 0;
                 bool fBestChainObserved = false;
                 bool fBestHeightObserved = false;
+                bool fInventoryGetQueued = false;
+
+                struct InventoryRollback
+                {
+                    TritiumNode* peer;
+                    const std::set<uint1024_t>& hashes;
+                    const bool& queued;
+                    ~InventoryRollback()
+                    {
+                        if(!queued)
+                            for(const auto& hash : hashes)
+                                blockInventoryRequests.Remove(hash, peer);
+                    }
+                } inventoryRollback{this, setBlockInventoryGets, fInventoryGetQueued};
 
                 /* Set our max limits to 100 notifications per packet. */
                 uint32_t nLimits = 0;
@@ -2351,10 +2395,13 @@ namespace LLP
                             if(config::fClient.load())
                             {
                                 /* Check the database for the block. */
-                                if(!LLD::Client->HasBlock(hashBlock))
+                                if(!LLD::Client->HasBlock(hashBlock)
+                                && setBlockInventoryGets.insert(hashBlock).second)
                                 {
-                                    ssResponse << uint8_t(SPECIFIER::CLIENT) << uint8_t(TYPES::BLOCK) << hashBlock;
-                                    setBlockInventoryGets.insert(hashBlock);
+                                    if(blockInventoryRequests.Add(hashBlock, this))
+                                        ssResponse << uint8_t(SPECIFIER::CLIENT) << uint8_t(TYPES::BLOCK) << hashBlock;
+                                    else
+                                        setBlockInventoryGets.erase(hashBlock);
                                 }
 
                                 /* Debug output. */
@@ -2363,10 +2410,13 @@ namespace LLP
                             else
                             {
                                 /* Check the database for the block. */
-                                if(!LLD::Ledger->HasBlock(hashBlock))
+                                if(!LLD::Ledger->HasBlock(hashBlock)
+                                && setBlockInventoryGets.insert(hashBlock).second)
                                 {
-                                    ssResponse << uint8_t(TYPES::BLOCK) << hashBlock;
-                                    setBlockInventoryGets.insert(hashBlock);
+                                    if(blockInventoryRequests.Add(hashBlock, this))
+                                        ssResponse << uint8_t(TYPES::BLOCK) << hashBlock;
+                                    else
+                                        setBlockInventoryGets.erase(hashBlock);
                                 }
 
                                 /* Debug output. */
@@ -2746,9 +2796,15 @@ namespace LLP
 
                 /* WritePacket returns false if the send buffer is full, so a
                  * staged inventory GET must not be treated as queued. */
-                bool fInventoryGetQueued = false;
                 if(ssResponse.size() != 0)
                     fInventoryGetQueued = WritePacket(NewMessage(ACTION::GET, ssResponse));
+
+                if(!fInventoryGetQueued)
+                {
+                    for(const auto& hash : setBlockInventoryGets)
+                        blockInventoryRequests.Remove(hash, this);
+                    setBlockInventoryGets.clear();
+                }
 
                 if(fBestChainObserved && fBestHeightObserved)
                     TAO::Ledger::ChainState::ObserveMiningPeer(
@@ -2760,9 +2816,11 @@ namespace LLP
                 {
                     const bool fMatchingBlockGet = fInventoryGetQueued
                         && (setBlockInventoryGets.count(pending.first) != 0);
+                    const bool fOutstandingBlockGet = fMatchingBlockGet
+                        || blockInventoryRequests.Contains(pending.first, this);
                     TAO::Ledger::RequestBestChainBranchRecovery(
                         pending.first, pending.second, NODE.c_str(), this,
-                        /*pfBranchSyncQueued=*/nullptr, fMatchingBlockGet);
+                        /*pfBranchSyncQueued=*/nullptr, fOutstandingBlockGet);
                 }
                 TryFinalizeSync();
 
@@ -2894,6 +2952,7 @@ namespace LLP
                         /* Get the block from the stream. */
                         Legacy::LegacyBlock block;
                         ssPacket >> block;
+                        blockInventoryRequests.Remove(block.GetHash(), this);
                         CloseTxResponseWindowForBlock(block.GetHash());
 
                         /* Process the block. */
@@ -2912,6 +2971,7 @@ namespace LLP
                         /* Get the block from the stream. */
                         TAO::Ledger::TritiumBlock block;
                         ssPacket >> block;
+                        blockInventoryRequests.Remove(block.GetHash(), this);
                         CloseTxResponseWindowForBlock(block.GetHash());
 
                         /* [DoS prefilter] Reject oversized Prime vOffsets before
@@ -3249,6 +3309,7 @@ namespace LLP
                         /* Get the block from the stream. */
                         TAO::Ledger::SyncBlock block;
                         ssPacket >> block;
+                        blockInventoryRequests.Remove(block.GetHash(), this);
 
                         /* Check version switch. */
                         if(block.nVersion >= 7)
@@ -3286,6 +3347,7 @@ namespace LLP
                         /* Get the block from the stream. */
                         TAO::Ledger::ClientBlock block;
                         ssPacket >> block;
+                        blockInventoryRequests.Remove(block.GetHash(), this);
 
                         /* [DoS prefilter] Reject oversized Prime vOffsets before
                          * they reach Check() / GetPrimeBits() and trigger expensive

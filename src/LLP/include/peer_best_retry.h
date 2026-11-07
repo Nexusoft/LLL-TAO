@@ -11,6 +11,8 @@ ________________________________________________________________________________
 
 #pragma once
 
+#include <LLP/include/block_inventory_requests.h>
+
 #include <chrono>
 
 namespace LLP
@@ -25,7 +27,10 @@ namespace LLP
         void Observe(bool tipChanged, Clock::time_point now = Clock::now())
         {
             if(!observed || tipChanged)
+            {
                 nextRetry = now + INTERVAL;
+                nextBlockRetry = now + BlockInventoryRequests::TIMEOUT;
+            }
             observed = true;
             lastObserved = now;
         }
@@ -41,6 +46,14 @@ namespace LLP
         bool Fresh(Clock::time_point now = Clock::now(), Clock::duration maxAge = MAX_AGE) const
         {
             return observed && now - lastObserved <= maxAge;
+        }
+
+        bool BlockDue(Clock::time_point now = Clock::now())
+        {
+            if(!Fresh(now) || now < nextBlockRetry)
+                return false;
+            nextBlockRetry = now + BlockInventoryRequests::TIMEOUT;
+            return true;
         }
 
         bool RefreshDue(Clock::time_point now = Clock::now())
@@ -62,6 +75,7 @@ namespace LLP
         bool observed{false};
         Clock::time_point lastObserved{};
         Clock::time_point nextRetry{};
+        Clock::time_point nextBlockRetry{};
         bool refreshScheduled{false};
         Clock::time_point nextRefresh{};
     };

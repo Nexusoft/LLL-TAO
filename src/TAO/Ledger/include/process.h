@@ -455,7 +455,9 @@ namespace TAO
          *         (BLOCK inventory already GETs the body; BESTHEIGHT in the
          *         same NOTIFY often still lags by one), but that shortcut is
          *         handled with a direct block GET when not already queued by
-         *         inventory. An unresolved tip is retried by the peer timer;
+         *         inventory. Body GETs retry after five seconds; branch recovery
+         *         retains a 30-second grace period. fNearTipOnly restricts the
+         *         expedited retry to body GETs, without ancestry recovery;
          *         tips in mapOrphans still enter recovery for ancestry walkback
          *         or a missing-branch LIST.
          *    2. Fallback LIST only when step 1 returned SKIPPED, the advertised
@@ -476,8 +478,8 @@ namespace TAO
          *                    locator LIST was successfully queued on pnode.
          *  @param[in]  fMatchingBlockInventoryGet  True when this NOTIFY successfully
          *                    queued (WritePacket returned true) an ACTION::GET
-         *                    for hashPeerBest from a TYPES::BLOCK inventory
-         *                    entry. Avoids a duplicate GET for a near-tip hash.
+         *                    for hashPeerBest, including an outstanding tracked
+         *                    GET from this peer. Avoids a duplicate near-tip GET.
          *                    Callers must not pass true merely because the GET
          *                    was appended to a response stream that has not yet
          *                    been written — a full send buffer drops the packet.
@@ -490,7 +492,8 @@ namespace TAO
                                             const char* pszSource,
                                             LLP::TritiumNode* pnode,
                                             bool* pfBranchSyncQueued = nullptr,
-                                            bool fMatchingBlockInventoryGet = false);
+                                            bool fMatchingBlockInventoryGet = false,
+                                            bool fNearTipOnly = false);
 
 
         /** IsBestChainSynchronized

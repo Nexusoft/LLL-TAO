@@ -3,20 +3,154 @@
 #include <LLD/types/address.h>
 #include <LLP/include/manager.h>
 #include <LLP/include/peer_recovery.h>
+#include <LLP/include/block_inventory_requests.h>
+#include <LLP/include/peer_best_retry.h>
 #include <LLP/include/network.h>
 #include <LLP/templates/server.h>
 #include <LLP/types/miner.h>
 #include <LLP/types/time.h>
+#include <LLP/types/tritium.h>
 #include <Util/include/args.h>
 
 #include <atomic>
 #include <chrono>
 #include <future>
 #include <memory>
+#include <stdexcept>
 #include <thread>
 #include <vector>
 
 #include <openssl/ssl.h>
+
+TEST_CASE("Block GET reservations expire without duplicate deadline extension",
+    "[llp][peer-recovery][block-requests]")
+{
+    LLP::BlockInventoryRequests requests;
+    const auto now = LLP::BlockInventoryRequests::Clock::now();
+    int peer = 0, other = 0;
+    const uint1024_t hash(1);
+    REQUIRE(requests.Add(hash, &peer, now));
+    REQUIRE_FALSE(requests.Add(hash, &peer, now + std::chrono::seconds(4)));
+    REQUIRE(requests.Add(hash, &other, now + std::chrono::seconds(1)));
+    REQUIRE(requests.Add(hash, &peer, now + LLP::BlockInventoryRequests::TIMEOUT));
+    requests.Remove(hash, &peer);
+    REQUIRE_FALSE(requests.Contains(hash, &peer, now + std::chrono::seconds(5)));
+    REQUIRE(requests.Contains(hash, &other, now + std::chrono::seconds(5)));
+    requests.RemovePeer(&other);
+    REQUIRE_FALSE(requests.Contains(hash, &other, now + std::chrono::seconds(5)));
+}
+
+TEST_CASE("Block GET reservations bound hashes and peers and prune expired capacity",
+    "[llp][peer-recovery][block-requests]")
+{
+    LLP::BlockInventoryRequests requests;
+    const auto now = LLP::BlockInventoryRequests::Clock::now();
+    int peers[LLP::BlockInventoryRequests::MAX_PEERS_PER_HASH + 1]{};
+    for(size_t i = 0; i < LLP::BlockInventoryRequests::MAX_PEERS_PER_HASH; ++i)
+        REQUIRE(requests.Add(uint1024_t(1), &peers[i], now));
+    REQUIRE_FALSE(requests.Add(uint1024_t(1), &peers[LLP::BlockInventoryRequests::MAX_PEERS_PER_HASH], now));
+    for(size_t i = 2; i <= LLP::BlockInventoryRequests::MAX_HASHES; ++i)
+        REQUIRE(requests.Add(uint1024_t(i), &peers[0], now));
+    REQUIRE_FALSE(requests.Add(uint1024_t(LLP::BlockInventoryRequests::MAX_HASHES + 1), &peers[0], now));
+    REQUIRE(requests.Add(uint1024_t(LLP::BlockInventoryRequests::MAX_HASHES + 1),
+        &peers[0], now + LLP::BlockInventoryRequests::TIMEOUT));
+}
+
+TEST_CASE("Concurrent block GET reservations deduplicate each peer independently",
+    "[llp][peer-recovery][block-requests]")
+{
+    LLP::BlockInventoryRequests requests;
+    int peers[2]{};
+    const auto now = LLP::BlockInventoryRequests::Clock::now();
+    std::atomic<unsigned int> added{0};
+    std::vector<std::thread> workers;
+    for(unsigned int i = 0; i < 16; ++i)
+        workers.emplace_back([&, i]()
+        {
+            if(requests.Add(uint1024_t(1), &peers[i % 2], now))
+                ++added;
+        });
+    for(auto& worker : workers)
+        worker.join();
+    REQUIRE(added.load() == 2);
+    requests.RemovePeer(&peers[0]);
+    REQUIRE(requests.Contains(uint1024_t(1), &peers[1], now));
+}
+
+TEST_CASE("Block retries do not expedite the branch recovery deadline",
+    "[llp][peer-recovery][block-requests]")
+{
+    LLP::PeerBestRetry retry;
+    const auto now = LLP::PeerBestRetry::Clock::now();
+    REQUIRE_FALSE(retry.BlockDue(now));
+    retry.Observe(true, now);
+    for(unsigned int seconds = 1; seconds <= 30; ++seconds)
+    {
+        const auto tick = now + std::chrono::seconds(seconds);
+        retry.Observe(false, tick);
+        REQUIRE(retry.BlockDue(tick) == (seconds % 5 == 0));
+        REQUIRE(retry.Due(tick) == (seconds == 30));
+    }
+    retry.Observe(true, now + std::chrono::seconds(31));
+    REQUIRE_FALSE(retry.BlockDue(now + std::chrono::seconds(35)));
+    REQUIRE(retry.BlockDue(now + std::chrono::seconds(36)));
+    REQUIRE_FALSE(retry.Due(now + std::chrono::seconds(60)));
+    REQUIRE_FALSE(retry.BlockDue(now + LLP::PeerBestRetry::MAX_AGE + std::chrono::seconds(32)));
+    retry.Reset();
+    REQUIRE_FALSE(retry.BlockDue(now + std::chrono::seconds(100)));
+}
+
+TEST_CASE("Failed and throwing direct block GETs release their reservations",
+    "[llp][peer-recovery][block-requests]")
+{
+    struct FailingNode : LLP::TritiumNode
+    {
+        bool throwing{false};
+        uint64_t GetMaxSendBuffer() const override
+        {
+            if(throwing)
+                throw std::runtime_error("test send failure");
+            return 0;
+        }
+    } node;
+    const uint1024_t hash(0xBC01000000000161ULL);
+    REQUIRE_FALSE(node.QueueBlockGet(hash));
+    REQUIRE_FALSE(node.QueueBlockGet(hash));
+    node.throwing = true;
+    REQUIRE_THROWS(node.QueueBlockGet(hash));
+    REQUIRE_THROWS(node.QueueBlockGet(hash));
+    node.throwing = false;
+    REQUIRE_FALSE(node.QueueBlockGet(hash));
+
+    node.nProtocolVersion = LLP::PROTOCOL_VERSION;
+    node.Subscribe(LLP::TritiumNode::SUBSCRIPTION::BLOCK);
+    DataStream inventory(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    inventory << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << hash;
+    node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+    node.INCOMING.DATA.assign(inventory.begin(), inventory.end());
+    REQUIRE(node.ProcessPacket());
+    REQUIRE_FALSE(node.QueueBlockGet(hash));
+
+    inventory << uint8_t(0xff);
+    node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+    node.INCOMING.DATA.assign(inventory.begin(), inventory.end());
+    REQUIRE_FALSE(node.ProcessPacket());
+    REQUIRE_FALSE(node.QueueBlockGet(hash));
+
+    node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+    node.INCOMING.DATA.assign(inventory.begin(), inventory.end() - 1);
+    node.throwing = true;
+    REQUIRE_THROWS(node.ProcessPacket());
+    node.throwing = false;
+    REQUIRE_FALSE(node.QueueBlockGet(hash));
+
+    LLP::TritiumNode invalidSocket;
+    invalidSocket.fd = -1;
+    const auto packets = invalidSocket.PACKETS.load();
+    REQUIRE_FALSE(invalidSocket.QueueBlockGet(hash));
+    REQUIRE_FALSE(invalidSocket.QueueBlockGet(hash));
+    REQUIRE(invalidSocket.PACKETS.load() == packets);
+}
 
 TEST_CASE("Peer recovery retries are bounded and suspendable", "[llp][peer-recovery]")
 {

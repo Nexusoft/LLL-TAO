@@ -949,7 +949,8 @@ namespace TAO
                                             const char* pszSource,
                                             LLP::TritiumNode* pnode,
                                             bool* pfBranchSyncQueued,
-                                            bool fMatchingBlockInventoryGet)
+                                            bool fMatchingBlockInventoryGet,
+                                            bool fNearTipOnly)
         {
             if(pfBranchSyncQueued)
                 *pfBranchSyncQueued = false;
@@ -1010,12 +1011,7 @@ namespace TAO
             {
                 if(!fMatchingBlockInventoryGet)
                 {
-                    const bool fQueued = config::fClient.load()
-                        ? pnode->PushMessage(LLP::TritiumNode::ACTION::GET,
-                            uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT),
-                            uint8_t(LLP::TritiumNode::TYPES::BLOCK), hashPeerBest)
-                        : pnode->PushMessage(LLP::TritiumNode::ACTION::GET,
-                            uint8_t(LLP::TritiumNode::TYPES::BLOCK), hashPeerBest);
+                    const bool fQueued = pnode->QueueBlockGet(hashPeerBest);
                     if(!fQueued)
                         debug::warning(FUNCTION, "could not queue near-tip block GET ",
                             hashPeerBest.SubString(), "; peer-best retry will recover");
@@ -1028,6 +1024,11 @@ namespace TAO
                     " slack=", BESTCHAIN_NEAR_TIP_HEIGHT_SLACK);
                 return false;
             }
+
+            /* Five-second retries only fetch a near-tip body. Ancestry and
+             * branch recovery retain the separate 30-second grace period. */
+            if(fNearTipOnly)
+                return false;
 
             /* 1. Route through the peer-best coordinator when policy allows:
              *    known tips always; unknown tips only from at/ahead peers. */

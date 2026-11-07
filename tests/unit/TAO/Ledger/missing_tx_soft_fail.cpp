@@ -57,6 +57,8 @@ ________________________________________________________________________________
 #include <vector>
 #include <cstdint>
 #include <cstring>
+#include <chrono>
+#include <thread>
 
 #include <unit/catch2/catch.hpp>
 
@@ -2792,6 +2794,9 @@ TEST_CASE("BESTCHAIN recovery skips near-tip unknown race",
         /*fMatchingBlockInventoryGet=*/false));
     REQUIRE_FALSE(fQueuedNoInv);
     REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashNoInvTip) == 0);
+    for(unsigned int i = 0; i < 10; ++i)
+        REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+            hashNoInvTip, nLocalHeight, "unit-test-bestchain-repeat", &node));
 
     while(node.Buffered() > 0)
     {
@@ -2845,6 +2850,8 @@ TEST_CASE("BESTCHAIN recovery skips near-tip unknown race",
             hashClientTip, nLocalHeight, "unit-test-bestchain-client", &node, &queued));
         REQUIRE_FALSE(queued);
         REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashClientTip) == 0);
+        REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+            hashClientTip, nLocalHeight, "unit-test-bestchain-client-repeat", &node));
         while(node.Buffered() > 0)
             REQUIRE(node.Flush() > 0);
         std::vector<uint8_t> sent;
@@ -2854,6 +2861,22 @@ TEST_CASE("BESTCHAIN recovery skips near-tip unknown race",
             sent.insert(sent.end(), buffer, buffer + n);
         REQUIRE(sent == LLP::TritiumNode::NewMessage(
             LLP::TritiumNode::ACTION::GET, expectedClient).GetBytes());
+
+        node.nProtocolVersion = LLP::PROTOCOL_VERSION;
+        node.Subscribe(LLP::TritiumNode::SUBSCRIPTION::BLOCK
+                     | LLP::TritiumNode::SUBSCRIPTION::BESTCHAIN);
+        while(node.Buffered() > 0)
+            REQUIRE(node.Flush() > 0);
+        while(recv(fds[0], buffer, sizeof(buffer), MSG_DONTWAIT) > 0) {}
+
+        DataStream inventory(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        inventory << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << hashClientTip
+                  << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << hashClientTip;
+        node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+        node.INCOMING.DATA.assign(inventory.begin(), inventory.end());
+        REQUIRE(node.ProcessPacket());
+        REQUIRE(node.Buffered() == 0);
+        REQUIRE(recv(fds[0], buffer, sizeof(buffer), MSG_DONTWAIT) <= 0);
     }
 
     /* +2 heights: material gap — coordinator must still fetch. */
@@ -2872,6 +2895,11 @@ TEST_CASE("BESTCHAIN recovery skips near-tip unknown race",
         LLP::TritiumNode::NewMessage(LLP::TritiumNode::ACTION::LIST, ssExpected).GetBytes();
 
     bool fQueuedGap = false;
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+        hashGapTip, nLocalHeight + TAO::Ledger::BESTCHAIN_NEAR_TIP_HEIGHT_SLACK + 1,
+        "unit-test-bestchain-gap-body-retry", &node, &fQueuedGap, false, true));
+    REQUIRE_FALSE(fQueuedGap);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashGapTip) == 0);
     REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
         hashGapTip,
         /*nPeerHeight=*/nLocalHeight + TAO::Ledger::BESTCHAIN_NEAR_TIP_HEIGHT_SLACK + 1,
@@ -2930,6 +2958,11 @@ TEST_CASE("BESTCHAIN recovery skips near-tip unknown race",
         LLP::TritiumNode::NewMessage(LLP::TritiumNode::ACTION::LIST, ssExpectedOrphan).GetBytes();
 
     bool fQueuedOrphan = false;
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+        hashOrphanNearTip, nLocalHeight, "unit-test-bestchain-orphan-body-retry",
+        &node, &fQueuedOrphan, false, true));
+    REQUIRE_FALSE(fQueuedOrphan);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashOrphanAncestor) == 0);
     REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
         hashOrphanNearTip, /*nPeerHeight=*/nLocalHeight,
         "unit-test-bestchain-near-orphan", &node, &fQueuedOrphan,
@@ -3470,6 +3503,20 @@ TEST_CASE("New peer tips do not inherit an overdue recovery timer",
         get << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << tip;
         REQUIRE(readSent() == LLP::TritiumNode::NewMessage(
             LLP::TritiumNode::ACTION::GET, get).GetBytes());
+        for(unsigned int repeat = 0; repeat < 3; ++repeat)
+        {
+            node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+            node.INCOMING.DATA.assign(payload.begin(), payload.end());
+            REQUIRE(node.ProcessPacket());
+            REQUIRE(readSent().empty());
+        }
+
+        DataStream bestOnly(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        bestOnly << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << tip;
+        node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+        node.INCOMING.DATA.assign(bestOnly.begin(), bestOnly.end());
+        REQUIRE(node.ProcessPacket());
+        REQUIRE(readSent().empty());
         node.Event(LLP::EVENTS::GENERIC, 0);
         REQUIRE(TAO::Ledger::mapLastOrphanRequest.empty());
         readSent();
@@ -3480,6 +3527,15 @@ TEST_CASE("New peer tips do not inherit an overdue recovery timer",
         }
     }
 
+    /* Without a response or another announcement, retry only the body at 5s. */
+    std::this_thread::sleep_for(LLP::BlockInventoryRequests::TIMEOUT + std::chrono::milliseconds(100));
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    DataStream retryGet(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    retryGet << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << secondTip;
+    REQUIRE(readSent() == LLP::TritiumNode::NewMessage(
+        LLP::TritiumNode::ACTION::GET, retryGet).GetBytes());
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.empty());
+
     /* A lost block is not masked by repeated refreshes of the same tip. */
     node.MakePeerBestRetryDueForTests();
     DataStream refresh(SER_NETWORK, LLP::PROTOCOL_VERSION);
@@ -3489,6 +3545,7 @@ TEST_CASE("New peer tips do not inherit an overdue recovery timer",
     node.INCOMING.DATA.assign(refresh.begin(), refresh.end());
     REQUIRE(node.ProcessPacket());
     REQUIRE(TAO::Ledger::mapLastOrphanRequest.empty());
+    REQUIRE(readSent().empty());
     node.Event(LLP::EVENTS::GENERIC, 0);
     REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(secondTip) == 1);
 }
