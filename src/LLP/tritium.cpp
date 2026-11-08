@@ -304,6 +304,7 @@ namespace LLP
                 blockInventoryRequests.RemovePeer(this);
                 TAO::Ledger::ChainState::ForgetPeerHeight(this);
                 m_peerBestRetry.Reset();
+                m_miningTipReports.Reset();
 
                 /* Check for incoming connections for -client mode. */
                 if(config::fClient.load() && !fOUTGOING)
@@ -597,6 +598,7 @@ namespace LLP
                 blockInventoryRequests.RemovePeer(this);
                 TAO::Ledger::ChainState::ForgetPeerHeight(this);
                 m_peerBestRetry.Reset();
+                m_miningTipReports.Reset();
 
                 /* Track whether to mark as failure or dropped. */
                 uint8_t nState = ConnectState::DROPPED;
@@ -2881,9 +2883,15 @@ namespace LLP
                     setBlockInventoryGets.clear();
                 }
 
-                if(fBestChainObserved && fBestHeightObserved)
+                uint1024_t hashMiningTip;
+                uint32_t nMiningTipHeight = 0;
+                if(m_miningTipReports.Observe(fBestChainObserved, hashBestChain,
+                    fBestHeightObserved, nCurrentHeight, hashMiningTip, nMiningTipHeight))
                     TAO::Ledger::ChainState::ObserveMiningPeer(
-                        this, GetAddress().ToStringIP(), hashBestChain, nCurrentHeight);
+                        this, GetAddress().ToStringIP(), hashMiningTip, nMiningTipHeight);
+                else if(fBestChainObserved || fBestHeightObserved)
+                    TAO::Ledger::ChainState::InvalidatePartialMiningPeer(this,
+                        fBestChainObserved, hashBestChain, fBestHeightObserved, nCurrentHeight);
 
                 /* Run deferred BESTCHAIN recovery now that inventory GET
                  * queueing outcome is known. */

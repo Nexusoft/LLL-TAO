@@ -407,6 +407,139 @@ TEST_CASE("Mining work readiness caches evidence without delaying invalidation",
     REQUIRE(check(expiry + std::chrono::milliseconds(2)).epoch != beforeExpiry.epoch);
 }
 
+TEST_CASE("Split peer tip reports refresh only complete timely evidence",
+    "[ledger][mining-readiness]")
+{
+    using namespace TAO::Ledger::ChainState;
+    MiningPeerTracker tracker;
+    LLP::MiningTipReports reports;
+    const auto now = MiningPeerTracker::Clock::now();
+    int peer;
+    const auto resolve = [](const uint1024_t& hash, uint32_t height)
+    {
+        return hash == 1 && height == 100 ? MiningPeerEvidence::SUPPORTING
+                                          : MiningPeerEvidence::UNRESOLVED;
+    };
+    const auto send = [&](bool hasHash, uint1024_t hash, bool hasHeight,
+                          uint32_t height, auto time)
+    {
+        uint1024_t pairedHash;
+        uint32_t pairedHeight = 0;
+        if(reports.Observe(hasHash, hash, hasHeight, height, pairedHash, pairedHeight, time))
+            tracker.ObserveConfirmedTip(&peer, "one", pairedHash, pairedHeight,
+                [&] { return pairedHash == 1 && pairedHeight == 100; }, time);
+        else
+            tracker.InvalidatePartial(&peer, hasHash, hash, hasHeight, height);
+    };
+    const auto check = [&](auto time)
+    {
+        return tracker.CheckCached(1, 1, false, true, false, false, resolve, time);
+    };
+
+    send(false, 0, true, 100, now);
+    REQUIRE_FALSE(check(now).ready);
+    send(true, 1, false, 0, now + std::chrono::seconds(1));
+    const auto ready = check(now + std::chrono::seconds(1));
+    REQUIRE(ready.ready);
+    for(int seconds : {30, 60, 90, 120})
+    {
+        const auto t = now + std::chrono::seconds(seconds);
+        send(true, 1, false, 0, t);
+        send(false, 0, true, 100, t + std::chrono::seconds(1));
+        REQUIRE(check(t + std::chrono::seconds(1)).ready);
+        REQUIRE(check(t + std::chrono::seconds(1)).epoch == ready.epoch);
+    }
+
+    const auto changed = now + std::chrono::seconds(122);
+    send(false, 0, true, 101, changed);
+    const auto paused = check(changed);
+    REQUIRE_FALSE(paused.ready);
+    REQUIRE(paused.reason == "unresolved-peer-tip");
+    REQUIRE(paused.epoch != ready.epoch);
+    send(true, 1, false, 0, changed + std::chrono::seconds(1));
+    REQUIRE_FALSE(check(changed + std::chrono::seconds(1)).ready);
+    send(true, 1, true, 100, changed + std::chrono::seconds(2));
+    REQUIRE(check(changed + std::chrono::seconds(2)).ready);
+    REQUIRE(check(changed + std::chrono::seconds(2)).epoch != ready.epoch);
+
+    /* A single field, or fields too far apart, cannot renew freshness. */
+    const auto lastPair = changed + std::chrono::seconds(2);
+    send(true, 1, false, 0, lastPair + std::chrono::seconds(5));
+    send(false, 0, true, 100, lastPair + std::chrono::seconds(16));
+    send(false, 0, true, 100, lastPair + std::chrono::seconds(60));
+    REQUIRE(check(lastPair + MiningPeerTracker::MAX_AGE).ready);
+    REQUIRE_FALSE(check(lastPair + MiningPeerTracker::MAX_AGE + std::chrono::seconds(1)).ready);
+
+    /* Pending reports are never reused after a complete pair or reconnect. */
+    uint1024_t pairedHash;
+    uint32_t pairedHeight = 0;
+    reports.Reset();
+    REQUIRE_FALSE(reports.Observe(true, 1, false, 0, pairedHash, pairedHeight, now));
+    reports.Reset();
+    REQUIRE_FALSE(reports.Observe(false, 0, true, 100, pairedHash, pairedHeight, now));
+}
+
+TEST_CASE("Contradictory partial peer reports fence work even with a quorum",
+    "[ledger][mining-readiness]")
+{
+    using namespace TAO::Ledger::ChainState;
+    MiningPeerTracker tracker;
+    const auto now = MiningPeerTracker::Clock::now();
+    int a, b, c;
+    for(const auto& item : {std::pair{&a, "one"}, std::pair{&b, "two"},
+                            std::pair{&c, "three"}})
+        tracker.ObserveConfirmedTip(item.first, item.second, 1, 100, [] { return true; }, now);
+    const auto resolve = [](const uint1024_t&, uint32_t) { return MiningPeerEvidence::SUPPORTING; };
+    const auto check = [&]
+    {
+        return tracker.CheckCached(1, 2, false, true, false, false, resolve, now);
+    };
+    const auto ready = check();
+    REQUIRE(ready.ready);
+    REQUIRE(ready.peers == 3);
+
+    SECTION("Changed hash") { tracker.InvalidatePartial(&c, true, 2, false, 0); }
+    SECTION("Changed height") { tracker.InvalidatePartial(&c, false, 0, true, 101); }
+    const auto paused = check();
+    REQUIRE_FALSE(paused.ready);
+    REQUIRE(paused.peers == 2);
+    REQUIRE(paused.reason == "unresolved-peer-tip");
+    REQUIRE(paused.epoch != ready.epoch);
+    tracker.ObserveConfirmedTip(&c, "three", 1, 100, [] { return true; }, now);
+    REQUIRE(check().ready);
+    REQUIRE(check().epoch != ready.epoch);
+}
+
+TEST_CASE("Split tip pairing consumes fields and enforces its time window",
+    "[ledger][mining-readiness]")
+{
+    LLP::MiningTipReports reports;
+    const auto now = LLP::MiningTipReports::Clock::now();
+    uint1024_t hash;
+    uint32_t height = 0;
+    REQUIRE_FALSE(reports.Observe(true, 1, false, 0, hash, height, now));
+    REQUIRE(reports.Observe(false, 0, true, 100, hash, height,
+                            now + LLP::MiningTipReports::PAIR_WINDOW));
+    REQUIRE(hash == 1);
+    REQUIRE(height == 100);
+    REQUIRE_FALSE(reports.Observe(false, 0, true, 101, hash, height,
+                                  now + LLP::MiningTipReports::PAIR_WINDOW));
+    REQUIRE(reports.Observe(true, 2, true, 102, hash, height,
+                            now + LLP::MiningTipReports::PAIR_WINDOW));
+    REQUIRE(hash == 2);
+    REQUIRE(height == 102);
+    REQUIRE_FALSE(reports.Observe(true, 3, false, 0, hash, height,
+                                  now + LLP::MiningTipReports::PAIR_WINDOW));
+    REQUIRE_FALSE(reports.Observe(false, 0, true, 103, hash, height,
+                                  now + LLP::MiningTipReports::PAIR_WINDOW * 2
+                                      + std::chrono::milliseconds(1)));
+    REQUIRE(reports.Observe(true, 4, false, 0, hash, height,
+                            now + LLP::MiningTipReports::PAIR_WINDOW * 2
+                                + std::chrono::milliseconds(1)));
+    REQUIRE(hash == 4);
+    REQUIRE(height == 103);
+}
+
 TEST_CASE("Both mining lanes refuse revoked work after connectivity returns",
     "[ledger][mining-readiness]")
 {
@@ -730,7 +863,7 @@ TEST_CASE("Mining readiness counts only ancestors of the best tip",
 }
 
 #ifndef WIN32
-TEST_CASE("Mining evidence requires a hash and height from the same notify packet",
+TEST_CASE("Mining evidence accepts paired and split tip notifications",
     "[ledger][process][mining-readiness]")
 {
     using namespace TAO::Ledger;
@@ -772,7 +905,8 @@ TEST_CASE("Mining evidence requires a hash and height from the same notify packe
     DataStream heightOnly(SER_NETWORK, LLP::PROTOCOL_VERSION);
     heightOnly << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << guard.tip.nHeight;
     notify(heightOnly);
-    REQUIRE(ChainState::MiningReadiness().peers == 1);
+    REQUIRE(ChainState::MiningReadiness().ready);
+    REQUIRE(ChainState::MiningReadiness().peers == 2);
 
     DataStream pair(SER_NETWORK, LLP::PROTOCOL_VERSION);
     SECTION("Hash precedes height")
@@ -793,9 +927,13 @@ TEST_CASE("Mining evidence requires a hash and height from the same notify packe
     DataStream newerHeight(SER_NETWORK, LLP::PROTOCOL_VERSION);
     newerHeight << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << (guard.tip.nHeight + 1);
     notify(newerHeight);
+    REQUIRE_FALSE(ChainState::MiningReadiness().ready);
+    REQUIRE(ChainState::MiningReadiness().reason == "unresolved-peer-tip");
     notify(hashOnly);
+    REQUIRE_FALSE(ChainState::MiningReadiness().ready);
+    notify(pair);
     REQUIRE(ChainState::MiningReadiness().ready);
-    REQUIRE(ChainState::MiningReadiness().epoch == ready.epoch);
+    REQUIRE(ChainState::MiningReadiness().epoch != ready.epoch);
 
     const auto readSent = [&]()
     {

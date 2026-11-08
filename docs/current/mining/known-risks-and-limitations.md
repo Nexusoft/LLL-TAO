@@ -60,7 +60,13 @@ Best-chain evidence expires after **90 seconds**. Core requests current
 `BESTCHAIN`/`BESTHEIGHT` reports every **30 seconds**, including from idle peers,
 using the existing subscription protocol. Disconnect/destruction removes that
 connection's observations. A height report alone does not refresh the age of
-its best-chain evidence.
+its best-chain evidence. Older peers send the two fields in separate
+notifications; NODE5 pairs those fields only within 10 seconds and consumes
+each pair once. A contradictory unpaired field immediately makes the peer's
+existing evidence unresolved and revokes work until a complete pair arrives.
+Split reports are not an atomic peer snapshot, so the resulting hash and
+height still undergo the same local block and chain checks. A peer that stops
+answering either field will still lose freshness.
 
 An in-memory work epoch revokes existing work when observations change in
 potentially unsafe ways, disconnect, or expire, or when a readiness check
