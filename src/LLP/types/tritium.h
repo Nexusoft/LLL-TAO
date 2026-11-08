@@ -602,9 +602,12 @@ namespace LLP
         void MakePeerBestRetryDueForTests()
         {
             m_peerBestRetry.Reset();
-            m_peerBestRetry.Observe(PeerBestRetry::Clock::now() - PeerBestRetry::INTERVAL);
+            m_peerBestRetry.Observe(true, PeerBestRetry::Clock::now() - PeerBestRetry::INTERVAL);
         }
 #endif
+
+        /** Queue a bounded block GET, or keep an existing in-flight request. */
+        bool QueueBlockGet(const uint1024_t& hash);
 
 
         /** Counter to keep track of the last time a ping was made. **/

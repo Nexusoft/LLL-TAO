@@ -10,6 +10,9 @@
 This document catalogs all significant mining infrastructure changes for future
 developers.  Changes are organized by area rather than chronologically.
 
+For the integrated runtime flow and source map covering PRs #728–#733, see
+[PeerRecovery, PeerBestRetry and ChainState::MiningReadiness](../node/PeerRecovery-PeerBestRetry-ChainState.rst).
+
 ---
 
 ## Peer Recovery and Mining Readiness (PRs #728–#730)
@@ -73,7 +76,12 @@ format are unchanged.
 
 With `-peerbestchainrecovery`, unknown tips, including shorter branches, are
 retried at most once per 30 seconds until 30 minutes after the last best-chain
-advertisement. Fetching is not activation: local validation and chain weight
+advertisement. A changed advertised hash receives a fresh per-tip grace period,
+capped by a 30-second continuously unresolved mismatch deadline. Hash changes
+preserve the five-second body retry and this cap; repeated reports preserve all
+deadlines. Local resolution gives the next mismatch fresh timers. Near-tip
+unknowns are fetched as blocks first, while orphan and larger-gap recovery
+remains immediate. Fetching is not activation: local validation and chain weight
 remain authoritative. Height-only updates do not refresh best-tip evidence.
 
 Immature coinbase credits and their dependent sigchain tails remain in the

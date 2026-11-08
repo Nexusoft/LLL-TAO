@@ -539,6 +539,9 @@ namespace TAO
             if(pfBranchSyncQueued)
                 *pfBranchSyncQueued = false;
 
+            if(config::fShutdown.load())
+                return PeerBestRecoveryResult::SKIPPED;
+
             /* Re-entrancy guard: this function releases PROCESSING_MUTEX and
              * calls Process(), which re-acquires it.  That is safe today
              * because nothing inside Process() calls back into this function.
@@ -589,6 +592,9 @@ namespace TAO
 
                 {
                     LOCK(PROCESSING_MUTEX);
+
+                    if(config::fShutdown.load())
+                        return PeerBestRecoveryResult::SKIPPED;
 
                     fInOrphanPool = mapOrphans.Contains(hashPeerBest);
                     if(fInOrphanPool)
@@ -809,6 +815,9 @@ namespace TAO
 
             LOCK(PROCESSING_MUTEX);
 
+            if(config::fShutdown.load())
+                return PeerBestRecoveryResult::SKIPPED;
+
             const TAO::Ledger::BlockState stateBest = ChainState::tStateBest.load();
             if(hashPeerBest == stateBest.GetHash())
                 return PeerBestRecoveryResult::SKIPPED;
@@ -950,12 +959,13 @@ namespace TAO
                                             const char* pszSource,
                                             LLP::TritiumNode* pnode,
                                             bool* pfBranchSyncQueued,
-                                            bool fMatchingBlockInventoryGet)
+                                            bool fMatchingBlockInventoryGet,
+                                            bool fNearTipOnly)
         {
             if(pfBranchSyncQueued)
                 *pfBranchSyncQueued = false;
 
-            if(hashPeerBest == 0 || !pnode)
+            if(config::fShutdown.load() || hashPeerBest == 0 || !pnode)
                 return false;
 
             bool fBranchSyncQueued = false;
@@ -978,14 +988,9 @@ namespace TAO
              * nCurrentHeight while the BLOCK inventory path may already have
              * successfully queued a GET for the same hash.  Peer height equal
              * to local (or only BESTCHAIN_NEAR_TIP_HEIGHT_SLACK ahead) is the
-             * common tip-advance race only when that matching GET is
-             * outstanding — skip coordinator and fallback so every subscribed
-             * peer does not emit PEER_BEST_RECOVERY WARNING + locator LIST +
-             * fanout for a block about to land.  Without a matching BLOCK
-             * inventory GET that was actually written (Sync() does not
-             * subscribe to BLOCK; relay filtering can deliver BESTCHAIN alone;
-             * WritePacket drops when the send buffer is full), still recover
-             * so the node cannot stall one block behind.
+             * common tip-advance race. If the matching inventory GET was not
+             * queued, request the block directly instead of starting branch
+             * recovery. The periodic retry handles a lost or failed GET.
              *
              * Orphan-pool exclusion: a tip already held in mapOrphans is not an
              * inventory-owned race.  A duplicate BLOCK GET for that hash returns
@@ -1004,25 +1009,38 @@ namespace TAO
             bool fInOrphanPool = false;
             {
                 LOCK(PROCESSING_MUTEX);
+                if(config::fShutdown.load())
+                    return false;
                 fInOrphanPool = mapOrphans.Contains(hashPeerBest);
             }
 
             const bool fNearTipUnknown = !fKnownOnDisk
                 && !fInOrphanPool
                 && fPeerAtOrAhead
-                && nHeightDelta <= BESTCHAIN_NEAR_TIP_HEIGHT_SLACK
-                && fMatchingBlockInventoryGet;
+                && nHeightDelta <= BESTCHAIN_NEAR_TIP_HEIGHT_SLACK;
 
             if(fNearTipUnknown)
             {
+                if(!fMatchingBlockInventoryGet)
+                {
+                    const bool fQueued = pnode->QueueBlockGet(hashPeerBest);
+                    if(!fQueued)
+                        debug::warning(FUNCTION, "could not queue near-tip block GET ",
+                            hashPeerBest.SubString(), "; peer-best retry will recover");
+                }
                 debug::log(2, (pszSource ? pszSource : ""),
-                    "BESTCHAIN near-tip race; deferring recovery to block inventory ",
+                    "BESTCHAIN near-tip race; deferring recovery to block GET ",
                     hashPeerBest.SubString(),
                     " peer_height=", nPeerHeight,
                     " local_height=", nLocalHeight,
                     " slack=", BESTCHAIN_NEAR_TIP_HEIGHT_SLACK);
                 return false;
             }
+
+            /* Five-second retries only fetch a near-tip body. Ancestry and
+             * branch recovery retain the separate 30-second grace period. */
+            if(fNearTipOnly)
+                return false;
 
             /* 1. Route through the peer-best coordinator when policy allows:
              *    known tips always; unknown tips only from at/ahead peers. */
@@ -1204,6 +1222,12 @@ namespace TAO
                      bool fSkipCheck, uint64_t nMiningEpoch)
         {
             LOCK(PROCESSING_MUTEX);
+
+            if(config::fShutdown.load())
+            {
+                nStatus = PROCESS::IGNORED;
+                return;
+            }
 
             if(nMiningEpoch != 0 && (!ChainState::MiningWorkCurrent(nMiningEpoch)
             || block.hashPrevBlock != ChainState::hashBestChain.load()))

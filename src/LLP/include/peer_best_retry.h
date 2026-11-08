@@ -11,6 +11,8 @@ ________________________________________________________________________________
 
 #pragma once
 
+#include <LLP/include/block_inventory_requests.h>
+
 #include <chrono>
 
 namespace LLP
@@ -22,31 +24,42 @@ namespace LLP
         static constexpr auto INTERVAL = std::chrono::seconds(30);
         static constexpr auto MAX_AGE = std::chrono::minutes(30);
 
-        void Observe(Clock::time_point now = Clock::now())
+        void Observe(bool changed, Clock::time_point now = Clock::now())
         {
-            if(!observed)
+            if(!retryScheduled)
+            {
+                /* Tip churn must not extend a continuously unresolved mismatch. */
+                nextUnresolvedRetry = now + INTERVAL;
+                nextBlockRetry = now + BlockInventoryRequests::TIMEOUT;
+            }
+            if(changed || !retryScheduled)
                 nextRetry = now + INTERVAL;
+            retryScheduled = true;
             observed = true;
             lastObserved = now;
         }
 
         bool Due(Clock::time_point now = Clock::now())
         {
-            if(!Fresh(now) || now < nextRetry)
+            if(!retryScheduled || !Fresh(now)
+            || (now < nextRetry && now < nextUnresolvedRetry))
                 return false;
             nextRetry = now + INTERVAL;
+            nextUnresolvedRetry = now + INTERVAL;
             return true;
-        }
-
-        void Expedite(Clock::duration delay, Clock::time_point now = Clock::now())
-        {
-            if(Fresh(now) && now + delay < nextRetry)
-                nextRetry = now + delay;
         }
 
         bool Fresh(Clock::time_point now = Clock::now(), Clock::duration maxAge = MAX_AGE) const
         {
             return observed && now - lastObserved <= maxAge;
+        }
+
+        bool BlockDue(Clock::time_point now = Clock::now())
+        {
+            if(!retryScheduled || !Fresh(now) || now < nextBlockRetry)
+                return false;
+            nextBlockRetry = now + BlockInventoryRequests::TIMEOUT;
+            return true;
         }
 
         bool RefreshDue(Clock::time_point now = Clock::now())
@@ -58,16 +71,25 @@ namespace LLP
             return true;
         }
 
+        void Resolved()
+        {
+            retryScheduled = false;
+        }
+
         void Reset()
         {
+            Resolved();
             observed = false;
             refreshScheduled = false;
         }
 
     private:
         bool observed{false};
+        bool retryScheduled{false};
         Clock::time_point lastObserved{};
         Clock::time_point nextRetry{};
+        Clock::time_point nextUnresolvedRetry{};
+        Clock::time_point nextBlockRetry{};
         bool refreshScheduled{false};
         Clock::time_point nextRefresh{};
     };

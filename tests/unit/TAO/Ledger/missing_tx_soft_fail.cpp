@@ -58,6 +58,8 @@ ________________________________________________________________________________
 #include <vector>
 #include <cstdint>
 #include <cstring>
+#include <chrono>
+#include <thread>
 
 #include <unit/catch2/catch.hpp>
 
@@ -2614,7 +2616,7 @@ TEST_CASE("BESTCHAIN recovery uses the height later in the same notification",
 
     DataStream payload(SER_NETWORK, LLP::PROTOCOL_VERSION);
     payload << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << tip
-            << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << uint32_t(1001)
+            << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << uint32_t(1002)
             << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << behindTip
             << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << uint32_t(999);
     node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
@@ -2712,13 +2714,8 @@ TAO::Ledger::mapLastOrphanRequest.clear();
 TEST_CASE("BESTCHAIN recovery skips near-tip unknown race",
     "[ledger][process][a1][bestchain][near-tip]")
 {
-    /* Post-#694 regression: an unknown tip at peer_height == local (or only
-     * BESTCHAIN_NEAR_TIP_HEIGHT_SLACK ahead) is the normal tip-advance race
-     * only when a matching BLOCK inventory GET was already queued AND the tip
-     * is not already in mapOrphans.  Without that GET (Sync() omits BLOCK;
-     * relay can deliver BESTCHAIN alone), or when the tip sits in the orphan
-     * pool (duplicate GET is a no-op ORPHAN return), recovery must still run.
-     * Far tips (delta > slack) always recover. */
+    /* Near-tip unknowns use a block GET, with or without inventory. Orphans
+     * and material gaps still require branch recovery. */
     LedgerGuard env;
 
     TAO::Ledger::mapOrphans.Clear();
@@ -2781,28 +2778,26 @@ TEST_CASE("BESTCHAIN recovery skips near-tip unknown race",
     }
     REQUIRE(vSent.empty());
 
-    /* Near-tip without a matching BLOCK GET must still recover (no stall). */
+    /* A standalone near-tip BESTCHAIN requests the block, not a branch. */
     const uint1024_t hashNoInvTip(0xBC01000000000006ULL);
     REQUIRE_FALSE(LLD::Ledger->HasBlock(hashNoInvTip));
 
-    const uint1024_t hashLocalBest = TAO::Ledger::ChainState::hashBestChain.load();
     DataStream ssExpectedNoInv(SER_NETWORK, LLP::MIN_PROTO_VERSION);
-    ssExpectedNoInv
-        << uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS)
-        << uint8_t(LLP::TritiumNode::TYPES::BLOCK)
-        << uint8_t(LLP::TritiumNode::TYPES::LOCATOR)
-        << TAO::Ledger::Locator(hashLocalBest)
-        << uint1024_t(hashNoInvTip);
+    ssExpectedNoInv << uint8_t(LLP::TritiumNode::TYPES::BLOCK)
+                    << uint1024_t(hashNoInvTip);
     const std::vector<uint8_t> vExpectedNoInv =
-        LLP::TritiumNode::NewMessage(LLP::TritiumNode::ACTION::LIST, ssExpectedNoInv).GetBytes();
+        LLP::TritiumNode::NewMessage(LLP::TritiumNode::ACTION::GET, ssExpectedNoInv).GetBytes();
 
     bool fQueuedNoInv = false;
     REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
         hashNoInvTip, /*nPeerHeight=*/nLocalHeight,
         "unit-test-bestchain-near-no-inv", &node, &fQueuedNoInv,
         /*fMatchingBlockInventoryGet=*/false));
-    REQUIRE(fQueuedNoInv);
-    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashNoInvTip) == 1);
+    REQUIRE_FALSE(fQueuedNoInv);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashNoInvTip) == 0);
+    for(unsigned int i = 0; i < 10; ++i)
+        REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+            hashNoInvTip, nLocalHeight, "unit-test-bestchain-repeat", &node));
 
     while(node.Buffered() > 0)
     {
@@ -2823,10 +2818,74 @@ TEST_CASE("BESTCHAIN recovery skips near-tip unknown race",
     }
     REQUIRE(vNoInvSent == vExpectedNoInv);
 
+    {
+        struct ClientModeGuard
+        {
+            bool saved{config::fClient.load()};
+            bool owned{false};
+            ClientModeGuard()
+            {
+                if(!LLD::Client)
+                {
+                    LLD::Client = new LLD::ClientDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+                    owned = true;
+                }
+                config::fClient.store(true);
+            }
+            ~ClientModeGuard()
+            {
+                config::fClient.store(saved);
+                if(owned)
+                {
+                    delete LLD::Client;
+                    LLD::Client = nullptr;
+                }
+            }
+        } clientModeGuard;
+        const uint1024_t hashClientTip(0xBC01000000000007ULL);
+        DataStream expectedClient(SER_NETWORK, LLP::MIN_PROTO_VERSION);
+        expectedClient << uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT)
+                       << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << hashClientTip;
+        bool queued = true;
+        REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+            hashClientTip, nLocalHeight, "unit-test-bestchain-client", &node, &queued));
+        REQUIRE_FALSE(queued);
+        REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashClientTip) == 0);
+        REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+            hashClientTip, nLocalHeight, "unit-test-bestchain-client-repeat", &node));
+        while(node.Buffered() > 0)
+            REQUIRE(node.Flush() > 0);
+        std::vector<uint8_t> sent;
+        uint8_t buffer[4096];
+        for(ssize_t n = recv(fds[0], buffer, sizeof(buffer), MSG_DONTWAIT);
+            n > 0; n = recv(fds[0], buffer, sizeof(buffer), MSG_DONTWAIT))
+            sent.insert(sent.end(), buffer, buffer + n);
+        REQUIRE(sent == LLP::TritiumNode::NewMessage(
+            LLP::TritiumNode::ACTION::GET, expectedClient).GetBytes());
+
+        node.nProtocolVersion = LLP::PROTOCOL_VERSION;
+        node.nCurrentSession = 1;
+        node.Subscribe(LLP::TritiumNode::SUBSCRIPTION::BLOCK
+                     | LLP::TritiumNode::SUBSCRIPTION::BESTCHAIN);
+        while(node.Buffered() > 0)
+            REQUIRE(node.Flush() > 0);
+        while(recv(fds[0], buffer, sizeof(buffer), MSG_DONTWAIT) > 0) {}
+
+        DataStream inventory(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        inventory << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << hashClientTip
+                  << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << hashClientTip;
+        node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+        node.INCOMING.DATA.assign(inventory.begin(), inventory.end());
+        REQUIRE(node.ProcessPacket());
+        REQUIRE(node.Buffered() == 0);
+        REQUIRE(recv(fds[0], buffer, sizeof(buffer), MSG_DONTWAIT) <= 0);
+    }
+
     /* +2 heights: material gap — coordinator must still fetch. */
     const uint1024_t hashGapTip(0xBC01000000000005ULL);
     REQUIRE_FALSE(LLD::Ledger->HasBlock(hashGapTip));
 
+    const uint1024_t hashLocalBest = TAO::Ledger::ChainState::hashBestChain.load();
     DataStream ssExpected(SER_NETWORK, LLP::MIN_PROTO_VERSION);
     ssExpected
         << uint8_t(LLP::TritiumNode::SPECIFIER::TRANSACTIONS)
@@ -2838,6 +2897,11 @@ TEST_CASE("BESTCHAIN recovery skips near-tip unknown race",
         LLP::TritiumNode::NewMessage(LLP::TritiumNode::ACTION::LIST, ssExpected).GetBytes();
 
     bool fQueuedGap = false;
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+        hashGapTip, nLocalHeight + TAO::Ledger::BESTCHAIN_NEAR_TIP_HEIGHT_SLACK + 1,
+        "unit-test-bestchain-gap-body-retry", &node, &fQueuedGap, false, true));
+    REQUIRE_FALSE(fQueuedGap);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashGapTip) == 0);
     REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
         hashGapTip,
         /*nPeerHeight=*/nLocalHeight + TAO::Ledger::BESTCHAIN_NEAR_TIP_HEIGHT_SLACK + 1,
@@ -2897,6 +2961,11 @@ TEST_CASE("BESTCHAIN recovery skips near-tip unknown race",
 
     bool fQueuedOrphan = false;
     REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
+        hashOrphanNearTip, nLocalHeight, "unit-test-bestchain-orphan-body-retry",
+        &node, &fQueuedOrphan, false, true));
+    REQUIRE_FALSE(fQueuedOrphan);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashOrphanAncestor) == 0);
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(
         hashOrphanNearTip, /*nPeerHeight=*/nLocalHeight,
         "unit-test-bestchain-near-orphan", &node, &fQueuedOrphan,
         /*fMatchingBlockInventoryGet=*/true));
@@ -2950,8 +3019,8 @@ TEST_CASE("BESTCHAIN recovery skips near-tip unknown race",
         hashNoInvTip, /*nPeerHeight=*/nLocalHeight,
         "unit-test-bestchain-near-no-inv", &node, &fQueuedNoInv,
         /*fMatchingBlockInventoryGet=*/false));
-    REQUIRE(fQueuedNoInv);
-    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashNoInvTip) == 1);
+    REQUIRE_FALSE(fQueuedNoInv);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hashNoInvTip) == 0);
 
     const uint1024_t hashGapTip(0xBC01000000000005ULL);
     bool fQueuedGap = false;
@@ -3328,6 +3397,38 @@ TEST_CASE("Peer height observations expire and follow connection updates", "[led
     REQUIRE(heights.Max(now + PeerHeightTracker::MAX_AGE + std::chrono::seconds(1)) == 0);
 }
 
+TEST_CASE("Shutdown rejects block processing and peer-best recovery",
+    "[ledger][process][shutdown]")
+{
+    const bool savedShutdown = config::fShutdown.load();
+    struct RestoreShutdown
+    {
+        bool saved;
+        ~RestoreShutdown() { config::fShutdown.store(saved); }
+    } restore{savedShutdown};
+    config::fShutdown.store(true);
+
+    PassBlock block;
+    uint8_t status = 0;
+    TAO::Ledger::Process(block, status, nullptr);
+    REQUIRE(status == TAO::Ledger::PROCESS::IGNORED);
+
+    LLP::TritiumNode node;
+    const uint1024_t tip(0xBC01000000000170ULL);
+    bool queued = true;
+    REQUIRE(TAO::Ledger::AttemptPeerBestChainRecovery(tip, 1000, "shutdown-test",
+        &node, &queued) == TAO::Ledger::PeerBestRecoveryResult::SKIPPED);
+    REQUIRE_FALSE(queued);
+    queued = true;
+    REQUIRE_FALSE(TAO::Ledger::RequestBestChainBranchRecovery(tip, 1000,
+        "shutdown-test", &node, &queued));
+    REQUIRE_FALSE(queued);
+
+    const auto packets = node.PACKETS.load();
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    REQUIRE(node.PACKETS.load() == packets);
+}
+
 TEST_CASE("Peer best retry is bounded and expires without fresh advertisements",
     "[ledger][process][bestchain][retry]")
 {
@@ -3337,35 +3438,73 @@ TEST_CASE("Peer best retry is bounded and expires without fresh advertisements",
     REQUIRE_FALSE(retry.RefreshDue(now + LLP::PeerBestRetry::INTERVAL - std::chrono::seconds(1)));
     REQUIRE(retry.RefreshDue(now + LLP::PeerBestRetry::INTERVAL));
     REQUIRE_FALSE(retry.Due(now));
-    retry.Observe(now);
+    retry.Observe(true, now);
     REQUIRE_FALSE(retry.Due(now + LLP::PeerBestRetry::INTERVAL - std::chrono::seconds(1)));
     REQUIRE(retry.Due(now + LLP::PeerBestRetry::INTERVAL));
     REQUIRE_FALSE(retry.Due(now + LLP::PeerBestRetry::INTERVAL));
-    retry.Observe(now + LLP::PeerBestRetry::INTERVAL + std::chrono::seconds(1));
+    retry.Observe(false, now + LLP::PeerBestRetry::INTERVAL + std::chrono::seconds(1));
     REQUIRE_FALSE(retry.Due(now + 2 * LLP::PeerBestRetry::INTERVAL - std::chrono::seconds(1)));
     REQUIRE(retry.Due(now + 2 * LLP::PeerBestRetry::INTERVAL));
     const auto expired = now + LLP::PeerBestRetry::MAX_AGE
                        + LLP::PeerBestRetry::INTERVAL + std::chrono::seconds(2);
     REQUIRE_FALSE(retry.Due(expired));
-    retry.Observe(expired);
+    retry.Observe(false, expired);
     REQUIRE(retry.Due(expired));
     retry.Reset();
     REQUIRE(retry.RefreshDue(now));
     REQUIRE_FALSE(retry.Due(now + LLP::PeerBestRetry::MAX_AGE + 2 * LLP::PeerBestRetry::INTERVAL));
+
+    retry.Observe(true, now);
+    retry.Resolved();
+    REQUIRE(retry.Fresh(now));
+    REQUIRE_FALSE(retry.Due(now + LLP::PeerBestRetry::INTERVAL));
+    REQUIRE_FALSE(retry.BlockDue(now + LLP::PeerBestRetry::INTERVAL));
+    retry.Observe(false, now + LLP::PeerBestRetry::INTERVAL);
+    REQUIRE_FALSE(retry.Due(now + 2 * LLP::PeerBestRetry::INTERVAL - std::chrono::seconds(1)));
+    retry.Observe(false, now + 2 * LLP::PeerBestRetry::INTERVAL - std::chrono::seconds(1));
+    REQUIRE(retry.Due(now + 2 * LLP::PeerBestRetry::INTERVAL));
 }
 
-TEST_CASE("Inventory deferral advances but never postpones the peer best retry",
+TEST_CASE("Block GET retries do not expedite branch recovery",
     "[ledger][process][bestchain][retry][inventory]")
 {
     LLP::PeerBestRetry retry;
     const auto now = LLP::PeerBestRetry::Clock::now();
-    retry.Observe(now);
-    retry.Expedite(LLP::BlockInventoryRequests::TIMEOUT, now);
-    retry.Observe(now + std::chrono::seconds(1));
-    retry.Expedite(LLP::BlockInventoryRequests::TIMEOUT, now + std::chrono::seconds(1));
-    REQUIRE_FALSE(retry.Due(now + LLP::BlockInventoryRequests::TIMEOUT - std::chrono::seconds(1)));
-    REQUIRE(retry.Due(now + LLP::BlockInventoryRequests::TIMEOUT));
-    REQUIRE_FALSE(retry.Due(now + LLP::BlockInventoryRequests::TIMEOUT));
+    REQUIRE_FALSE(retry.BlockDue(now));
+    retry.Observe(true, now);
+    for(unsigned int seconds = 1; seconds <= 30; ++seconds)
+    {
+        const auto tick = now + std::chrono::seconds(seconds);
+        retry.Observe(false, tick);
+        REQUIRE(retry.BlockDue(tick) == (seconds % 5 == 0));
+        REQUIRE(retry.Due(tick) == (seconds == 30));
+    }
+}
+
+TEST_CASE("Changed peer tips retain a bounded unresolved deadline until local resolution",
+    "[ledger][process][bestchain][retry]")
+{
+    LLP::PeerBestRetry retry;
+    const auto now = LLP::PeerBestRetry::Clock::now();
+    retry.Observe(true, now);
+    const auto changed = now + LLP::BlockInventoryRequests::TIMEOUT - std::chrono::seconds(1);
+    retry.Observe(true, changed);
+    REQUIRE_FALSE(retry.BlockDue(changed));
+    retry.Observe(false, changed + std::chrono::seconds(1));
+    REQUIRE(retry.BlockDue(now + LLP::BlockInventoryRequests::TIMEOUT));
+    retry.Observe(true, now + LLP::PeerBestRetry::INTERVAL - std::chrono::seconds(1));
+    REQUIRE_FALSE(retry.Due(now + LLP::PeerBestRetry::INTERVAL - std::chrono::seconds(1)));
+    REQUIRE(retry.Due(now + LLP::PeerBestRetry::INTERVAL));
+    retry.Observe(true, now + 2 * LLP::PeerBestRetry::INTERVAL);
+    REQUIRE(retry.Due(now + 2 * LLP::PeerBestRetry::INTERVAL));
+    REQUIRE_FALSE(retry.Due(now + 2 * LLP::PeerBestRetry::INTERVAL));
+
+    retry.Resolved();
+    retry.Observe(true, now + 3 * LLP::PeerBestRetry::INTERVAL);
+    REQUIRE_FALSE(retry.BlockDue(now + 3 * LLP::PeerBestRetry::INTERVAL));
+    REQUIRE_FALSE(retry.Due(now + 3 * LLP::PeerBestRetry::INTERVAL));
+    REQUIRE(retry.BlockDue(now + 3 * LLP::PeerBestRetry::INTERVAL + LLP::BlockInventoryRequests::TIMEOUT));
+    REQUIRE(retry.Due(now + 4 * LLP::PeerBestRetry::INTERVAL));
 }
 
 TEST_CASE("Block inventory requests expire and track independent peers",
@@ -3379,16 +3518,17 @@ TEST_CASE("Block inventory requests expire and track independent peers",
 
     REQUIRE(requests.Add(tip, &first, now));
     REQUIRE(requests.Add(tip, &second, now + std::chrono::seconds(1)));
-    REQUIRE(requests.Contains(tip, now + LLP::BlockInventoryRequests::TIMEOUT));
+    REQUIRE(requests.Contains(tip, &second, now + LLP::BlockInventoryRequests::TIMEOUT));
     requests.Remove(tip, &second);
-    REQUIRE_FALSE(requests.Contains(tip, now + LLP::BlockInventoryRequests::TIMEOUT));
+    REQUIRE_FALSE(requests.Contains(tip, &second, now + LLP::BlockInventoryRequests::TIMEOUT));
 
-    REQUIRE(requests.Add(tip, &first, now));
-    REQUIRE(requests.Add(tip, &second, now));
+    const auto expired = now + LLP::BlockInventoryRequests::TIMEOUT;
+    REQUIRE(requests.Add(tip, &first, expired));
+    REQUIRE(requests.Add(tip, &second, expired));
     requests.RemovePeer(&first);
-    REQUIRE(requests.Contains(tip, now));
+    REQUIRE(requests.Contains(tip, &second, expired));
     requests.RemovePeer(&second);
-    REQUIRE_FALSE(requests.Contains(tip, now));
+    REQUIRE_FALSE(requests.Contains(tip, &second, expired));
 }
 
 TEST_CASE("Block inventory request tracking is bounded and reuses expired entries",
@@ -3401,20 +3541,225 @@ TEST_CASE("Block inventory request tracking is bounded and reuses expired entrie
     for(std::size_t i = 0; i < LLP::BlockInventoryRequests::MAX_PEERS_PER_HASH; ++i)
         REQUIRE(requests.Add(tip, &peers[i], now));
     REQUIRE_FALSE(requests.Add(tip, &peers[LLP::BlockInventoryRequests::MAX_PEERS_PER_HASH], now));
-    REQUIRE(requests.Add(tip, &peers[0], now));
+    REQUIRE_FALSE(requests.Add(tip, &peers[0], now));
     REQUIRE(requests.Add(tip, &peers[LLP::BlockInventoryRequests::MAX_PEERS_PER_HASH],
         now + LLP::BlockInventoryRequests::TIMEOUT));
 
     LLP::BlockInventoryRequests hashes;
-    for(std::size_t i = 0; i < LLP::BlockInventoryRequests::MAX_HASHES; ++i)
+    for(std::size_t i = 0; i < LLP::BlockInventoryRequests::MAX_HASHES_PER_PEER; ++i)
         REQUIRE(hashes.Add(uint1024_t(i + 1), &peers[0], now));
-    REQUIRE_FALSE(hashes.Add(uint1024_t(LLP::BlockInventoryRequests::MAX_HASHES + 1), &peers[0], now));
-    REQUIRE(hashes.Add(uint1024_t(LLP::BlockInventoryRequests::MAX_HASHES + 1), &peers[0],
+    const uint1024_t overflow(LLP::BlockInventoryRequests::MAX_HASHES_PER_PEER + 1);
+    REQUIRE_FALSE(hashes.Add(overflow, &peers[0], now));
+    REQUIRE(hashes.Add(overflow, &peers[1], now));
+    REQUIRE(hashes.Add(overflow, &peers[0],
         now + LLP::BlockInventoryRequests::TIMEOUT));
 }
 
 #ifndef WIN32
-TEST_CASE("BESTCHAIN waits for a block inventory GET from another peer",
+TEST_CASE("Incomplete block responses cannot bypass the BESTCHAIN GET throttle",
+    "[ledger][process][bestchain][retry][inventory]")
+{
+    LedgerGuard env;
+    MissingBlock incomplete;
+    incomplete.nVersion = 4;
+    incomplete.hashPrevBlock = TAO::Ledger::ChainState::hashBestChain.load();
+    incomplete.nHeight = TAO::Ledger::ChainState::nBestHeight.load() + 1;
+    incomplete.nChannel = 2;
+    incomplete.nNonce = 0x73201;
+    const uint1024_t hash = incomplete.GetHash();
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hash));
+    int fds[2] = {-1, -1};
+    REQUIRE(socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == 0);
+    LLP::TritiumNode node;
+    struct Cleanup
+    {
+        LLP::TritiumNode& node;
+        int* fds;
+        uint1024_t hash;
+        ~Cleanup()
+        {
+            TAO::Ledger::mapLastMissing.erase(hash);
+            TAO::Ledger::mapLastMissingProcessTime.erase(hash);
+            TAO::Ledger::mapLastOrphanRequest.erase(hash);
+            node.fd = -1;
+            close(fds[0]);
+            close(fds[1]);
+        }
+    } cleanup{node, fds, hash};
+    node.fd = fds[1];
+    node.events = POLLIN;
+    node.nCurrentSession = 1;
+    node.nProtocolVersion = LLP::PROTOCOL_VERSION;
+    node.nLastPing.store(runtime::unifiedtimestamp());
+    node.Subscribe(LLP::TritiumNode::SUBSCRIPTION::BLOCK
+                 | LLP::TritiumNode::SUBSCRIPTION::BESTCHAIN
+                 | LLP::TritiumNode::SUBSCRIPTION::BESTHEIGHT);
+    const auto readSent = [&]()
+    {
+        while(node.Buffered() > 0)
+            REQUIRE(node.Flush() > 0);
+        std::vector<uint8_t> sent;
+        uint8_t buffer[4096];
+        for(ssize_t n = recv(fds[0], buffer, sizeof(buffer), MSG_DONTWAIT);
+            n > 0; n = recv(fds[0], buffer, sizeof(buffer), MSG_DONTWAIT))
+            sent.insert(sent.end(), buffer, buffer + n);
+        return sent;
+    };
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    readSent();
+
+    DataStream notify(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    notify << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << hash
+           << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << hash
+           << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << incomplete.nHeight;
+    node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+    node.INCOMING.DATA.assign(notify.begin(), notify.end());
+    REQUIRE(node.ProcessPacket());
+    DataStream get(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    get << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << hash;
+    const auto expectedGet = LLP::TritiumNode::NewMessage(
+        LLP::TritiumNode::ACTION::GET, get).GetBytes();
+    REQUIRE(readSent() == expectedGet);
+
+    uint8_t status = 0;
+    TAO::Ledger::Process(incomplete, status);
+    REQUIRE(status & TAO::Ledger::PROCESS::INCOMPLETE);
+    TAO::Ledger::TritiumBlock body;
+    static_cast<TAO::Ledger::Block&>(body) = incomplete;
+    REQUIRE(body.GetHash() == hash);
+    DataStream response(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    response << uint8_t(LLP::TritiumNode::SPECIFIER::TRITIUM) << body;
+    /* Exercise the already-validated incomplete-body fast path. */
+    TAO::Ledger::mapLastMissingProcessTime[hash] = runtime::timestamp(true);
+    node.INCOMING.MESSAGE = LLP::TritiumNode::TYPES::BLOCK;
+    node.INCOMING.DATA.assign(response.begin(), response.end());
+    REQUIRE(node.ProcessPacket());
+    REQUIRE(node.nConsecutiveFails == 0);
+    REQUIRE(TAO::Ledger::mapLastMissing.at(hash) == 1);
+    readSent();
+
+    for(unsigned int repeat = 0; repeat < 10; ++repeat)
+    {
+        node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+        node.INCOMING.DATA.assign(notify.begin(), notify.end());
+        REQUIRE(node.ProcessPacket());
+        REQUIRE(readSent().empty());
+    }
+    REQUIRE(TAO::Ledger::mapLastMissing.at(hash) == 1);
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hash));
+    std::this_thread::sleep_for(LLP::BlockInventoryRequests::TIMEOUT + std::chrono::milliseconds(100));
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    REQUIRE(readSent() == expectedGet);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hash) == 0);
+    node.MakePeerBestRetryDueForTests();
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hash) == 1);
+}
+
+TEST_CASE("Inventory overflow preserves queued work without disconnecting compliant peers",
+    "[ledger][process][bestchain][inventory]")
+{
+    LedgerGuard env;
+    const bool client = GENERATE(false, true);
+    struct ClientModeGuard
+    {
+        bool saved{config::fClient.load()};
+        bool owned{false};
+        ~ClientModeGuard()
+        {
+            config::fClient.store(saved);
+            if(owned)
+            {
+                delete LLD::Client;
+                LLD::Client = nullptr;
+            }
+        }
+    } clientModeGuard;
+    if(client && !LLD::Client)
+    {
+        LLD::Client = new LLD::ClientDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+        clientModeGuard.owned = true;
+    }
+    config::fClient.store(client);
+    int fds[2] = {-1, -1};
+    REQUIRE(socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == 0);
+    LLP::TritiumNode node;
+    struct Cleanup
+    {
+        LLP::TritiumNode& node;
+        int* fds;
+        ~Cleanup()
+        {
+            node.fCONNECTED.store(false);
+            node.fd = -1;
+            close(fds[0]);
+            close(fds[1]);
+        }
+    } cleanup{node, fds};
+    node.fd = fds[1];
+    node.events = POLLIN;
+    node.fCONNECTED.store(true);
+    node.nCurrentSession = 1;
+    node.nProtocolVersion = LLP::PROTOCOL_VERSION;
+    node.nLastPing.store(runtime::unifiedtimestamp());
+    node.Subscribe(LLP::TritiumNode::SUBSCRIPTION::BLOCK);
+    const auto readSent = [&]()
+    {
+        while(node.Buffered() > 0)
+            REQUIRE(node.Flush() > 0);
+        std::vector<uint8_t> sent;
+        uint8_t buffer[4096];
+        for(ssize_t n = recv(fds[0], buffer, sizeof(buffer), MSG_DONTWAIT);
+            n > 0; n = recv(fds[0], buffer, sizeof(buffer), MSG_DONTWAIT))
+            sent.insert(sent.end(), buffer, buffer + n);
+        return sent;
+    };
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    readSent();
+    using Requests = LLP::BlockInventoryRequests;
+    const size_t capacity = Requests::MAX_HASHES_PER_PEER + Requests::MAX_PENDING_PER_PEER;
+    for(size_t start = 0; start <= capacity; start += 100)
+    {
+        DataStream inventory(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        for(size_t i = start; i < std::min(start + 100, capacity + 1); ++i)
+            inventory << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << uint1024_t(0x732100 + i);
+        node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+        node.INCOMING.DATA.assign(inventory.begin(), inventory.end());
+        REQUIRE(node.ProcessPacket());
+        REQUIRE(node.Connected());
+    }
+    const auto expectedBatch = [&](size_t start)
+    {
+        DataStream get(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        for(size_t i = start; i < start + Requests::MAX_HASHES_PER_PEER; ++i)
+        {
+            if(client)
+                get << uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT);
+            get << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << uint1024_t(0x732100 + i);
+        }
+        return get;
+    };
+    REQUIRE(readSent() == LLP::TritiumNode::NewMessage(
+        LLP::TritiumNode::ACTION::GET, expectedBatch(0)).GetBytes());
+    std::this_thread::sleep_for(Requests::TIMEOUT + std::chrono::milliseconds(100));
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    std::vector<uint8_t> expected;
+    for(size_t i = Requests::MAX_HASHES_PER_PEER; i < 2 * Requests::MAX_HASHES_PER_PEER; ++i)
+    {
+        DataStream get(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        if(client)
+            get << uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT);
+        get << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << uint1024_t(0x732100 + i);
+        const auto bytes = LLP::TritiumNode::NewMessage(LLP::TritiumNode::ACTION::GET, get).GetBytes();
+        expected.insert(expected.end(), bytes.begin(), bytes.end());
+    }
+    REQUIRE(readSent() == expected);
+    REQUIRE(node.Connected());
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    REQUIRE(readSent().empty());
+}
+
+TEST_CASE("BESTCHAIN does not duplicate its peer's block GET",
     "[ledger][process][bestchain][inventory]")
 {
     LedgerGuard env;
@@ -3473,9 +3818,11 @@ TEST_CASE("BESTCHAIN waits for a block inventory GET from another peer",
         inventoryPeer.INCOMING.DATA.assign(inventory.begin(), inventory.end());
         REQUIRE(inventoryPeer.ProcessPacket());
 
+        const uint64_t nPacketsBeforeBestNotify = bestPeer.PACKETS.load();
         bestPeer.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
         bestPeer.INCOMING.DATA.assign(best.begin(), best.end());
         REQUIRE(bestPeer.ProcessPacket());
+        REQUIRE(bestPeer.PACKETS.load() > nPacketsBeforeBestNotify);
         REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(tip) == 0);
 
         /* Periodic recovery must run even if an outstanding GET is repeatedly
@@ -3491,7 +3838,7 @@ TEST_CASE("BESTCHAIN waits for a block inventory GET from another peer",
     bestPeer.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
     bestPeer.INCOMING.DATA.assign(best.begin(), best.end());
     REQUIRE(bestPeer.ProcessPacket());
-    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(tip) == 1);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(tip) == 0);
 
     /* A fatal send error must not make another peer wait for a GET that was
      * never sent or buffered. */
@@ -3515,10 +3862,12 @@ TEST_CASE("BESTCHAIN waits for a block inventory GET from another peer",
         DataStream failedBest(SER_NETWORK, LLP::PROTOCOL_VERSION);
         failedBest << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << uint32_t(1001)
                    << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << failedTip;
+        const uint64_t nPacketsBeforeFailedTip = bestPeer.PACKETS.load();
         bestPeer.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
         bestPeer.INCOMING.DATA.assign(failedBest.begin(), failedBest.end());
         REQUIRE(bestPeer.ProcessPacket());
-        REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(failedTip) == 1);
+        REQUIRE(bestPeer.PACKETS.load() > nPacketsBeforeFailedTip);
+        REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(failedTip) == 0);
         failedPeer.fd = -1;
     }
 
@@ -3528,7 +3877,157 @@ TEST_CASE("BESTCHAIN waits for a block inventory GET from another peer",
 #endif
 
 #ifndef WIN32
-TEST_CASE("Idle peer retries an unknown shorter best chain",
+TEST_CASE("Resolved tip advances get fresh grace while unresolved churn has bounded recovery",
+    "[ledger][process][bestchain][retry][near-tip]")
+{
+    LedgerGuard env;
+    const uint32_t savedHeight = TAO::Ledger::ChainState::nBestHeight.load();
+    const uint1024_t savedBest = TAO::Ledger::ChainState::hashBestChain.load();
+    const bool savedSynchronized = LLP::TritiumNode::fSynchronized.load();
+    TAO::Ledger::ChainState::nBestHeight.store(1000);
+    LLP::TritiumNode::fSynchronized.store(false);
+    TAO::Ledger::mapLastOrphanRequest.clear();
+
+    int fds[2] = {-1, -1};
+    REQUIRE(socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == 0);
+    LLP::TritiumNode node;
+    struct Cleanup
+    {
+        LLP::TritiumNode& node;
+        int* fds;
+        uint32_t height;
+        uint1024_t best;
+        bool synchronized;
+        ~Cleanup()
+        {
+            TAO::Ledger::ChainState::ForgetPeerHeight(&node);
+            TAO::Ledger::ChainState::nBestHeight.store(height);
+            TAO::Ledger::ChainState::hashBestChain.store(best);
+            LLP::TritiumNode::fSynchronized.store(synchronized);
+            TAO::Ledger::mapLastOrphanRequest.clear();
+            node.fd = -1;
+            close(fds[0]);
+            close(fds[1]);
+        }
+    } cleanup{node, fds, savedHeight, savedBest, savedSynchronized};
+    node.fd = fds[1];
+    node.events = POLLIN;
+    node.nCurrentSession = 1;
+    node.nProtocolVersion = LLP::PROTOCOL_VERSION;
+    node.nLastPing.store(runtime::unifiedtimestamp());
+    node.hashBestChain = savedBest;
+    node.Subscribe(LLP::TritiumNode::SUBSCRIPTION::BLOCK
+                 | LLP::TritiumNode::SUBSCRIPTION::BESTCHAIN
+                 | LLP::TritiumNode::SUBSCRIPTION::BESTHEIGHT);
+    const auto readSent = [&]()
+    {
+        while(node.Buffered() > 0)
+            REQUIRE(node.Flush() > 0);
+        std::vector<uint8_t> sent;
+        uint8_t buffer[4096];
+        for(ssize_t n = recv(fds[0], buffer, sizeof(buffer), MSG_DONTWAIT);
+            n > 0; n = recv(fds[0], buffer, sizeof(buffer), MSG_DONTWAIT))
+            sent.insert(sent.end(), buffer, buffer + n);
+        return sent;
+    };
+    readSent();
+
+    const uint1024_t firstTip(0xBC01000000000141ULL);
+    const uint1024_t secondTip(0xBC01000000000142ULL);
+    for(unsigned int i = 0; i < 2; ++i)
+    {
+        const uint1024_t tip = i == 0 ? firstTip : secondTip;
+        REQUIRE_FALSE(LLD::Ledger->HasBlock(tip));
+        node.MakePeerBestRetryDueForTests();
+
+        DataStream payload(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        if(i == 0)
+            payload << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << tip;
+        payload << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << tip
+                << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << uint32_t(1001 + i);
+        node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+        node.INCOMING.DATA.assign(payload.begin(), payload.end());
+        REQUIRE(node.ProcessPacket());
+
+        DataStream get(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        get << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << tip;
+        REQUIRE(readSent() == LLP::TritiumNode::NewMessage(
+            LLP::TritiumNode::ACTION::GET, get).GetBytes());
+        for(unsigned int repeat = 0; repeat < 3; ++repeat)
+        {
+            node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+            node.INCOMING.DATA.assign(payload.begin(), payload.end());
+            REQUIRE(node.ProcessPacket());
+            REQUIRE(readSent().empty());
+        }
+
+        DataStream bestOnly(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        bestOnly << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << tip;
+        node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+        node.INCOMING.DATA.assign(bestOnly.begin(), bestOnly.end());
+        REQUIRE(node.ProcessPacket());
+        REQUIRE(readSent().empty());
+        node.Event(LLP::EVENTS::GENERIC, 0);
+        REQUIRE(TAO::Ledger::mapLastOrphanRequest.empty());
+        readSent();
+        if(i == 0)
+        {
+            TAO::Ledger::ChainState::hashBestChain.store(firstTip);
+            TAO::Ledger::ChainState::nBestHeight.store(1001);
+        }
+    }
+
+    /* Without a response or another announcement, retry only the body at 5s. */
+    std::this_thread::sleep_for(LLP::BlockInventoryRequests::TIMEOUT + std::chrono::milliseconds(100));
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    DataStream retryGet(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    retryGet << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << secondTip;
+    REQUIRE(readSent() == LLP::TritiumNode::NewMessage(
+        LLP::TritiumNode::ACTION::GET, retryGet).GetBytes());
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.empty());
+
+    /* A lost block is not masked by repeated refreshes of the same tip. */
+    node.MakePeerBestRetryDueForTests();
+    DataStream refresh(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    refresh << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << secondTip
+            << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << uint32_t(1002);
+    node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+    node.INCOMING.DATA.assign(refresh.begin(), refresh.end());
+    REQUIRE(node.ProcessPacket());
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.empty());
+    REQUIRE(readSent().empty());
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(secondTip) == 1);
+    readSent();
+
+    /* Changing an unresolved tip cannot postpone an overdue recovery. */
+    TAO::Ledger::mapLastOrphanRequest.clear();
+    node.MakePeerBestRetryDueForTests();
+    for(const uint1024_t tip : {uint1024_t(0xBC01000000000143ULL),
+                               uint1024_t(0xBC01000000000144ULL)})
+    {
+        REQUIRE_FALSE(LLD::Ledger->HasBlock(tip));
+        DataStream changed(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        changed << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << tip;
+        node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+        node.INCOMING.DATA.assign(changed.begin(), changed.end());
+        REQUIRE(node.ProcessPacket());
+        DataStream get(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        get << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << tip;
+        REQUIRE(readSent() == LLP::TritiumNode::NewMessage(
+            LLP::TritiumNode::ACTION::GET, get).GetBytes());
+    }
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.empty());
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(uint1024_t(0xBC01000000000144ULL)) == 1);
+    REQUIRE_FALSE(readSent().empty());
+    TAO::Ledger::mapLastOrphanRequest.clear();
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.empty());
+    REQUIRE(readSent().empty());
+}
+
+TEST_CASE("Idle peer retries an unknown shorter best chain despite stale-height tip churn",
     "[ledger][process][bestchain][retry]")
 {
     LedgerGuard env;
@@ -3570,8 +4069,22 @@ TEST_CASE("Idle peer retries an unknown shorter best chain",
     node.Event(LLP::EVENTS::GENERIC, 0);
     REQUIRE(TAO::Ledger::mapLastOrphanRequest.empty());
     node.MakePeerBestRetryDueForTests();
+    const uint32_t changedHeight = GENERATE(uint32_t(500), uint32_t(999), uint32_t(1000));
+    const uint1024_t changedTip(0xBC01000000000137ULL);
+    for(const uint1024_t hash : {uint1024_t(0xBC01000000000136ULL), changedTip})
+    {
+        REQUIRE_FALSE(LLD::Ledger->HasBlock(hash));
+        DataStream changed(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        changed << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << changedHeight
+                << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << hash;
+        node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+        node.INCOMING.DATA.assign(changed.begin(), changed.end());
+        REQUIRE(node.ProcessPacket());
+        REQUIRE(TAO::Ledger::mapLastOrphanRequest.empty());
+    }
+    while(recv(fds[0], sent, sizeof(sent), MSG_DONTWAIT) > 0) {}
     node.Event(LLP::EVENTS::GENERIC, 0);
-    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(tip) == 1);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(changedTip) == 1);
     REQUIRE(recv(fds[0], sent, sizeof(sent), MSG_DONTWAIT) > 0);
 
     TAO::Ledger::ChainState::ForgetPeerHeight(&node);
