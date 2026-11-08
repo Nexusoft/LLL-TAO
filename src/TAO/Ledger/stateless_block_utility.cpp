@@ -978,7 +978,17 @@ namespace TAO::Ledger
 
         if(!result.accepted)
         {
-            if(nStatus & TAO::Ledger::PROCESS::ORPHAN)
+            if(nStatus & TAO::Ledger::PROCESS::WORK_REVOKED)
+            {
+                result.failure = MinedBlockFailure::WORK_REVOKED;
+                result.reason = "mining work revoked during acceptance";
+            }
+            else if(nStatus & TAO::Ledger::PROCESS::STALE)
+            {
+                result.failure = MinedBlockFailure::STALE;
+                result.reason = "mining work became stale during acceptance";
+            }
+            else if(nStatus & TAO::Ledger::PROCESS::ORPHAN)
                 result.reason = "block is orphan";
             else if(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
             {

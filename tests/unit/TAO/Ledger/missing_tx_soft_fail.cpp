@@ -454,11 +454,16 @@ TEST_CASE("Both mining lanes refuse revoked work after connectivity returns",
     REQUIRE_FALSE(AcceptMinedBlock(work).accepted);
     uint8_t status = 0;
     Process(work, status, nullptr, true, work.nMiningEpoch);
-    REQUIRE(status == PROCESS::IGNORED);
+    REQUIRE(status == (PROCESS::IGNORED | PROCESS::WORK_REVOKED));
     REQUIRE(ChainState::Synchronizing() == validationSync);
     REQUIRE(LLP::TritiumNode::fSynchronized.load());
 
     work.nMiningEpoch = ChainState::MiningReadiness().epoch;
+    TritiumBlock staleWork = work;
+    staleWork.hashPrevBlock++;
+    status = 0;
+    Process(staleWork, status, nullptr, true, staleWork.nMiningEpoch);
+    REQUIRE(status == (PROCESS::IGNORED | PROCESS::STALE));
     REQUIRE(LLP::LegacyGetBlockHandler(legacy).fSuccess);
     REQUIRE(LLP::StatelessGetBlockHandler(stateless).fSuccess);
     DataStream serialized(SER_NETWORK, LLP::PROTOCOL_VERSION);
@@ -491,6 +496,7 @@ TEST_CASE("Confirmed peer catch-up preserves post-accept work but unsafe reports
     REQUIRE(ChainState::MiningReadiness().ready);
 
     const auto oldTip = guard.tip;
+    guard.extraBlocks.push_back(oldTip.GetHash());
     guard.tip.hashPrevBlock = oldTip.GetHash();
     ++guard.tip.nHeight;
     ++guard.tip.nNonce;
@@ -649,7 +655,7 @@ TEST_CASE("Local admission rechecks readiness after forced proof verification",
     Process(block, status, nullptr, false, ready.epoch);
     REQUIRE(block.forceProof);
     REQUIRE_FALSE(block.accepted);
-    REQUIRE(status == PROCESS::IGNORED);
+    REQUIRE(status == (PROCESS::IGNORED | PROCESS::WORK_REVOKED));
     REQUIRE_FALSE(LLD::Ledger->HasBlock(block.GetHash()));
 }
 
