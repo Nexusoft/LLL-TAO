@@ -62,13 +62,23 @@ using the existing subscription protocol. Disconnect/destruction removes that
 connection's observations. A height report alone does not refresh the age of
 its best-chain evidence.
 
-An in-memory work epoch revokes existing work when observations change,
-disconnect, or expire, or when a readiness check detects a ready-to-paused
-transition. Identical timely reports do not revoke work. Both mining lanes
+An in-memory work epoch revokes existing work when observations change in
+potentially unsafe ways, disconnect, or expire, or when a readiness check
+detects a ready-to-paused transition. Identical timely reports do not revoke
+work. A new or updated report at the locally committed tip does not revoke
+work if the hash and height are verified against the stored block and the
+local tip is stable; an address change still revokes. This avoids cancelling
+same-tip work as peers catch up after a block. Other changes, including unknown
+or mismatched tips, still revoke immediately even if repaired before the next
+readiness check. Both mining lanes
 check the epoch before issuing templates and validating submissions, and
 local block admission checks again under the processing mutex immediately
 before acceptance. Staking checks while hashing and before admission.
 Readiness restoration does not revalidate revoked work.
+
+Template cache publication checks both the build tip and the work epoch.
+Its diagnostics distinguish a tip change from an epoch revocation; neither
+condition permits publishing the old build.
 
 Shared and connection-local caches reject revoked epochs; in-flight builds
 cannot publish them as current. On public networks the producer extra nonce

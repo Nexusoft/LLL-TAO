@@ -37,6 +37,16 @@ namespace TAO::Ledger::ChainState
                      const uint1024_t& hash, uint32_t height,
                      Clock::time_point now = Clock::now())
         {
+            ObserveConfirmedTip(peer, address, hash, height, [] { return false; }, now);
+        }
+
+        /* A report proven to be the current local tip can only add supporting
+         * evidence. Other changes remain revocations, including a change of IP. */
+        template<typename ConfirmTip>
+        void ObserveConfirmedTip(const void* peer, const std::string& address,
+                                 const uint1024_t& hash, uint32_t height,
+                                 ConfirmTip confirmTip, Clock::time_point now = Clock::now())
+        {
             std::lock_guard<std::mutex> lock(mutex);
             Expire(now);
             const auto it = observations.find(peer);
@@ -44,7 +54,9 @@ namespace TAO::Ledger::ChainState
             || it->second.height != height || it->second.address != address)
             {
                 cacheValid = false;
-                ++epoch;
+                if((it != observations.end() && it->second.address != address)
+                || !confirmTip())
+                    ++epoch;
             }
             observations[peer] = {address, hash, height, now};
         }

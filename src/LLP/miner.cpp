@@ -35,6 +35,7 @@ ________________________________________________________________________________
 #include <LLP/include/round_state_utility.h>
 #include <LLP/include/mining_template_delivery.h>
 #include <LLP/include/mining_template_payload.h>
+#include <LLP/include/submit_block_rejection.h>
 #include <LLP/types/miner.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
@@ -126,6 +127,11 @@ namespace LLP
         {
             /* Legacy BLOCK_REJECTED now carries one machine-readable reason byte
              * for submit/session/template failures instead of an empty payload. */
+            return std::vector<uint8_t>{static_cast<uint8_t>(eReason)};
+        }
+
+        std::vector<uint8_t> BuildSubmitRejectPayload(const OpcodeUtility::SubmitBlockRejectionReason eReason)
+        {
             return std::vector<uint8_t>{static_cast<uint8_t>(eReason)};
         }
 
@@ -958,6 +964,7 @@ namespace LLP
     /* This function is necessary for a template LLP server. It handles a custom message system, interpreting from raw packets. */
     bool Miner::ProcessPacket()
     {
+        const uint8_t nIncomingHeader = this->INCOMING.HEADER;
         try
         {
             /* Get the incoming packet */
@@ -1598,16 +1605,19 @@ namespace LLP
             {
                 debug::error(FUNCTION, "MinerLLP: SESSION::DEFAULT not available for mining from ",
                              GetAddress().ToStringIP(),
-                             " — node requires -autologin=user:pass or manual unlock for mining."
-                             " GET_BLOCK will return TEMPLATE_SOURCE_UNAVAILABLE to miner");
+                             " — node requires -autologin=user:pass or manual unlock for mining.");
 
                 /* Send explicit wire response so the miner knows to back off and retry.
                  * Keep the connection alive — the session may become available later. */
                 try
                 {
-                    respond_auto(BLOCK_REJECTED,
-                        BuildGetBlockControlPayload(
-                            GetBlockPolicyReason::TEMPLATE_SOURCE_UNAVAILABLE, 5000u));
+                    if(nIncomingHeader == SUBMIT_BLOCK)
+                        respond_auto(BLOCK_REJECTED,
+                            BuildSubmitRejectPayload(OpcodeUtility::SubmitBlockRejectionReason::INTERNAL_ERROR));
+                    else
+                        respond_auto(BLOCK_REJECTED,
+                            BuildGetBlockControlPayload(
+                                GetBlockPolicyReason::TEMPLATE_SOURCE_UNAVAILABLE, 5000u));
                 }
                 catch(...) { /* best-effort send — ignore secondary send failure */ }
 
@@ -3162,7 +3172,7 @@ namespace LLP
             debug::log(0, FUNCTION, "SUBMIT_BLOCK packet too small: ",
                        PACKET.DATA.size(), " < ", MIN_SIZE);
             respond_auto(BLOCK_REJECTED,
-                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::INVALID_POW));
+                BuildSubmitRejectPayload(OpcodeUtility::SubmitBlockRejectionReason::PACKET_TOO_SMALL));
             return true;
         }
 
@@ -3171,7 +3181,7 @@ namespace LLP
             debug::log(0, FUNCTION, "SUBMIT_BLOCK packet too large: ",
                        PACKET.DATA.size(), " > ", MAX_SIZE);
             respond_auto(BLOCK_REJECTED,
-                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::INVALID_POW));
+                BuildSubmitRejectPayload(OpcodeUtility::SubmitBlockRejectionReason::PACKET_TOO_LARGE));
             return true;
         }
 
@@ -3281,7 +3291,7 @@ namespace LLP
             {
                 debug::error(FUNCTION, "SUBMIT_BLOCK parse failed: ", parseResult.reason);
                 respond_auto(BLOCK_REJECTED,
-                    BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::INVALID_POW));
+                    BuildSubmitRejectPayload(OpcodeUtility::SubmitBlockRejectionReason::MALFORMED_SUBMISSION));
                 return true;
             }
 
@@ -3347,7 +3357,7 @@ namespace LLP
             debug::error(FUNCTION, "SUBMIT_BLOCK unexpected non-Tritium block for merkle ",
                          hashMerkle.SubString());
             respond_auto(BLOCK_REJECTED,
-                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::LOCAL_TEMPLATE_REJECT));
+                BuildSubmitRejectPayload(OpcodeUtility::SubmitBlockRejectionReason::WRONG_BLOCK_TYPE));
             return true;
         }
 
@@ -3358,7 +3368,7 @@ namespace LLP
         {
             debug::log(0, FUNCTION, "📥 === SUBMIT_BLOCK: REJECTED (sign_block failed, legacy lane) ===");
             respond_auto(BLOCK_REJECTED,
-                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::LOCAL_TEMPLATE_REJECT));
+                BuildSubmitRejectPayload(OpcodeUtility::SubmitBlockRejectionReason::CANDIDATE_PREPARATION_FAILED));
             return true;
         }
 
@@ -3441,7 +3451,7 @@ namespace LLP
                     false, validationResult.reason);
             }
             respond_auto(BLOCK_REJECTED,
-                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::INVALID_POW));
+                std::vector<uint8_t>{MinedBlockRejectionCode(validationResult.failure, false)});
             return true;
         }
 
@@ -3465,7 +3475,7 @@ namespace LLP
             }
             m_nPendingSubmitHeight.store(0, std::memory_order_release);
             respond_auto(BLOCK_REJECTED,
-                BuildSubmitRejectPayload(OpcodeUtility::RejectionReason::LOCAL_TEMPLATE_REJECT));
+                std::vector<uint8_t>{MinedBlockRejectionCode(acceptanceResult.failure, true)});
 
             /* [Option A] Parity with the stateless lane: AcceptMinedBlock()
              * failures here (e.g. a fork/reorg racing ahead of this already

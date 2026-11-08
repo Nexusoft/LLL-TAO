@@ -47,6 +47,14 @@ namespace TAO
         };
 
 
+        enum class MinedBlockFailure : uint8_t
+        {
+            OTHER,
+            WORK_REVOKED,
+            STALE,
+            DUPLICATE
+        };
+
         /** BlockValidationResult
          *
          *  Result of validating a mined block before acceptance.
@@ -56,6 +64,7 @@ namespace TAO
         {
             bool valid = false;
             std::string reason;
+            MinedBlockFailure failure = MinedBlockFailure::OTHER;
             uint32_t nChannel = 0;
             uint32_t nHeight = 0;
             uint32_t nUnifiedHeight = 0;  // Unified blockchain height (reference)
@@ -72,6 +81,7 @@ namespace TAO
         {
             bool accepted = false;
             std::string reason;
+            MinedBlockFailure failure = MinedBlockFailure::OTHER;
             uint32_t nChannel = 0;
             uint32_t nHeight = 0;
             uint32_t nUnifiedHeight = 0;  // Unified blockchain height (reference)

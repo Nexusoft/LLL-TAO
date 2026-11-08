@@ -1229,12 +1229,21 @@ namespace TAO
                 return;
             }
 
-            if(nMiningEpoch != 0 && (!ChainState::MiningWorkCurrent(nMiningEpoch)
-            || block.hashPrevBlock != ChainState::hashBestChain.load()))
+            if(nMiningEpoch != 0)
             {
-                nStatus = PROCESS::IGNORED;
-                debug::log(0, FUNCTION, "Local mining work revoked before admission");
-                return;
+                if(!ChainState::MiningWorkCurrent(nMiningEpoch))
+                {
+                    nStatus = PROCESS::IGNORED | PROCESS::WORK_REVOKED;
+                    debug::log(0, FUNCTION, "Local mining work revoked before admission");
+                    return;
+                }
+
+                if(block.hashPrevBlock != ChainState::hashBestChain.load())
+                {
+                    nStatus = PROCESS::IGNORED | PROCESS::STALE;
+                    debug::log(0, FUNCTION, "Local mining work stale before admission");
+                    return;
+                }
             }
 
             /* Get the block's hash. */
@@ -1769,7 +1778,7 @@ namespace TAO
                     /* Attempt to accept block when we have all the transactions. */
                     if(nMiningEpoch != 0 && !ChainState::MiningWorkCurrent(nMiningEpoch))
                     {
-                        nStatus = PROCESS::IGNORED;
+                        nStatus = PROCESS::IGNORED | PROCESS::WORK_REVOKED;
                         debug::log(0, FUNCTION, "Local mining work revoked during validation");
                         return;
                     }

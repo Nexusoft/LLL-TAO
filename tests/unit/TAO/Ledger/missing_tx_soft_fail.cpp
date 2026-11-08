@@ -31,6 +31,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/mining_readiness.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/stateless_block_utility.h>
+#include <TAO/Ledger/include/supply.h>
 #include <LLP/include/legacy_get_block_handler.h>
 #include <LLP/include/stateless_get_block_handler.h>
 #include <TAO/Ledger/include/enum.h>
@@ -209,6 +210,7 @@ namespace
         int peers[3]{};
         TAO::Ledger::BlockState tip;
         bool written = false;
+        uint1024_t hashWrittenTip = 0;
         std::vector<uint1024_t> extraBlocks;
 
         PublicMiningGuard()
@@ -225,7 +227,8 @@ namespace
             tip.nChannelHeight = 1;
             tip.nBits = 0x8001ffff;
             tip.nNonce = LLC::GetRand();
-            written = LLD::Ledger->WriteBlock(tip.GetHash(), tip);
+            hashWrittenTip = tip.GetHash();
+            written = LLD::Ledger->WriteBlock(hashWrittenTip, tip);
             TAO::Ledger::ChainState::tStateBest.store(tip);
             TAO::Ledger::ChainState::hashBestChain.store(tip.GetHash());
             TAO::Ledger::ChainState::nBestHeight.store(tip.nHeight);
@@ -255,7 +258,7 @@ namespace
                 config::mapArgs.erase("-miningminpeers");
             TAO::Ledger::ClearMiningTemplateCaches("mining readiness test cleanup");
             if(written)
-                LLD::Ledger->EraseBlock(tip.GetHash());
+                LLD::Ledger->EraseBlock(hashWrittenTip);
             for(const auto& hash : extraBlocks)
                 LLD::Ledger->EraseBlock(hash);
         }
@@ -451,11 +454,16 @@ TEST_CASE("Both mining lanes refuse revoked work after connectivity returns",
     REQUIRE_FALSE(AcceptMinedBlock(work).accepted);
     uint8_t status = 0;
     Process(work, status, nullptr, true, work.nMiningEpoch);
-    REQUIRE(status == PROCESS::IGNORED);
+    REQUIRE(status == (PROCESS::IGNORED | PROCESS::WORK_REVOKED));
     REQUIRE(ChainState::Synchronizing() == validationSync);
     REQUIRE(LLP::TritiumNode::fSynchronized.load());
 
     work.nMiningEpoch = ChainState::MiningReadiness().epoch;
+    TritiumBlock staleWork = work;
+    staleWork.hashPrevBlock++;
+    status = 0;
+    Process(staleWork, status, nullptr, true, staleWork.nMiningEpoch);
+    REQUIRE(status == (PROCESS::IGNORED | PROCESS::STALE));
     REQUIRE(LLP::LegacyGetBlockHandler(legacy).fSuccess);
     REQUIRE(LLP::StatelessGetBlockHandler(stateless).fSuccess);
     DataStream serialized(SER_NETWORK, LLP::PROTOCOL_VERSION);
@@ -475,6 +483,78 @@ TEST_CASE("Both mining lanes refuse revoked work after connectivity returns",
     ChainState::ObserveMiningPeer(&guard.peers[2], "192.0.2.3", 0xBAD, 1);
     REQUIRE(ChainState::MiningReadiness().reason == "unresolved-peer-tip");
     REQUIRE_FALSE(LLP::StatelessGetBlockHandler(stateless).fSuccess);
+}
+
+TEST_CASE("Confirmed peer catch-up preserves post-accept work but unsafe reports revoke it",
+    "[ledger][mining-readiness][template_freshness]")
+{
+    using namespace TAO::Ledger;
+    PublicMiningGuard guard;
+    REQUIRE(guard.written);
+    guard.Report(0);
+    guard.Report(1);
+    REQUIRE(ChainState::MiningReadiness().ready);
+
+    const auto oldTip = guard.tip;
+    guard.extraBlocks.push_back(oldTip.GetHash());
+    guard.tip.hashPrevBlock = oldTip.GetHash();
+    ++guard.tip.nHeight;
+    ++guard.tip.nNonce;
+    /* A second Prime state uses the reserve-based reward path rather than
+     * the first-block subsidy fallback. Give that state a spendable reserve. */
+    guard.tip.nReleasedReserve[0] = NXS_COIN;
+    REQUIRE(LLD::Ledger->WriteBlock(guard.tip.GetHash(), guard.tip));
+    guard.extraBlocks.push_back(guard.tip.GetHash());
+    ChainState::tStateBest.store(guard.tip);
+    ChainState::hashBestChain.store(guard.tip.GetHash());
+    ChainState::nBestHeight.store(guard.tip.nHeight);
+    ClearMiningTemplateCaches("test local acceptance");
+
+    const auto ready = ChainState::MiningReadiness();
+    REQUIRE(ready.ready);
+    REQUIRE(GetCoinbaseReward(guard.tip, 1, 0) > 0);
+    memory::encrypted_ptr<Credentials> user =
+        new Credentials(LLC::GetRand256().ToString().c_str(), "peer-catch-up-test");
+    TritiumBlock work;
+    REQUIRE(CreateBlock(user, "1234", 1, work, 42));
+    REQUIRE(work.hashPrevBlock == guard.tip.GetHash());
+    REQUIRE(work.nMiningEpoch == ready.epoch);
+    bool owner = false;
+    const uint256_t reward = 123;
+    auto token = Testing::BeginOrJoinMiningTemplateInFlight(1, reward, owner,
+                                                            guard.tip.GetHash(), ready.epoch);
+    REQUIRE(owner);
+
+    guard.Report(0);
+    guard.Report(1);
+    guard.Report(2);
+    REQUIRE(ChainState::MiningReadiness().ready);
+    REQUIRE(ChainState::MiningWorkCurrent(work.nMiningEpoch));
+    REQUIRE(Testing::CompleteMiningTemplateInFlight(token, 1, reward, 42, ready.epoch));
+    TritiumBlock next;
+    REQUIRE(CreateBlock(user, "1234", 1, next, 42));
+    REQUIRE(next.nMiningEpoch == work.nMiningEpoch);
+    REQUIRE(next.hashPrevBlock == work.hashPrevBlock);
+
+    /* A transient unknown tip must revoke even if it is repaired before
+     * anybody samples readiness, including for an in-flight build. */
+    token = Testing::BeginOrJoinMiningTemplateInFlight(1, reward, owner,
+                                                        guard.tip.GetHash(), ready.epoch);
+    REQUIRE(owner);
+    ChainState::ObserveMiningPeer(&guard.peers[0], "192.0.2.1", 0xBAD, 1);
+    guard.Report(0);
+    REQUIRE(ChainState::MiningReadiness().ready);
+    REQUIRE_FALSE(ChainState::MiningWorkCurrent(work.nMiningEpoch));
+    REQUIRE_FALSE(Testing::CompleteMiningTemplateInFlight(token, 1, reward, 42, ready.epoch));
+    REQUIRE_FALSE(Testing::StoreMiningTemplateCacheEntryForTesting(
+        1, reward, 42, guard.tip.GetHash(), ready.epoch));
+    REQUIRE(ValidateMinedBlock(work).failure == MinedBlockFailure::WORK_REVOKED);
+
+    const auto restored = ChainState::MiningReadiness();
+    ChainState::ForgetPeerHeight(&guard.peers[0]);
+    guard.Report(0);
+    REQUIRE(ChainState::MiningReadiness().ready);
+    REQUIRE_FALSE(ChainState::MiningWorkCurrent(restored.epoch));
 }
 
 TEST_CASE("Same-tip mining cache rebuilds identity after an evidence interruption",
@@ -575,7 +655,7 @@ TEST_CASE("Local admission rechecks readiness after forced proof verification",
     Process(block, status, nullptr, false, ready.epoch);
     REQUIRE(block.forceProof);
     REQUIRE_FALSE(block.accepted);
-    REQUIRE(status == PROCESS::IGNORED);
+    REQUIRE(status == (PROCESS::IGNORED | PROCESS::WORK_REVOKED));
     REQUIRE_FALSE(LLD::Ledger->HasBlock(block.GetHash()));
 }
 

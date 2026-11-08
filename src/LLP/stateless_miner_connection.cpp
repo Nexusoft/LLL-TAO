@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <LLP/include/disposable_falcon.h>
 #include <LLP/include/auto_cooldown_manager.h>
 #include <LLP/include/opcode_utility.h>
+#include <LLP/include/submit_block_rejection.h>
 #include <LLP/include/coinbase_validation.h>
 #include <LLP/include/push_notification.h>
 #include <LLP/include/mining_constants.h>
@@ -1308,6 +1309,7 @@ namespace LLP
     /** Main packet processing using StatelessMiner processor */
     bool StatelessMinerConnection::ProcessPacket()
     {
+        const uint16_t nIncomingHeader = this->INCOMING.HEADER;
         try
         {
             /* Reset connection activity timer to prevent idle disconnection on any packet processing */
@@ -1755,7 +1757,7 @@ namespace LLP
                 if (!CheckRateLimit(SUBMIT_BLOCK)) {
                     // Rate limit exceeded - reject submission
                     debug::log(1, FUNCTION, "SUBMIT_BLOCK rate limited for ", GetAddress().ToStringIP());
-                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    StatelessPacket response = SubmitBlockRejection(OpcodeUtility::SubmitBlockRejectionReason::RATE_LIMITED);
                     respond(response);
                     return true;  // Handled (rejected)
                 }
@@ -1789,7 +1791,7 @@ namespace LLP
                     {
                         debug::log(0, FUNCTION, "Session consistency violation at SUBMIT_BLOCK: ",
                                    SessionConsistencyResultString(consistency));
-                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                        StatelessPacket response = SubmitBlockRejection(OpcodeUtility::SubmitBlockRejectionReason::SESSION_INCONSISTENT);
                         respond(response);
                         return true;
                     }
@@ -1838,7 +1840,7 @@ namespace LLP
                 {
                     debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK packet too small: ", 
                                PACKET.DATA.size(), " < ", MIN_SIZE);
-                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    StatelessPacket response = SubmitBlockRejection(OpcodeUtility::SubmitBlockRejectionReason::PACKET_TOO_SMALL);
                     respond(response);
                     return true;
                 }
@@ -1847,7 +1849,7 @@ namespace LLP
                 {
                     debug::log(0, FUNCTION, "MinerLLP: SUBMIT_BLOCK packet too large: ",
                                PACKET.DATA.size(), " > ", MAX_SIZE);
-                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    StatelessPacket response = SubmitBlockRejection(OpcodeUtility::SubmitBlockRejectionReason::PACKET_TOO_LARGE);
                     respond(response);
                     return true;
                 }
@@ -2246,7 +2248,7 @@ namespace LLP
                         debug::error(FUNCTION, "     → Solution: Request new template immediately");
                         debug::error(FUNCTION, "════════════════════════════════════════");
 
-                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                        StatelessPacket response = SubmitBlockRejection(OpcodeUtility::SubmitBlockRejectionReason::UNKNOWN_TEMPLATE);
                         respond(response);
                         debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (Unknown template) ===", ANSI_COLOR_RESET);
                         return true;
@@ -2292,26 +2294,27 @@ namespace LLP
                     }
                 }
 
+                    pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(pCapturedBlock.get());
+                    if(!pTritium)
+                    {
+                        debug::error(FUNCTION, "❌ invalid block type (expected TritiumBlock)");
+                        StatelessPacket response = SubmitBlockRejection(OpcodeUtility::SubmitBlockRejectionReason::WRONG_BLOCK_TYPE);
+                        respond(response);
+                        debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (invalid block type) ===", ANSI_COLOR_RESET);
+                        return true;
+                    }
+
                     /* Make sure there is no inconsistencies in signing block. */
                     if(!sign_block(nonce, hashMerkle, vPrimeOffsets, pCapturedBlock.get(),
                                    nCapturedCreationTime, nCapturedChannel, nCapturedChannelHeight))
                     {
                         debug::error(FUNCTION, "❌ sign_block failed (nonce update failed)");
-                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                        StatelessPacket response = SubmitBlockRejection(OpcodeUtility::SubmitBlockRejectionReason::CANDIDATE_PREPARATION_FAILED);
                         respond(response);
                         debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (sign_block failed) ===", ANSI_COLOR_RESET);
                         return true;
                     }
 
-                    pTritium = dynamic_cast<TAO::Ledger::TritiumBlock*>(pCapturedBlock.get());
-                    if(!pTritium)
-                    {
-                        debug::error(FUNCTION, "❌ invalid block type (expected TritiumBlock)");
-                        StatelessPacket response(STATELESS_BLOCK_REJECTED);
-                        respond(response);
-                        debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (invalid block type) ===", ANSI_COLOR_RESET);
-                        return true;
-                    }
                 }
 
                 /* Hash-based staleness diagnostic only. Enforcement is performed
@@ -2432,7 +2435,8 @@ namespace LLP
                             false, validationResult.reason);
                     }
 
-                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    StatelessPacket response = MinedBlockRejection(
+                        validationResult.failure, false);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (", validationResult.reason, ") ===", ANSI_COLOR_RESET);
                     return true;
@@ -2474,7 +2478,8 @@ namespace LLP
                     debug::error(FUNCTION, "❌ AcceptMinedBlock ledger write failed: ", acceptanceResult.reason);
 
                     m_nPendingSubmitHeight.store(0, std::memory_order_release);
-                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    StatelessPacket response = MinedBlockRejection(
+                        acceptanceResult.failure, true);
                     respond(response);
 
                     /* Notify Colin agent on ledger-write failure */
@@ -3181,11 +3186,16 @@ namespace LLP
             /* This prevents node from locking up on unexpected errors */
             try
             {
-                StatelessPacket errorResponse;
-                errorResponse.HEADER = StatelessOpcodes::STATELESS_AUTH_RESULT;
-                errorResponse.DATA.push_back(0x00);  /* Failure status */
-                errorResponse.LENGTH = 1;
-                respond(errorResponse);
+                if(nIncomingHeader == OpcodeUtility::Stateless::SUBMIT_BLOCK)
+                    respond(SubmitBlockRejection(OpcodeUtility::SubmitBlockRejectionReason::INTERNAL_ERROR));
+                else
+                {
+                    StatelessPacket errorResponse;
+                    errorResponse.HEADER = StatelessOpcodes::STATELESS_AUTH_RESULT;
+                    errorResponse.DATA.push_back(0x00);  /* Failure status */
+                    errorResponse.LENGTH = 1;
+                    respond(errorResponse);
+                }
             }
             catch(...)
             {
@@ -4274,6 +4284,11 @@ namespace LLP
                     SendGetBlockControlResponse(GetBlockPolicyReason::TEMPLATE_NOT_READY,
                                                 MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
                 }
+                else if(PACKET.HEADER == OpcodeUtility::Stateless::SUBMIT_BLOCK)
+                {
+                    respond(SubmitBlockRejection(
+                        static_cast<uint8_t>(OpcodeUtility::RejectionReason::SESSION_INVALID)));
+                }
                 else
                 {
                     StatelessPacket response(
@@ -4300,6 +4315,8 @@ namespace LLP
 
             if(PACKET.HEADER == OpcodeUtility::Stateless::GET_BLOCK)
                 SendGetBlockControlResponse(GetBlockPolicyReason::SESSION_INVALID, 0, false);
+            else if(PACKET.HEADER == OpcodeUtility::Stateless::SUBMIT_BLOCK)
+                respond(SubmitBlockRejection(OpcodeUtility::SubmitBlockRejectionReason::SESSION_INCONSISTENT));
             else
             {
                 StatelessPacket response(
