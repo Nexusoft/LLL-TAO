@@ -67,14 +67,14 @@ namespace LLP
 
     template<typename Connection, typename PacketType>
     MiningTemplateWriteResult WriteMiningTemplate(Connection& connection, const PacketType& packet,
-                                                   uint64_t epoch)
+                                                   uint64_t epoch, std::function<void()> fnSent = {})
     {
         bool revoked = false;
         const bool sent = connection.WritePacket(packet, false, [&]()
         {
             revoked = !MiningTemplateMaySend(epoch);
             return !revoked;
-        });
+        }, fnSent);
         return sent ? MiningTemplateWriteResult::SENT :
             (revoked ? MiningTemplateWriteResult::REVOKED : MiningTemplateWriteResult::WRITE_FAILED);
     }

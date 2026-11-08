@@ -710,7 +710,7 @@ namespace LLP
 
         /** Send BLOCK_DATA and enforce authenticated-path non-empty payload invariant. **/
         bool SendGetBlockDataResponse(const std::vector<uint8_t>& vPayload, bool fAuthenticatedPath,
-                                      uint64_t nMiningEpoch);
+                                      uint64_t nMiningEpoch, std::function<void()> fnSent = {});
 
         /** Centralized session/auth/channel gate for post-auth mining opcodes. **/
         bool PreflightSessionGate(const StatelessPacket& PACKET, const MiningContext& ctxSnap);

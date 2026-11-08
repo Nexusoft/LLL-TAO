@@ -3015,7 +3015,11 @@ namespace LLP
         Packet response(BLOCK_DATA);
         response.DATA = result.vPayload;
         response.LENGTH = static_cast<uint32_t>(response.DATA.size());
-        const auto writeResult = WriteMiningTemplate(*this, response, result.nMiningEpoch);
+        const auto writeResult = WriteMiningTemplate(*this, response, result.nMiningEpoch,
+            [this, height = result.nUnifiedHeight, hash = result.hashBestChain]()
+            {
+                RecordTemplateDelivery(height, hash);
+            });
         if(writeResult != MiningTemplateWriteResult::SENT)
         {
             const auto reason = writeResult == MiningTemplateWriteResult::REVOKED
@@ -3024,12 +3028,6 @@ namespace LLP
                 BuildGetBlockControlPayload(reason, 1000));
             return true;
         }
-
-        /* Update last template unified height after sending template.
-         * Uses UNIFIED height — every tip move changes hashPrevBlock,
-         * so ALL channels need fresh templates regardless of which channel mined.
-         * Atomic store — see nLastTemplateUnifiedHeight comment in miner.h. */
-        RecordTemplateDelivery(result.nUnifiedHeight, result.hashBestChain);
 
         /* Notify Colin agent: template pushed via GET_BLOCK */
         /* Use the snapshot outside MUTEX: hashGenesis is read-only for this

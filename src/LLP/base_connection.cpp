@@ -252,6 +252,22 @@ namespace LLP
 
     template <class PacketType>
     bool BaseConnection<PacketType>::WritePacket(const PacketType& PACKET, bool fPriority,
+                                                  const std::function<bool()>& fnMaySend,
+                                                  const std::function<void()>& fnSent)
+    {
+        LOCK(DELIVERY_MUTEX);
+        if(!WritePacket(PACKET, fPriority, fnMaySend))
+            return false;
+
+        /* Publish before the next guarded write, but outside the flush/socket locks. */
+        if(fnSent)
+            fnSent();
+        return true;
+    }
+
+
+    template <class PacketType>
+    bool BaseConnection<PacketType>::WritePacket(const PacketType& PACKET, bool fPriority,
                                                   const std::function<bool()>& fnMaySend)
     {
         /* Pair buffered-state changes and notification with the flush wait. */

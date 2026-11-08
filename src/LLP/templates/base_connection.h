@@ -286,8 +286,7 @@ namespace LLP
             while(!qLocal.empty())
             {
                 const auto& queued = qLocal.front();
-                if(WritePacket(queued.packet, false, queued.fnMaySend) && queued.fnSent)
-                    queued.fnSent();
+                WritePacket(queued.packet, false, queued.fnMaySend, queued.fnSent);
                 qLocal.pop();
                 ++nDrained;
             }
@@ -372,6 +371,9 @@ namespace LLP
 
         /** Mutex to protect the outgoing packet queue. **/
         std::mutex OUTGOING_MUTEX;
+
+        /** Serialize guarded writes with their delivery-state publication. **/
+        std::mutex DELIVERY_MUTEX;
 
 
         /** Queue of packets enqueued by QueuePacket() for deferred
@@ -536,12 +538,18 @@ namespace LLP
          *  Write a single packet to the TCP stream.
          *
          *  @param[in] PACKET The packet of type PacketType to write.
+         *  The callback overload serializes guarded writes and publication.
+         *  Call it without holding locks acquired by fnSent; the callback runs
+         *  outside the flush/socket locks and must not re-enter guarded writes.
          *
          **/
         bool WritePacket(const PacketType& PACKET);
         bool WritePacket(const PacketType& PACKET, bool fPriority);
         bool WritePacket(const PacketType& PACKET, bool fPriority,
                          const std::function<bool()>& fnMaySend);
+        bool WritePacket(const PacketType& PACKET, bool fPriority,
+                         const std::function<bool()>& fnMaySend,
+                         const std::function<void()>& fnSent);
 
 
         /** ReadPacket

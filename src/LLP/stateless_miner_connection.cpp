@@ -1710,35 +1710,33 @@ namespace LLP
                            " height=", gbResult.nBlockHeight,
                            " nBits=", gbResult.nBlockBits, "]");
 
-                if(!SendGetBlockDataResponse(gbResult.vPayload, true, gbResult.nMiningEpoch))
+                if(!SendGetBlockDataResponse(gbResult.vPayload, true, gbResult.nMiningEpoch,
+                    [this, height = gbResult.nUnifiedHeight, hash = gbResult.hashBestChain]()
+                    {
+                        MiningContext delivered;
+                        {
+                            LOCK(MUTEX);
+                            context = context.WithTimestamp(runtime::unifiedtimestamp())
+                                             .WithHeight(height)
+                                             .WithLastTemplateUnifiedHeight(height)
+                                             .WithHashLastBlock(hash);
+                            delivered = context;
+                        }
+
+                        TransformTrackedMiner(delivered,
+                            [height, hash](const MiningContext& current)
+                            {
+                                return current.WithTimestamp(runtime::unifiedtimestamp())
+                                              .WithHeight(height)
+                                              .WithLastTemplateUnifiedHeight(height)
+                                              .WithHashLastBlock(hash);
+                            });
+                        StatelessMinerManager::Get().IncrementTemplatesServed();
+                    }))
                     return true;
 
                 debug::log(0, "   ✅ Packet sent!");
                 debug::log(2, "📥 === GET_BLOCK: SUCCESS ===");
-
-                /* Update context timestamp, height, last template channel height, and
-                 * hashLastBlock snapshot (primary staleness anchor, StakeMinter pattern). */
-                {
-                    LOCK(MUTEX);
-                    context = context.WithTimestamp(runtime::unifiedtimestamp())
-                                     .WithHeight(gbResult.nUnifiedHeight)
-                                     .WithLastTemplateUnifiedHeight(gbResult.nUnifiedHeight)
-                                     .WithHashLastBlock(gbResult.hashBestChain);
-                }
-
-                /* Atomic transform: update template tracking on CURRENT value in mapMiners,
-                 * avoiding TOCTOU race with NotifyNewRound. We capture chain state
-                 * outside the transform and apply it atomically. */
-                {
-                    TransformTrackedMiner(context,
-                        [gbResult](const MiningContext& current) {
-                            return current.WithTimestamp(runtime::unifiedtimestamp())
-                                          .WithHeight(gbResult.nUnifiedHeight)
-                                          .WithLastTemplateUnifiedHeight(gbResult.nUnifiedHeight)
-                                          .WithHashLastBlock(gbResult.hashBestChain);
-                        });
-                }
-                StatelessMinerManager::Get().IncrementTemplatesServed();
 
                 return true;
             }
@@ -4182,7 +4180,8 @@ namespace LLP
     }
 
     bool StatelessMinerConnection::SendGetBlockDataResponse(const std::vector<uint8_t>& vPayload,
-                                                            bool fAuthenticatedPath, uint64_t nMiningEpoch)
+                                                            bool fAuthenticatedPath, uint64_t nMiningEpoch,
+                                                            std::function<void()> fnSent)
     {
         if(fAuthenticatedPath)
         {
@@ -4199,7 +4198,7 @@ namespace LLP
         StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
         response.DATA = vPayload;
         response.LENGTH = static_cast<uint32_t>(vPayload.size());
-        const auto writeResult = WriteMiningTemplate(*this, response, nMiningEpoch);
+        const auto writeResult = WriteMiningTemplate(*this, response, nMiningEpoch, std::move(fnSent));
         if(writeResult != MiningTemplateWriteResult::SENT)
         {
             const auto reason = writeResult == MiningTemplateWriteResult::REVOKED
