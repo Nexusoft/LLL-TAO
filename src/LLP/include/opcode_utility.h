@@ -289,12 +289,20 @@ namespace OpcodeUtility
     //=========================================================================
     enum class SubmitBlockRejectionReason : uint8_t
     {
+        UNKNOWN_TEMPLATE            = 0x09,  // Merkle root not in the lane-local map
         CHACHA20_DECRYPTION_FAILED  = 0x0B,  // ChaCha20 payload decryption error
         ENCRYPTION_REQUIRED         = 0x0C,  // ChaCha20 encryption not enabled / sig verify failed
         NO_SESSION_KEY              = 0x0D,  // Falcon pubkey missing for session
         WORK_REVOKED                = 0x0E,  // Mining paused or issued epoch revoked
+        PACKET_TOO_SMALL            = 0x0F,
         VALIDATION_FAILED           = 0x11,  // Other mined-block validation failure
         ACCEPTANCE_FAILED           = 0x12,  // Other ledger acceptance failure
+        RATE_LIMITED                = 0x13,
+        SESSION_INCONSISTENT        = 0x14,
+        PACKET_TOO_LARGE            = 0x15,
+        CANDIDATE_PREPARATION_FAILED = 0x16, // Includes stale, malformed, and signing failures
+        WRONG_BLOCK_TYPE            = 0x17,
+        MALFORMED_SUBMISSION        = 0x18,
         INTERNAL_ERROR              = 0xFF,  // Logic error / unreachable code
     };
 
@@ -303,12 +311,20 @@ namespace OpcodeUtility
     {
         switch(eReason)
         {
+            case SubmitBlockRejectionReason::UNKNOWN_TEMPLATE:            return "UNKNOWN_TEMPLATE";
             case SubmitBlockRejectionReason::CHACHA20_DECRYPTION_FAILED: return "CHACHA20_DECRYPTION_FAILED";
             case SubmitBlockRejectionReason::ENCRYPTION_REQUIRED:        return "ENCRYPTION_REQUIRED";
             case SubmitBlockRejectionReason::NO_SESSION_KEY:             return "NO_SESSION_KEY";
             case SubmitBlockRejectionReason::WORK_REVOKED:                return "WORK_REVOKED";
+            case SubmitBlockRejectionReason::PACKET_TOO_SMALL:            return "PACKET_TOO_SMALL";
             case SubmitBlockRejectionReason::VALIDATION_FAILED:           return "VALIDATION_FAILED";
             case SubmitBlockRejectionReason::ACCEPTANCE_FAILED:           return "ACCEPTANCE_FAILED";
+            case SubmitBlockRejectionReason::RATE_LIMITED:                return "RATE_LIMITED";
+            case SubmitBlockRejectionReason::SESSION_INCONSISTENT:       return "SESSION_INCONSISTENT";
+            case SubmitBlockRejectionReason::PACKET_TOO_LARGE:            return "PACKET_TOO_LARGE";
+            case SubmitBlockRejectionReason::CANDIDATE_PREPARATION_FAILED: return "CANDIDATE_PREPARATION_FAILED";
+            case SubmitBlockRejectionReason::WRONG_BLOCK_TYPE:            return "WRONG_BLOCK_TYPE";
+            case SubmitBlockRejectionReason::MALFORMED_SUBMISSION:        return "MALFORMED_SUBMISSION";
             case SubmitBlockRejectionReason::INTERNAL_ERROR:             return "INTERNAL_ERROR";
             default:                                                     return "UNKNOWN";
         }

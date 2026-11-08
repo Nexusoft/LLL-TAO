@@ -5,12 +5,9 @@
 #include <LLP/packets/stateless_packet.h>
 #include <TAO/Ledger/include/stateless_block_utility.h>
 
-#include <string>
-
 namespace LLP
 {
-    inline StatelessPacket MinedBlockRejection(TAO::Ledger::MinedBlockFailure failure,
-                                               bool acceptance, const std::string& reason)
+    inline uint8_t MinedBlockRejectionCode(TAO::Ledger::MinedBlockFailure failure, bool acceptance)
     {
         using TAO::Ledger::MinedBlockFailure;
         using OpcodeUtility::RejectionReason;
@@ -25,16 +22,25 @@ namespace LLP
         else if(failure == MinedBlockFailure::DUPLICATE)
             code = static_cast<uint8_t>(RejectionReason::DUPLICATE);
 
+        return code;
+    }
+
+    inline StatelessPacket SubmitBlockRejection(uint8_t code)
+    {
         StatelessPacket packet(OpcodeUtility::Stateless::BLOCK_REJECTED);
         packet.DATA.push_back(code);
-        /* Printable ASCII is valid UTF-8 and bounds arbitrary exception text. */
-        for(unsigned char c : reason)
-        {
-            if(packet.DATA.size() == 241)
-                break;
-            packet.DATA.push_back(c >= 0x20 && c <= 0x7e ? c : '?');
-        }
         packet.LENGTH = static_cast<uint32_t>(packet.DATA.size());
         return packet;
+    }
+
+    inline StatelessPacket SubmitBlockRejection(OpcodeUtility::SubmitBlockRejectionReason reason)
+    {
+        return SubmitBlockRejection(static_cast<uint8_t>(reason));
+    }
+
+    inline StatelessPacket MinedBlockRejection(TAO::Ledger::MinedBlockFailure failure,
+                                               bool acceptance)
+    {
+        return SubmitBlockRejection(MinedBlockRejectionCode(failure, acceptance));
     }
 }
