@@ -69,6 +69,35 @@ TEST_CASE("Block GET reservations partition capacity fairly and prune expired ca
     REQUIRE(full.Add(uint1024_t(9999), &peers[Requests::MAX_PEERS], now));
 }
 
+TEST_CASE("Block responses preserve per-hash GET deadlines without extending them",
+    "[llp][peer-recovery][block-requests]")
+{
+    using Requests = LLP::BlockInventoryRequests;
+    Requests requests;
+    int peer = 0, other = 0;
+    const uint1024_t hash(1);
+    const auto now = Requests::Clock::now();
+    REQUIRE(requests.Defer(hash, &peer, now));
+    REQUIRE(requests.Add(hash, &peer, now));
+    for(unsigned int seconds = 1; seconds < 5; ++seconds)
+    {
+        requests.Received(hash, &peer);
+        REQUIRE(requests.Contains(hash, &peer, now + std::chrono::seconds(seconds)));
+        REQUIRE(requests.Reserve(hash, &peer, now + std::chrono::seconds(seconds))
+            == Requests::Result::Duplicate);
+    }
+    REQUIRE(requests.Add(hash, &other, now + std::chrono::seconds(4)));
+    REQUIRE(requests.Pending(&peer, now + Requests::TIMEOUT).empty());
+    REQUIRE(requests.Add(hash, &peer, now + Requests::TIMEOUT));
+    requests.RemovePeer(&peer);
+    REQUIRE(requests.Add(hash, &peer, now + Requests::TIMEOUT));
+    requests.Remove(hash, &peer);
+    REQUIRE(requests.Add(hash, &peer, now + Requests::TIMEOUT));
+
+    requests.Received(uint1024_t(2), &peer);
+    REQUIRE(requests.Add(uint1024_t(2), &peer, now + Requests::TIMEOUT));
+}
+
 TEST_CASE("Inventory-only capacity deferrals retry in bounded FIFO batches",
     "[llp][peer-recovery][block-requests]")
 {

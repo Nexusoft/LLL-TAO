@@ -3556,6 +3556,209 @@ TEST_CASE("Block inventory request tracking is bounded and reuses expired entrie
 }
 
 #ifndef WIN32
+TEST_CASE("Incomplete block responses cannot bypass the BESTCHAIN GET throttle",
+    "[ledger][process][bestchain][retry][inventory]")
+{
+    LedgerGuard env;
+    MissingBlock incomplete;
+    incomplete.nVersion = 4;
+    incomplete.hashPrevBlock = TAO::Ledger::ChainState::hashBestChain.load();
+    incomplete.nHeight = TAO::Ledger::ChainState::nBestHeight.load() + 1;
+    incomplete.nChannel = 2;
+    incomplete.nNonce = 0x73201;
+    const uint1024_t hash = incomplete.GetHash();
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hash));
+    int fds[2] = {-1, -1};
+    REQUIRE(socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == 0);
+    LLP::TritiumNode node;
+    struct Cleanup
+    {
+        LLP::TritiumNode& node;
+        int* fds;
+        uint1024_t hash;
+        ~Cleanup()
+        {
+            TAO::Ledger::mapLastMissing.erase(hash);
+            TAO::Ledger::mapLastMissingProcessTime.erase(hash);
+            TAO::Ledger::mapLastOrphanRequest.erase(hash);
+            node.fd = -1;
+            close(fds[0]);
+            close(fds[1]);
+        }
+    } cleanup{node, fds, hash};
+    node.fd = fds[1];
+    node.events = POLLIN;
+    node.nCurrentSession = 1;
+    node.nProtocolVersion = LLP::PROTOCOL_VERSION;
+    node.nLastPing.store(runtime::unifiedtimestamp());
+    node.Subscribe(LLP::TritiumNode::SUBSCRIPTION::BLOCK
+                 | LLP::TritiumNode::SUBSCRIPTION::BESTCHAIN
+                 | LLP::TritiumNode::SUBSCRIPTION::BESTHEIGHT);
+    const auto readSent = [&]()
+    {
+        while(node.Buffered() > 0)
+            REQUIRE(node.Flush() > 0);
+        std::vector<uint8_t> sent;
+        uint8_t buffer[4096];
+        for(ssize_t n = recv(fds[0], buffer, sizeof(buffer), MSG_DONTWAIT);
+            n > 0; n = recv(fds[0], buffer, sizeof(buffer), MSG_DONTWAIT))
+            sent.insert(sent.end(), buffer, buffer + n);
+        return sent;
+    };
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    readSent();
+
+    DataStream notify(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    notify << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << hash
+           << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << hash
+           << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << incomplete.nHeight;
+    node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+    node.INCOMING.DATA.assign(notify.begin(), notify.end());
+    REQUIRE(node.ProcessPacket());
+    DataStream get(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    get << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << hash;
+    const auto expectedGet = LLP::TritiumNode::NewMessage(
+        LLP::TritiumNode::ACTION::GET, get).GetBytes();
+    REQUIRE(readSent() == expectedGet);
+
+    uint8_t status = 0;
+    TAO::Ledger::Process(incomplete, status);
+    REQUIRE(status & TAO::Ledger::PROCESS::INCOMPLETE);
+    TAO::Ledger::TritiumBlock body;
+    static_cast<TAO::Ledger::Block&>(body) = incomplete;
+    REQUIRE(body.GetHash() == hash);
+    DataStream response(SER_NETWORK, LLP::PROTOCOL_VERSION);
+    response << uint8_t(LLP::TritiumNode::SPECIFIER::TRITIUM) << body;
+    /* Exercise the already-validated incomplete-body fast path. */
+    TAO::Ledger::mapLastMissingProcessTime[hash] = runtime::timestamp(true);
+    node.INCOMING.MESSAGE = LLP::TritiumNode::TYPES::BLOCK;
+    node.INCOMING.DATA.assign(response.begin(), response.end());
+    REQUIRE(node.ProcessPacket());
+    REQUIRE(node.nConsecutiveFails == 0);
+    REQUIRE(TAO::Ledger::mapLastMissing.at(hash) == 1);
+    readSent();
+
+    for(unsigned int repeat = 0; repeat < 10; ++repeat)
+    {
+        node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+        node.INCOMING.DATA.assign(notify.begin(), notify.end());
+        REQUIRE(node.ProcessPacket());
+        REQUIRE(readSent().empty());
+    }
+    REQUIRE(TAO::Ledger::mapLastMissing.at(hash) == 1);
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hash));
+    std::this_thread::sleep_for(LLP::BlockInventoryRequests::TIMEOUT + std::chrono::milliseconds(100));
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    REQUIRE(readSent() == expectedGet);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hash) == 0);
+    node.MakePeerBestRetryDueForTests();
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(hash) == 1);
+}
+
+TEST_CASE("Inventory overflow preserves queued work without disconnecting compliant peers",
+    "[ledger][process][bestchain][inventory]")
+{
+    LedgerGuard env;
+    const bool client = GENERATE(false, true);
+    struct ClientModeGuard
+    {
+        bool saved{config::fClient.load()};
+        bool owned{false};
+        ~ClientModeGuard()
+        {
+            config::fClient.store(saved);
+            if(owned)
+            {
+                delete LLD::Client;
+                LLD::Client = nullptr;
+            }
+        }
+    } clientModeGuard;
+    if(client && !LLD::Client)
+    {
+        LLD::Client = new LLD::ClientDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+        clientModeGuard.owned = true;
+    }
+    config::fClient.store(client);
+    int fds[2] = {-1, -1};
+    REQUIRE(socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == 0);
+    LLP::TritiumNode node;
+    struct Cleanup
+    {
+        LLP::TritiumNode& node;
+        int* fds;
+        ~Cleanup()
+        {
+            node.fCONNECTED.store(false);
+            node.fd = -1;
+            close(fds[0]);
+            close(fds[1]);
+        }
+    } cleanup{node, fds};
+    node.fd = fds[1];
+    node.events = POLLIN;
+    node.fCONNECTED.store(true);
+    node.nCurrentSession = 1;
+    node.nProtocolVersion = LLP::PROTOCOL_VERSION;
+    node.nLastPing.store(runtime::unifiedtimestamp());
+    node.Subscribe(LLP::TritiumNode::SUBSCRIPTION::BLOCK);
+    const auto readSent = [&]()
+    {
+        while(node.Buffered() > 0)
+            REQUIRE(node.Flush() > 0);
+        std::vector<uint8_t> sent;
+        uint8_t buffer[4096];
+        for(ssize_t n = recv(fds[0], buffer, sizeof(buffer), MSG_DONTWAIT);
+            n > 0; n = recv(fds[0], buffer, sizeof(buffer), MSG_DONTWAIT))
+            sent.insert(sent.end(), buffer, buffer + n);
+        return sent;
+    };
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    readSent();
+    using Requests = LLP::BlockInventoryRequests;
+    const size_t capacity = Requests::MAX_HASHES_PER_PEER + Requests::MAX_PENDING_PER_PEER;
+    for(size_t start = 0; start <= capacity; start += 100)
+    {
+        DataStream inventory(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        for(size_t i = start; i < std::min(start + 100, capacity + 1); ++i)
+            inventory << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << uint1024_t(0x732100 + i);
+        node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+        node.INCOMING.DATA.assign(inventory.begin(), inventory.end());
+        REQUIRE(node.ProcessPacket());
+        REQUIRE(node.Connected());
+    }
+    const auto expectedBatch = [&](size_t start)
+    {
+        DataStream get(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        for(size_t i = start; i < start + Requests::MAX_HASHES_PER_PEER; ++i)
+        {
+            if(client)
+                get << uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT);
+            get << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << uint1024_t(0x732100 + i);
+        }
+        return get;
+    };
+    REQUIRE(readSent() == LLP::TritiumNode::NewMessage(
+        LLP::TritiumNode::ACTION::GET, expectedBatch(0)).GetBytes());
+    std::this_thread::sleep_for(Requests::TIMEOUT + std::chrono::milliseconds(100));
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    std::vector<uint8_t> expected;
+    for(size_t i = Requests::MAX_HASHES_PER_PEER; i < 2 * Requests::MAX_HASHES_PER_PEER; ++i)
+    {
+        DataStream get(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        if(client)
+            get << uint8_t(LLP::TritiumNode::SPECIFIER::CLIENT);
+        get << uint8_t(LLP::TritiumNode::TYPES::BLOCK) << uint1024_t(0x732100 + i);
+        const auto bytes = LLP::TritiumNode::NewMessage(LLP::TritiumNode::ACTION::GET, get).GetBytes();
+        expected.insert(expected.end(), bytes.begin(), bytes.end());
+    }
+    REQUIRE(readSent() == expected);
+    REQUIRE(node.Connected());
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    REQUIRE(readSent().empty());
+}
+
 TEST_CASE("BESTCHAIN does not duplicate its peer's block GET",
     "[ledger][process][bestchain][inventory]")
 {

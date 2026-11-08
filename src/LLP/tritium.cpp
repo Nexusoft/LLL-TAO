@@ -416,11 +416,7 @@ namespace LLP
                         if(!queued)
                         {
                             if(!blockInventoryRequests.Defer(hash, this))
-                            {
-                                debug::notice(NODE, "block inventory retry capacity reached");
-                                Disconnect();
-                                return;
-                            }
+                                debug::log(2, NODE, "block inventory retry overflow; retaining queued inventory");
                             blockInventoryRequests.RotatePending(hash, this);
                         }
                     }
@@ -2380,12 +2376,14 @@ namespace LLP
                 bool fBestChainObserved = false;
                 bool fBestHeightObserved = false;
                 bool fInventoryGetQueued = false;
+                size_t nInventoryOverflow = 0;
 
                 struct InventoryRollback
                 {
                     TritiumNode* peer;
                     const std::set<uint1024_t>& hashes;
                     const bool& queued;
+                    size_t& overflow;
                     ~InventoryRollback()
                     {
                         if(!queued)
@@ -2393,10 +2391,13 @@ namespace LLP
                             {
                                 blockInventoryRequests.Remove(hash, peer, true);
                                 if(!blockInventoryRequests.Defer(hash, peer))
-                                    peer->Disconnect();
+                                    ++overflow;
                             }
+                        if(overflow)
+                            debug::log(2, "block inventory overflow; retained queued inventory, dropped ",
+                                overflow, " new announcements");
                     }
-                } inventoryRollback{this, setBlockInventoryGets, fInventoryGetQueued};
+                } inventoryRollback{this, setBlockInventoryGets, fInventoryGetQueued, nInventoryOverflow};
 
                 /* Set our max limits to 100 notifications per packet. */
                 uint32_t nLimits = 0;
@@ -2454,7 +2455,7 @@ namespace LLP
                                         setBlockInventoryGets.erase(hashBlock);
                                         if(reservation == BlockInventoryRequests::Result::Capacity
                                         && !blockInventoryRequests.Defer(hashBlock, this))
-                                            return debug::drop(NODE, "block inventory capacity reached");
+                                            ++nInventoryOverflow;
                                     }
                                 }
 
@@ -2475,7 +2476,7 @@ namespace LLP
                                         setBlockInventoryGets.erase(hashBlock);
                                         if(reservation == BlockInventoryRequests::Result::Capacity
                                         && !blockInventoryRequests.Defer(hashBlock, this))
-                                            return debug::drop(NODE, "block inventory capacity reached");
+                                            ++nInventoryOverflow;
                                     }
                                 }
 
@@ -2875,7 +2876,7 @@ namespace LLP
                     {
                         blockInventoryRequests.Remove(hash, this, true);
                         if(!blockInventoryRequests.Defer(hash, this))
-                            return debug::drop(NODE, "block inventory retry capacity reached");
+                            ++nInventoryOverflow;
                     }
                     setBlockInventoryGets.clear();
                 }
@@ -3026,7 +3027,7 @@ namespace LLP
                         /* Get the block from the stream. */
                         Legacy::LegacyBlock block;
                         ssPacket >> block;
-                        blockInventoryRequests.Remove(block.GetHash(), this);
+                        blockInventoryRequests.Received(block.GetHash(), this);
                         CloseTxResponseWindowForBlock(block.GetHash());
 
                         /* Process the block. */
@@ -3045,7 +3046,7 @@ namespace LLP
                         /* Get the block from the stream. */
                         TAO::Ledger::TritiumBlock block;
                         ssPacket >> block;
-                        blockInventoryRequests.Remove(block.GetHash(), this);
+                        blockInventoryRequests.Received(block.GetHash(), this);
                         CloseTxResponseWindowForBlock(block.GetHash());
 
                         /* [DoS prefilter] Reject oversized Prime vOffsets before
@@ -3383,7 +3384,7 @@ namespace LLP
                         /* Get the block from the stream. */
                         TAO::Ledger::SyncBlock block;
                         ssPacket >> block;
-                        blockInventoryRequests.Remove(block.GetHash(), this);
+                        blockInventoryRequests.Received(block.GetHash(), this);
 
                         /* Check version switch. */
                         if(block.nVersion >= 7)
@@ -3421,7 +3422,7 @@ namespace LLP
                         /* Get the block from the stream. */
                         TAO::Ledger::ClientBlock block;
                         ssPacket >> block;
-                        blockInventoryRequests.Remove(block.GetHash(), this);
+                        blockInventoryRequests.Received(block.GetHash(), this);
 
                         /* [DoS prefilter] Reject oversized Prime vOffsets before
                          * they reach Check() / GetPrimeBits() and trigger expensive

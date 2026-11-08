@@ -127,8 +127,13 @@ Capacity and duplicate results are distinct. Capacity-limited inventory enters
 a bounded per-peer queue of 128 hashes and retries on generic events at
 five-second intervals, without requiring a BESTCHAIN announcement. Failed
 inventory sends remain queued for retry; queue/tracked-peer exhaustion is an
-explicit connection failure, not a silently discarded notification. Block
-responses and peer teardown remove tracking. Client GETs include
+explicit, logged drop-new overflow policy, not a protocol violation or a reason
+to disconnect. Existing queued inventory keeps its FIFO order; excess inventory
+requires reannouncement or normal branch recovery. Block responses remove
+deferred entries but retain the original five-second per-hash GET deadline, even
+when the body is incomplete. Responses and duplicate announcements do not extend
+that deadline. Failed sends release reservations, and peer teardown removes all
+tracking. Client GETs include
 ``SPECIFIER::CLIENT``.
 
 Branch recovery uses the coordinator's throttle and result enum, preserving

@@ -81,6 +81,13 @@ namespace LLP
                 pending.erase(deferred);
         }
 
+        void Received(const uint1024_t& hash, const void* peer)
+        {
+            /* A body may still be incomplete. Keep the original GET deadline
+             * rather than allowing announcements to bypass the retry throttle. */
+            Sent(hash, peer);
+        }
+
         void RotatePending(const uint1024_t& hash, const void* peer)
         {
             std::lock_guard<std::mutex> lock(mutex);
