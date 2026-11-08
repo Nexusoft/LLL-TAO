@@ -833,7 +833,33 @@ namespace LLP
          * takes SOCKET_MUTEX). Async PUSH uses QueuePacket() so packet construction
          * stays off DataThread; queue insertion is synchronized on OUTGOING_MUTEX,
          * while socket-write contention is deferred to flush/write service paths. */
-        if(!QueueMiningTemplate(*this, blockPacket, sharedTemplate.nMiningEpoch))
+        if(!QueueMiningTemplate(*this, blockPacket, sharedTemplate.nMiningEpoch,
+            [this, strAddress, height = sharedTemplate.nUnifiedHeight,
+             hash = sharedTemplate.hashBestChain]()
+            {
+                {
+                    LOCK(MUTEX);
+                    context = context.WithTimestamp(runtime::unifiedtimestamp())
+                                     .WithHeight(height)
+                                     .WithLastTemplateUnifiedHeight(height)
+                                     .WithHashLastBlock(hash);
+                }
+
+                if(!strAddress.empty())
+                {
+                    StatelessMinerManager::Get().TransformMiner(strAddress,
+                        [height, hash](const MiningContext& current)
+                        {
+                            return current.WithTimestamp(runtime::unifiedtimestamp())
+                                          .WithHeight(height)
+                                          .WithLastTemplateUnifiedHeight(height)
+                                          .WithHashLastBlock(hash);
+                        },
+                        1);
+                }
+
+                StatelessMinerManager::Get().IncrementTemplatesServed();
+            }))
             return false;
         const auto tQueued = std::chrono::steady_clock::now();
         const int64_t nQueuePacketMs =
@@ -850,29 +876,6 @@ namespace LLP
                        " reward=", hashRewardForTiming.SubString(),
                        " miner=", GetAddress().ToStringIP());
         }
-
-        {
-            LOCK(MUTEX);
-            context = context.WithTimestamp(runtime::unifiedtimestamp())
-                             .WithHeight(sharedTemplate.nUnifiedHeight)
-                             .WithLastTemplateUnifiedHeight(sharedTemplate.nUnifiedHeight)
-                             .WithHashLastBlock(sharedTemplate.hashBestChain);
-        }
-
-        if(!strAddress.empty())
-        {
-            StatelessMinerManager::Get().TransformMiner(strAddress,
-                [sharedTemplate](const MiningContext& current)
-                {
-                    return current.WithTimestamp(runtime::unifiedtimestamp())
-                                  .WithHeight(sharedTemplate.nUnifiedHeight)
-                                  .WithLastTemplateUnifiedHeight(sharedTemplate.nUnifiedHeight)
-                                  .WithHashLastBlock(sharedTemplate.hashBestChain);
-                },
-                1);
-        }
-
-        StatelessMinerManager::Get().IncrementTemplatesServed();
 
         if(eReason == TemplateWorkReason::PUSH_NOTIFICATION)
         {
@@ -5014,15 +5017,18 @@ namespace LLP
          * Consistent with SendChannelNotification() — avoids SOCKET_MUTEX
          * contention between the notification thread and DataThread's
          * ReadPacket() loop. */
-        QueuePacket(notification);
+        if(!QueueMiningTemplate(*this, notification, sharedTemplate.nMiningEpoch,
+            [this, canonicalSnap]()
+            {
+                LOCK(MUTEX);
+                context = context.WithNotificationSent(runtime::unifiedtimestamp())
+                                 .WithCanonicalSnap(canonicalSnap);
+            }))
+            return;
         
-        /* Update statistics and store canonical snapshot in context. */
-        uint64_t nNotificationTimestamp = runtime::unifiedtimestamp();
         uint32_t nSessionId_snap;
         {
             LOCK(MUTEX);
-            context = context.WithNotificationSent(nNotificationTimestamp)
-                             .WithCanonicalSnap(canonicalSnap);
             nSessionId_snap = context.nSessionId;
         }
         

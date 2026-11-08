@@ -35,6 +35,7 @@ ________________________________________________________________________________
 #include <LLP/include/legacy_get_block_handler.h>
 #include <LLP/include/mining_template_payload.h>
 #include <LLP/include/stateless_get_block_handler.h>
+#include <LLP/include/stateless_opcodes.h>
 #include <LLP/packets/packet.h>
 #include <LLP/packets/stateless_packet.h>
 #include <LLP/templates/base_connection.h>
@@ -299,12 +300,16 @@ namespace
         const auto expected = packet.GetBytes();
         const auto ready = MiningReadiness();
         REQUIRE(ready.ready);
+        uint32_t deliveries = 0;
+        auto recordDelivery = [&]() { ++deliveries; };
         REQUIRE_FALSE(LLP::QueueMiningTemplate(connection, packet, 0));
-        REQUIRE(LLP::QueueMiningTemplate(connection, packet, ready.epoch));
+        REQUIRE(LLP::QueueMiningTemplate(connection, packet, ready.epoch, recordDelivery));
+        REQUIRE(deliveries == 0);
 
         ForgetPeerHeight(&guard.peers[0]);
         REQUIRE_FALSE(MiningReadiness().ready);
         REQUIRE(connection.DrainOutgoingQueue() == 1);
+        REQUIRE(deliveries == 0);
         uint8_t bytes[1024];
         REQUIRE(recv(reader.fd, bytes, sizeof(bytes), MSG_DONTWAIT) == -1);
         REQUIRE((errno == EAGAIN || errno == EWOULDBLOCK));
@@ -314,13 +319,15 @@ namespace
         REQUIRE(restored.ready);
         REQUIRE(restored.epoch != ready.epoch);
         REQUIRE_FALSE(LLP::QueueMiningTemplate(connection, packet, ready.epoch));
-        REQUIRE(LLP::QueueMiningTemplate(connection, packet, restored.epoch));
+        REQUIRE(LLP::QueueMiningTemplate(connection, packet, restored.epoch, recordDelivery));
+        REQUIRE(deliveries == 0);
         REQUIRE(connection.DrainOutgoingQueue() == 1);
+        REQUIRE(deliveries == 1);
         const auto count = recv(reader.fd, bytes, sizeof(bytes), MSG_DONTWAIT);
         REQUIRE(count == static_cast<ssize_t>(expected.size()));
         REQUIRE(std::vector<uint8_t>(bytes, bytes + count) == expected);
 
-        REQUIRE(LLP::QueueMiningTemplate(connection, packet, restored.epoch));
+        REQUIRE(LLP::QueueMiningTemplate(connection, packet, restored.epoch, recordDelivery));
         std::mutex flushMutex;
         connection.FLUSH_CONDITION_MUTEX = &flushMutex;
         std::unique_lock<std::mutex> lock(flushMutex);
@@ -335,6 +342,7 @@ namespace
         ForgetPeerHeight(&guard.peers[0]);
         lock.unlock();
         REQUIRE(drained.get() == 1);
+        REQUIRE(deliveries == 1);
         connection.FLUSH_CONDITION_MUTEX = nullptr;
         REQUIRE(recv(reader.fd, bytes, sizeof(bytes), MSG_DONTWAIT) == -1);
         REQUIRE((errno == EAGAIN || errno == EWOULDBLOCK));
@@ -342,12 +350,13 @@ namespace
         guard.Report(0);
         const auto next = MiningReadiness();
         REQUIRE(next.ready);
-        REQUIRE(LLP::QueueMiningTemplate(connection, packet, next.epoch));
+        REQUIRE(LLP::QueueMiningTemplate(connection, packet, next.epoch, recordDelivery));
         ForgetPeerHeight(&guard.peers[0]);
         guard.Report(0);
         REQUIRE(MiningReadiness().ready);
         connection.QueuePacket(packet);
         REQUIRE(connection.DrainOutgoingQueue() == 2);
+        REQUIRE(deliveries == 1);
         const auto controlCount = recv(reader.fd, bytes, sizeof(bytes), MSG_DONTWAIT);
         REQUIRE(controlCount == static_cast<ssize_t>(expected.size()));
         REQUIRE(std::vector<uint8_t>(bytes, bytes + controlCount) == expected);
@@ -381,6 +390,12 @@ namespace
         const auto directCount = recv(reader.fd, bytes, sizeof(bytes), MSG_DONTWAIT);
         REQUIRE(directCount == static_cast<ssize_t>(expected.size()));
         REQUIRE(std::vector<uint8_t>(bytes, bytes + directCount) == expected);
+
+        connection.fd = -1;
+        close(sockets[1]);
+        REQUIRE(LLP::QueueMiningTemplate(connection, packet, fresh.epoch, recordDelivery));
+        REQUIRE(connection.DrainOutgoingQueue() == 1);
+        REQUIRE(deliveries == 1);
     }
 #endif
 }
@@ -621,6 +636,10 @@ TEST_CASE("Deferred templates are fenced at the socket write boundary",
     SECTION("Stateless lane")
     {
         CheckQueuedTemplateEpoch<LLP::StatelessPacket>(guard, 0xD000);
+    }
+    SECTION("Stateless recovery template")
+    {
+        CheckQueuedTemplateEpoch<LLP::StatelessPacket>(guard, LLP::StatelessOpcodes::STATELESS_GET_BLOCK);
     }
 }
 #endif

@@ -81,7 +81,8 @@ namespace LLP
 
     /** Queue a template with a second epoch check at the deferred write boundary. */
     template<typename Connection, typename PacketType>
-    bool QueueMiningTemplate(Connection& connection, const PacketType& packet, uint64_t epoch)
+    bool QueueMiningTemplate(Connection& connection, const PacketType& packet, uint64_t epoch,
+                             std::function<void()> fnSent = {})
     {
         if(!TAO::Ledger::ChainState::MiningWorkCurrent(epoch))
         {
@@ -89,7 +90,8 @@ namespace LLP
             return false;
         }
 
-        connection.QueuePacket(packet, [epoch]() { return MiningTemplateMaySend(epoch); });
+        connection.QueuePacket(packet, [epoch]() { return MiningTemplateMaySend(epoch); },
+                               std::move(fnSent));
         return true;
     }
 

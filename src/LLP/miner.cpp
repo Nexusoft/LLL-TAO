@@ -535,7 +535,12 @@ namespace LLP
          * PUSH stays on QueuePacket() so worker build time is off DataThread;
          * queue insertion is synchronized on OUTGOING_MUTEX, and socket-write
          * contention is deferred to flush/write service paths. */
-        if(!QueueMiningTemplate(*this, blockPacket, sharedTemplate.nMiningEpoch))
+        if(!QueueMiningTemplate(*this, blockPacket, sharedTemplate.nMiningEpoch,
+            [this, height = sharedTemplate.nUnifiedHeight, hash = sharedTemplate.hashBestChain]()
+            {
+                RecordTemplateDelivery(height, hash);
+                StatelessMinerManager::Get().IncrementTemplatesServed();
+            }))
             return false;
         const auto tQueued = std::chrono::steady_clock::now();
         const int64_t nQueuePacketMs =
@@ -552,9 +557,6 @@ namespace LLP
                        " reward=", hashRewardAddress.SubString(),
                        " miner=", GetAddress().ToStringIP());
         }
-
-        RecordTemplateDelivery(sharedTemplate.nUnifiedHeight, sharedTemplate.hashBestChain);
-        StatelessMinerManager::Get().IncrementTemplatesServed();
 
         if(eReason == TemplateWorkReason::PUSH_NOTIFICATION)
         {
@@ -2899,15 +2901,17 @@ namespace LLP
         Packet blockPacket(BLOCK_DATA);
         blockPacket.DATA = sharedTemplate.vPayload;
         blockPacket.LENGTH = static_cast<uint32_t>(blockPacket.DATA.size());
-        if(!QueueMiningTemplate(*this, blockPacket, sharedTemplate.nMiningEpoch))
+        if(!QueueMiningTemplate(*this, blockPacket, sharedTemplate.nMiningEpoch,
+            [this, height = sharedTemplate.nUnifiedHeight, hash = sharedTemplate.hashBestChain]()
+            {
+                RecordTemplateDelivery(height, hash);
+                StatelessMinerManager::Get().IncrementTemplatesServed();
+            }))
             return;
 
         debug::log(2, FUNCTION, "✅ Legacy template sent (",
             sharedTemplate.vPayload.size(), " bytes) channel=", sharedTemplate.nBlockChannel,
             " height=", sharedTemplate.nBlockHeight, " to ", GetAddress().ToStringIP());
-
-        StatelessMinerManager::Get().IncrementTemplatesServed();
-        RecordTemplateDelivery(sharedTemplate.nUnifiedHeight, sharedTemplate.hashBestChain);
     }
 
 

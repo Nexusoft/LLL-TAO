@@ -93,6 +93,9 @@ block format are unchanged.
 Paused GET_BLOCK requests use the existing retryable `TEMPLATE_NOT_READY`
 control with a 1000 ms hint. Template responses and deferred pushes are checked
 again at the write boundary, after waiting for the flush mutex. A revocation
+prevents queued templates from updating delivery markers; those markers are
+published only after a successful guarded write. Stateless recovery templates
+use the same guarded queue. A revocation
 after that point can still race with a write, and bytes already sent or buffered
 cannot be recalled. There
 is no miner-side cancellation message, so a template issued while current may

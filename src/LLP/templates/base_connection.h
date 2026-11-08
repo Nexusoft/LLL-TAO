@@ -227,9 +227,11 @@ namespace LLP
          *
          *  @param[in] PACKET The packet to enqueue for deferred sending.
          *  @param[in] fnMaySend Optional check evaluated immediately before writing.
+         *  @param[in] fnSent Optional callback invoked after a successful write.
          *
          **/
-        void QueuePacket(const PacketType& PACKET, std::function<bool()> fnMaySend = {})
+        void QueuePacket(const PacketType& PACKET, std::function<bool()> fnMaySend = {},
+                         std::function<void()> fnSent = {})
         {
             std::unique_lock<std::mutex> FLUSH_LOCK;
             if(FLUSH_CONDITION_MUTEX)
@@ -237,7 +239,7 @@ namespace LLP
 
             {
                 LOCK(OUTGOING_MUTEX);
-                OUTGOING_QUEUE.push({PACKET, std::move(fnMaySend)});
+                OUTGOING_QUEUE.push({PACKET, std::move(fnMaySend), std::move(fnSent)});
 
                 /* Publish under the wait mutex so the flush wakeup cannot be lost. */
                 fHasOutgoing.store(true, std::memory_order_release);
@@ -284,7 +286,8 @@ namespace LLP
             while(!qLocal.empty())
             {
                 const auto& queued = qLocal.front();
-                WritePacket(queued.packet, false, queued.fnMaySend);
+                if(WritePacket(queued.packet, false, queued.fnMaySend) && queued.fnSent)
+                    queued.fnSent();
                 qLocal.pop();
                 ++nDrained;
             }
@@ -377,6 +380,7 @@ namespace LLP
         {
             PacketType packet;
             std::function<bool()> fnMaySend;
+            std::function<void()> fnSent;
         };
         std::queue<QueuedPacket> OUTGOING_QUEUE;
 
