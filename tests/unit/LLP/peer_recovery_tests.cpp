@@ -166,17 +166,18 @@ TEST_CASE("Block retries do not expedite the branch recovery deadline",
     REQUIRE_FALSE(retry.BlockDue(now + std::chrono::seconds(100)));
 }
 
-TEST_CASE("Repeated reports of the same unresolved tip retain body and branch deadlines",
+TEST_CASE("Unresolved tip reports cannot postpone body and branch deadlines",
     "[llp][peer-recovery][block-requests]")
 {
     LLP::PeerBestRetry retry;
     const auto now = LLP::PeerBestRetry::Clock::now();
+    const bool changed = GENERATE(false, true);
     retry.Observe(true, now);
     REQUIRE(retry.RefreshDue(now));
     for(unsigned int seconds = 1; seconds <= 90; ++seconds)
     {
         const auto tick = now + std::chrono::seconds(seconds);
-        retry.Observe(false, tick);
+        retry.Observe(changed, tick);
         REQUIRE(retry.BlockDue(tick) == (seconds % 5 == 0));
         REQUIRE(retry.Due(tick) == (seconds % 30 == 0));
         REQUIRE(retry.RefreshDue(tick) == (seconds % 30 == 0));

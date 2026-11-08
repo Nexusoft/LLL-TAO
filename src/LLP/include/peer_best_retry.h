@@ -26,21 +26,26 @@ namespace LLP
 
         void Observe(bool changed, Clock::time_point now = Clock::now())
         {
-            if(changed || !retryScheduled)
+            if(!retryScheduled)
             {
-                retryScheduled = true;
-                nextRetry = now + INTERVAL;
+                /* Tip churn must not extend a continuously unresolved mismatch. */
+                nextUnresolvedRetry = now + INTERVAL;
                 nextBlockRetry = now + BlockInventoryRequests::TIMEOUT;
             }
+            if(changed || !retryScheduled)
+                nextRetry = now + INTERVAL;
+            retryScheduled = true;
             observed = true;
             lastObserved = now;
         }
 
         bool Due(Clock::time_point now = Clock::now())
         {
-            if(!retryScheduled || !Fresh(now) || now < nextRetry)
+            if(!retryScheduled || !Fresh(now)
+            || (now < nextRetry && now < nextUnresolvedRetry))
                 return false;
             nextRetry = now + INTERVAL;
+            nextUnresolvedRetry = now + INTERVAL;
             return true;
         }
 
@@ -83,6 +88,7 @@ namespace LLP
         bool retryScheduled{false};
         Clock::time_point lastObserved{};
         Clock::time_point nextRetry{};
+        Clock::time_point nextUnresolvedRetry{};
         Clock::time_point nextBlockRetry{};
         bool refreshScheduled{false};
         Clock::time_point nextRefresh{};

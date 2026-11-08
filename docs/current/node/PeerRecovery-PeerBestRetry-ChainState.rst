@@ -89,8 +89,9 @@ which chain is best; local block validation and chain weight remain authoritativ
 
     BESTCHAIN(hash)
       |
-      +-- first mismatch -- Observe(): initialize body and branch deadlines
-      +-- still mismatched- Observe(): refresh age, preserve deadlines
+      +-- first mismatch -- Observe(): initialize body, per-tip and bounded deadlines
+      +-- changed tip ----- Observe(): reset per-tip grace, preserve body and cap
+      +-- repeated tip ---- Observe(): refresh age, preserve deadlines
       +-- local best ------ Resolved(): disable body and branch retries
       |
       +-- unknown, not orphan, peer at/ahead within one height
@@ -105,9 +106,12 @@ which chain is best; local block validation and chain weight remain authoritativ
              Due at 30s ---> branch recovery, including unknown shorter tips
 
 The five-second body interval and 30-second branch grace are independent.
-Changing unresolved tip A to B preserves A's deadlines, even if A was overdue.
-Repeated reports and hash churn cannot postpone retries during a continuous
-mismatch. Resolution as the local best enables a fresh grace period for the
+Changing unresolved tip A to B refreshes B's per-tip grace but preserves the
+body retry and the 30-second cap for a continuously unresolved mismatch.
+Either the per-tip deadline or the cap triggers branch recovery; recovery
+reschedules both branch deadlines for 30 seconds later. Repeated reports and
+hash churn cannot postpone retries during a continuous mismatch, even if A
+was overdue. Resolution as the local best enables a fresh grace period for the
 next mismatch. Report-refresh scheduling is independent of both timers; retries
 expire 30 minutes after the last BESTCHAIN observation. Orphan and larger-gap
 notification recovery are not grace-delayed.
@@ -153,20 +157,11 @@ block identity before publishing it, including the atomic overload.
 Journal replay also preserves erase-then-write ordering: subsequent writes
 remove their keys from ``setErasedData`` so the later write survives.
 **This is not crash-safe cross-database atomicity.** ``LLD::TxnCommit`` commits
-databases separately. Owned physical commits create a ``commit-incomplete``
-directory in the data directory before applying changes. A checkpoint, commit,
-release or marker-removal failure requests shutdown, rejects subsequent
-transaction begins and best-chain transitions, and retains the marker and
-remaining journals rather than publishing an unconfirmed tip. Restart refuses
-the marker before journal recovery can discard evidence. Journal replay commit
-failures also retain the fence and stop startup. Restore a known-good
-backup or rebuild the chain databases; do not simply remove the marker and
-assume the databases agree. Successful commits release journals and remove the
-marker. Sector writes, keychain updates, journal checkpoints and journal release
-check ordinary stream write/flush/close errors; these failures must not be
-reported as successful commits. This conservative fence does not add fsync
-guarantees or coordinated
-durable recovery; a crash-safe cross-database protocol remains outstanding.
+databases separately. A partial commit can leave disk ahead of the unpublished
+in-memory tip; staged publication does not make continued processing or restart
+safe. The global commit/restart policy changes have been removed from PR #732.
+A durable cross-database commit, fail-stop and recovery protocol requires
+separate work; the pre-existing partial-commit risk remains unresolved.
 
 5. ChainState::MiningReadiness: fence work against the committed tip
 ------------------------------------------------------------------

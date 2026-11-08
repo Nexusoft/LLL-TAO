@@ -76,9 +76,10 @@ format are unchanged.
 
 With `-peerbestchainrecovery`, unknown tips, including shorter branches, are
 retried at most once per 30 seconds until 30 minutes after the last best-chain
-advertisement. A changed advertised hash receives a fresh 30-second branch retry
-grace period and five-second body retry interval. Repeated reports of the same
-hash preserve both deadlines. Near-tip
+advertisement. A changed advertised hash receives a fresh per-tip grace period,
+capped by a 30-second continuously unresolved mismatch deadline. Hash changes
+preserve the five-second body retry and this cap; repeated reports preserve all
+deadlines. Local resolution gives the next mismatch fresh timers. Near-tip
 unknowns are fetched as blocks first, while orphan and larger-gap recovery
 remains immediate. Fetching is not activation: local validation and chain weight
 remain authoritative. Height-only updates do not refresh best-tip evidence.

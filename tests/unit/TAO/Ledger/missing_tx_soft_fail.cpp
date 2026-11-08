@@ -3481,22 +3481,30 @@ TEST_CASE("Block GET retries do not expedite branch recovery",
     }
 }
 
-TEST_CASE("Changed peer tips reset both deadlines while repeated tips preserve them",
+TEST_CASE("Changed peer tips retain a bounded unresolved deadline until local resolution",
     "[ledger][process][bestchain][retry]")
 {
     LLP::PeerBestRetry retry;
     const auto now = LLP::PeerBestRetry::Clock::now();
     retry.Observe(true, now);
-    const auto changed = now + LLP::PeerBestRetry::INTERVAL - std::chrono::seconds(1);
+    const auto changed = now + LLP::BlockInventoryRequests::TIMEOUT - std::chrono::seconds(1);
     retry.Observe(true, changed);
     REQUIRE_FALSE(retry.BlockDue(changed));
-    REQUIRE_FALSE(retry.Due(now + LLP::PeerBestRetry::INTERVAL));
     retry.Observe(false, changed + std::chrono::seconds(1));
-    REQUIRE_FALSE(retry.BlockDue(changed + LLP::BlockInventoryRequests::TIMEOUT - std::chrono::seconds(1)));
-    REQUIRE(retry.BlockDue(changed + LLP::BlockInventoryRequests::TIMEOUT));
-    retry.Observe(false, changed + LLP::PeerBestRetry::INTERVAL - std::chrono::seconds(1));
-    REQUIRE_FALSE(retry.Due(changed + LLP::PeerBestRetry::INTERVAL - std::chrono::seconds(1)));
-    REQUIRE(retry.Due(changed + LLP::PeerBestRetry::INTERVAL));
+    REQUIRE(retry.BlockDue(now + LLP::BlockInventoryRequests::TIMEOUT));
+    retry.Observe(true, now + LLP::PeerBestRetry::INTERVAL - std::chrono::seconds(1));
+    REQUIRE_FALSE(retry.Due(now + LLP::PeerBestRetry::INTERVAL - std::chrono::seconds(1)));
+    REQUIRE(retry.Due(now + LLP::PeerBestRetry::INTERVAL));
+    retry.Observe(true, now + 2 * LLP::PeerBestRetry::INTERVAL);
+    REQUIRE(retry.Due(now + 2 * LLP::PeerBestRetry::INTERVAL));
+    REQUIRE_FALSE(retry.Due(now + 2 * LLP::PeerBestRetry::INTERVAL));
+
+    retry.Resolved();
+    retry.Observe(true, now + 3 * LLP::PeerBestRetry::INTERVAL);
+    REQUIRE_FALSE(retry.BlockDue(now + 3 * LLP::PeerBestRetry::INTERVAL));
+    REQUIRE_FALSE(retry.Due(now + 3 * LLP::PeerBestRetry::INTERVAL));
+    REQUIRE(retry.BlockDue(now + 3 * LLP::PeerBestRetry::INTERVAL + LLP::BlockInventoryRequests::TIMEOUT));
+    REQUIRE(retry.Due(now + 4 * LLP::PeerBestRetry::INTERVAL));
 }
 
 TEST_CASE("Block inventory requests expire and track independent peers",
@@ -3663,7 +3671,7 @@ TEST_CASE("BESTCHAIN does not duplicate its peer's block GET",
 #endif
 
 #ifndef WIN32
-TEST_CASE("Changed peer tips get fresh grace while repeated tips retain recovery deadlines",
+TEST_CASE("Resolved tip advances get fresh grace while unresolved churn has bounded recovery",
     "[ledger][process][bestchain][retry][near-tip]")
 {
     LedgerGuard env;
@@ -3786,7 +3794,7 @@ TEST_CASE("Changed peer tips get fresh grace while repeated tips retain recovery
     REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(secondTip) == 1);
     readSent();
 
-    /* Changing an unresolved tip starts a fresh grace period. */
+    /* Changing an unresolved tip cannot postpone an overdue recovery. */
     TAO::Ledger::mapLastOrphanRequest.clear();
     node.MakePeerBestRetryDueForTests();
     for(const uint1024_t tip : {uint1024_t(0xBC01000000000143ULL),
@@ -3805,18 +3813,15 @@ TEST_CASE("Changed peer tips get fresh grace while repeated tips retain recovery
     }
     REQUIRE(TAO::Ledger::mapLastOrphanRequest.empty());
     node.Event(LLP::EVENTS::GENERIC, 0);
-    REQUIRE(TAO::Ledger::mapLastOrphanRequest.empty());
-    DataStream refreshRequest(SER_NETWORK, LLP::MIN_PROTO_VERSION);
-    refreshRequest << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT)
-                   << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN);
-    REQUIRE(readSent() == LLP::TritiumNode::NewMessage(
-        LLP::TritiumNode::ACTION::SUBSCRIBE, refreshRequest).GetBytes());
-    node.MakePeerBestRetryDueForTests();
-    node.Event(LLP::EVENTS::GENERIC, 0);
     REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(uint1024_t(0xBC01000000000144ULL)) == 1);
+    REQUIRE_FALSE(readSent().empty());
+    TAO::Ledger::mapLastOrphanRequest.clear();
+    node.Event(LLP::EVENTS::GENERIC, 0);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.empty());
+    REQUIRE(readSent().empty());
 }
 
-TEST_CASE("Idle peer retries an unknown shorter best chain",
+TEST_CASE("Idle peer retries an unknown shorter best chain despite stale-height tip churn",
     "[ledger][process][bestchain][retry]")
 {
     LedgerGuard env;
@@ -3858,8 +3863,22 @@ TEST_CASE("Idle peer retries an unknown shorter best chain",
     node.Event(LLP::EVENTS::GENERIC, 0);
     REQUIRE(TAO::Ledger::mapLastOrphanRequest.empty());
     node.MakePeerBestRetryDueForTests();
+    const uint32_t changedHeight = GENERATE(uint32_t(500), uint32_t(999), uint32_t(1000));
+    const uint1024_t changedTip(0xBC01000000000137ULL);
+    for(const uint1024_t hash : {uint1024_t(0xBC01000000000136ULL), changedTip})
+    {
+        REQUIRE_FALSE(LLD::Ledger->HasBlock(hash));
+        DataStream changed(SER_NETWORK, LLP::PROTOCOL_VERSION);
+        changed << uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT) << changedHeight
+                << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << hash;
+        node.INCOMING.MESSAGE = LLP::TritiumNode::ACTION::NOTIFY;
+        node.INCOMING.DATA.assign(changed.begin(), changed.end());
+        REQUIRE(node.ProcessPacket());
+        REQUIRE(TAO::Ledger::mapLastOrphanRequest.empty());
+    }
+    while(recv(fds[0], sent, sizeof(sent), MSG_DONTWAIT) > 0) {}
     node.Event(LLP::EVENTS::GENERIC, 0);
-    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(tip) == 1);
+    REQUIRE(TAO::Ledger::mapLastOrphanRequest.count(changedTip) == 1);
     REQUIRE(recv(fds[0], sent, sizeof(sent), MSG_DONTWAIT) > 0);
 
     TAO::Ledger::ChainState::ForgetPeerHeight(&node);

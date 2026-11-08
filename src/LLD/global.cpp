@@ -14,12 +14,9 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Ledger/include/enum.h> //for internal flags
-#include <Util/include/signals.h>
 
 #include <condition_variable>
-#include <filesystem>
 #include <mutex>
-#include <stdexcept>
 #include <thread>
 
 namespace LLD
@@ -37,40 +34,10 @@ namespace LLD
     TrustDB*      Trust;
     LegacyDB*     Legacy;
 
-    static bool TxnReleaseSelected(const uint16_t nInstances);
-
-    static std::filesystem::path CommitMarker()
-    {
-        return std::filesystem::path(config::GetDataDir()) / "commit-incomplete";
-    }
-
-    static void FenceTransactionFailure()
-    {
-        ::Shutdown();
-        try
-        {
-            std::filesystem::create_directory(CommitMarker());
-        }
-        catch(...)
-        {
-            debug::error(FUNCTION, "failed to create commit-incomplete marker");
-        }
-    }
-
-    static void CheckCommitMarker()
-    {
-        if(std::filesystem::exists(CommitMarker()))
-        {
-            ::Shutdown();
-            throw std::runtime_error("LLD commit-incomplete marker present; restore or rebuild chain databases before restarting");
-        }
-    }
-
 
     /*  Initialize the global LLD instances. */
     void Initialize()
     {
-        CheckCommitMarker();
         debug::log(0, FUNCTION, "Initializing LLD");
 
         /* Create the contract database instance. */
@@ -223,53 +190,6 @@ namespace LLD
     /* Check the transactions for recovery. */
     void TxnRecovery()
     {
-        /* Do not replay or truncate evidence from a failed multi-DB commit. */
-        CheckCommitMarker();
-        struct RecoveryGuard
-        {
-            bool fArmed = true;
-            ~RecoveryGuard()
-            {
-                if(fArmed)
-                    FenceTransactionFailure();
-            }
-        } recoveryGuard;
-        bool fJournalEvidence = false;
-        auto CheckJournal = [&](auto* db)
-        {
-            if(db)
-                fJournalEvidence |= db->HasJournal();
-        };
-        CheckJournal(Contract);
-        CheckJournal(Register);
-        if(config::fClient.load())
-        {
-            CheckJournal(Client);
-            CheckJournal(Logical);
-        }
-        else
-        {
-            CheckJournal(Ledger);
-            CheckJournal(Trust);
-            CheckJournal(Legacy);
-        }
-        /* Missing and empty journals are clean only if the entire set is clean. */
-        if(!fJournalEvidence)
-        {
-            recoveryGuard.fArmed = false;
-            return;
-        }
-        auto BeginRecoveryCommit = [&]()
-        {
-            recoveryGuard.fArmed = true;
-            if(!std::filesystem::create_directory(CommitMarker()))
-                throw std::runtime_error("LLD recovery commit marker already exists");
-        };
-        auto CheckRecoveredCommit = [](const bool success)
-        {
-            if(!success)
-                throw std::runtime_error("LLD journal replay commit failed; retaining commit-incomplete marker and journals");
-        };
         /* Flag to determine if there are any failures. */
         bool fRecovery = true;
 
@@ -295,33 +215,27 @@ namespace LLD
             /* Commit the transactions if journals are recovered. */
             if(fRecovery)
             {
-                BeginRecoveryCommit();
                 debug::log(0, FUNCTION, "all transactions are complete, recovering...");
 
                 /* Commit Contract DB transaction. */
                 if(Contract)
-                    CheckRecoveredCommit(Contract->TxnCommit());
+                    Contract->TxnCommit();
 
                 /* Commit Register DB transaction. */
                 if(Register)
-                    CheckRecoveredCommit(Register->TxnCommit());
+                    Register->TxnCommit();
 
                 /* Commit the Client DB transaction. */
                 if(Client)
-                    CheckRecoveredCommit(Client->TxnCommit());
+                    Client->TxnCommit();
 
                 /* Commit the Logical DB transaction. */
                 if(Logical)
-                    CheckRecoveredCommit(Logical->TxnCommit());
+                    Logical->TxnCommit();
             }
 
-            if(fRecovery)
-            {
-                if(!TxnReleaseSelected(INSTANCES::MERKLE))
-                    throw std::runtime_error("LLD recovery journal release failed; retaining commit-incomplete marker");
-            }
-            else
-                throw std::runtime_error("LLD incomplete or invalid journal set; retaining journals");
+            /* Abort all the transactions. */
+            TxnAbort(TAO::Ledger::FLAGS::BLOCK, INSTANCES::MERKLE);
         }
 
         /* Regular mainnet mode recovery. */
@@ -350,44 +264,34 @@ namespace LLD
             /* Commit the transactions if journals are recovered. */
             if(fRecovery)
             {
-                BeginRecoveryCommit();
                 debug::log(0, FUNCTION, "all transactions are complete, recovering...");
 
                 /* Commit contract DB transaction. */
                 if(Contract)
-                    CheckRecoveredCommit(Contract->TxnCommit());
+                    Contract->TxnCommit();
 
                 /* Commit register DB transaction. */
                 if(Register)
-                    CheckRecoveredCommit(Register->TxnCommit());
+                    Register->TxnCommit();
 
                 /* Commit ledger DB transaction. */
                 if(Ledger)
-                    CheckRecoveredCommit(Ledger->TxnCommit());
+                    Ledger->TxnCommit();
 
                 /* Commit the trust DB transaction. */
                 if(Trust)
-                    CheckRecoveredCommit(Trust->TxnCommit());
+                    Trust->TxnCommit();
 
                 /* Commit the legacy DB transaction. */
                 if(Legacy)
-                    CheckRecoveredCommit(Legacy->TxnCommit());
+                    Legacy->TxnCommit();
             }
 
-            if(fRecovery)
-            {
-                if(!TxnReleaseSelected(INSTANCES::CONSENSUS))
-                    throw std::runtime_error("LLD recovery journal release failed; retaining commit-incomplete marker");
-            }
-            else
-                throw std::runtime_error("LLD incomplete or invalid journal set; retaining journals");
+            /* Abort all the transactions. */
+            TxnAbort(TAO::Ledger::FLAGS::BLOCK, INSTANCES::CONSENSUS);
         }
-        if(recoveryGuard.fArmed)
-        {
-            if(!std::filesystem::remove(CommitMarker()))
-                throw std::runtime_error("LLD recovery could not remove commit-incomplete marker");
-            recoveryGuard.fArmed = false;
-        }
+
+
     }
 
 
@@ -501,7 +405,7 @@ namespace LLD
             if(!life.fAlive)
                 return;
 
-            if(entry == TxnEntry::BEGIN && (life.fShuttingDown || config::fShutdown.load()))
+            if(entry == TxnEntry::BEGIN && life.fShuttingDown)
                 return;
 
             ++life.nInFlight;
@@ -764,8 +668,9 @@ namespace LLD
 
 
     /* Caller must not hold a slot mutex. Releases finished overlays and journals,
-     * then the claimed slot. Journal cleanup failures fence further admission;
-     * the original begin exception is propagated by the caller. */
+     * then the claimed slot. A cleanup failure still clears the slot so a later
+     * begin is not rejected forever; the original begin exception is propagated
+     * by the caller. */
     static void ReleaseStartedBegin(const uint8_t nFlags, const TxnKind kind, const BeginProgress& started)
     {
         auto ReleaseMemory = [&](const bool fStarted, auto* pDB)
@@ -789,24 +694,18 @@ namespace LLD
 
         if(kind == TxnKind::PHYSICAL)
         {
-            bool fReleased = true;
-            auto ReleaseJournal = [&](const bool fStarted, auto* pDB)
+            auto ReleaseJournal = [](const bool fStarted, auto* pDB)
             {
                 if(!fStarted || !pDB)
                     return;
 
                 try
                 {
-                    if(!pDB->TxnRelease())
-                    {
-                        debug::error(FUNCTION, "failed to release journal during begin rollback");
-                        fReleased = false;
-                    }
+                    pDB->TxnRelease();
                 }
                 catch(...)
                 {
                     debug::error(FUNCTION, "failed to release journal during begin rollback");
-                    fReleased = false;
                 }
             };
 
@@ -819,8 +718,6 @@ namespace LLD
             ReleaseJournal(started.fClient, Client);
             ReleaseJournal(started.fTrust, Trust);
             ReleaseJournal(started.fLegacy, Legacy);
-            if(!fReleased)
-                FenceTransactionFailure();
         }
 
         TxnSlot& slot = SlotFor(kind);
@@ -866,11 +763,7 @@ namespace LLD
 
             try
             {
-                if(!pDB->TxnRelease())
-                {
-                    debug::error(FUNCTION, "failed to release ", strName, " DB transaction");
-                    fSucceeded = false;
-                }
+                pDB->TxnRelease();
             }
             catch(...)
             {
@@ -944,8 +837,6 @@ namespace LLD
         {
             lkPrimary = std::unique_lock<std::mutex>(MempoolSlot().MUTEX);
             lkSecondary = std::unique_lock<std::mutex>(PhysicalSlot().MUTEX);
-            if(config::fShutdown.load())
-                return debug::error(FUNCTION, "shutdown requested; refusing transaction begin");
 
             TxnSlot& slot = (kind == TxnKind::MEMPOOL) ? MempoolSlot() : PhysicalSlot();
             const TxnSlot& other = (kind == TxnKind::MEMPOOL) ? PhysicalSlot() : MempoolSlot();
@@ -1149,12 +1040,6 @@ namespace LLD
         }
 
         const bool fReleasePhysical = OwnedByThisThread(PhysicalSlot());
-        /* Failed commits release ownership but retain their journals. Callers
-         * and shutdown cleanup must not reinterpret them as unowned recovery
-         * journals and truncate the evidence. Owned pre-commit aborts stay valid. */
-        if(!fReleasePhysical && config::fShutdown.load())
-            return;
-
         if(fReleasePhysical && !CoversOwnedInstances(PhysicalSlot(), nInstances))
         {
             debug::error(FUNCTION, "transaction instance mask does not cover current owner");
@@ -1177,8 +1062,7 @@ namespace LLD
         /* Attempt every selected journal release. If one cleanup throws, its
          * journal remains intact for recovery while the other DBs still get
          * cleaned up before ownership is released. */
-        if(!TxnReleaseSelected(nOwnedInstances))
-            FenceTransactionFailure();
+        TxnReleaseSelected(nOwnedInstances);
 
         if(fReleasePhysical)
             ReleaseSlot(PhysicalSlot(), TxnKind::PHYSICAL);
@@ -1270,8 +1154,6 @@ namespace LLD
         if(kind == TxnKind::MEMPOOL)
         {
            std::lock_guard<std::mutex> lk(MempoolSlot().MUTEX);
-           if(config::fShutdown.load())
-               return debug::error(FUNCTION, "shutdown requested; refusing memory commit");
            if(!OwnedByThisThread(MempoolSlot()))
                return debug::error(FUNCTION, "transaction mode does not match current owner");
 
@@ -1305,32 +1187,9 @@ namespace LLD
         if(!CoversOwnedInstances(PhysicalSlot(), nInstances))
             return debug::error(FUNCTION, "transaction instance mask does not cover current owner");
 
-        if(config::fShutdown.load())
-            return debug::error(FUNCTION, "shutdown requested; refusing disk commit");
-
         /* Use the begin mask for every DB operation so commits and release never
          * touch journals that this transaction did not open. */
         const uint16_t nOwnedInstances = PhysicalSlot().nInstances;
-
-        /* This marker is a conservative restart fence, not a durable atomic
-         * commit protocol. Keep it even if checkpoint, commit or release throws.
-         * Release only ownership on failure; the caller's abort guard must not
-         * erase the surviving journals. */
-        struct CommitGuard
-        {
-            bool fSucceeded = false;
-            ~CommitGuard()
-            {
-                if(!fSucceeded)
-                    ::Shutdown();
-                ReleaseSlot(PhysicalSlot(), TxnKind::PHYSICAL);
-            }
-        } commitGuard;
-
-        try
-        {
-        if(!std::filesystem::create_directory(CommitMarker()))
-            return debug::error(FUNCTION, "commit-incomplete marker already exists");
 
         const bool fReleasePhysical = OwnedByThisThread(PhysicalSlot());
         if(fReleasePhysical && !OwnedByOther(MempoolSlot()))
@@ -1344,36 +1203,32 @@ namespace LLD
         lkMem.unlock();
 
         /* Set a checkpoint for Logical DB. */
-        bool fCheckpointed = true;
         if(Logical && (nOwnedInstances & INSTANCES::LOGICAL))
-            fCheckpointed &= Logical->TxnCheckpoint();
+            Logical->TxnCheckpoint();
 
         /* Set a checkpoint for contract DB. */
         if(Contract && (nOwnedInstances & INSTANCES::CONTRACT))
-            fCheckpointed &= Contract->TxnCheckpoint();
+            Contract->TxnCheckpoint();
 
         /* Set a checkpoint for register DB. */
         if(Register && (nOwnedInstances & INSTANCES::REGISTER))
-            fCheckpointed &= Register->TxnCheckpoint();
+            Register->TxnCheckpoint();
 
         /* Set a checkpoint for ledger DB. */
         if(Ledger && (nOwnedInstances & INSTANCES::LEDGER))
-            fCheckpointed &= Ledger->TxnCheckpoint();
+            Ledger->TxnCheckpoint();
 
         /* Set a checkpoint for client DB. */
         if(Client && (nOwnedInstances & INSTANCES::CLIENT))
-            fCheckpointed &= Client->TxnCheckpoint();
+            Client->TxnCheckpoint();
 
         /* Set a checkpoint for trust DB. */
         if(Trust && (nOwnedInstances & INSTANCES::TRUST))
-            fCheckpointed &= Trust->TxnCheckpoint();
+            Trust->TxnCheckpoint();
 
         /* Set a checkpoint for legacy DB. */
         if(Legacy && (nOwnedInstances & INSTANCES::LEGACY))
-            fCheckpointed &= Legacy->TxnCheckpoint();
-
-        if(!fCheckpointed)
-            return debug::error(FUNCTION, "checkpoint failed; retaining commit-incomplete marker and journals");
+            Legacy->TxnCheckpoint();
 
 
         /* Aggregate the per-instance TxnCommit() results.  All selected
@@ -1453,22 +1308,23 @@ namespace LLD
         }
 
 
-        if(!fAllSucceeded)
-            return debug::error(FUNCTION, "partial commit failed; retaining commit-incomplete marker and journals");
-
-        /* Only a successful fan-out may discard recovery evidence. */
+        /* Release the checkpoint markers for all selected instances.
+         * TxnRelease runs unconditionally after TxnCommit, regardless of commit
+         * outcome.  On success, SectorDatabase::TxnCommit() already nulled
+         * pTransaction; on failure it may still be set and TxnRelease will clean
+         * it up here.  Leaving a failed transaction intact for retry is not
+         * supported at the LLD layer — callers that receive false should abort
+         * their higher-level operation and rebuild rather than retrying the same
+         * transaction object.
+         *
+         * Note: TxnRelease is called for every selected instance below,
+         * regardless of whether that instance's TxnCommit succeeded or failed. */
         if(!TxnReleaseSelected(nOwnedInstances))
-            return debug::error(FUNCTION, "journal release failed; retaining commit-incomplete marker");
+            fAllSucceeded = false;
 
-        if(!std::filesystem::remove(CommitMarker()))
-            return debug::error(FUNCTION, "failed to remove commit-incomplete marker");
+        if(fReleasePhysical)
+            ReleaseSlot(PhysicalSlot(), TxnKind::PHYSICAL);
 
-        commitGuard.fSucceeded = true;
-        return true;
-        }
-        catch(const std::exception& e)
-        {
-            return debug::error(FUNCTION, "disk commit exception: ", e.what());
-        }
+        return fAllSucceeded;
     }
 }

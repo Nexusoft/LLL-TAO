@@ -395,8 +395,7 @@ namespace LLD
                     /* Handle the disk writing operations. */
                     pstream->seekp (nFilePos, std::ios::beg);
                     pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
-                    if(!pstream->flush())
-                        return debug::error(FUNCTION, "failed to flush updated hashmap key");
+                    pstream->flush();
 
 
                     /* Debug Output of Sector Key Information. */
@@ -433,8 +432,6 @@ namespace LLD
 
             //stream.flush();
             stream.close();
-            if(!stream)
-                return debug::error(FUNCTION, "failed to write or close new hashmap file");
         }
 
         /* Read the State and Size of Sector Header. */
@@ -467,8 +464,7 @@ namespace LLD
         /* Flush the key file to disk. */
         pstream->seekp (nFilePos, std::ios::beg);
         pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
-        if(!pstream->flush())
-            return debug::error(FUNCTION, "failed to flush hashmap key");
+        pstream->flush();
 
         /* Check index file handle is open. */
         if(!pindex->is_open())
@@ -485,8 +481,7 @@ namespace LLD
 
         /* Write the index into hashmap. */
         pindex->write((char*)&vBucket[0], vBucket.size());
-        if(!pindex->flush())
-            return debug::error(FUNCTION, "failed to flush hashmap index");
+        pindex->flush();
 
         /* Debug Output of Sector Key Information. */
         if(config::nVerbose >= 4)
@@ -581,8 +576,7 @@ namespace LLD
                 /* Read the bucket binary data from file stream */
                 std::vector<uint8_t> vEmpty(HASHMAP_KEY_ALLOCATION, 0);
                 pstream->write((char*) &vEmpty[0], vEmpty.size());
-                if(!pstream->flush())
-                    return debug::error(FUNCTION, "failed to flush erased hashmap key");
+                pstream->flush();
 
                 /* Debug Output of Sector Key Information. */
                 if(config::nVerbose >= 4)

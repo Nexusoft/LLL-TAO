@@ -830,10 +830,8 @@ namespace LLD
          *
          *  Release the transaction checkpoint.
          *
-         *  @return True if journal truncation and close succeeded.
-         *
          **/
-        bool TxnRelease();
+        void TxnRelease();
 
 
         /** TxnCommit
@@ -844,14 +842,6 @@ namespace LLD
          *
          **/
         bool TxnCommit();
-
-
-        /** HasJournal
-         *
-         *  Check for nonempty or invalid journal evidence before recovery.
-         *
-         **/
-        bool HasJournal() const;
 
 
         /** TxnRecovery

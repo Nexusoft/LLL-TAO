@@ -118,7 +118,7 @@ Full decision trees: [process-upgrade-series.md](../../../diagrams/audit/process
 |--|--|
 | **Problem** | After #694, every subscribed peer emitted PEER_BEST_RECOVERY + LIST + fanout for the normal tip-advance race (BLOCK + BESTCHAIN + BESTHEIGHT ordering with stale height). |
 | **Fix (step 1)** | Skip coordinator when unknown tip is within `BESTCHAIN_NEAR_TIP_HEIGHT_SLACK` (1) of local height. |
-| **Fix (step 2)** | If no matching inventory GET was queued, request the block directly. A changed advertised hash gets a fresh 30-second grace period before idle branch recovery and a five-second body retry interval; repeated reports of the same hash preserve both deadlines. |
+| **Fix (step 2)** | If no matching inventory GET was queued, request the block directly. Changed hashes get per-tip grace capped by a 30-second continuously unresolved mismatch deadline; neither hash churn nor repeated reports postpone the cap or five-second body retry. Local resolution restores fresh timers. |
 | **Invariant** | Near-tip block fetch is a **race optimization**, not a gap detector; orphan tips and larger gaps still recover. |
 
 ```

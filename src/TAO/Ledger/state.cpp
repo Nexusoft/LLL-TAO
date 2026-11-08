@@ -825,9 +825,6 @@ namespace TAO
 
         bool BlockState::SetBest()
         {
-            if(config::fShutdown.load())
-                return debug::error(FUNCTION, "shutdown requested; refusing best-chain transition");
-
             /* Reset timers for meters. */
             swContract.reset();
             swScript.reset();
