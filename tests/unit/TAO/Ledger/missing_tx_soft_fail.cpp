@@ -31,6 +31,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/mining_readiness.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/stateless_block_utility.h>
+#include <TAO/Ledger/include/supply.h>
 #include <LLP/include/legacy_get_block_handler.h>
 #include <LLP/include/stateless_get_block_handler.h>
 #include <TAO/Ledger/include/enum.h>
@@ -209,6 +210,7 @@ namespace
         int peers[3]{};
         TAO::Ledger::BlockState tip;
         bool written = false;
+        uint1024_t hashWrittenTip = 0;
         std::vector<uint1024_t> extraBlocks;
 
         PublicMiningGuard()
@@ -225,7 +227,8 @@ namespace
             tip.nChannelHeight = 1;
             tip.nBits = 0x8001ffff;
             tip.nNonce = LLC::GetRand();
-            written = LLD::Ledger->WriteBlock(tip.GetHash(), tip);
+            hashWrittenTip = tip.GetHash();
+            written = LLD::Ledger->WriteBlock(hashWrittenTip, tip);
             TAO::Ledger::ChainState::tStateBest.store(tip);
             TAO::Ledger::ChainState::hashBestChain.store(tip.GetHash());
             TAO::Ledger::ChainState::nBestHeight.store(tip.nHeight);
@@ -255,7 +258,7 @@ namespace
                 config::mapArgs.erase("-miningminpeers");
             TAO::Ledger::ClearMiningTemplateCaches("mining readiness test cleanup");
             if(written)
-                LLD::Ledger->EraseBlock(tip.GetHash());
+                LLD::Ledger->EraseBlock(hashWrittenTip);
             for(const auto& hash : extraBlocks)
                 LLD::Ledger->EraseBlock(hash);
         }
@@ -491,6 +494,9 @@ TEST_CASE("Confirmed peer catch-up preserves post-accept work but unsafe reports
     guard.tip.hashPrevBlock = oldTip.GetHash();
     ++guard.tip.nHeight;
     ++guard.tip.nNonce;
+    /* A second Prime state uses the reserve-based reward path rather than
+     * the first-block subsidy fallback. Give that state a spendable reserve. */
+    guard.tip.nReleasedReserve[0] = NXS_COIN;
     REQUIRE(LLD::Ledger->WriteBlock(guard.tip.GetHash(), guard.tip));
     guard.extraBlocks.push_back(guard.tip.GetHash());
     ChainState::tStateBest.store(guard.tip);
@@ -500,6 +506,7 @@ TEST_CASE("Confirmed peer catch-up preserves post-accept work but unsafe reports
 
     const auto ready = ChainState::MiningReadiness();
     REQUIRE(ready.ready);
+    REQUIRE(GetCoinbaseReward(guard.tip, 1, 0) > 0);
     memory::encrypted_ptr<Credentials> user =
         new Credentials(LLC::GetRand256().ToString().c_str(), "peer-catch-up-test");
     TritiumBlock work;
