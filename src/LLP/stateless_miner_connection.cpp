@@ -833,9 +833,8 @@ namespace LLP
          * takes SOCKET_MUTEX). Async PUSH uses QueuePacket() so packet construction
          * stays off DataThread; queue insertion is synchronized on OUTGOING_MUTEX,
          * while socket-write contention is deferred to flush/write service paths. */
-        if(!TAO::Ledger::ChainState::MiningWorkCurrent(sharedTemplate.nMiningEpoch))
+        if(!QueueMiningTemplate(*this, blockPacket, sharedTemplate.nMiningEpoch))
             return false;
-        QueuePacket(blockPacket);
         const auto tQueued = std::chrono::steady_clock::now();
         const int64_t nQueuePacketMs =
             std::chrono::duration_cast<std::chrono::milliseconds>(tQueued - tPayloadReady).count();
@@ -1708,12 +1707,8 @@ namespace LLP
                            " height=", gbResult.nBlockHeight,
                            " nBits=", gbResult.nBlockBits, "]");
 
-                if(!TAO::Ledger::ChainState::MiningWorkCurrent(gbResult.nMiningEpoch))
-                {
-                    SendGetBlockControlResponse(GetBlockPolicyReason::TEMPLATE_NOT_READY, 1000, true);
+                if(!SendGetBlockDataResponse(gbResult.vPayload, true, gbResult.nMiningEpoch))
                     return true;
-                }
-                SendGetBlockDataResponse(gbResult.vPayload, true);
 
                 debug::log(0, "   ✅ Packet sent!");
                 debug::log(2, "📥 === GET_BLOCK: SUCCESS ===");
@@ -4183,7 +4178,8 @@ namespace LLP
                GetAddress().ToStringIP();
     }
 
-    void StatelessMinerConnection::SendGetBlockDataResponse(const std::vector<uint8_t>& vPayload, bool fAuthenticatedPath)
+    bool StatelessMinerConnection::SendGetBlockDataResponse(const std::vector<uint8_t>& vPayload,
+                                                            bool fAuthenticatedPath, uint64_t nMiningEpoch)
     {
         if(fAuthenticatedPath)
         {
@@ -4193,17 +4189,25 @@ namespace LLP
                 debug::error(FUNCTION, "Authenticated GET_BLOCK produced empty BLOCK_DATA payload; converting to INTERNAL_RETRY control response");
                 SendGetBlockControlResponse(GetBlockPolicyReason::INTERNAL_RETRY,
                     MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
-                return;
+                return false;
             }
         }
 
         StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
         response.DATA = vPayload;
         response.LENGTH = static_cast<uint32_t>(vPayload.size());
-        respond(response);
+        const auto writeResult = WriteMiningTemplate(*this, response, nMiningEpoch);
+        if(writeResult != MiningTemplateWriteResult::SENT)
+        {
+            const auto reason = writeResult == MiningTemplateWriteResult::REVOKED
+                ? GetBlockPolicyReason::TEMPLATE_NOT_READY : GetBlockPolicyReason::INTERNAL_RETRY;
+            SendGetBlockControlResponse(reason, 1000, fAuthenticatedPath);
+            return false;
+        }
 
         const uint64_t nSent = ++g_get_block_blockdata_sent_total;
         debug::log(2, FUNCTION, "metric get_block_blockdata_sent_total=", nSent);
+        return true;
     }
 
     void StatelessMinerConnection::SendGetBlockControlResponse(GetBlockPolicyReason eReason, uint32_t nRetryAfterMs, bool fAuthenticatedPath)

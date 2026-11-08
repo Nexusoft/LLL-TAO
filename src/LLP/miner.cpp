@@ -535,9 +535,8 @@ namespace LLP
          * PUSH stays on QueuePacket() so worker build time is off DataThread;
          * queue insertion is synchronized on OUTGOING_MUTEX, and socket-write
          * contention is deferred to flush/write service paths. */
-        if(!TAO::Ledger::ChainState::MiningWorkCurrent(sharedTemplate.nMiningEpoch))
+        if(!QueueMiningTemplate(*this, blockPacket, sharedTemplate.nMiningEpoch))
             return false;
-        QueuePacket(blockPacket);
         const auto tQueued = std::chrono::steady_clock::now();
         const int64_t nQueuePacketMs =
             std::chrono::duration_cast<std::chrono::milliseconds>(tQueued - tPayloadReady).count();
@@ -781,10 +780,11 @@ namespace LLP
                         hashBlock = pBlock->GetHash();
                     }
 
-                    /* Create and send a packet response */
-                    if(!TAO::Ledger::ChainState::MiningWorkCurrent(nWorkEpoch))
+                    Packet response(BLOCK_DATA);
+                    response.DATA = vData;
+                    response.LENGTH = static_cast<uint32_t>(vData.size());
+                    if(WriteMiningTemplate(*this, response, nWorkEpoch) != MiningTemplateWriteResult::SENT)
                         return;
-                    respond(BLOCK_DATA, vData);
 
                     /* Debug output with channel height */
                     debug::log(2, FUNCTION, "BLOCK_DATA: channel=", pBlock->nChannel, 
@@ -2899,9 +2899,8 @@ namespace LLP
         Packet blockPacket(BLOCK_DATA);
         blockPacket.DATA = sharedTemplate.vPayload;
         blockPacket.LENGTH = static_cast<uint32_t>(blockPacket.DATA.size());
-        if(!TAO::Ledger::ChainState::MiningWorkCurrent(sharedTemplate.nMiningEpoch))
+        if(!QueueMiningTemplate(*this, blockPacket, sharedTemplate.nMiningEpoch))
             return;
-        QueuePacket(blockPacket);
 
         debug::log(2, FUNCTION, "✅ Legacy template sent (",
             sharedTemplate.vPayload.size(), " bytes) channel=", sharedTemplate.nBlockChannel,
@@ -3009,13 +3008,18 @@ namespace LLP
         debug::log(3, FUNCTION, "BLOCK_DATA (request-response) → ", strPeer,
                    " session=", nSessionIdSnapshot, " payload=", result.vPayload.size(), " bytes");
 
-        if(!TAO::Ledger::ChainState::MiningWorkCurrent(result.nMiningEpoch))
+        Packet response(BLOCK_DATA);
+        response.DATA = result.vPayload;
+        response.LENGTH = static_cast<uint32_t>(response.DATA.size());
+        const auto writeResult = WriteMiningTemplate(*this, response, result.nMiningEpoch);
+        if(writeResult != MiningTemplateWriteResult::SENT)
         {
+            const auto reason = writeResult == MiningTemplateWriteResult::REVOKED
+                ? GetBlockPolicyReason::TEMPLATE_NOT_READY : GetBlockPolicyReason::INTERNAL_RETRY;
             respond_auto(BLOCK_REJECTED,
-                BuildGetBlockControlPayload(GetBlockPolicyReason::TEMPLATE_NOT_READY, 1000));
+                BuildGetBlockControlPayload(reason, 1000));
             return true;
         }
-        respond_auto(BLOCK_DATA, result.vPayload);
 
         /* Update last template unified height after sending template.
          * Uses UNIFIED height — every tip move changes hashPrevBlock,

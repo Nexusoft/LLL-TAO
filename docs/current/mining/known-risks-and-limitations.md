@@ -91,9 +91,12 @@ the server's issued-template maps. The 216-byte mining header and consensus
 block format are unchanged.
 
 Paused GET_BLOCK requests use the existing retryable `TEMPLATE_NOT_READY`
-control with a 1000 ms hint. Already queued/sent bytes cannot be recalled, and
-there is no new miner-side cancellation message: old work is rejected on
-submission. `system/get/info` now includes `mining_readiness` with `ready`,
+control with a 1000 ms hint. Template responses and deferred pushes are checked
+again at the write boundary, after waiting for the flush mutex. A revocation
+after that point can still race with a write, and bytes already sent or buffered
+cannot be recalled. There
+is no miner-side cancellation message, so a template issued while current may
+later be rejected if its epoch is revoked. `system/get/info` includes `mining_readiness` with `ready`,
 `reason`, `epoch`, `fresh_peers` (supporting distinct IPs), `required_peers`, and
 `local_bypass`. Existing `synchronized`/`syncing` fields are unchanged and need
 not agree with mining readiness; no Interface display change is included.
