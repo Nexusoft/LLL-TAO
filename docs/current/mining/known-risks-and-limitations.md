@@ -63,7 +63,12 @@ connection's observations. A height report alone does not refresh the age of
 its best-chain evidence. Older peers send the two fields in separate
 notifications; NODE5 pairs those fields only within 10 seconds and consumes
 each pair once. A contradictory unpaired field immediately makes the peer's
-existing evidence unresolved and revokes work until a complete pair arrives.
+existing evidence unresolved. If that field matches the stable, locally
+committed tip, the node defers permanent revocation while the other field is
+outstanding; readiness still pauses if checked in the meantime. A complete
+matching pair can preserve the epoch only when no readiness interruption,
+conflicting field, disconnect, or expiry occurred. Other contradictory fields
+revoke work immediately.
 Split reports are not an atomic peer snapshot, so the resulting hash and
 height still undergo the same local block and chain checks. A peer that stops
 answering either field will still lose freshness.
@@ -81,6 +86,13 @@ check the epoch before issuing templates and validating submissions, and
 local block admission checks again under the processing mutex immediately
 before acceptance. Staking checks while hashing and before admission.
 Readiness restoration does not revalidate revoked work.
+
+The epoch is a process-local revocation generation, not a chain or target
+height. A template targets the block after its parent, and its parent must still
+match the committed best-chain hash at admission; matching epochs alone never
+make a stale template valid. Epoch advances log a reason, and submission
+rejections include the template parent and height alongside the current tip
+and height. These are point-in-time diagnostics, not a synchronized snapshot.
 
 Template cache publication checks both the build tip and the work epoch.
 Its diagnostics distinguish a tip change from an epoch revocation; neither

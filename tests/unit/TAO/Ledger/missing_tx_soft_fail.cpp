@@ -740,6 +740,94 @@ TEST_CASE("Contradictory partial peer reports fence work even with a quorum",
     REQUIRE(check().epoch != ready.epoch);
 }
 
+TEST_CASE("Split confirmed catch-up preserves work only without an evidence interruption",
+    "[ledger][mining-readiness][template_freshness]")
+{
+    using namespace TAO::Ledger::ChainState;
+    MiningPeerTracker tracker;
+    const auto now = MiningPeerTracker::Clock::now();
+    int peer;
+    tracker.ObserveConfirmedTip(&peer, "one", 1, 100, [] { return true; }, now);
+    const auto resolve = [](const uint1024_t&, uint32_t) { return MiningPeerEvidence::SUPPORTING; };
+    const auto check = [&](auto time)
+    {
+        return tracker.CheckCached(2, 1, false, true, false, false, resolve, time);
+    };
+    const auto ready = check(now);
+    REQUIRE(ready.ready);
+    const bool hashFirst = GENERATE(false, true);
+    const auto partial = [&](bool hashField, uint1024_t hash, uint32_t height, bool candidate)
+    {
+        tracker.InvalidatePartial(&peer, hashField, hash, !hashField, height,
+                                  [=] { return uint1024_t(candidate ? 2 : 0); });
+    };
+    const auto confirm = [&](uint1024_t hash, uint32_t height, bool current)
+    {
+        tracker.ObserveConfirmedTip(&peer, "one", hash, height, [=] { return current; }, now);
+    };
+
+    partial(hashFirst, 2, 101, true);
+    SECTION("Matching pair completes before work is checked")
+    {
+        confirm(2, 101, true);
+        const auto after = check(now);
+        REQUIRE(after.ready);
+        REQUIRE(after.epoch == ready.epoch);
+    }
+    SECTION("Work checked between the two fields is paused and revoked")
+    {
+        const auto paused = check(now);
+        REQUIRE_FALSE(paused.ready);
+        REQUIRE(paused.reason == "unresolved-peer-tip");
+        REQUIRE(paused.epoch != ready.epoch);
+        confirm(2, 101, true);
+        REQUIRE(check(now).ready);
+        REQUIRE(check(now).epoch != ready.epoch);
+    }
+    SECTION("A contradictory later field cannot be repaired without revocation")
+    {
+        partial(hashFirst, 3, 102, false);
+        confirm(2, 101, true);
+        REQUIRE(check(now).ready);
+        REQUIRE(check(now).epoch != ready.epoch);
+    }
+    SECTION("A different complete report revokes even if confirmed later")
+    {
+        confirm(hashFirst ? 3 : 2, hashFirst ? 101 : 102, true);
+        confirm(2, 101, true);
+        REQUIRE(check(now).ready);
+        REQUIRE(check(now).epoch != ready.epoch);
+    }
+    SECTION("A same-height tip replacement cannot preserve pending work")
+    {
+        confirm(3, 101, true);
+        confirm(2, 101, true);
+        REQUIRE(check(now).ready);
+        REQUIRE(check(now).epoch != ready.epoch);
+    }
+    SECTION("An unknown complete report revokes before recovery")
+    {
+        confirm(3, 102, false);
+        confirm(2, 101, true);
+        REQUIRE(check(now).ready);
+        REQUIRE(check(now).epoch != ready.epoch);
+    }
+    SECTION("Expired observations cannot preserve the old epoch")
+    {
+        tracker.ObserveConfirmedTip(&peer, "one", 2, 101, [] { return true; },
+                                    now + MiningPeerTracker::MAX_AGE + std::chrono::seconds(1));
+        REQUIRE(check(now + MiningPeerTracker::MAX_AGE + std::chrono::seconds(1)).ready);
+        REQUIRE(check(now + MiningPeerTracker::MAX_AGE + std::chrono::seconds(1)).epoch != ready.epoch);
+    }
+    SECTION("Disconnect cannot preserve the old epoch")
+    {
+        tracker.Remove(&peer);
+        confirm(2, 101, true);
+        REQUIRE(check(now).ready);
+        REQUIRE(check(now).epoch != ready.epoch);
+    }
+}
+
 TEST_CASE("Split tip pairing consumes fields and enforces its time window",
     "[ledger][mining-readiness]")
 {
@@ -972,6 +1060,7 @@ TEST_CASE("Confirmed peer catch-up preserves post-accept work but unsafe reports
     TritiumBlock work;
     REQUIRE(CreateBlock(user, "1234", 1, work, 42));
     REQUIRE(work.hashPrevBlock == guard.tip.GetHash());
+    REQUIRE(work.nHeight == guard.tip.nHeight + 1);
     REQUIRE(work.nMiningEpoch == ready.epoch);
     bool owner = false;
     const uint256_t reward = 123;
@@ -979,11 +1068,34 @@ TEST_CASE("Confirmed peer catch-up preserves post-accept work but unsafe reports
                                                             guard.tip.GetHash(), ready.epoch);
     REQUIRE(owner);
 
-    guard.Report(0);
-    guard.Report(1);
+    const bool hashFirst = GENERATE(false, true);
+    LLP::MiningTipReports reports[2];
+    const auto sendField = [&](size_t peer, bool hasHash)
+    {
+        uint1024_t pairedHash;
+        uint32_t pairedHeight = 0;
+        const uint1024_t hash = guard.tip.GetHash();
+        if(reports[peer].Observe(hasHash, hash, !hasHash, guard.tip.nHeight,
+                                 pairedHash, pairedHeight))
+            ChainState::ObserveMiningPeer(&guard.peers[peer],
+                "192.0.2." + std::to_string(peer + 1), pairedHash, pairedHeight);
+        else
+            ChainState::InvalidatePartialMiningPeer(&guard.peers[peer], hasHash,
+                hash, !hasHash, guard.tip.nHeight);
+    };
+    sendField(0, hashFirst);
+    sendField(0, !hashFirst);
+    sendField(1, !hashFirst);
+    sendField(1, hashFirst);
     guard.Report(2);
     REQUIRE(ChainState::MiningReadiness().ready);
     REQUIRE(ChainState::MiningWorkCurrent(work.nMiningEpoch));
+    TritiumBlock probe = work;
+    probe.nChannel = 3;
+    REQUIRE(ValidateMinedBlock(probe).reason == "invalid block channel");
+    TritiumBlock stale = work;
+    stale.hashPrevBlock++;
+    REQUIRE(ValidateMinedBlock(stale).failure == MinedBlockFailure::STALE);
     REQUIRE(Testing::CompleteMiningTemplateInFlight(token, 1, reward, 42, ready.epoch));
     TritiumBlock next;
     REQUIRE(CreateBlock(user, "1234", 1, next, 42));
