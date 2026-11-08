@@ -846,6 +846,14 @@ namespace LLD
         bool TxnCommit();
 
 
+        /** HasJournal
+         *
+         *  Check for nonempty or invalid journal evidence before recovery.
+         *
+         **/
+        bool HasJournal() const;
+
+
         /** TxnRecovery
          *
          *  Recover a transaction from the journal.

@@ -44,6 +44,19 @@ namespace LLD
         return std::filesystem::path(config::GetDataDir()) / "commit-incomplete";
     }
 
+    static void FenceTransactionFailure()
+    {
+        ::Shutdown();
+        try
+        {
+            std::filesystem::create_directory(CommitMarker());
+        }
+        catch(...)
+        {
+            debug::error(FUNCTION, "failed to create commit-incomplete marker");
+        }
+    }
+
     static void CheckCommitMarker()
     {
         if(std::filesystem::exists(CommitMarker()))
@@ -214,13 +227,38 @@ namespace LLD
         CheckCommitMarker();
         struct RecoveryGuard
         {
-            bool fArmed = false;
+            bool fArmed = true;
             ~RecoveryGuard()
             {
                 if(fArmed)
-                    ::Shutdown();
+                    FenceTransactionFailure();
             }
         } recoveryGuard;
+        bool fJournalEvidence = false;
+        auto CheckJournal = [&](auto* db)
+        {
+            if(db)
+                fJournalEvidence |= db->HasJournal();
+        };
+        CheckJournal(Contract);
+        CheckJournal(Register);
+        if(config::fClient.load())
+        {
+            CheckJournal(Client);
+            CheckJournal(Logical);
+        }
+        else
+        {
+            CheckJournal(Ledger);
+            CheckJournal(Trust);
+            CheckJournal(Legacy);
+        }
+        /* Missing and empty journals are clean only if the entire set is clean. */
+        if(!fJournalEvidence)
+        {
+            recoveryGuard.fArmed = false;
+            return;
+        }
         auto BeginRecoveryCommit = [&]()
         {
             recoveryGuard.fArmed = true;
@@ -283,7 +321,7 @@ namespace LLD
                     throw std::runtime_error("LLD recovery journal release failed; retaining commit-incomplete marker");
             }
             else
-                TxnAbort(TAO::Ledger::FLAGS::BLOCK, INSTANCES::MERKLE);
+                throw std::runtime_error("LLD incomplete or invalid journal set; retaining journals");
         }
 
         /* Regular mainnet mode recovery. */
@@ -342,7 +380,7 @@ namespace LLD
                     throw std::runtime_error("LLD recovery journal release failed; retaining commit-incomplete marker");
             }
             else
-                TxnAbort(TAO::Ledger::FLAGS::BLOCK, INSTANCES::CONSENSUS);
+                throw std::runtime_error("LLD incomplete or invalid journal set; retaining journals");
         }
         if(recoveryGuard.fArmed)
         {
@@ -726,9 +764,8 @@ namespace LLD
 
 
     /* Caller must not hold a slot mutex. Releases finished overlays and journals,
-     * then the claimed slot. A cleanup failure still clears the slot so a later
-     * begin is not rejected forever; the original begin exception is propagated
-     * by the caller. */
+     * then the claimed slot. Journal cleanup failures fence further admission;
+     * the original begin exception is propagated by the caller. */
     static void ReleaseStartedBegin(const uint8_t nFlags, const TxnKind kind, const BeginProgress& started)
     {
         auto ReleaseMemory = [&](const bool fStarted, auto* pDB)
@@ -752,7 +789,8 @@ namespace LLD
 
         if(kind == TxnKind::PHYSICAL)
         {
-            auto ReleaseJournal = [](const bool fStarted, auto* pDB)
+            bool fReleased = true;
+            auto ReleaseJournal = [&](const bool fStarted, auto* pDB)
             {
                 if(!fStarted || !pDB)
                     return;
@@ -760,11 +798,15 @@ namespace LLD
                 try
                 {
                     if(!pDB->TxnRelease())
+                    {
                         debug::error(FUNCTION, "failed to release journal during begin rollback");
+                        fReleased = false;
+                    }
                 }
                 catch(...)
                 {
                     debug::error(FUNCTION, "failed to release journal during begin rollback");
+                    fReleased = false;
                 }
             };
 
@@ -777,6 +819,8 @@ namespace LLD
             ReleaseJournal(started.fClient, Client);
             ReleaseJournal(started.fTrust, Trust);
             ReleaseJournal(started.fLegacy, Legacy);
+            if(!fReleased)
+                FenceTransactionFailure();
         }
 
         TxnSlot& slot = SlotFor(kind);
@@ -1133,7 +1177,8 @@ namespace LLD
         /* Attempt every selected journal release. If one cleanup throws, its
          * journal remains intact for recovery while the other DBs still get
          * cleaned up before ownership is released. */
-        TxnReleaseSelected(nOwnedInstances);
+        if(!TxnReleaseSelected(nOwnedInstances))
+            FenceTransactionFailure();
 
         if(fReleasePhysical)
             ReleaseSlot(PhysicalSlot(), TxnKind::PHYSICAL);

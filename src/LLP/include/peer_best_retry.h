@@ -24,9 +24,9 @@ namespace LLP
         static constexpr auto INTERVAL = std::chrono::seconds(30);
         static constexpr auto MAX_AGE = std::chrono::minutes(30);
 
-        void Observe(Clock::time_point now = Clock::now())
+        void Observe(bool changed, Clock::time_point now = Clock::now())
         {
-            if(!retryScheduled)
+            if(changed || !retryScheduled)
             {
                 retryScheduled = true;
                 nextRetry = now + INTERVAL;

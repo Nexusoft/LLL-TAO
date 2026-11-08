@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <Util/include/hex.h>
 
 #include <fstream>
+#include <filesystem>
 #include <functional>
 
 namespace LLD
@@ -789,6 +790,16 @@ namespace LLD
         pTransaction = nullptr;
 
         return true;
+    }
+
+
+    /* Check for evidence without opening or modifying the journal. */
+    template<class KeychainType, class CacheType>
+    bool SectorDatabase<KeychainType, CacheType>::HasJournal() const
+    {
+        const auto path = std::filesystem::path(config::GetDataDir()) / strName / "journal.dat";
+        return std::filesystem::symlink_status(path).type() != std::filesystem::file_type::not_found
+            && (!std::filesystem::is_regular_file(path) || std::filesystem::file_size(path) != 0);
     }
 
 

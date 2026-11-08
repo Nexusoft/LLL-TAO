@@ -85,6 +85,8 @@ namespace
             if(LLD::Ledger) LLD::Ledger->TxnRelease();
             if(LLD::Trust) LLD::Trust->TxnRelease();
             if(LLD::Legacy) LLD::Legacy->TxnRelease();
+            if(LLD::Client) LLD::Client->TxnRelease();
+            if(LLD::Logical) LLD::Logical->TxnRelease();
             std::error_code ec;
             std::filesystem::remove(std::filesystem::path(config::GetDataDir()) / "commit-incomplete", ec);
             config::fShutdown.store(savedShutdown);
@@ -537,6 +539,144 @@ TEST_CASE("Journal recovery fail-stops when a replay commit fails",
     LLD::TxnAbort(0, LLD::INSTANCES::CONSENSUS);
     REQUIRE(filesystem::size(config::GetDataDir() + "_LEDGER/journal.dat") > 0);
     REQUIRE_THROWS_AS(LLD::TxnRecovery(), std::runtime_error);
+}
+
+TEST_CASE("Startup recovery distinguishes clean journals from incomplete evidence",
+          "[lld][txncommit][journal][startup]")
+{
+    LedgerGuard ledgerGuard;
+    TrustGuard trustGuard;
+    ClientGuard clientGuard;
+    LogicalGuard logicalGuard;
+    CommitFailureCleanup cleanup;
+    const bool client = GENERATE(false, true);
+    struct RestoreMode
+    {
+        bool saved{config::fClient.load()};
+        ~RestoreMode() { config::fClient.store(saved); }
+    } restoreMode;
+    config::fClient.store(client);
+
+    auto ForSelected = [&](auto action)
+    {
+        action(LLD::Contract);
+        action(LLD::Register);
+        if(client)
+        {
+            action(LLD::Client);
+            action(LLD::Logical);
+        }
+        else
+        {
+            action(LLD::Ledger);
+            action(LLD::Trust);
+            action(LLD::Legacy);
+        }
+    };
+    ForSelected([](auto* db) { if(db) REQUIRE(db->TxnRelease()); });
+    const auto directory = std::filesystem::path(config::GetDataDir());
+    const auto damaged = directory / (client ? "_CLIENT" : "_TRUST") / "journal.dat";
+    const auto retained = directory / "_CONTRACT" / "journal.dat";
+    const auto marker = directory / "commit-incomplete";
+
+    SECTION("missing and empty journals are a clean startup")
+    {
+        REQUIRE(std::filesystem::remove(damaged));
+        REQUIRE_NOTHROW(LLD::TxnRecovery());
+        REQUIRE_FALSE(config::fShutdown.load());
+        REQUIRE_FALSE(std::filesystem::exists(marker));
+        REQUIRE_FALSE(LLD::Contract->HasTransaction());
+    }
+
+    SECTION("incomplete or corrupt journal set")
+    {
+        ForSelected([](auto* db)
+        {
+            if(db)
+            {
+                db->TxnBegin();
+                REQUIRE(db->TxnCheckpoint());
+            }
+        });
+        const auto retainedSize = std::filesystem::file_size(retained);
+        REQUIRE(retainedSize > 0);
+
+        SECTION("a missing journal preserves the other checkpoints")
+        {
+            REQUIRE(std::filesystem::remove(damaged));
+        }
+        SECTION("an empty journal preserves the other checkpoints")
+        {
+            std::ofstream stream(damaged, std::ios::trunc);
+            REQUIRE(stream.is_open());
+        }
+        SECTION("an invalid journal without a commit preserves the other checkpoints")
+        {
+            std::ofstream stream(damaged, std::ios::binary | std::ios::trunc);
+            stream.put('\0');
+            REQUIRE(stream.good());
+        }
+        SECTION("a corrupt serialized journal preserves the other checkpoints")
+        {
+            std::ofstream stream(damaged, std::ios::binary | std::ios::trunc);
+            stream.put('\xff');
+            REQUIRE(stream.good());
+        }
+
+        REQUIRE_THROWS(LLD::TxnRecovery());
+        REQUIRE(config::fShutdown.load());
+        REQUIRE(std::filesystem::exists(marker));
+        REQUIRE(std::filesystem::file_size(retained) == retainedSize);
+        REQUIRE(LLD::Contract->HasTransaction());
+        REQUIRE_FALSE(LLD::ThreadOwnsTransaction(0));
+        LLD::TxnAbort(0, client ? LLD::INSTANCES::MERKLE : LLD::INSTANCES::CONSENSUS);
+        REQUIRE(std::filesystem::file_size(retained) == retainedSize);
+        REQUIRE(LLD::Contract->HasTransaction());
+        REQUIRE_FALSE(LLD::TxnBegin(0, LLD::INSTANCES::CONTRACT));
+        REQUIRE_THROWS_AS(LLD::Initialize(), std::runtime_error);
+    }
+}
+
+TEST_CASE("Journal release failure during abort fences admission and restart",
+          "[lld][txncommit][journal][io-failure]")
+{
+    LedgerGuard ledgerGuard;
+    TrustGuard trustGuard;
+    CommitFailureCleanup cleanup;
+    const auto journal = std::filesystem::path(config::GetDataDir()) / "_TRUST" / "journal.dat";
+    REQUIRE(std::filesystem::remove(journal));
+    REQUIRE(std::filesystem::create_directory(journal));
+    struct RestoreJournal
+    {
+        std::filesystem::path journal;
+        ~RestoreJournal()
+        {
+            std::error_code ec;
+            std::filesystem::remove(journal, ec);
+        }
+    } restoreJournal{journal};
+    const auto instances = LLD::INSTANCES::LEDGER | LLD::INSTANCES::TRUST;
+
+    SECTION("owned abort")
+    {
+        REQUIRE(LLD::TxnBegin(0, instances));
+    }
+    SECTION("unowned cleanup")
+    {
+        LLD::Ledger->TxnBegin();
+        LLD::Trust->TxnBegin();
+    }
+    LLD::TxnAbort(0, instances);
+    REQUIRE(config::fShutdown.load());
+    REQUIRE(std::filesystem::exists(std::filesystem::path(config::GetDataDir()) / "commit-incomplete"));
+    REQUIRE_FALSE(LLD::ThreadOwnsTransaction(0));
+    REQUIRE_FALSE(LLD::Ledger->HasTransaction());
+    REQUIRE(LLD::Trust->HasTransaction());
+    LLD::TxnAbort(0, instances);
+    REQUIRE(LLD::Trust->HasTransaction());
+    REQUIRE_FALSE(LLD::TxnBegin(0, instances));
+    REQUIRE_THROWS_AS(LLD::TxnRecovery(), std::runtime_error);
+    REQUIRE_THROWS_AS(LLD::Initialize(), std::runtime_error);
 }
 
 
