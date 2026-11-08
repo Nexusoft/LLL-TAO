@@ -182,15 +182,30 @@ outer packet framing differs:
 
 ```
 BLOCK_ACCEPTED (0xD0C8):  0 bytes payload
-BLOCK_REJECTED (0xD0C9):  1 byte reason code
-    0x01 = STALE
-    0x08 = Stale Falcon timestamp
-    0x0B = ChaCha20 decryption failure
-    0x0C = Falcon signature verification failed
-    0x0D = No Falcon session key for this session
-    0x0F = Packet too small
-    0xFF = Internal error
+BLOCK_REJECTED (0xD0C9):  empty, or [1 byte reason code][optional diagnostic]
+    0x01 = STALE                  0x02 = INVALID_POW
+    0x03 = INVALID_SIG            0x04 = DUPLICATE
+    0x05 = FORK                   0x06 = SESSION_INVALID
+    0x07 = REWARD_NOT_BOUND       0x08 = RATE_LIMITED / stale Falcon timestamp
+    0x09 = UNKNOWN_TEMPLATE       0x0A = LOCAL_TEMPLATE_REJECT
+    0x0B = MALFORMED_PRODUCER / ChaCha20 decryption failure
+    0x0C = encryption required / Falcon signature verification failed
+    0x0D = missing session key   0x0E = mining paused or work epoch revoked
+    0x0F = packet too small      0x11 = other mined-block validation failure
+    0x12 = ledger acceptance failure
+    0xFF = internal error
 ```
+
+For the stateless ledger-validation and acceptance paths, the diagnostic is
+up to 240 printable ASCII bytes (valid UTF-8), without a terminator. It carries
+the node's reported reason, with non-printable bytes replaced by `?` and long
+text truncated. `Check()` failures are not labeled invalid PoW: that check also
+performs other consensus validation. Other rejection paths can still return
+zero or one byte. Consumers must frame by packet length, tolerate unknown
+codes and absent/trailing diagnostics, and must not interpret `0x08` or
+`0x0B` unambiguously; those legacy collisions are not reassigned here. Older
+miners that require exactly one byte need an update before relying on these
+extended replies.
 
 ---
 

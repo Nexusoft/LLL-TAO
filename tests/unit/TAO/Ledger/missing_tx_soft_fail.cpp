@@ -477,6 +477,73 @@ TEST_CASE("Both mining lanes refuse revoked work after connectivity returns",
     REQUIRE_FALSE(LLP::StatelessGetBlockHandler(stateless).fSuccess);
 }
 
+TEST_CASE("Confirmed peer catch-up preserves post-accept work but unsafe reports revoke it",
+    "[ledger][mining-readiness][template_freshness]")
+{
+    using namespace TAO::Ledger;
+    PublicMiningGuard guard;
+    REQUIRE(guard.written);
+    guard.Report(0);
+    guard.Report(1);
+    REQUIRE(ChainState::MiningReadiness().ready);
+
+    const auto oldTip = guard.tip;
+    guard.tip.hashPrevBlock = oldTip.GetHash();
+    ++guard.tip.nHeight;
+    ++guard.tip.nNonce;
+    REQUIRE(LLD::Ledger->WriteBlock(guard.tip.GetHash(), guard.tip));
+    guard.extraBlocks.push_back(guard.tip.GetHash());
+    ChainState::tStateBest.store(guard.tip);
+    ChainState::hashBestChain.store(guard.tip.GetHash());
+    ChainState::nBestHeight.store(guard.tip.nHeight);
+    ClearMiningTemplateCaches("test local acceptance");
+
+    const auto ready = ChainState::MiningReadiness();
+    REQUIRE(ready.ready);
+    memory::encrypted_ptr<Credentials> user =
+        new Credentials(LLC::GetRand256().ToString().c_str(), "peer-catch-up-test");
+    TritiumBlock work;
+    REQUIRE(CreateBlock(user, "1234", 1, work, 42));
+    REQUIRE(work.hashPrevBlock == guard.tip.GetHash());
+    REQUIRE(work.nMiningEpoch == ready.epoch);
+    bool owner = false;
+    const uint256_t reward = 123;
+    auto token = Testing::BeginOrJoinMiningTemplateInFlight(1, reward, owner,
+                                                            guard.tip.GetHash(), ready.epoch);
+    REQUIRE(owner);
+
+    guard.Report(0);
+    guard.Report(1);
+    guard.Report(2);
+    REQUIRE(ChainState::MiningReadiness().ready);
+    REQUIRE(ChainState::MiningWorkCurrent(work.nMiningEpoch));
+    REQUIRE(Testing::CompleteMiningTemplateInFlight(token, 1, reward, 42, ready.epoch));
+    TritiumBlock next;
+    REQUIRE(CreateBlock(user, "1234", 1, next, 42));
+    REQUIRE(next.nMiningEpoch == work.nMiningEpoch);
+    REQUIRE(next.hashPrevBlock == work.hashPrevBlock);
+
+    /* A transient unknown tip must revoke even if it is repaired before
+     * anybody samples readiness, including for an in-flight build. */
+    token = Testing::BeginOrJoinMiningTemplateInFlight(1, reward, owner,
+                                                        guard.tip.GetHash(), ready.epoch);
+    REQUIRE(owner);
+    ChainState::ObserveMiningPeer(&guard.peers[0], "192.0.2.1", 0xBAD, 1);
+    guard.Report(0);
+    REQUIRE(ChainState::MiningReadiness().ready);
+    REQUIRE_FALSE(ChainState::MiningWorkCurrent(work.nMiningEpoch));
+    REQUIRE_FALSE(Testing::CompleteMiningTemplateInFlight(token, 1, reward, 42, ready.epoch));
+    REQUIRE_FALSE(Testing::StoreMiningTemplateCacheEntryForTesting(
+        1, reward, 42, guard.tip.GetHash(), ready.epoch));
+    REQUIRE(ValidateMinedBlock(work).failure == MinedBlockFailure::WORK_REVOKED);
+
+    const auto restored = ChainState::MiningReadiness();
+    ChainState::ForgetPeerHeight(&guard.peers[0]);
+    guard.Report(0);
+    REQUIRE(ChainState::MiningReadiness().ready);
+    REQUIRE_FALSE(ChainState::MiningWorkCurrent(restored.epoch));
+}
+
 TEST_CASE("Same-tip mining cache rebuilds identity after an evidence interruption",
     "[ledger][mining-readiness][template_freshness]")
 {

@@ -496,9 +496,14 @@ namespace TAO::Ledger
         result.nUnifiedHeight = block.nHeight;  // block.nHeight is unified height (NexusMiner #169)
         result.hashBlock = block.hashMerkleRoot;
 
-        if(!ChainState::MiningWorkCurrent(block.nMiningEpoch))
+        const auto readiness = ChainState::MiningReadiness(true);
+        if(block.nMiningEpoch == 0 || !readiness.ready || block.nMiningEpoch != readiness.epoch)
         {
+            result.failure = MinedBlockFailure::WORK_REVOKED;
             result.reason = "mining paused or work epoch revoked";
+            debug::log(0, FUNCTION, "Mining work rejected: template_epoch=", block.nMiningEpoch,
+                       " current_epoch=", readiness.epoch, " ready=", readiness.ready,
+                       " readiness_reason=", readiness.reason);
             return result;
         }
 
@@ -540,6 +545,7 @@ namespace TAO::Ledger
          * so stale blocks are rejected immediately without running full PoW verification. */
         if(block.hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
         {
+            result.failure = MinedBlockFailure::STALE;
             result.reason = "submitted block is stale";
             return result;
         }
@@ -920,9 +926,14 @@ namespace TAO::Ledger
         result.nUnifiedHeight = block.nHeight;  // block.nHeight is unified height (NexusMiner #169)
         result.hashBlock = block.hashMerkleRoot;
 
-        if(!ChainState::MiningWorkCurrent(block.nMiningEpoch))
+        const auto readiness = ChainState::MiningReadiness(true);
+        if(block.nMiningEpoch == 0 || !readiness.ready || block.nMiningEpoch != readiness.epoch)
         {
+            result.failure = MinedBlockFailure::WORK_REVOKED;
             result.reason = "mining paused or work epoch revoked";
+            debug::log(0, FUNCTION, "Mining work rejected: template_epoch=", block.nMiningEpoch,
+                       " current_epoch=", readiness.epoch, " ready=", readiness.ready,
+                       " readiness_reason=", readiness.reason);
             return result;
         }
 
@@ -945,6 +956,7 @@ namespace TAO::Ledger
         const uint1024_t hashBestChainNow = TAO::Ledger::ChainState::hashBestChain.load();
         if(block.hashPrevBlock != hashBestChainNow)
         {
+            result.failure = MinedBlockFailure::STALE;
             debug::log(0, FUNCTION,
                        "Post-validation tip-race stale rejection: block.hashPrevBlock=",
                        block.hashPrevBlock.SubString(),
@@ -969,7 +981,10 @@ namespace TAO::Ledger
             if(nStatus & TAO::Ledger::PROCESS::ORPHAN)
                 result.reason = "block is orphan";
             else if(nStatus & TAO::Ledger::PROCESS::DUPLICATE)
+            {
+                result.failure = MinedBlockFailure::DUPLICATE;
                 result.reason = "duplicate block";
+            }
             else if(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
                 result.reason = "block incomplete";
             else if(nStatus & TAO::Ledger::PROCESS::REJECTED)

@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <LLP/include/disposable_falcon.h>
 #include <LLP/include/auto_cooldown_manager.h>
 #include <LLP/include/opcode_utility.h>
+#include <LLP/include/submit_block_rejection.h>
 #include <LLP/include/coinbase_validation.h>
 #include <LLP/include/push_notification.h>
 #include <LLP/include/mining_constants.h>
@@ -2432,7 +2433,8 @@ namespace LLP
                             false, validationResult.reason);
                     }
 
-                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    StatelessPacket response = MinedBlockRejection(
+                        validationResult.failure, false, validationResult.reason);
                     respond(response);
                     debug::log(0, ANSI_COLOR_BRIGHT_RED, "📥 === SUBMIT_BLOCK: REJECTED (", validationResult.reason, ") ===", ANSI_COLOR_RESET);
                     return true;
@@ -2474,7 +2476,8 @@ namespace LLP
                     debug::error(FUNCTION, "❌ AcceptMinedBlock ledger write failed: ", acceptanceResult.reason);
 
                     m_nPendingSubmitHeight.store(0, std::memory_order_release);
-                    StatelessPacket response(STATELESS_BLOCK_REJECTED);
+                    StatelessPacket response = MinedBlockRejection(
+                        acceptanceResult.failure, true, acceptanceResult.reason);
                     respond(response);
 
                     /* Notify Colin agent on ledger-write failure */

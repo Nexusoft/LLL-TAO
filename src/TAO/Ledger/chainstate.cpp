@@ -67,7 +67,23 @@ namespace TAO
         void ChainState::ObserveMiningPeer(const void* peer, const std::string& address,
                                            const uint1024_t& hash, uint32_t height)
         {
-            miningPeers.Observe(peer, address, hash, height);
+            miningPeers.ObserveConfirmedTip(peer, address, hash, height, [&]
+            {
+                const BlockState best = tStateBest.load();
+                if(config::fShutdown.load() || fChainReorg.load() || best.IsNull()
+                || hash == 0 || best.GetHash() != hash || best.nHeight != height
+                || hashBestChain.load() != hash || !LLD::Ledger)
+                    return false;
+
+                BlockState stored;
+                if(!LLD::Ledger->ReadBlock(hash, stored)
+                || stored.GetHash() != hash || stored.nHeight != height
+                || stored.IsHeavierThan(best))
+                    return false;
+
+                return !config::fShutdown.load() && !fChainReorg.load()
+                    && hashBestChain.load() == hash && tStateBest.load().GetHash() == hash;
+            });
         }
 
         void ChainState::UpdateMiningPeerHeight(const void* peer, uint32_t height)

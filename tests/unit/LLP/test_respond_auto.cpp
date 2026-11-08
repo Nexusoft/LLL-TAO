@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <unit/catch2/catch.hpp>
 
 #include <LLP/include/opcode_utility.h>
+#include <LLP/include/submit_block_rejection.h>
 #include <LLP/include/push_notification.h>
 #include <LLP/include/stateless_miner.h>
 #include <LLP/packets/packet.h>
@@ -32,6 +33,34 @@ ________________________________________________________________________________
  */
 
 using namespace LLP;
+
+TEST_CASE("Mined block rejection carries its actual reason", "[opcode_utility][submit_block][llp]")
+{
+    using TAO::Ledger::MinedBlockFailure;
+    const auto revoked = MinedBlockRejection(MinedBlockFailure::WORK_REVOKED, false,
+        "mining paused or work epoch revoked");
+    REQUIRE(revoked.HEADER == 0xD0C9);
+    REQUIRE(revoked.LENGTH == revoked.DATA.size());
+    REQUIRE(revoked.DATA.front() == 0x0E);
+    REQUIRE(std::string(revoked.DATA.begin() + 1, revoked.DATA.end())
+        == "mining paused or work epoch revoked");
+    const auto wire = revoked.GetBytes();
+    REQUIRE(wire.size() == revoked.DATA.size() + 6);
+    REQUIRE(wire[0] == 0xD0);
+    REQUIRE(wire[1] == 0xC9);
+    REQUIRE(PacketFraming::DecodeLength(std::vector<uint8_t>(wire.begin() + 2, wire.begin() + 6))
+        == revoked.DATA.size());
+    REQUIRE(std::vector<uint8_t>(wire.begin() + 6, wire.end()) == revoked.DATA);
+    REQUIRE(MinedBlockRejection(MinedBlockFailure::OTHER, false, "block Check() failed").DATA[0] == 0x11);
+    REQUIRE(MinedBlockRejection(MinedBlockFailure::OTHER, true, "block rejected").DATA[0] == 0x12);
+    REQUIRE(MinedBlockRejection(MinedBlockFailure::STALE, false, "stale").DATA[0] == 0x01);
+    REQUIRE(MinedBlockRejection(MinedBlockFailure::DUPLICATE, true, "duplicate").DATA[0] == 0x04);
+    auto bounded = MinedBlockRejection(MinedBlockFailure::OTHER, true, std::string(500, 'x'));
+    REQUIRE(bounded.LENGTH == 241);
+    REQUIRE(bounded.DATA.size() == 241);
+    auto sanitized = MinedBlockRejection(MinedBlockFailure::OTHER, true, "bad\ntext");
+    REQUIRE(std::string(sanitized.DATA.begin() + 1, sanitized.DATA.end()) == "bad?text");
+}
 
 /* ===========================================================================
  * SubmitBlockRejectionReason Enum Tests

@@ -292,6 +292,9 @@ namespace OpcodeUtility
         CHACHA20_DECRYPTION_FAILED  = 0x0B,  // ChaCha20 payload decryption error
         ENCRYPTION_REQUIRED         = 0x0C,  // ChaCha20 encryption not enabled / sig verify failed
         NO_SESSION_KEY              = 0x0D,  // Falcon pubkey missing for session
+        WORK_REVOKED                = 0x0E,  // Mining paused or issued epoch revoked
+        VALIDATION_FAILED           = 0x11,  // Other mined-block validation failure
+        ACCEPTANCE_FAILED           = 0x12,  // Other ledger acceptance failure
         INTERNAL_ERROR              = 0xFF,  // Logic error / unreachable code
     };
 
@@ -303,6 +306,9 @@ namespace OpcodeUtility
             case SubmitBlockRejectionReason::CHACHA20_DECRYPTION_FAILED: return "CHACHA20_DECRYPTION_FAILED";
             case SubmitBlockRejectionReason::ENCRYPTION_REQUIRED:        return "ENCRYPTION_REQUIRED";
             case SubmitBlockRejectionReason::NO_SESSION_KEY:             return "NO_SESSION_KEY";
+            case SubmitBlockRejectionReason::WORK_REVOKED:                return "WORK_REVOKED";
+            case SubmitBlockRejectionReason::VALIDATION_FAILED:           return "VALIDATION_FAILED";
+            case SubmitBlockRejectionReason::ACCEPTANCE_FAILED:           return "ACCEPTANCE_FAILED";
             case SubmitBlockRejectionReason::INTERNAL_ERROR:             return "INTERNAL_ERROR";
             default:                                                     return "UNKNOWN";
         }

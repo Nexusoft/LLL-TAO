@@ -141,6 +141,7 @@ namespace TAO::Ledger
     class MiningTemplateCacheTable
     {
     public:
+        enum class PublishResult { PUBLISHED, TIP_CHANGED, WORK_REVOKED };
         using EntryPtr = std::shared_ptr<const MiningTemplateCacheEntry>;
         struct InFlightBuild
         {
@@ -204,16 +205,15 @@ namespace TAO::Ledger
          *  while a publish ordered before the clear is erased by it.
          *  Returns false when the entry was rejected as stale.
          **/
-        bool Store(const MiningTemplateCacheEntry& entry, const uint1024_t& hashBuildTip = uint1024_t(0))
+        PublishResult Store(const MiningTemplateCacheEntry& entry, const uint1024_t& hashBuildTip = uint1024_t(0))
         {
             const std::size_t cap = Capacity();
             auto pNew = std::make_shared<const MiningTemplateCacheEntry>(entry);
 
             std::unique_lock<std::shared_mutex> lock(m_mutex);
-            if(!TipCurrent(hashBuildTip)
-            || (entry.block.nMiningEpoch != 0
-                && !ChainState::MiningWorkCurrent(entry.block.nMiningEpoch)))
-                return false;
+            const auto result = CheckPublication(hashBuildTip, entry.block.nMiningEpoch);
+            if(result != PublishResult::PUBLISHED)
+                return result;
 
             for(auto it = m_entries.begin(); it != m_entries.end(); ++it)
             {
@@ -222,14 +222,14 @@ namespace TAO::Ledger
                     *it = pNew;
                     if(it != m_entries.begin())
                         m_entries.splice(m_entries.begin(), m_entries, it);
-                    return true;
+                    return PublishResult::PUBLISHED;
                 }
             }
             m_entries.push_front(pNew);
             while(m_entries.size() > cap)
                 m_entries.pop_back();
 
-            return true;
+            return PublishResult::PUBLISHED;
         }
 
         /** Test/diag: number of entries currently cached. */
@@ -339,22 +339,20 @@ namespace TAO::Ledger
          * revalidated under the writer lock (see Store()); a build whose tip was
          * superseded is not inserted into the cache and its waiters receive no
          * result.  Returns false when the result was rejected as stale. */
-        bool CompleteInFlightBuild(const InFlightPtr& pHandle, const MiningTemplateCacheEntry& finalEntry)
+        PublishResult CompleteInFlightBuild(const InFlightPtr& pHandle, const MiningTemplateCacheEntry& finalEntry)
         {
             if(!pHandle)
-                return false;
+                return PublishResult::TIP_CHANGED;
 
             const std::size_t cap = Capacity();
             auto pNew = std::make_shared<const MiningTemplateCacheEntry>(finalEntry);
 
-            bool fPublished = false;
+            PublishResult result;
             {
                 std::unique_lock<std::shared_mutex> lock(m_mutex);
-                fPublished = TipCurrent(pHandle->hashBuildTip)
-                    && (finalEntry.block.nMiningEpoch == 0
-                        || ChainState::MiningWorkCurrent(finalEntry.block.nMiningEpoch));
+                result = CheckPublication(pHandle->hashBuildTip, finalEntry.block.nMiningEpoch);
 
-                if(fPublished)
+                if(result == PublishResult::PUBLISHED)
                 {
                     bool fReplaced = false;
                     for(auto it = m_entries.begin(); it != m_entries.end(); ++it)
@@ -383,12 +381,12 @@ namespace TAO::Ledger
 
             {
                 std::lock_guard<std::mutex> lock(pHandle->mutex);
-                pHandle->pResult = fPublished ? pNew : nullptr;
+                pHandle->pResult = result == PublishResult::PUBLISHED ? pNew : nullptr;
                 pHandle->fComplete = true;
             }
             pHandle->cv.notify_all();
 
-            return fPublished;
+            return result;
         }
 
         void AbandonInFlightBuild(const InFlightPtr& pHandle)
@@ -443,6 +441,15 @@ namespace TAO::Ledger
         static bool TipCurrent(const uint1024_t& hashBuildTip)
         {
             return hashBuildTip == 0 || ChainState::hashBestChain.load() == hashBuildTip;
+        }
+
+        static PublishResult CheckPublication(const uint1024_t& tip, uint64_t epoch)
+        {
+            if(!TipCurrent(tip))
+                return PublishResult::TIP_CHANGED;
+            if(epoch != 0 && !ChainState::MiningWorkCurrent(epoch))
+                return PublishResult::WORK_REVOKED;
+            return PublishResult::PUBLISHED;
         }
 
         mutable std::shared_mutex m_mutex;
@@ -1389,7 +1396,8 @@ namespace TAO::Ledger
                 tNewEntry.block              = rBlockRet;
                 tNewEntry.hashDynamicGenesis = hashDynamicGenesis;
                 tNewEntry.nExtraNonce        = nExtraNonce;
-                if(!tBlockCache[nChannel].Store(tNewEntry, tStateBest.GetHash()))
+                if(tBlockCache[nChannel].Store(tNewEntry, tStateBest.GetHash())
+                    != MiningTemplateCacheTable::PublishResult::PUBLISHED)
                 {
                     if(pfTipRaceRetry != nullptr)
                         *pfTipRaceRetry = true;
@@ -1570,17 +1578,19 @@ namespace TAO::Ledger
                 tNewEntry.block              = rBlockRet;
                 tNewEntry.hashDynamicGenesis = hashDynamicGenesis;
                 tNewEntry.nExtraNonce        = nExtraNonce;
-                const bool fPublished = fSingleflightOwner
+                const auto publishResult = fSingleflightOwner
                     ? tBlockCache[nChannel].CompleteInFlightBuild(pInFlight, tNewEntry)
                     : tBlockCache[nChannel].Store(tNewEntry, hashBuildTip);
                 guard.fCompleted = true;
 
                 /* A committed tip change between the check above and publication
                  * makes this template stale; never return or cache it. */
-                if(!fPublished)
+                if(publishResult != MiningTemplateCacheTable::PublishResult::PUBLISHED)
                 {
                     if(pfTipRaceRetry != nullptr)
                         *pfTipRaceRetry = true;
+                    if(publishResult == MiningTemplateCacheTable::PublishResult::WORK_REVOKED)
+                        return debug::error(FUNCTION, "Mining readiness changed while publishing template, retry required.");
                     return debug::error(FUNCTION, "Tip advanced while publishing template, retry required.");
                 }
             }
@@ -1614,12 +1624,13 @@ namespace TAO::Ledger
         SingleflightToken BeginOrJoinMiningTemplateInFlight(const uint32_t nChannel,
                                                             const uint256_t& hashDynamicGenesis,
                                                             bool& fIsOwner,
-                                                            const uint1024_t& hashBuildTip)
+                                                            const uint1024_t& hashBuildTip,
+                                                            uint64_t nMiningEpoch)
         {
             if(nChannel >= 4)
                 return 0;
 
-            auto pHandle = tBlockCache[nChannel].BeginOrJoinInFlightBuild(hashDynamicGenesis, hashBuildTip, fIsOwner);
+            auto pHandle = tBlockCache[nChannel].BeginOrJoinInFlightBuild(hashDynamicGenesis, hashBuildTip, fIsOwner, nMiningEpoch);
             const std::uint64_t nToken = g_nextInFlightToken.fetch_add(1, std::memory_order_relaxed);
             std::lock_guard<std::mutex> lock(g_inFlightHandleMutex);
             g_inFlightHandles[nToken] = pHandle;
@@ -1658,7 +1669,8 @@ namespace TAO::Ledger
         bool CompleteMiningTemplateInFlight(const SingleflightToken nToken,
                                             const uint32_t nChannel,
                                             const uint256_t& hashDynamicGenesis,
-                                            const uint64_t nExtraNonce)
+                                            const uint64_t nExtraNonce,
+                                            uint64_t nMiningEpoch)
         {
             if(nChannel >= 4)
                 return false;
@@ -1676,7 +1688,9 @@ namespace TAO::Ledger
             MiningTemplateCacheEntry tEntry;
             tEntry.hashDynamicGenesis = hashDynamicGenesis;
             tEntry.nExtraNonce = nExtraNonce;
-            return tBlockCache[nChannel].CompleteInFlightBuild(pHandle, tEntry);
+            tEntry.block.nMiningEpoch = nMiningEpoch;
+            return tBlockCache[nChannel].CompleteInFlightBuild(pHandle, tEntry)
+                == MiningTemplateCacheTable::PublishResult::PUBLISHED;
         }
 
         void AbandonMiningTemplateInFlight(const SingleflightToken nToken,
@@ -1701,7 +1715,8 @@ namespace TAO::Ledger
         bool StoreMiningTemplateCacheEntryForTesting(const uint32_t nChannel,
                                                      const uint256_t& hashDynamicGenesis,
                                                      const uint64_t nExtraNonce,
-                                                     const uint1024_t& hashBuildTip)
+                                                     const uint1024_t& hashBuildTip,
+                                                     uint64_t nMiningEpoch)
         {
             if(nChannel >= 4)
                 return false;
@@ -1709,7 +1724,9 @@ namespace TAO::Ledger
             MiningTemplateCacheEntry tEntry;
             tEntry.hashDynamicGenesis = hashDynamicGenesis;
             tEntry.nExtraNonce = nExtraNonce;
-            return tBlockCache[nChannel].Store(tEntry, hashBuildTip);
+            tEntry.block.nMiningEpoch = nMiningEpoch;
+            return tBlockCache[nChannel].Store(tEntry, hashBuildTip)
+                == MiningTemplateCacheTable::PublishResult::PUBLISHED;
         }
 
         std::size_t MiningTemplateCacheSizeForTesting(const uint32_t nChannel)
