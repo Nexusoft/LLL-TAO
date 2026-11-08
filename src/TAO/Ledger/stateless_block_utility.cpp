@@ -503,7 +503,11 @@ namespace TAO::Ledger
             result.reason = "mining paused or work epoch revoked";
             debug::log(0, FUNCTION, "Mining work rejected: template_epoch=", block.nMiningEpoch,
                        " current_epoch=", readiness.epoch, " ready=", readiness.ready,
-                       " readiness_reason=", readiness.reason);
+                       " readiness_reason=", readiness.reason,
+                       " template_parent=", block.hashPrevBlock.SubString(),
+                       " best_tip=", ChainState::hashBestChain.load().SubString(),
+                       " template_height=", block.nHeight,
+                       " best_height=", ChainState::nBestHeight.load());
             return result;
         }
 
@@ -933,7 +937,11 @@ namespace TAO::Ledger
             result.reason = "mining paused or work epoch revoked";
             debug::log(0, FUNCTION, "Mining work rejected: template_epoch=", block.nMiningEpoch,
                        " current_epoch=", readiness.epoch, " ready=", readiness.ready,
-                       " readiness_reason=", readiness.reason);
+                       " readiness_reason=", readiness.reason,
+                       " template_parent=", block.hashPrevBlock.SubString(),
+                       " best_tip=", ChainState::hashBestChain.load().SubString(),
+                       " template_height=", block.nHeight,
+                       " best_height=", ChainState::nBestHeight.load());
             return result;
         }
 

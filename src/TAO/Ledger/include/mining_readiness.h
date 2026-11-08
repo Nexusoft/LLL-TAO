@@ -2,6 +2,7 @@
 #pragma once
 
 #include <LLC/types/uint1024.h>
+#include <Util/include/debug.h>
 
 #include <chrono>
 #include <cstdint>
@@ -56,27 +57,64 @@ namespace TAO::Ledger::ChainState
             {
                 cacheValid = false;
                 if((it != observations.end() && it->second.address != address)
+                || (it != observations.end() && it->second.pendingCatchUp
+                    && (it->second.pendingTip != hash
+                     || (it->second.pendingHash && it->second.partialHash != hash)
+                     || (it->second.pendingHeight && it->second.partialHeight != height)))
                 || !confirmTip())
-                    ++epoch;
+                    AdvanceEpoch("peer-tip-change");
             }
             observations[peer] = {address, hash, height, now, false};
         }
 
         /* A contradictory unpaired field cannot refresh or continue to
          * support the old tip while its counterpart is outstanding. */
+        template<typename ConfirmCatchUp>
         void InvalidatePartial(const void* peer, bool hasHash, const uint1024_t& hash,
-                               bool hasHeight, uint32_t height)
+                               bool hasHeight, uint32_t height, ConfirmCatchUp confirmCatchUp)
         {
             std::lock_guard<std::mutex> lock(mutex);
             const auto it = observations.find(peer);
-            if(it != observations.end() && !it->second.uncertain
-            && ((hasHash && it->second.hash != hash)
-             || (hasHeight && it->second.height != height)))
+            if(it == observations.end())
+                return;
+
+            auto& observation = it->second;
+            if(observation.uncertain)
             {
-                it->second.uncertain = true;
-                cacheValid = false;
-                ++epoch;
+                if(observation.pendingCatchUp
+                && (confirmCatchUp() != observation.pendingTip
+                 || (hasHash && observation.pendingHash && observation.partialHash != hash)
+                 || (hasHeight && observation.pendingHeight && observation.partialHeight != height)))
+                {
+                    observation.pendingCatchUp = false;
+                    AdvanceEpoch("contradictory-partial-tip");
+                }
+                return;
             }
+
+            if((hasHash && observation.hash != hash)
+            || (hasHeight && observation.height != height))
+            {
+                observation.uncertain = true;
+                cacheValid = false;
+                observation.pendingTip = confirmCatchUp();
+                observation.pendingCatchUp = observation.pendingTip != 0;
+                if(observation.pendingCatchUp)
+                {
+                    observation.pendingHash = hasHash;
+                    observation.partialHash = hash;
+                    observation.pendingHeight = hasHeight;
+                    observation.partialHeight = height;
+                }
+                else
+                    AdvanceEpoch("partial-peer-tip");
+            }
+        }
+
+        void InvalidatePartial(const void* peer, bool hasHash, const uint1024_t& hash,
+                               bool hasHeight, uint32_t height)
+        {
+            InvalidatePartial(peer, hasHash, hash, hasHeight, height, [] { return uint1024_t(0); });
         }
 
         void Height(const void* peer, uint32_t height)
@@ -86,7 +124,7 @@ namespace TAO::Ledger::ChainState
             if(it != observations.end() && it->second.height != height)
             {
                 cacheValid = false;
-                ++epoch;
+                AdvanceEpoch("peer-height-change");
                 it->second.height = height;
             }
         }
@@ -97,7 +135,7 @@ namespace TAO::Ledger::ChainState
             if(observations.erase(peer))
             {
                 cacheValid = false;
-                ++epoch;
+                AdvanceEpoch("peer-disconnected");
             }
         }
 
@@ -182,7 +220,7 @@ namespace TAO::Ledger::ChainState
                 status.reason = bypass ? "local-network" : "ready";
             }
             if(wasReady && !status.ready)
-                ++epoch;
+                AdvanceEpoch("readiness-paused");
             wasReady = status.ready;
             status.epoch = epoch;
             return status;
@@ -195,7 +233,19 @@ namespace TAO::Ledger::ChainState
             uint32_t height;
             Clock::time_point observed;
             bool uncertain;
+            bool pendingCatchUp{false};
+            uint1024_t pendingTip{0};
+            bool pendingHash{false};
+            uint1024_t partialHash{0};
+            bool pendingHeight{false};
+            uint32_t partialHeight{0};
         };
+
+        void AdvanceEpoch(const char* reason)
+        {
+            ++epoch;
+            debug::log(0, "MiningPeerTracker: work epoch advanced to ", epoch, " reason=", reason);
+        }
 
         void Expire(Clock::time_point now)
         {
@@ -204,7 +254,7 @@ namespace TAO::Ledger::ChainState
                 if(now - it->second.observed > MAX_AGE)
                 {
                     it = observations.erase(it);
-                    ++epoch;
+                    AdvanceEpoch("peer-evidence-expired");
                 }
                 else
                     ++it;
