@@ -3522,12 +3522,13 @@ TEST_CASE("Block inventory requests expire and track independent peers",
     requests.Remove(tip, &second);
     REQUIRE_FALSE(requests.Contains(tip, &second, now + LLP::BlockInventoryRequests::TIMEOUT));
 
-    REQUIRE(requests.Add(tip, &first, now));
-    REQUIRE(requests.Add(tip, &second, now));
+    const auto expired = now + LLP::BlockInventoryRequests::TIMEOUT;
+    REQUIRE(requests.Add(tip, &first, expired));
+    REQUIRE(requests.Add(tip, &second, expired));
     requests.RemovePeer(&first);
-    REQUIRE(requests.Contains(tip, &second, now));
+    REQUIRE(requests.Contains(tip, &second, expired));
     requests.RemovePeer(&second);
-    REQUIRE_FALSE(requests.Contains(tip, &second, now));
+    REQUIRE_FALSE(requests.Contains(tip, &second, expired));
 }
 
 TEST_CASE("Block inventory request tracking is bounded and reuses expired entries",
@@ -3545,10 +3546,12 @@ TEST_CASE("Block inventory request tracking is bounded and reuses expired entrie
         now + LLP::BlockInventoryRequests::TIMEOUT));
 
     LLP::BlockInventoryRequests hashes;
-    for(std::size_t i = 0; i < LLP::BlockInventoryRequests::MAX_HASHES; ++i)
+    for(std::size_t i = 0; i < LLP::BlockInventoryRequests::MAX_HASHES_PER_PEER; ++i)
         REQUIRE(hashes.Add(uint1024_t(i + 1), &peers[0], now));
-    REQUIRE_FALSE(hashes.Add(uint1024_t(LLP::BlockInventoryRequests::MAX_HASHES + 1), &peers[0], now));
-    REQUIRE(hashes.Add(uint1024_t(LLP::BlockInventoryRequests::MAX_HASHES + 1), &peers[0],
+    const uint1024_t overflow(LLP::BlockInventoryRequests::MAX_HASHES_PER_PEER + 1);
+    REQUIRE_FALSE(hashes.Add(overflow, &peers[0], now));
+    REQUIRE(hashes.Add(overflow, &peers[1], now));
+    REQUIRE(hashes.Add(overflow, &peers[0],
         now + LLP::BlockInventoryRequests::TIMEOUT));
 }
 
