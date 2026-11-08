@@ -51,6 +51,50 @@ namespace LLP
         uint64_t nMiningEpoch = 0;
     };
 
+    inline bool MiningTemplateMaySend(uint64_t epoch)
+    {
+        const auto readiness = TAO::Ledger::ChainState::MiningReadiness(true);
+        if(epoch != 0 && readiness.ready && epoch == readiness.epoch)
+            return true;
+
+        debug::log(1, FUNCTION, "Mining template withheld: template_epoch=", epoch,
+                   " current_epoch=", readiness.epoch, " ready=", readiness.ready,
+                   " readiness_reason=", readiness.reason);
+        return false;
+    }
+
+    enum class MiningTemplateWriteResult { SENT, REVOKED, WRITE_FAILED };
+
+    template<typename Connection, typename PacketType>
+    MiningTemplateWriteResult WriteMiningTemplate(Connection& connection, const PacketType& packet,
+                                                   uint64_t epoch, std::function<void()> fnSent = {})
+    {
+        bool revoked = false;
+        const bool sent = connection.WritePacket(packet, false, [&]()
+        {
+            revoked = !MiningTemplateMaySend(epoch);
+            return !revoked;
+        }, fnSent);
+        return sent ? MiningTemplateWriteResult::SENT :
+            (revoked ? MiningTemplateWriteResult::REVOKED : MiningTemplateWriteResult::WRITE_FAILED);
+    }
+
+    /** Queue a template with a second epoch check at the deferred write boundary. */
+    template<typename Connection, typename PacketType>
+    bool QueueMiningTemplate(Connection& connection, const PacketType& packet, uint64_t epoch,
+                             std::function<void()> fnSent = {})
+    {
+        if(!TAO::Ledger::ChainState::MiningWorkCurrent(epoch))
+        {
+            debug::log(1, FUNCTION, "Mining template withheld before queueing: epoch=", epoch);
+            return false;
+        }
+
+        connection.QueuePacket(packet, [epoch]() { return MiningTemplateMaySend(epoch); },
+                               std::move(fnSent));
+        return true;
+    }
+
 
     /** BuildSharedTemplatePayload
      *

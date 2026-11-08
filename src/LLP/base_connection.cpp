@@ -246,6 +246,30 @@ namespace LLP
     template <class PacketType>
     bool BaseConnection<PacketType>::WritePacket(const PacketType& PACKET, bool fPriority)
     {
+        return WritePacket(PACKET, fPriority, {});
+    }
+
+
+    template <class PacketType>
+    bool BaseConnection<PacketType>::WritePacket(const PacketType& PACKET, bool fPriority,
+                                                  const std::function<bool()>& fnMaySend,
+                                                  const std::function<void()>& fnSent)
+    {
+        LOCK(DELIVERY_MUTEX);
+        if(!WritePacket(PACKET, fPriority, fnMaySend))
+            return false;
+
+        /* Publish before the next guarded write, but outside the flush/socket locks. */
+        if(fnSent)
+            fnSent();
+        return true;
+    }
+
+
+    template <class PacketType>
+    bool BaseConnection<PacketType>::WritePacket(const PacketType& PACKET, bool fPriority,
+                                                  const std::function<bool()>& fnMaySend)
+    {
         /* Pair buffered-state changes and notification with the flush wait. */
         std::unique_lock<std::mutex> FLUSH_LOCK;
         if(FLUSH_CONDITION_MUTEX)
@@ -272,6 +296,9 @@ namespace LLP
         if(Buffered() + vBytes.size() + nReserve < nMaxSendBuffer
         || (fBufferFull.load() && Buffered() + vBytes.size() < nMaxSendBuffer)) //catch for critical messages (< reserve)
         {
+            if(fnMaySend && !fnMaySend())
+                return false;
+
             /* Debug dump of message type. */
             debug::log(4, NODE, "sent packet (", vBytes.size(), " bytes)");
 

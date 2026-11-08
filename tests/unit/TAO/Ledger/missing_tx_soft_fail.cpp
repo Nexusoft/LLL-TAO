@@ -33,7 +33,12 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/stateless_block_utility.h>
 #include <TAO/Ledger/include/supply.h>
 #include <LLP/include/legacy_get_block_handler.h>
+#include <LLP/include/mining_template_payload.h>
 #include <LLP/include/stateless_get_block_handler.h>
+#include <LLP/include/stateless_opcodes.h>
+#include <LLP/packets/packet.h>
+#include <LLP/packets/stateless_packet.h>
+#include <LLP/templates/base_connection.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -59,7 +64,9 @@ ________________________________________________________________________________
 #include <vector>
 #include <cstdint>
 #include <cstring>
+#include <cerrno>
 #include <chrono>
+#include <future>
 #include <thread>
 
 #include <unit/catch2/catch.hpp>
@@ -263,6 +270,229 @@ namespace
                 LLD::Ledger->EraseBlock(hash);
         }
     };
+
+#ifndef WIN32
+    template<typename PacketType>
+    class TestTemplateConnection : public LLP::BaseConnection<PacketType>
+    {
+        void Event(uint8_t, uint32_t) override {}
+        bool ProcessPacket() override { return true; }
+        void ReadPacket() override {}
+    };
+
+    template<typename PacketType>
+    void CheckQueuedTemplateEpoch(PublicMiningGuard& guard, typename PacketType::message_t opcode)
+    {
+        using namespace TAO::Ledger::ChainState;
+        TestTemplateConnection<PacketType> connection;
+        int sockets[2];
+        REQUIRE(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) == 0);
+        struct Reader
+        {
+            int fd;
+            ~Reader() { close(fd); }
+        } reader{sockets[0]};
+        connection.fd = sockets[1];
+
+        PacketType packet(opcode);
+        packet.DATA = {1, 2, 3};
+        packet.LENGTH = packet.DATA.size();
+        const auto expected = packet.GetBytes();
+        const auto ready = MiningReadiness();
+        REQUIRE(ready.ready);
+        uint32_t deliveries = 0;
+        auto recordDelivery = [&]() { ++deliveries; };
+        REQUIRE_FALSE(LLP::QueueMiningTemplate(connection, packet, 0));
+        REQUIRE(LLP::QueueMiningTemplate(connection, packet, ready.epoch, recordDelivery));
+        REQUIRE(deliveries == 0);
+
+        ForgetPeerHeight(&guard.peers[0]);
+        REQUIRE_FALSE(MiningReadiness().ready);
+        REQUIRE(connection.DrainOutgoingQueue() == 1);
+        REQUIRE(deliveries == 0);
+        uint8_t bytes[1024];
+        REQUIRE(recv(reader.fd, bytes, sizeof(bytes), MSG_DONTWAIT) == -1);
+        REQUIRE((errno == EAGAIN || errno == EWOULDBLOCK));
+
+        guard.Report(0);
+        const auto restored = MiningReadiness();
+        REQUIRE(restored.ready);
+        REQUIRE(restored.epoch != ready.epoch);
+        REQUIRE_FALSE(LLP::QueueMiningTemplate(connection, packet, ready.epoch));
+        REQUIRE(LLP::QueueMiningTemplate(connection, packet, restored.epoch, recordDelivery));
+        REQUIRE(deliveries == 0);
+        REQUIRE(connection.DrainOutgoingQueue() == 1);
+        REQUIRE(deliveries == 1);
+        const auto count = recv(reader.fd, bytes, sizeof(bytes), MSG_DONTWAIT);
+        REQUIRE(count == static_cast<ssize_t>(expected.size()));
+        REQUIRE(std::vector<uint8_t>(bytes, bytes + count) == expected);
+
+        REQUIRE(LLP::QueueMiningTemplate(connection, packet, restored.epoch, recordDelivery));
+        std::mutex flushMutex;
+        connection.FLUSH_CONDITION_MUTEX = &flushMutex;
+        std::unique_lock<std::mutex> lock(flushMutex);
+        std::promise<void> started;
+        auto startSignal = started.get_future();
+        auto drained = std::async(std::launch::async, [&]()
+        {
+            started.set_value();
+            return connection.DrainOutgoingQueue();
+        });
+        startSignal.wait();
+        ForgetPeerHeight(&guard.peers[0]);
+        lock.unlock();
+        REQUIRE(drained.get() == 1);
+        REQUIRE(deliveries == 1);
+        connection.FLUSH_CONDITION_MUTEX = nullptr;
+        REQUIRE(recv(reader.fd, bytes, sizeof(bytes), MSG_DONTWAIT) == -1);
+        REQUIRE((errno == EAGAIN || errno == EWOULDBLOCK));
+
+        guard.Report(0);
+        const auto next = MiningReadiness();
+        REQUIRE(next.ready);
+        REQUIRE(LLP::QueueMiningTemplate(connection, packet, next.epoch, recordDelivery));
+        ForgetPeerHeight(&guard.peers[0]);
+        guard.Report(0);
+        REQUIRE(MiningReadiness().ready);
+        connection.QueuePacket(packet);
+        REQUIRE(connection.DrainOutgoingQueue() == 2);
+        REQUIRE(deliveries == 1);
+        const auto controlCount = recv(reader.fd, bytes, sizeof(bytes), MSG_DONTWAIT);
+        REQUIRE(controlCount == static_cast<ssize_t>(expected.size()));
+        REQUIRE(std::vector<uint8_t>(bytes, bytes + controlCount) == expected);
+
+        REQUIRE(LLP::WriteMiningTemplate(connection, packet, next.epoch, recordDelivery)
+            == LLP::MiningTemplateWriteResult::REVOKED);
+        REQUIRE(deliveries == 1);
+        const auto current = MiningReadiness();
+        REQUIRE(current.ready);
+        connection.FLUSH_CONDITION_MUTEX = &flushMutex;
+        std::unique_lock<std::mutex> directLock(flushMutex);
+        std::promise<void> directStarted;
+        auto directSignal = directStarted.get_future();
+        auto directWrite = std::async(std::launch::async, [&]()
+        {
+            directStarted.set_value();
+            return LLP::WriteMiningTemplate(connection, packet, current.epoch, recordDelivery);
+        });
+        directSignal.wait();
+        ForgetPeerHeight(&guard.peers[0]);
+        directLock.unlock();
+        REQUIRE(directWrite.get() == LLP::MiningTemplateWriteResult::REVOKED);
+        REQUIRE(deliveries == 1);
+        connection.FLUSH_CONDITION_MUTEX = nullptr;
+        REQUIRE(recv(reader.fd, bytes, sizeof(bytes), MSG_DONTWAIT) == -1);
+        REQUIRE((errno == EAGAIN || errno == EWOULDBLOCK));
+
+        guard.Report(0);
+        const auto fresh = MiningReadiness();
+        REQUIRE(fresh.ready);
+        REQUIRE(LLP::WriteMiningTemplate(connection, packet, fresh.epoch)
+            == LLP::MiningTemplateWriteResult::SENT);
+        const auto directCount = recv(reader.fd, bytes, sizeof(bytes), MSG_DONTWAIT);
+        REQUIRE(directCount == static_cast<ssize_t>(expected.size()));
+        REQUIRE(std::vector<uint8_t>(bytes, bytes + directCount) == expected);
+
+        connection.fd = -1;
+        close(sockets[1]);
+        REQUIRE(LLP::WriteMiningTemplate(connection, packet, fresh.epoch, recordDelivery)
+            == LLP::MiningTemplateWriteResult::WRITE_FAILED);
+        REQUIRE(deliveries == 1);
+        REQUIRE(LLP::QueueMiningTemplate(connection, packet, fresh.epoch, recordDelivery));
+        REQUIRE(connection.DrainOutgoingQueue() == 1);
+        REQUIRE(deliveries == 1);
+    }
+
+    template<typename PacketType>
+    void CheckTemplateDeliveryOrder(bool firstDirect, bool secondDirect)
+    {
+        TestTemplateConnection<PacketType> connection;
+        int sockets[2];
+        REQUIRE(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) == 0);
+        struct Reader
+        {
+            int fd;
+            ~Reader() { close(fd); }
+        } reader{sockets[0]};
+        connection.fd = sockets[1];
+
+        std::mutex flushMutex;
+        connection.FLUSH_CONDITION_MUTEX = &flushMutex;
+        const auto epoch = TAO::Ledger::ChainState::MiningReadiness().epoch;
+        PacketType older(0), newer(0);
+        older.DATA = {1, 2, 3};
+        newer.DATA = {4, 5, 6};
+        older.LENGTH = older.DATA.size();
+        newer.LENGTH = newer.DATA.size();
+
+        uint32_t deliveredHeight = 0;
+        uint1024_t deliveredHash = 0;
+        std::vector<uint32_t> deliveries;
+        std::promise<void> callbackStarted, releaseCallback, secondStarted;
+        auto callbackSignal = callbackStarted.get_future();
+        auto releaseSignal = releaseCallback.get_future();
+        auto secondSignal = secondStarted.get_future();
+        auto recordOlder = [&]()
+        {
+            callbackStarted.set_value();
+            releaseSignal.wait();
+            deliveredHeight = 10;
+            deliveredHash = 100;
+            deliveries.push_back(10);
+        };
+        auto recordNewer = [&]()
+        {
+            deliveredHeight = 11;
+            deliveredHash = 101;
+            deliveries.push_back(11);
+        };
+
+        if(!firstDirect)
+            REQUIRE(LLP::QueueMiningTemplate(connection, older, epoch, recordOlder));
+        auto first = std::async(std::launch::async, [&]()
+        {
+            return firstDirect
+                ? LLP::WriteMiningTemplate(connection, older, epoch, recordOlder)
+                    == LLP::MiningTemplateWriteResult::SENT
+                : connection.DrainOutgoingQueue() == 1;
+        });
+        callbackSignal.wait();
+
+        if(!secondDirect)
+            LLP::QueueMiningTemplate(connection, newer, epoch, recordNewer);
+        auto second = std::async(std::launch::async, [&]()
+        {
+            secondStarted.set_value();
+            return secondDirect
+                ? LLP::WriteMiningTemplate(connection, newer, epoch, recordNewer)
+                    == LLP::MiningTemplateWriteResult::SENT
+                : connection.DrainOutgoingQueue() == 1;
+        });
+        secondSignal.wait();
+        const auto secondStatus = second.wait_for(std::chrono::milliseconds(100));
+        uint8_t bytes[1024];
+        const auto firstCount = recv(reader.fd, bytes, sizeof(bytes), MSG_DONTWAIT);
+        const auto firstBytes = firstCount > 0
+            ? std::vector<uint8_t>(bytes, bytes + firstCount) : std::vector<uint8_t>();
+
+        /* Always release and join workers before asserting, even on failure. */
+        releaseCallback.set_value();
+        const bool firstSent = first.get();
+        const bool secondSent = second.get();
+        connection.FLUSH_CONDITION_MUTEX = nullptr;
+
+        REQUIRE(firstSent);
+        REQUIRE(secondSent);
+        REQUIRE(secondStatus == std::future_status::timeout);
+        REQUIRE(firstBytes == older.GetBytes());
+        REQUIRE(deliveries == std::vector<uint32_t>{10, 11});
+        REQUIRE(deliveredHeight == 11);
+        REQUIRE(deliveredHash == uint1024_t(101));
+        const auto secondCount = recv(reader.fd, bytes, sizeof(bytes), MSG_DONTWAIT);
+        REQUIRE(secondCount == static_cast<ssize_t>(newer.GetBytes().size()));
+        REQUIRE(std::vector<uint8_t>(bytes, bytes + secondCount) == newer.GetBytes());
+    }
+#endif
 }
 
 TEST_CASE("Mining readiness requires fresh distinct evidence and revokes work",
@@ -616,6 +846,97 @@ TEST_CASE("Both mining lanes refuse revoked work after connectivity returns",
     ChainState::ObserveMiningPeer(&guard.peers[2], "192.0.2.3", 0xBAD, 1);
     REQUIRE(ChainState::MiningReadiness().reason == "unresolved-peer-tip");
     REQUIRE_FALSE(LLP::StatelessGetBlockHandler(stateless).fSuccess);
+}
+
+#ifndef WIN32
+TEST_CASE("Deferred templates are fenced at the socket write boundary",
+    "[ledger][mining-readiness][template_freshness]")
+{
+    PublicMiningGuard guard;
+    REQUIRE(guard.written);
+    guard.Report(0);
+    guard.Report(1);
+
+    SECTION("Legacy lane")
+    {
+        CheckQueuedTemplateEpoch<LLP::Packet>(guard, 0);
+    }
+    SECTION("Stateless lane")
+    {
+        CheckQueuedTemplateEpoch<LLP::StatelessPacket>(guard, 0xD000);
+    }
+    SECTION("Stateless recovery template")
+    {
+        CheckQueuedTemplateEpoch<LLP::StatelessPacket>(guard, LLP::StatelessOpcodes::STATELESS_GET_BLOCK);
+    }
+}
+
+TEST_CASE("Template delivery markers preserve concurrent write order",
+    "[ledger][mining-readiness][template_freshness]")
+{
+    PublicMiningGuard guard;
+    REQUIRE(guard.written);
+    guard.Report(0);
+    guard.Report(1);
+    REQUIRE(TAO::Ledger::ChainState::MiningReadiness().ready);
+
+    const bool firstDirect = GENERATE(false, true);
+    const bool secondDirect = GENERATE(false, true);
+    SECTION("Legacy lane")
+    {
+        CheckTemplateDeliveryOrder<LLP::Packet>(firstDirect, secondDirect);
+    }
+    SECTION("Stateless lane")
+    {
+        CheckTemplateDeliveryOrder<LLP::StatelessPacket>(firstDirect, secondDirect);
+    }
+}
+#endif
+
+TEST_CASE("Both GET_BLOCK lanes reject a template revoked during creation",
+    "[ledger][mining-readiness][template_freshness]")
+{
+    using namespace TAO::Ledger;
+    PublicMiningGuard guard;
+    REQUIRE(guard.written);
+    guard.Report(0);
+    guard.Report(1);
+    const auto ready = ChainState::MiningReadiness();
+    REQUIRE(ready.ready);
+
+    TritiumBlock work;
+    work.nMiningEpoch = ready.epoch;
+    work.nVersion = 9;
+    work.nChannel = 2;
+    work.nHeight = guard.tip.nHeight + 1;
+    work.nBits = 0x1f00ffff;
+    work.hashPrevBlock = guard.tip.GetHash();
+    work.hashMerkleRoot = 123;
+    auto create = [&]() -> Block*
+    {
+        ChainState::ForgetPeerHeight(&guard.peers[0]);
+        guard.Report(0);
+        return &work;
+    };
+
+    SECTION("Legacy lane")
+    {
+        LLP::LegacyGetBlockRequest req;
+        req.fnCreateBlock = create;
+        const auto result = LLP::LegacyGetBlockHandler(req);
+        REQUIRE_FALSE(result.fSuccess);
+        REQUIRE(result.eReason == LLP::GetBlockPolicyReason::TEMPLATE_NOT_READY);
+        REQUIRE(result.vPayload.empty());
+    }
+    SECTION("Stateless lane")
+    {
+        LLP::StatelessGetBlockRequest req;
+        req.fnCreateBlock = create;
+        const auto result = LLP::StatelessGetBlockHandler(req);
+        REQUIRE_FALSE(result.fSuccess);
+        REQUIRE(result.eReason == LLP::GetBlockPolicyReason::TEMPLATE_NOT_READY);
+        REQUIRE(result.vPayload.empty());
+    }
 }
 
 TEST_CASE("Confirmed peer catch-up preserves post-accept work but unsafe reports revoke it",

@@ -833,9 +833,34 @@ namespace LLP
          * takes SOCKET_MUTEX). Async PUSH uses QueuePacket() so packet construction
          * stays off DataThread; queue insertion is synchronized on OUTGOING_MUTEX,
          * while socket-write contention is deferred to flush/write service paths. */
-        if(!TAO::Ledger::ChainState::MiningWorkCurrent(sharedTemplate.nMiningEpoch))
+        if(!QueueMiningTemplate(*this, blockPacket, sharedTemplate.nMiningEpoch,
+            [this, strAddress, height = sharedTemplate.nUnifiedHeight,
+             hash = sharedTemplate.hashBestChain]()
+            {
+                {
+                    LOCK(MUTEX);
+                    context = context.WithTimestamp(runtime::unifiedtimestamp())
+                                     .WithHeight(height)
+                                     .WithLastTemplateUnifiedHeight(height)
+                                     .WithHashLastBlock(hash);
+                }
+
+                if(!strAddress.empty())
+                {
+                    StatelessMinerManager::Get().TransformMiner(strAddress,
+                        [height, hash](const MiningContext& current)
+                        {
+                            return current.WithTimestamp(runtime::unifiedtimestamp())
+                                          .WithHeight(height)
+                                          .WithLastTemplateUnifiedHeight(height)
+                                          .WithHashLastBlock(hash);
+                        },
+                        1);
+                }
+
+                StatelessMinerManager::Get().IncrementTemplatesServed();
+            }))
             return false;
-        QueuePacket(blockPacket);
         const auto tQueued = std::chrono::steady_clock::now();
         const int64_t nQueuePacketMs =
             std::chrono::duration_cast<std::chrono::milliseconds>(tQueued - tPayloadReady).count();
@@ -851,29 +876,6 @@ namespace LLP
                        " reward=", hashRewardForTiming.SubString(),
                        " miner=", GetAddress().ToStringIP());
         }
-
-        {
-            LOCK(MUTEX);
-            context = context.WithTimestamp(runtime::unifiedtimestamp())
-                             .WithHeight(sharedTemplate.nUnifiedHeight)
-                             .WithLastTemplateUnifiedHeight(sharedTemplate.nUnifiedHeight)
-                             .WithHashLastBlock(sharedTemplate.hashBestChain);
-        }
-
-        if(!strAddress.empty())
-        {
-            StatelessMinerManager::Get().TransformMiner(strAddress,
-                [sharedTemplate](const MiningContext& current)
-                {
-                    return current.WithTimestamp(runtime::unifiedtimestamp())
-                                  .WithHeight(sharedTemplate.nUnifiedHeight)
-                                  .WithLastTemplateUnifiedHeight(sharedTemplate.nUnifiedHeight)
-                                  .WithHashLastBlock(sharedTemplate.hashBestChain);
-                },
-                1);
-        }
-
-        StatelessMinerManager::Get().IncrementTemplatesServed();
 
         if(eReason == TemplateWorkReason::PUSH_NOTIFICATION)
         {
@@ -1708,39 +1710,33 @@ namespace LLP
                            " height=", gbResult.nBlockHeight,
                            " nBits=", gbResult.nBlockBits, "]");
 
-                if(!TAO::Ledger::ChainState::MiningWorkCurrent(gbResult.nMiningEpoch))
-                {
-                    SendGetBlockControlResponse(GetBlockPolicyReason::TEMPLATE_NOT_READY, 1000, true);
+                if(!SendGetBlockDataResponse(gbResult.vPayload, true, gbResult.nMiningEpoch,
+                    [this, height = gbResult.nUnifiedHeight, hash = gbResult.hashBestChain]()
+                    {
+                        MiningContext delivered;
+                        {
+                            LOCK(MUTEX);
+                            context = context.WithTimestamp(runtime::unifiedtimestamp())
+                                             .WithHeight(height)
+                                             .WithLastTemplateUnifiedHeight(height)
+                                             .WithHashLastBlock(hash);
+                            delivered = context;
+                        }
+
+                        TransformTrackedMiner(delivered,
+                            [height, hash](const MiningContext& current)
+                            {
+                                return current.WithTimestamp(runtime::unifiedtimestamp())
+                                              .WithHeight(height)
+                                              .WithLastTemplateUnifiedHeight(height)
+                                              .WithHashLastBlock(hash);
+                            });
+                        StatelessMinerManager::Get().IncrementTemplatesServed();
+                    }))
                     return true;
-                }
-                SendGetBlockDataResponse(gbResult.vPayload, true);
 
                 debug::log(0, "   ✅ Packet sent!");
                 debug::log(2, "📥 === GET_BLOCK: SUCCESS ===");
-
-                /* Update context timestamp, height, last template channel height, and
-                 * hashLastBlock snapshot (primary staleness anchor, StakeMinter pattern). */
-                {
-                    LOCK(MUTEX);
-                    context = context.WithTimestamp(runtime::unifiedtimestamp())
-                                     .WithHeight(gbResult.nUnifiedHeight)
-                                     .WithLastTemplateUnifiedHeight(gbResult.nUnifiedHeight)
-                                     .WithHashLastBlock(gbResult.hashBestChain);
-                }
-
-                /* Atomic transform: update template tracking on CURRENT value in mapMiners,
-                 * avoiding TOCTOU race with NotifyNewRound. We capture chain state
-                 * outside the transform and apply it atomically. */
-                {
-                    TransformTrackedMiner(context,
-                        [gbResult](const MiningContext& current) {
-                            return current.WithTimestamp(runtime::unifiedtimestamp())
-                                          .WithHeight(gbResult.nUnifiedHeight)
-                                          .WithLastTemplateUnifiedHeight(gbResult.nUnifiedHeight)
-                                          .WithHashLastBlock(gbResult.hashBestChain);
-                        });
-                }
-                StatelessMinerManager::Get().IncrementTemplatesServed();
 
                 return true;
             }
@@ -4183,7 +4179,9 @@ namespace LLP
                GetAddress().ToStringIP();
     }
 
-    void StatelessMinerConnection::SendGetBlockDataResponse(const std::vector<uint8_t>& vPayload, bool fAuthenticatedPath)
+    bool StatelessMinerConnection::SendGetBlockDataResponse(const std::vector<uint8_t>& vPayload,
+                                                            bool fAuthenticatedPath, uint64_t nMiningEpoch,
+                                                            std::function<void()> fnSent)
     {
         if(fAuthenticatedPath)
         {
@@ -4193,17 +4191,25 @@ namespace LLP
                 debug::error(FUNCTION, "Authenticated GET_BLOCK produced empty BLOCK_DATA payload; converting to INTERNAL_RETRY control response");
                 SendGetBlockControlResponse(GetBlockPolicyReason::INTERNAL_RETRY,
                     MiningConstants::GET_BLOCK_THROTTLE_INTERVAL_MS, true);
-                return;
+                return false;
             }
         }
 
         StatelessPacket response(OpcodeUtility::Stateless::BLOCK_DATA);
         response.DATA = vPayload;
         response.LENGTH = static_cast<uint32_t>(vPayload.size());
-        respond(response);
+        const auto writeResult = WriteMiningTemplate(*this, response, nMiningEpoch, std::move(fnSent));
+        if(writeResult != MiningTemplateWriteResult::SENT)
+        {
+            const auto reason = writeResult == MiningTemplateWriteResult::REVOKED
+                ? GetBlockPolicyReason::TEMPLATE_NOT_READY : GetBlockPolicyReason::INTERNAL_RETRY;
+            SendGetBlockControlResponse(reason, 1000, fAuthenticatedPath);
+            return false;
+        }
 
         const uint64_t nSent = ++g_get_block_blockdata_sent_total;
         debug::log(2, FUNCTION, "metric get_block_blockdata_sent_total=", nSent);
+        return true;
     }
 
     void StatelessMinerConnection::SendGetBlockControlResponse(GetBlockPolicyReason eReason, uint32_t nRetryAfterMs, bool fAuthenticatedPath)
@@ -5010,15 +5016,18 @@ namespace LLP
          * Consistent with SendChannelNotification() — avoids SOCKET_MUTEX
          * contention between the notification thread and DataThread's
          * ReadPacket() loop. */
-        QueuePacket(notification);
+        if(!QueueMiningTemplate(*this, notification, sharedTemplate.nMiningEpoch,
+            [this, canonicalSnap]()
+            {
+                LOCK(MUTEX);
+                context = context.WithNotificationSent(runtime::unifiedtimestamp())
+                                 .WithCanonicalSnap(canonicalSnap);
+            }))
+            return;
         
-        /* Update statistics and store canonical snapshot in context. */
-        uint64_t nNotificationTimestamp = runtime::unifiedtimestamp();
         uint32_t nSessionId_snap;
         {
             LOCK(MUTEX);
-            context = context.WithNotificationSent(nNotificationTimestamp)
-                             .WithCanonicalSnap(canonicalSnap);
             nSessionId_snap = context.nSessionId;
         }
         

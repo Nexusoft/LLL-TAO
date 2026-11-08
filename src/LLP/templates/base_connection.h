@@ -26,6 +26,8 @@ ________________________________________________________________________________
 #include <vector>
 #include <queue>
 #include <condition_variable>
+#include <functional>
+#include <utility>
 
 namespace LLP
 {
@@ -224,9 +226,12 @@ namespace LLP
          *  handles kernel-facing drain of buffered bytes.
          *
          *  @param[in] PACKET The packet to enqueue for deferred sending.
+         *  @param[in] fnMaySend Optional check evaluated immediately before writing.
+         *  @param[in] fnSent Optional callback invoked after a successful write.
          *
          **/
-        void QueuePacket(const PacketType& PACKET)
+        void QueuePacket(const PacketType& PACKET, std::function<bool()> fnMaySend = {},
+                         std::function<void()> fnSent = {})
         {
             std::unique_lock<std::mutex> FLUSH_LOCK;
             if(FLUSH_CONDITION_MUTEX)
@@ -234,7 +239,7 @@ namespace LLP
 
             {
                 LOCK(OUTGOING_MUTEX);
-                OUTGOING_QUEUE.push(PACKET);
+                OUTGOING_QUEUE.push({PACKET, std::move(fnMaySend), std::move(fnSent)});
 
                 /* Publish under the wait mutex so the flush wakeup cannot be lost. */
                 fHasOutgoing.store(true, std::memory_order_release);
@@ -264,13 +269,13 @@ namespace LLP
              * This minimizes contention between QueuePacket() callers and
              * the FLUSH_THREAD drain path.  Use move-assignment to transfer
              * ownership of queue contents efficiently. */
-            std::queue<PacketType> qLocal;
+            std::queue<QueuedPacket> qLocal;
             {
                 LOCK(OUTGOING_MUTEX);
                 qLocal = std::move(OUTGOING_QUEUE);
 
                 /* Reset the underlying queue to a clean empty state after move. */
-                OUTGOING_QUEUE = std::queue<PacketType>();
+                OUTGOING_QUEUE = std::queue<QueuedPacket>();
 
                 /* Do not clear a concurrent producer's flag after releasing the queue lock. */
                 fHasOutgoing.store(false, std::memory_order_release);
@@ -280,7 +285,8 @@ namespace LLP
              * SOCKET_MUTEX acquisition internally. */
             while(!qLocal.empty())
             {
-                WritePacket(qLocal.front());
+                const auto& queued = qLocal.front();
+                WritePacket(queued.packet, false, queued.fnMaySend, queued.fnSent);
                 qLocal.pop();
                 ++nDrained;
             }
@@ -366,10 +372,19 @@ namespace LLP
         /** Mutex to protect the outgoing packet queue. **/
         std::mutex OUTGOING_MUTEX;
 
+        /** Serialize guarded writes with their delivery-state publication. **/
+        std::mutex DELIVERY_MUTEX;
+
 
         /** Queue of packets enqueued by QueuePacket() for deferred
          *  sending by FLUSH_THREAD via DrainOutgoingQueue(). **/
-        std::queue<PacketType> OUTGOING_QUEUE;
+        struct QueuedPacket
+        {
+            PacketType packet;
+            std::function<bool()> fnMaySend;
+            std::function<void()> fnSent;
+        };
+        std::queue<QueuedPacket> OUTGOING_QUEUE;
 
 
         /** Lock-free flag for HasQueuedPackets() — avoids mutex contention
@@ -523,10 +538,18 @@ namespace LLP
          *  Write a single packet to the TCP stream.
          *
          *  @param[in] PACKET The packet of type PacketType to write.
+         *  The callback overload serializes guarded writes and publication.
+         *  Call it without holding locks acquired by fnSent; the callback runs
+         *  outside the flush/socket locks and must not re-enter guarded writes.
          *
          **/
         bool WritePacket(const PacketType& PACKET);
         bool WritePacket(const PacketType& PACKET, bool fPriority);
+        bool WritePacket(const PacketType& PACKET, bool fPriority,
+                         const std::function<bool()>& fnMaySend);
+        bool WritePacket(const PacketType& PACKET, bool fPriority,
+                         const std::function<bool()>& fnMaySend,
+                         const std::function<void()>& fnSent);
 
 
         /** ReadPacket
