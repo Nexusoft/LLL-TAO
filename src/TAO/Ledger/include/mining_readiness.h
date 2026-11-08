@@ -51,14 +51,32 @@ namespace TAO::Ledger::ChainState
             Expire(now);
             const auto it = observations.find(peer);
             if(it == observations.end() || it->second.hash != hash
-            || it->second.height != height || it->second.address != address)
+            || it->second.height != height || it->second.address != address
+            || it->second.uncertain)
             {
                 cacheValid = false;
                 if((it != observations.end() && it->second.address != address)
                 || !confirmTip())
                     ++epoch;
             }
-            observations[peer] = {address, hash, height, now};
+            observations[peer] = {address, hash, height, now, false};
+        }
+
+        /* A contradictory unpaired field cannot refresh or continue to
+         * support the old tip while its counterpart is outstanding. */
+        void InvalidatePartial(const void* peer, bool hasHash, const uint1024_t& hash,
+                               bool hasHeight, uint32_t height)
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            const auto it = observations.find(peer);
+            if(it != observations.end() && !it->second.uncertain
+            && ((hasHash && it->second.hash != hash)
+             || (hasHeight && it->second.height != height)))
+            {
+                it->second.uncertain = true;
+                cacheValid = false;
+                ++epoch;
+            }
         }
 
         void Height(const void* peer, uint32_t height)
@@ -135,7 +153,8 @@ namespace TAO::Ledger::ChainState
             {
                 for(const auto& item : observations)
                 {
-                    const auto evidence = resolve(item.second.hash, item.second.height);
+                    const auto evidence = item.second.uncertain ? MiningPeerEvidence::UNRESOLVED
+                        : resolve(item.second.hash, item.second.height);
                     if(evidence == MiningPeerEvidence::UNRESOLVED)
                         unresolved = true;
                     else if(evidence == MiningPeerEvidence::SUPPORTING)
@@ -175,6 +194,7 @@ namespace TAO::Ledger::ChainState
             uint1024_t hash;
             uint32_t height;
             Clock::time_point observed;
+            bool uncertain;
         };
 
         void Expire(Clock::time_point now)
@@ -205,6 +225,8 @@ namespace TAO::Ledger::ChainState
     void ObserveMiningPeer(const void* peer, const std::string& address,
                            const uint1024_t& hash, uint32_t height);
     void UpdateMiningPeerHeight(const void* peer, uint32_t height);
+    void InvalidatePartialMiningPeer(const void* peer, bool hasHash, const uint1024_t& hash,
+                                     bool hasHeight, uint32_t height);
     MiningStatus MiningReadiness(bool cached = false);
     bool MiningWorkCurrent(uint64_t epoch);
 }

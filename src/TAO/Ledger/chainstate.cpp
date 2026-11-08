@@ -91,6 +91,13 @@ namespace TAO
             miningPeers.Height(peer, height);
         }
 
+        void ChainState::InvalidatePartialMiningPeer(const void* peer, bool hasHash,
+                                                     const uint1024_t& hash,
+                                                     bool hasHeight, uint32_t height)
+        {
+            miningPeers.InvalidatePartial(peer, hasHash, hash, hasHeight, height);
+        }
+
         ChainState::MiningStatus ChainState::MiningReadiness(bool cached)
         {
             const bool local = config::fTestNet.load()

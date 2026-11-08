@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 
 #include <LLP/include/network.h>
+#include <LLP/include/mining_tip_reports.h>
 #include <LLP/include/peer_best_retry.h>
 #include <LLP/include/version.h>
 #include <LLP/include/tx_response_window.h>
@@ -478,6 +479,7 @@ namespace LLP
     private:
 
         PeerBestRetry m_peerBestRetry;
+        MiningTipReports m_miningTipReports;
         bool TryFinalizeSync();
         void Sync(uint64_t nExpectedSession);
 
