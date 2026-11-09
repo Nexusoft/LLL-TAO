@@ -115,7 +115,18 @@ the server's issued-template maps. The 216-byte mining header and consensus
 block format are unchanged.
 
 Paused GET_BLOCK requests use the existing retryable `TEMPLATE_NOT_READY`
-control with a 1000 ms hint. Template responses and deferred pushes are checked
+control with a 1000 ms hint. This includes the first miner connection during
+node startup: authentication does not imply that the public-network mining
+readiness gate is open. The control uses the `BLOCK_REJECTED` opcode for wire
+compatibility, but its eight-byte payload is not a submitted-block rejection.
+At default log verbosity, both mining lanes now report the readiness reason,
+epoch, fresh/required peer counts, and local-bypass state for a paused GET_BLOCK.
+Repeated peer `Unavailable`/`Poll Error` disconnects can keep initial sync or
+fresh-peer requirements unsatisfied; retrying the miner cannot repair node
+peer connectivity. Once readiness returns, the next GET_BLOCK can deliver the
+first template without requiring another committed tip change.
+
+Template responses and deferred pushes are checked
 again at the write boundary, after waiting for the flush mutex. A revocation
 prevents queued templates from updating delivery markers; those markers are
 published only after a successful guarded write. Guarded writes and marker

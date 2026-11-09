@@ -115,8 +115,10 @@ namespace LLP
             const auto reason = !readiness.ready ? readiness.reason :
                 (epoch == 0 || epoch != readiness.epoch ? "template-epoch-revoked" :
                                                          "template-epoch-unavailable");
-            debug::log(1, FUNCTION, "Mining template withheld: ", reason,
-                " (template epoch=", epoch, ", readiness epoch=", readiness.epoch, ")");
+            debug::log(0, FUNCTION, strLaneLabel, ": Mining template withheld",
+                " reason=", reason, " template_epoch=", epoch,
+                " current_epoch=", readiness.epoch, " fresh_peers=", readiness.peers,
+                " required_peers=", readiness.required, " local_bypass=", readiness.bypass);
             result.eReason = GetBlockPolicyReason::TEMPLATE_NOT_READY;
             result.nRetryAfterMs = 1000;
             return result;
@@ -205,7 +207,11 @@ namespace LLP
         const auto readiness = TAO::Ledger::ChainState::MiningReadiness();
         if(!readiness.ready)
         {
-            debug::log(1, FUNCTION, "Mining paused: ", readiness.reason);
+            debug::log(0, FUNCTION, strLaneLabel, ": GET_BLOCK waiting for mining readiness",
+                " reason=", readiness.reason, " epoch=", readiness.epoch,
+                " fresh_peers=", readiness.peers, " required_peers=", readiness.required,
+                " local_bypass=", readiness.bypass, " retry_after_ms=1000",
+                " (TEMPLATE_NOT_READY control; no submitted block rejected)");
             SharedTemplatePayloadResult result;
             result.eReason = GetBlockPolicyReason::TEMPLATE_NOT_READY;
             result.nRetryAfterMs = 1000;
