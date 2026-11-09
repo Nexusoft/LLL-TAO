@@ -52,6 +52,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/mining_readiness.h>
+#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/types/client.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/state.h>
@@ -1295,6 +1297,7 @@ namespace
             TAO::Ledger::ChainState::hashBestChain   = savedBestHash;
             TAO::Ledger::ChainState::nBestHeight     .store(savedBestHeight);
             TAO::Ledger::ChainState::nBestChainTrust .store(savedBestTrust);
+            TAO::Ledger::ChainState::CommitMiningTip(savedBestHash);
         }
     };
 
@@ -1361,8 +1364,8 @@ TEST_CASE("Checkpoint hardening preserves an intermediate connected block's time
 }
 
 
-TEST_CASE("SetBest publishes the staged block state on extension and rewind",
-          "[ledger][setbest_txn][real]")
+TEST_CASE("SetBest publishes mining epochs on extension sibling reorg and rewind",
+          "[ledger][setbest_txn][real][mining-readiness]")
 {
     RealCodeLedgerGuard ledgerGuard;
     ChainStateGuard chainGuard;
@@ -1398,11 +1401,14 @@ TEST_CASE("SetBest publishes the staged block state on extension and rewind",
         uint1024_t savedBest;
         uint1024_t genesis;
         uint1024_t candidate;
+        uint1024_t sibling{0};
         ~Cleanup()
         {
             LLD::Ledger->WriteBestChain(savedBest);
             LLD::Ledger->EraseBlock(candidate);
             LLD::Ledger->EraseBlock(genesis);
+            if(sibling != 0)
+                LLD::Ledger->EraseBlock(sibling);
         }
     } cleanup{savedBest, hashGenesis, hashCandidate};
 
@@ -1412,8 +1418,12 @@ TEST_CASE("SetBest publishes the staged block state on extension and rewind",
     TAO::Ledger::ChainState::hashBestChain = hashGenesis;
     TAO::Ledger::ChainState::nBestHeight.store(0);
     TAO::Ledger::ChainState::nBestChainTrust.store(0);
+    TAO::Ledger::ChainState::CommitMiningTip(hashGenesis);
+    const auto genesisEpoch = TAO::Ledger::ChainState::MiningReadiness().epoch;
 
     REQUIRE(candidate.SetBest());
+    const auto candidateEpoch = TAO::Ledger::ChainState::MiningReadiness().epoch;
+    REQUIRE(candidateEpoch == genesisEpoch + 1);
     TAO::Ledger::BlockState stored;
     REQUIRE(LLD::Ledger->ReadBlock(hashCandidate, stored));
     REQUIRE(stored.nMoneySupply == 100025);
@@ -1425,6 +1435,8 @@ TEST_CASE("SetBest publishes the staged block state on extension and rewind",
     uint1024_t persistedBest;
     REQUIRE(LLD::Ledger->ReadBestChain(persistedBest));
     REQUIRE(persistedBest == hashCandidate);
+    REQUIRE(candidate.SetBest());
+    REQUIRE(TAO::Ledger::ChainState::MiningReadiness().epoch == candidateEpoch);
 
     TAO::Ledger::BlockState bad;
     bad.nVersion = 4;
@@ -1438,9 +1450,26 @@ TEST_CASE("SetBest publishes the staged block state on extension and rewind",
     REQUIRE(TAO::Ledger::ChainState::hashBestChain.load() == hashCandidate);
     REQUIRE(LLD::Ledger->ReadBestChain(persistedBest));
     REQUIRE(persistedBest == hashCandidate);
+    REQUIRE(TAO::Ledger::ChainState::MiningReadiness().epoch == candidateEpoch);
+
+    TAO::Ledger::BlockState sibling = candidate;
+    sibling.nNonce = 46123;
+    sibling.nMint = 30;
+    const uint1024_t hashSibling = sibling.GetHash();
+    REQUIRE_FALSE(LLD::Ledger->HasBlock(hashSibling));
+    cleanup.sibling = hashSibling;
+    TAO::Ledger::TrackLocalMinedAcceptedBlock(candidate);
+    REQUIRE(sibling.SetBest());
+    const auto siblingEpoch = TAO::Ledger::ChainState::MiningReadiness().epoch;
+    REQUIRE(siblingEpoch == candidateEpoch + 1);
+    REQUIRE(TAO::Ledger::ChainState::nBestHeight.load() == 1);
+    REQUIRE(TAO::Ledger::ChainState::hashBestChain.load() == hashSibling);
+    REQUIRE_FALSE(TAO::Ledger::ChainState::MiningWorkCurrent(candidateEpoch));
+    REQUIRE(LLD::Ledger->ReadBestChain(persistedBest));
+    REQUIRE(persistedBest == hashSibling);
 
     REQUIRE(LLD::Ledger->ReadBlock(hashGenesis, genesis));
-    REQUIRE(genesis.hashNextBlock == hashCandidate);
+    REQUIRE(genesis.hashNextBlock == hashSibling);
     REQUIRE(genesis.SetBest());
     REQUIRE(LLD::Ledger->ReadBlock(hashGenesis, stored));
     REQUIRE(stored.hashNextBlock == 0);
@@ -1448,6 +1477,8 @@ TEST_CASE("SetBest publishes the staged block state on extension and rewind",
     REQUIRE(TAO::Ledger::ChainState::nBestHeight.load() == 0);
     REQUIRE(LLD::Ledger->ReadBestChain(persistedBest));
     REQUIRE(persistedBest == hashGenesis);
+    REQUIRE(TAO::Ledger::ChainState::MiningReadiness().epoch == siblingEpoch + 1);
+    REQUIRE(TAO::Ledger::ChainState::MiningReadiness().epoch != genesisEpoch);
 }
 
 

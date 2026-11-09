@@ -1282,6 +1282,7 @@ namespace TAO
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;
 
+                ChainState::CommitMiningTip(hash);
                 ClearMiningTemplateCaches("committed best-chain change");
 
                 for(const auto& state : vDisconnect)

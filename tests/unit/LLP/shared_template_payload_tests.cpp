@@ -32,6 +32,7 @@ namespace
             TAO::Ledger::ChainState::nBestHeight.store(nBestHeight);
             TAO::Ledger::ChainState::hashBestChain.store(hashBestChain);
             TAO::Ledger::ChainState::tStateBest.store(stateBest);
+            TAO::Ledger::ChainState::CommitMiningTip(hashBestChain);
         }
     };
 
@@ -58,7 +59,8 @@ TEST_CASE("Shared template payload exposes the snapshot used for metadata", "[ll
     stateBest.nHeight = 321;
     TAO::Ledger::ChainState::tStateBest.store(stateBest);
     TAO::Ledger::ChainState::nBestHeight.store(321);
-    TAO::Ledger::ChainState::hashBestChain.store(uint1024_t(654));
+    TAO::Ledger::ChainState::hashBestChain.store(stateBest.GetHash());
+    TAO::Ledger::ChainState::CommitMiningTip(stateBest.GetHash());
 
     std::unique_ptr<TAO::Ledger::TritiumBlock> pBlock(MakeTemplateBlock());
 
@@ -68,7 +70,7 @@ TEST_CASE("Shared template payload exposes the snapshot used for metadata", "[ll
     REQUIRE(result.fSuccess);
     REQUIRE(result.nUnifiedHeight == 321u);
     REQUIRE(result.hashBestChain == stateBest.GetHash());
-    REQUIRE(result.hashBestChain != TAO::Ledger::ChainState::hashBestChain.load());
+    REQUIRE(result.hashBestChain == TAO::Ledger::ChainState::hashBestChain.load());
     REQUIRE(result.nBlockBits == pBlock->nBits);
     REQUIRE(result.vPayload.size() >= 12u);
     REQUIRE(convert::bytes2uint(result.vPayload, 0) == result.nUnifiedHeight);
@@ -85,7 +87,8 @@ TEST_CASE("Lane GET_BLOCK helpers propagate shared template anchors", "[llp][tem
     stateBest.nHeight = 777;
     TAO::Ledger::ChainState::tStateBest.store(stateBest);
     TAO::Ledger::ChainState::nBestHeight.store(777);
-    TAO::Ledger::ChainState::hashBestChain.store(uint1024_t(888));
+    TAO::Ledger::ChainState::hashBestChain.store(stateBest.GetHash());
+    TAO::Ledger::ChainState::CommitMiningTip(stateBest.GetHash());
 
     SECTION("Legacy lane")
     {

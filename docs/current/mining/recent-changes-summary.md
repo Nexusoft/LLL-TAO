@@ -51,8 +51,8 @@ flowchart TD
     K -->|"Ready with current epoch"| M["Template caches / best-effort prewarmer / staking"]
     M --> N["Recheck epoch before delivery, solving and local admission"]
     N --> O["Final readiness check under processing mutex before acceptance"]
-    F --> P["Changed, removed or expired evidence revokes work epoch"]
-    P --> L
+    I --> P["Changed committed best-chain hash advances work epoch"]
+    P --> M
 ```
 
 On public networks, readiness requires completed initial sync, a consistent
@@ -67,8 +67,11 @@ requirements, not shutdown/reorganization checks. Private/hybrid channel-3
 production is unchanged.
 
 Epochs are process-local, not serialized or trusted from network blocks.
-Changed, disconnected or expired evidence and ready-to-paused transitions
-revoke work; restoring readiness does not revive it. Both mining protocols,
+Work identity now advances only when a different best-chain hash is committed
+and published. Peer changes, disconnects, expiry and readiness pauses do not
+advance it; readiness restoration can resume same-tip work, but cannot revive
+work from an earlier committed generation. Same-height replacements and
+rewinds advance it, including a return to a previously mined parent. Both mining protocols,
 caches, template publication, staking and local admission check current work.
 Queued/sent bytes cannot be recalled, so stale submissions are rejected rather
 than canceled by a new miner message. The 216-byte header and consensus block

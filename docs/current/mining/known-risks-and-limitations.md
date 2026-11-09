@@ -1,7 +1,7 @@
 # Known Risks and Limitations — Mining Infrastructure
 
 **Version:** LLL-TAO 5.1.0+  
-**Last Updated:** 2026-11-06
+**Last Updated:** 2026-11-09
 
 **Status:** Living document — update as risks are mitigated or new ones identified
 
@@ -63,34 +63,39 @@ connection's observations. A height report alone does not refresh the age of
 its best-chain evidence. Older peers send the two fields in separate
 notifications; NODE5 pairs those fields only within 10 seconds and consumes
 each pair once. A contradictory unpaired field immediately makes the peer's
-existing evidence unresolved. If that field matches the stable, locally
-committed tip, the node defers permanent revocation while the other field is
-outstanding; readiness still pauses if checked in the meantime. A complete
-matching pair can preserve the epoch only when no readiness interruption,
-conflicting field, disconnect, or expiry occurred. Other contradictory fields
-revoke work immediately.
+existing evidence unresolved, pausing readiness while the other field is
+outstanding. Neither partial nor complete peer reports advance the work epoch.
 Split reports are not an atomic peer snapshot, so the resulting hash and
 height still undergo the same local block and chain checks. A peer that stops
 answering either field will still lose freshness.
 
-An in-memory work epoch revokes existing work when observations change in
-potentially unsafe ways, disconnect, or expire, or when a readiness check
-detects a ready-to-paused transition. Identical timely reports do not revoke
-work. A new or updated report at the locally committed tip does not revoke
-work if the hash and height are verified against the stored block and the
-local tip is stable; an address change still revokes. This avoids cancelling
-same-tip work as peers catch up after a block. Other changes, including unknown
-or mismatched tips, still revoke immediately even if repaired before the next
-readiness check. Both mining lanes
-check the epoch before issuing templates and validating submissions, and
+The in-memory work epoch belongs to the **committed local best-chain hash**,
+not peer advertisements, peer heights, or readiness transitions. Initialization
+binds it to the verified stored tip. `SetBest()` advances it only after a
+successful disk commit changes the published tip, before clearing templates
+and notifying miners. A duplicate publication does not advance it. Extensions,
+same-height replacements, and rewinds do; returning to an earlier hash gets a
+new generation even if no mining request sampled the intermediate tip.
+Failed candidate activation does not change the epoch.
+
+Peer changes, disconnects, expiry, unresolved reports, initial synchronization,
+and reorganization/shutdown gates still pause mining, but do not permanently
+revoke same-tip work. When readiness returns with the same committed tip, the
+existing epoch and templates remain eligible, subject to all normal parent,
+proof, timestamp, transaction, and producer-freshness checks. This is an
+intentional change from the peer-driven revocation behavior in #730–#737,
+not an epoch tolerance or an off-by-one allowance. Both mining lanes
+check readiness and the epoch before issuing templates and validating submissions, and
 local block admission checks again under the processing mutex immediately
 before acceptance. Staking checks while hashing and before admission.
-Readiness restoration does not revalidate revoked work.
+Readiness restoration cannot revive work from an earlier committed generation.
 
-The epoch is a process-local revocation generation, not a chain or target
+The epoch is a process-local committed-chain generation, not a chain or target
 height. A template targets the block after its parent, and its parent must still
 match the committed best-chain hash at admission; matching epochs alone never
-make a stale template valid. Epoch advances log a reason, and submission
+make a stale template valid. The epoch is bound to its exact tip hash; a
+partially published or inconsistent tip cannot issue work, even on a local
+development network. Epoch advances log the committed hash and reason, and submission
 rejections include the template parent and height alongside the current tip
 and height. These are point-in-time diagnostics, not a synchronized snapshot.
 
@@ -102,8 +107,9 @@ Shared and connection-local caches reject revoked epochs; in-flight builds
 cannot publish them as current. On public networks the producer extra nonce
 uses the epoch in its upper 32 bits and the caller's nonce in its lower 32 bits
 (larger caller nonces are rejected, not silently truncated),
-so rebuilding at the same tip after an interruption cannot resurrect an old
-merkle root. Epoch exhaustion pauses mining. Epochs are process-local and are
+so returning to an earlier tip after a committed reorganization cannot reuse
+its old work identity. A peer-only interruption retains the namespace.
+Epoch exhaustion pauses mining. Epochs are process-local and are
 not serialized, hashed, or trusted from network blocks; restarting also drops
 the server's issued-template maps. The 216-byte mining header and consensus
 block format are unchanged.

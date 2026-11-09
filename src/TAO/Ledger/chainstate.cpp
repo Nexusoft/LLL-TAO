@@ -41,25 +41,7 @@ namespace TAO
         {
             ChainState::PeerHeightTracker peerHeights;
             ChainState::MiningPeerTracker miningPeers;
-
-            bool ConfirmCommittedMiningTip(const uint1024_t& hash, uint32_t height)
-            {
-                const BlockState best = ChainState::tStateBest.load();
-                if(config::fShutdown.load() || ChainState::fChainReorg.load() || best.IsNull()
-                || hash == 0 || best.GetHash() != hash || best.nHeight != height
-                || ChainState::hashBestChain.load() != hash || !LLD::Ledger)
-                    return false;
-
-                BlockState stored;
-                if(!LLD::Ledger->ReadBlock(hash, stored)
-                || stored.GetHash() != hash || stored.nHeight != height
-                || stored.IsHeavierThan(best))
-                    return false;
-
-                return !config::fShutdown.load() && !ChainState::fChainReorg.load()
-                    && ChainState::hashBestChain.load() == hash
-                    && ChainState::tStateBest.load().GetHash() == hash;
-            }
+            ChainState::MiningWorkEpoch miningWork;
         }
 
         void ChainState::ObservePeerHeight(const void* peer, uint32_t height)
@@ -86,10 +68,7 @@ namespace TAO
         void ChainState::ObserveMiningPeer(const void* peer, const std::string& address,
                                            const uint1024_t& hash, uint32_t height)
         {
-            miningPeers.ObserveConfirmedTip(peer, address, hash, height, [&]
-            {
-                return ConfirmCommittedMiningTip(hash, height);
-            });
+            miningPeers.Observe(peer, address, hash, height);
         }
 
         void ChainState::UpdateMiningPeerHeight(const void* peer, uint32_t height)
@@ -101,16 +80,12 @@ namespace TAO
                                                      const uint1024_t& hash,
                                                      bool hasHeight, uint32_t height)
         {
-            miningPeers.InvalidatePartial(peer, hasHash, hash, hasHeight, height, [&]
-            {
-                const BlockState best = tStateBest.load();
-                const uint1024_t bestHash = best.GetHash();
-                if((!hasHash || hash == bestHash)
-                    && (!hasHeight || height == best.nHeight)
-                    && ConfirmCommittedMiningTip(bestHash, best.nHeight))
-                    return bestHash;
-                return uint1024_t(0);
-            });
+            miningPeers.InvalidatePartial(peer, hasHash, hash, hasHeight, height);
+        }
+
+        void ChainState::CommitMiningTip(const uint1024_t& tip)
+        {
+            miningWork.Commit(tip);
         }
 
         ChainState::MiningStatus ChainState::MiningReadiness(bool cached)
@@ -119,11 +94,12 @@ namespace TAO
                 && (!config::GetBoolArg("-dns", true) || config::fHybrid.load());
             const int64_t required = config::GetArg("-miningminpeers", 2);
             const BlockState best = tStateBest.load();
-            const uint1024_t bestHash = best.GetHash();
+            const uint1024_t bestHash = best.IsNull() ? hashBestChain.load() : best.GetHash();
+            const uint64_t epoch = miningWork.ForTip(bestHash);
             const uint32_t quorum = required > 0 && required <= 16 ? uint32_t(required) : 0;
             const bool synchronized = LLP::TritiumNode::fSynchronized.load();
-            const bool reorg = fChainReorg.load() || (!local && (best.IsNull()
-                || bestHash != hashBestChain.load()));
+            const bool reorg = fChainReorg.load() || epoch == 0
+                || bestHash != hashBestChain.load() || (!local && best.IsNull());
             const bool shutdown = config::fShutdown.load();
             const auto resolve = [&best](const uint1024_t& hash, uint32_t height)
                 {
@@ -155,9 +131,16 @@ namespace TAO
                     }
                     return ChainState::MiningPeerEvidence::BEHIND;
                 };
-            return cached
+            auto status = cached
                 ? miningPeers.CheckCached(bestHash, quorum, local, synchronized, reorg, shutdown, resolve)
                 : miningPeers.Check(quorum, local, synchronized, reorg, shutdown, resolve);
+            status.epoch = epoch;
+            if(epoch > UINT32_MAX)
+            {
+                status.ready = false;
+                status.reason = "mining-epoch-exhausted";
+            }
+            return status;
         }
 
         bool ChainState::MiningWorkCurrent(uint64_t epoch)
@@ -343,6 +326,8 @@ namespace TAO
             /* Check database consistency. */
             if(tStateBest.load().GetHash() != hashBestChain.load())
                 return debug::error(FUNCTION, "disk index inconsistent with best chain");
+
+            CommitMiningTip(hashBestChain.load());
 
             /* Reverse iterator to find the most recent common ancestor. Skip if not on mainnet*/
             if(!config::fHybrid.load() && !config::fTestNet.load() && !config::fClient.load())
