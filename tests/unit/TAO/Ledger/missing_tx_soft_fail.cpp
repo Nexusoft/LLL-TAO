@@ -943,6 +943,72 @@ TEST_CASE("Split tip pairing consumes fields and enforces its time window",
     REQUIRE(height == 103);
 }
 
+TEST_CASE("First GET_BLOCK waits for synchronization and fresh peers then serves same-tip work",
+    "[ledger][mining-readiness][startup]")
+{
+    using namespace TAO::Ledger;
+    PublicMiningGuard guard;
+    REQUIRE(guard.written);
+    const uint64_t epoch = ChainState::MiningReadiness().epoch;
+    REQUIRE(epoch != 0);
+    uint32_t creations = 0;
+    TritiumBlock work;
+    const auto create = [&]() -> Block*
+    {
+        ++creations;
+        work.nMiningEpoch = ChainState::MiningReadiness().epoch;
+        work.nVersion = 9;
+        work.nChannel = 1;
+        work.nHeight = guard.tip.nHeight + 1;
+        work.nBits = guard.tip.nBits;
+        work.hashPrevBlock = guard.tip.GetHash();
+        work.hashMerkleRoot = 123;
+        return &work;
+    };
+    const auto check = [&](auto request, auto handler)
+    {
+        request.fnCreateBlock = create;
+        const auto checkWaiting = [&](const char* reason)
+        {
+            const auto waiting = handler(request);
+            REQUIRE_FALSE(waiting.fSuccess);
+            REQUIRE(waiting.eReason == LLP::GetBlockPolicyReason::TEMPLATE_NOT_READY);
+            REQUIRE(waiting.nRetryAfterMs == 1000);
+            REQUIRE(waiting.vPayload.empty());
+            REQUIRE(creations == 0);
+            const auto readiness = ChainState::MiningReadiness();
+            REQUIRE(readiness.reason == reason);
+            REQUIRE(readiness.epoch == epoch);
+            REQUIRE(readiness.required == 2);
+            REQUIRE_FALSE(readiness.bypass);
+        };
+
+        LLP::TritiumNode::fSynchronized.store(false);
+        checkWaiting("initial-synchronization");
+        LLP::TritiumNode::fSynchronized.store(true);
+        checkWaiting("insufficient-fresh-peers");
+        guard.Report(0);
+        checkWaiting("insufficient-fresh-peers");
+        guard.Report(1);
+        const auto ready = handler(request);
+        REQUIRE(ready.fSuccess);
+        REQUIRE(ready.eReason == LLP::GetBlockPolicyReason::NONE);
+        REQUIRE(ready.vPayload.size() == 228);
+        REQUIRE(ready.nMiningEpoch == epoch);
+        REQUIRE(LLP::MiningTemplateMaySend(ready.nMiningEpoch));
+        REQUIRE(creations == 1);
+        REQUIRE(ChainState::hashBestChain.load() == guard.tip.GetHash());
+    };
+    SECTION("Legacy lane")
+    {
+        check(LLP::LegacyGetBlockRequest{}, LLP::LegacyGetBlockHandler);
+    }
+    SECTION("Stateless lane")
+    {
+        check(LLP::StatelessGetBlockRequest{}, LLP::StatelessGetBlockHandler);
+    }
+}
+
 TEST_CASE("Both mining lanes resume same-tip work after connectivity returns",
     "[ledger][mining-readiness]")
 {
