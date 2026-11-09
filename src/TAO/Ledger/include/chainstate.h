@@ -64,6 +64,10 @@ namespace TAO
             /** The best hash in the chain. */
             extern memory::atomic<uint1024_t> hashBestChain;
 
+            /** Publish mining work identity only after committing the best
+             *  chain, before cache invalidation and miner notifications. **/
+            void CommitMiningTip(const uint1024_t& tip);
+
 
             /** Hardened Checkpoint. **/
             extern memory::atomic<uint1024_t> hashCheckpoint;

@@ -239,6 +239,7 @@ namespace
             TAO::Ledger::ChainState::tStateBest.store(tip);
             TAO::Ledger::ChainState::hashBestChain.store(tip.GetHash());
             TAO::Ledger::ChainState::nBestHeight.store(tip.nHeight);
+            TAO::Ledger::ChainState::CommitMiningTip(tip.GetHash());
         }
 
         void Report(size_t i)
@@ -259,6 +260,7 @@ namespace
             TAO::Ledger::ChainState::tStateBest.store(best);
             TAO::Ledger::ChainState::hashBestChain.store(hashBest);
             TAO::Ledger::ChainState::nBestHeight.store(height);
+            TAO::Ledger::ChainState::CommitMiningTip(hashBest);
             if(hadPolicy)
                 config::mapArgs["-miningminpeers"] = policy;
             else
@@ -317,8 +319,7 @@ namespace
         guard.Report(0);
         const auto restored = MiningReadiness();
         REQUIRE(restored.ready);
-        REQUIRE(restored.epoch != ready.epoch);
-        REQUIRE_FALSE(LLP::QueueMiningTemplate(connection, packet, ready.epoch));
+        REQUIRE(restored.epoch == ready.epoch);
         REQUIRE(LLP::QueueMiningTemplate(connection, packet, restored.epoch, recordDelivery));
         REQUIRE(deliveries == 0);
         REQUIRE(connection.DrainOutgoingQueue() == 1);
@@ -356,14 +357,29 @@ namespace
         REQUIRE(MiningReadiness().ready);
         connection.QueuePacket(packet);
         REQUIRE(connection.DrainOutgoingQueue() == 2);
-        REQUIRE(deliveries == 1);
+        REQUIRE(deliveries == 2);
         const auto controlCount = recv(reader.fd, bytes, sizeof(bytes), MSG_DONTWAIT);
-        REQUIRE(controlCount == static_cast<ssize_t>(expected.size()));
-        REQUIRE(std::vector<uint8_t>(bytes, bytes + controlCount) == expected);
+        auto both = expected;
+        both.insert(both.end(), expected.begin(), expected.end());
+        REQUIRE(controlCount == static_cast<ssize_t>(both.size()));
+        REQUIRE(std::vector<uint8_t>(bytes, bytes + controlCount) == both);
 
+        REQUIRE(LLP::QueueMiningTemplate(connection, packet, next.epoch, recordDelivery));
+        ++guard.tip.nNonce;
+        tStateBest.store(guard.tip);
+        hashBestChain.store(guard.tip.GetHash());
+        CommitMiningTip(guard.tip.GetHash());
+        guard.Report(0);
+        guard.Report(1);
+        guard.extraBlocks.push_back(guard.tip.GetHash());
+        REQUIRE(LLD::Ledger->WriteBlock(guard.tip.GetHash(), guard.tip));
+        REQUIRE(connection.DrainOutgoingQueue() == 1);
+        REQUIRE(deliveries == 2);
+        REQUIRE(recv(reader.fd, bytes, sizeof(bytes), MSG_DONTWAIT) == -1);
+        REQUIRE((errno == EAGAIN || errno == EWOULDBLOCK));
         REQUIRE(LLP::WriteMiningTemplate(connection, packet, next.epoch, recordDelivery)
             == LLP::MiningTemplateWriteResult::REVOKED);
-        REQUIRE(deliveries == 1);
+        REQUIRE(deliveries == 2);
         const auto current = MiningReadiness();
         REQUIRE(current.ready);
         connection.FLUSH_CONDITION_MUTEX = &flushMutex;
@@ -379,7 +395,7 @@ namespace
         ForgetPeerHeight(&guard.peers[0]);
         directLock.unlock();
         REQUIRE(directWrite.get() == LLP::MiningTemplateWriteResult::REVOKED);
-        REQUIRE(deliveries == 1);
+        REQUIRE(deliveries == 2);
         connection.FLUSH_CONDITION_MUTEX = nullptr;
         REQUIRE(recv(reader.fd, bytes, sizeof(bytes), MSG_DONTWAIT) == -1);
         REQUIRE((errno == EAGAIN || errno == EWOULDBLOCK));
@@ -397,10 +413,10 @@ namespace
         close(sockets[1]);
         REQUIRE(LLP::WriteMiningTemplate(connection, packet, fresh.epoch, recordDelivery)
             == LLP::MiningTemplateWriteResult::WRITE_FAILED);
-        REQUIRE(deliveries == 1);
+        REQUIRE(deliveries == 2);
         REQUIRE(LLP::QueueMiningTemplate(connection, packet, fresh.epoch, recordDelivery));
         REQUIRE(connection.DrainOutgoingQueue() == 1);
-        REQUIRE(deliveries == 1);
+        REQUIRE(deliveries == 2);
     }
 
     template<typename PacketType>
@@ -495,7 +511,7 @@ namespace
 #endif
 }
 
-TEST_CASE("Mining readiness requires fresh distinct evidence and revokes work",
+TEST_CASE("Mining readiness requires fresh distinct evidence without owning work epochs",
     "[ledger][mining-readiness]")
 {
     using namespace TAO::Ledger::ChainState;
@@ -525,7 +541,7 @@ TEST_CASE("Mining readiness requires fresh distinct evidence and revokes work",
     tracker.Remove(&a);
     tracker.Observe(&a, "one", 1, 100, now + std::chrono::seconds(1));
     REQUIRE(check(now + std::chrono::seconds(1)).ready);
-    REQUIRE(check(now + std::chrono::seconds(1)).epoch != ready.epoch);
+    REQUIRE(check(now + std::chrono::seconds(1)).epoch == ready.epoch);
 
     tracker.Observe(&c, "three", 0xDEAD, 10, now);
     REQUIRE(check(now).reason == "unresolved-peer-tip");
@@ -538,7 +554,7 @@ TEST_CASE("Mining readiness requires fresh distinct evidence and revokes work",
     tracker.Observe(&a, "one", 1, 100, expired);
     tracker.Observe(&b, "two", 1, 100, expired);
     REQUIRE(check(expired).ready);
-    REQUIRE(check(expired).epoch != oldEpoch);
+    REQUIRE(check(expired).epoch == oldEpoch);
     REQUIRE_FALSE(tracker.Check(2, false, false, false, false, evidence, expired).ready);
     REQUIRE_FALSE(tracker.Check(2, false, true, true, false, evidence, expired).ready);
     REQUIRE_FALSE(tracker.Check(2, true, true, false, true, evidence, expired).ready);
@@ -554,7 +570,7 @@ TEST_CASE("Mining readiness requires fresh distinct evidence and revokes work",
     idle.Observe(&b, "two", 1, 100, expired);
     const auto afterGap = idle.Check(2, false, true, false, false, evidence, expired);
     REQUIRE(afterGap.ready);
-    REQUIRE(afterGap.epoch != beforeGap.epoch);
+    REQUIRE(afterGap.epoch == beforeGap.epoch);
 }
 
 TEST_CASE("Mining work readiness caches evidence without delaying invalidation",
@@ -614,7 +630,7 @@ TEST_CASE("Mining work readiness caches evidence without delaying invalidation",
     tracker.Observe(&peer, "one", 1, 100, now + std::chrono::seconds(1));
     const auto restored = check(now + std::chrono::seconds(1));
     REQUIRE(restored.ready);
-    REQUIRE(restored.epoch != ready.epoch);
+    REQUIRE(restored.epoch == ready.epoch);
 
     evidence = MiningPeerEvidence::UNRESOLVED;
     REQUIRE(check(now + std::chrono::milliseconds(1500)).ready);
@@ -634,7 +650,64 @@ TEST_CASE("Mining work readiness caches evidence without delaying invalidation",
     REQUIRE_FALSE(check(expiry + std::chrono::milliseconds(1)).ready);
     tracker.Observe(&peer, "one", 1, 100, expiry + std::chrono::milliseconds(2));
     REQUIRE(check(expiry + std::chrono::milliseconds(2)).ready);
-    REQUIRE(check(expiry + std::chrono::milliseconds(2)).epoch != beforeExpiry.epoch);
+    REQUIRE(check(expiry + std::chrono::milliseconds(2)).epoch == beforeExpiry.epoch);
+}
+
+TEST_CASE("Mining work epochs follow committed hashes including unsampled reorgs",
+    "[ledger][mining-readiness][template_freshness]")
+{
+    using namespace TAO::Ledger::ChainState;
+    MiningWorkEpoch work;
+    work.Commit(1);
+    const auto first = work.ForTip(1);
+    REQUIRE(first != 0);
+    REQUIRE(work.ForTip(2) == 0);
+    work.Commit(1);
+    REQUIRE(work.ForTip(1) == first);
+    work.Commit(2);
+    REQUIRE(work.ForTip(2) == first + 1);
+    REQUIRE(work.ForTip(1) == 0);
+    work.Commit(1);
+    REQUIRE(work.ForTip(1) == first + 2);
+    REQUIRE(work.ForTip(2) == 0);
+
+    work.Commit(2);
+    work.Commit(1);
+    REQUIRE(work.ForTip(1) == first + 4);
+}
+
+TEST_CASE("Mining readiness cannot stamp work across a committed tip publication",
+    "[ledger][mining-readiness][template_freshness]")
+{
+    using namespace TAO::Ledger;
+    PublicMiningGuard guard;
+    REQUIRE(guard.written);
+    guard.Report(0);
+    guard.Report(1);
+    const auto initial = ChainState::MiningReadiness();
+    REQUIRE(initial.ready);
+
+    const BlockState first = guard.tip;
+    ++guard.tip.nNonce;
+    guard.extraBlocks.push_back(guard.tip.GetHash());
+    REQUIRE(LLD::Ledger->WriteBlock(guard.tip.GetHash(), guard.tip));
+    ChainState::tStateBest.store(guard.tip);
+    REQUIRE_FALSE(ChainState::MiningReadiness().ready);
+    ChainState::hashBestChain.store(guard.tip.GetHash());
+    REQUIRE_FALSE(ChainState::MiningReadiness().ready);
+    ChainState::CommitMiningTip(guard.tip.GetHash());
+    guard.Report(0);
+    guard.Report(1);
+    const auto replaced = ChainState::MiningReadiness();
+    REQUIRE(replaced.ready);
+    REQUIRE(replaced.epoch == initial.epoch + 1);
+    REQUIRE_FALSE(ChainState::MiningWorkCurrent(initial.epoch));
+
+    /* No readiness sample between these committed transitions. */
+    ChainState::CommitMiningTip(first.GetHash());
+    ChainState::CommitMiningTip(guard.tip.GetHash());
+    REQUIRE(ChainState::MiningReadiness().epoch == replaced.epoch + 2);
+    REQUIRE_FALSE(ChainState::MiningWorkCurrent(replaced.epoch));
 }
 
 TEST_CASE("Split peer tip reports refresh only complete timely evidence",
@@ -656,8 +729,7 @@ TEST_CASE("Split peer tip reports refresh only complete timely evidence",
         uint1024_t pairedHash;
         uint32_t pairedHeight = 0;
         if(reports.Observe(hasHash, hash, hasHeight, height, pairedHash, pairedHeight, time))
-            tracker.ObserveConfirmedTip(&peer, "one", pairedHash, pairedHeight,
-                [&] { return pairedHash == 1 && pairedHeight == 100; }, time);
+            tracker.Observe(&peer, "one", pairedHash, pairedHeight, time);
         else
             tracker.InvalidatePartial(&peer, hasHash, hash, hasHeight, height);
     };
@@ -685,12 +757,12 @@ TEST_CASE("Split peer tip reports refresh only complete timely evidence",
     const auto paused = check(changed);
     REQUIRE_FALSE(paused.ready);
     REQUIRE(paused.reason == "unresolved-peer-tip");
-    REQUIRE(paused.epoch != ready.epoch);
+    REQUIRE(paused.epoch == ready.epoch);
     send(true, 1, false, 0, changed + std::chrono::seconds(1));
     REQUIRE_FALSE(check(changed + std::chrono::seconds(1)).ready);
     send(true, 1, true, 100, changed + std::chrono::seconds(2));
     REQUIRE(check(changed + std::chrono::seconds(2)).ready);
-    REQUIRE(check(changed + std::chrono::seconds(2)).epoch != ready.epoch);
+    REQUIRE(check(changed + std::chrono::seconds(2)).epoch == ready.epoch);
 
     /* A single field, or fields too far apart, cannot renew freshness. */
     const auto lastPair = changed + std::chrono::seconds(2);
@@ -709,7 +781,7 @@ TEST_CASE("Split peer tip reports refresh only complete timely evidence",
     REQUIRE_FALSE(reports.Observe(false, 0, true, 100, pairedHash, pairedHeight, now));
 }
 
-TEST_CASE("Contradictory partial peer reports fence work even with a quorum",
+TEST_CASE("Contradictory partial peer reports pause readiness even with a quorum",
     "[ledger][mining-readiness]")
 {
     using namespace TAO::Ledger::ChainState;
@@ -718,7 +790,7 @@ TEST_CASE("Contradictory partial peer reports fence work even with a quorum",
     int a, b, c;
     for(const auto& item : {std::pair{&a, "one"}, std::pair{&b, "two"},
                             std::pair{&c, "three"}})
-        tracker.ObserveConfirmedTip(item.first, item.second, 1, 100, [] { return true; }, now);
+        tracker.Observe(item.first, item.second, 1, 100, now);
     const auto resolve = [](const uint1024_t&, uint32_t) { return MiningPeerEvidence::SUPPORTING; };
     const auto check = [&]
     {
@@ -734,97 +806,110 @@ TEST_CASE("Contradictory partial peer reports fence work even with a quorum",
     REQUIRE_FALSE(paused.ready);
     REQUIRE(paused.peers == 2);
     REQUIRE(paused.reason == "unresolved-peer-tip");
-    REQUIRE(paused.epoch != ready.epoch);
-    tracker.ObserveConfirmedTip(&c, "three", 1, 100, [] { return true; }, now);
+    REQUIRE(paused.epoch == ready.epoch);
+    tracker.Observe(&c, "three", 1, 100, now);
     REQUIRE(check().ready);
-    REQUIRE(check().epoch != ready.epoch);
+    REQUIRE(check().epoch == ready.epoch);
 }
 
-TEST_CASE("Split confirmed catch-up preserves work only without an evidence interruption",
+TEST_CASE("Split peer catch-up gates readiness without changing committed work",
     "[ledger][mining-readiness][template_freshness]")
 {
     using namespace TAO::Ledger::ChainState;
     MiningPeerTracker tracker;
     const auto now = MiningPeerTracker::Clock::now();
     int peer;
-    tracker.ObserveConfirmedTip(&peer, "one", 1, 100, [] { return true; }, now);
-    const auto resolve = [](const uint1024_t&, uint32_t) { return MiningPeerEvidence::SUPPORTING; };
+    MiningWorkEpoch work;
+    work.Commit(2);
+    tracker.Observe(&peer, "one", 1, 100, now);
+    const auto resolve = [](const uint1024_t& hash, uint32_t height)
+    {
+        return (hash == 1 && height == 100) || (hash == 2 && height == 101)
+            ? MiningPeerEvidence::SUPPORTING : MiningPeerEvidence::UNRESOLVED;
+    };
     const auto check = [&](auto time)
     {
-        return tracker.CheckCached(2, 1, false, true, false, false, resolve, time);
+        auto status = tracker.CheckCached(2, 1, false, true, false, false, resolve, time);
+        status.epoch = work.ForTip(2);
+        return status;
     };
     const auto ready = check(now);
     REQUIRE(ready.ready);
     const bool hashFirst = GENERATE(false, true);
-    const auto partial = [&](bool hashField, uint1024_t hash, uint32_t height, bool candidate)
+    const auto partial = [&](bool hashField, uint1024_t hash, uint32_t height)
     {
-        tracker.InvalidatePartial(&peer, hashField, hash, !hashField, height,
-                                  [=] { return uint1024_t(candidate ? 2 : 0); });
+        tracker.InvalidatePartial(&peer, hashField, hash, !hashField, height);
     };
-    const auto confirm = [&](uint1024_t hash, uint32_t height, bool current)
+    const auto confirm = [&](uint1024_t hash, uint32_t height)
     {
-        tracker.ObserveConfirmedTip(&peer, "one", hash, height, [=] { return current; }, now);
+        tracker.Observe(&peer, "one", hash, height, now);
     };
 
-    partial(hashFirst, 2, 101, true);
+    partial(hashFirst, 2, 101);
     SECTION("Matching pair completes before work is checked")
     {
-        confirm(2, 101, true);
+        confirm(2, 101);
         const auto after = check(now);
         REQUIRE(after.ready);
         REQUIRE(after.epoch == ready.epoch);
     }
-    SECTION("Work checked between the two fields is paused and revoked")
+    SECTION("Work checked between the two fields pauses until the pair completes")
     {
         const auto paused = check(now);
         REQUIRE_FALSE(paused.ready);
         REQUIRE(paused.reason == "unresolved-peer-tip");
-        REQUIRE(paused.epoch != ready.epoch);
-        confirm(2, 101, true);
+        REQUIRE(paused.epoch == ready.epoch);
+        confirm(2, 101);
         REQUIRE(check(now).ready);
-        REQUIRE(check(now).epoch != ready.epoch);
+        REQUIRE(check(now).epoch == ready.epoch);
     }
-    SECTION("A contradictory later field cannot be repaired without revocation")
+    SECTION("A contradictory later field stays unresolved until a complete pair")
     {
-        partial(hashFirst, 3, 102, false);
-        confirm(2, 101, true);
+        partial(hashFirst, 3, 102);
+        REQUIRE_FALSE(check(now).ready);
+        confirm(2, 101);
         REQUIRE(check(now).ready);
-        REQUIRE(check(now).epoch != ready.epoch);
+        REQUIRE(check(now).epoch == ready.epoch);
     }
-    SECTION("A different complete report revokes even if confirmed later")
+    SECTION("A mismatched complete report pauses until repaired")
     {
-        confirm(hashFirst ? 3 : 2, hashFirst ? 101 : 102, true);
-        confirm(2, 101, true);
+        confirm(hashFirst ? 3 : 2, hashFirst ? 101 : 102);
+        REQUIRE_FALSE(check(now).ready);
+        confirm(2, 101);
         REQUIRE(check(now).ready);
-        REQUIRE(check(now).epoch != ready.epoch);
+        REQUIRE(check(now).epoch == ready.epoch);
     }
-    SECTION("A same-height tip replacement cannot preserve pending work")
+    SECTION("An unknown same-height peer tip does not replace the committed tip")
     {
-        confirm(3, 101, true);
-        confirm(2, 101, true);
+        confirm(3, 101);
+        REQUIRE_FALSE(check(now).ready);
+        confirm(2, 101);
         REQUIRE(check(now).ready);
-        REQUIRE(check(now).epoch != ready.epoch);
+        REQUIRE(check(now).epoch == ready.epoch);
     }
-    SECTION("An unknown complete report revokes before recovery")
+    SECTION("An unknown complete report pauses before recovery")
     {
-        confirm(3, 102, false);
-        confirm(2, 101, true);
+        confirm(3, 102);
+        REQUIRE_FALSE(check(now).ready);
+        confirm(2, 101);
         REQUIRE(check(now).ready);
-        REQUIRE(check(now).epoch != ready.epoch);
+        REQUIRE(check(now).epoch == ready.epoch);
     }
-    SECTION("Expired observations cannot preserve the old epoch")
+    SECTION("Expiry pauses readiness without replacing work")
     {
-        tracker.ObserveConfirmedTip(&peer, "one", 2, 101, [] { return true; },
-                                    now + MiningPeerTracker::MAX_AGE + std::chrono::seconds(1));
-        REQUIRE(check(now + MiningPeerTracker::MAX_AGE + std::chrono::seconds(1)).ready);
-        REQUIRE(check(now + MiningPeerTracker::MAX_AGE + std::chrono::seconds(1)).epoch != ready.epoch);
+        const auto expired = now + MiningPeerTracker::MAX_AGE + std::chrono::seconds(1);
+        REQUIRE_FALSE(check(expired).ready);
+        tracker.Observe(&peer, "one", 2, 101, expired);
+        REQUIRE(check(expired).ready);
+        REQUIRE(check(expired).epoch == ready.epoch);
     }
-    SECTION("Disconnect cannot preserve the old epoch")
+    SECTION("Disconnect pauses readiness without replacing work")
     {
         tracker.Remove(&peer);
-        confirm(2, 101, true);
+        REQUIRE_FALSE(check(now).ready);
+        confirm(2, 101);
         REQUIRE(check(now).ready);
-        REQUIRE(check(now).epoch != ready.epoch);
+        REQUIRE(check(now).epoch == ready.epoch);
     }
 }
 
@@ -858,7 +943,7 @@ TEST_CASE("Split tip pairing consumes fields and enforces its time window",
     REQUIRE(height == 103);
 }
 
-TEST_CASE("Both mining lanes refuse revoked work after connectivity returns",
+TEST_CASE("Both mining lanes resume same-tip work after connectivity returns",
     "[ledger][mining-readiness]")
 {
     using namespace TAO::Ledger;
@@ -896,10 +981,7 @@ TEST_CASE("Both mining lanes refuse revoked work after connectivity returns",
     ChainState::ForgetPeerHeight(&guard.peers[0]);
     REQUIRE_FALSE(ChainState::MiningReadiness().ready);
     REQUIRE_FALSE(LLP::LegacyGetBlockHandler(legacy).fSuccess);
-    guard.Report(0);
-    REQUIRE(ChainState::MiningReadiness().ready);
     REQUIRE_FALSE(ChainState::MiningWorkCurrent(work.nMiningEpoch));
-    REQUIRE_FALSE(LLP::LegacyGetBlockHandler(legacy).fSuccess);
     REQUIRE_FALSE(LLP::StatelessGetBlockHandler(stateless).fSuccess);
     REQUIRE(ValidateMinedBlock(work).reason == "mining paused or work epoch revoked");
     REQUIRE_FALSE(AcceptMinedBlock(work).accepted);
@@ -909,6 +991,10 @@ TEST_CASE("Both mining lanes refuse revoked work after connectivity returns",
     REQUIRE(ChainState::Synchronizing() == validationSync);
     REQUIRE(LLP::TritiumNode::fSynchronized.load());
 
+    guard.Report(0);
+    REQUIRE(ChainState::MiningReadiness().ready);
+    REQUIRE(ChainState::MiningReadiness().epoch == ready.epoch);
+    REQUIRE(ChainState::MiningWorkCurrent(work.nMiningEpoch));
     work.nMiningEpoch = ChainState::MiningReadiness().epoch;
     TritiumBlock staleWork = work;
     staleWork.hashPrevBlock++;
@@ -981,7 +1067,7 @@ TEST_CASE("Template delivery markers preserve concurrent write order",
 }
 #endif
 
-TEST_CASE("Both GET_BLOCK lanes reject a template revoked during creation",
+TEST_CASE("Both GET_BLOCK lanes reject a template after a committed tip change during creation",
     "[ledger][mining-readiness][template_freshness]")
 {
     using namespace TAO::Ledger;
@@ -1002,8 +1088,14 @@ TEST_CASE("Both GET_BLOCK lanes reject a template revoked during creation",
     work.hashMerkleRoot = 123;
     auto create = [&]() -> Block*
     {
-        ChainState::ForgetPeerHeight(&guard.peers[0]);
+        ++guard.tip.nNonce;
+        guard.extraBlocks.push_back(guard.tip.GetHash());
+        REQUIRE(LLD::Ledger->WriteBlock(guard.tip.GetHash(), guard.tip));
+        ChainState::tStateBest.store(guard.tip);
+        ChainState::hashBestChain.store(guard.tip.GetHash());
+        ChainState::CommitMiningTip(guard.tip.GetHash());
         guard.Report(0);
+        guard.Report(1);
         return &work;
     };
 
@@ -1027,7 +1119,7 @@ TEST_CASE("Both GET_BLOCK lanes reject a template revoked during creation",
     }
 }
 
-TEST_CASE("Confirmed peer catch-up preserves post-accept work but unsafe reports revoke it",
+TEST_CASE("Peer churn preserves committed work across creation validation and publication",
     "[ledger][mining-readiness][template_freshness]")
 {
     using namespace TAO::Ledger;
@@ -1050,6 +1142,7 @@ TEST_CASE("Confirmed peer catch-up preserves post-accept work but unsafe reports
     ChainState::tStateBest.store(guard.tip);
     ChainState::hashBestChain.store(guard.tip.GetHash());
     ChainState::nBestHeight.store(guard.tip.nHeight);
+    ChainState::CommitMiningTip(guard.tip.GetHash());
     ClearMiningTemplateCaches("test local acceptance");
 
     const auto ready = ChainState::MiningReadiness();
@@ -1102,28 +1195,41 @@ TEST_CASE("Confirmed peer catch-up preserves post-accept work but unsafe reports
     REQUIRE(next.nMiningEpoch == work.nMiningEpoch);
     REQUIRE(next.hashPrevBlock == work.hashPrevBlock);
 
-    /* A transient unknown tip must revoke even if it is repaired before
-     * anybody samples readiness, including for an in-flight build. */
+    /* Reproduce the peer-tip storm without a local best-chain change. */
     token = Testing::BeginOrJoinMiningTemplateInFlight(1, reward, owner,
                                                         guard.tip.GetHash(), ready.epoch);
     REQUIRE(owner);
-    ChainState::ObserveMiningPeer(&guard.peers[0], "192.0.2.1", 0xBAD, 1);
+    for(uint32_t i = 0; i < 1000; ++i)
+        ChainState::ObserveMiningPeer(&guard.peers[0], "192.0.2.1", 0xBAD + i, i + 1);
+    const auto paused = ChainState::MiningReadiness();
+    REQUIRE_FALSE(paused.ready);
+    REQUIRE(paused.reason == "unresolved-peer-tip");
+    REQUIRE(paused.epoch == ready.epoch);
+    REQUIRE_FALSE(ChainState::MiningWorkCurrent(work.nMiningEpoch));
+    REQUIRE(ValidateMinedBlock(work).failure == MinedBlockFailure::WORK_REVOKED);
+    REQUIRE_FALSE(AcceptMinedBlock(work).accepted);
+    uint8_t status = 0;
+    Process(work, status, nullptr, true, work.nMiningEpoch);
+    REQUIRE(status == (PROCESS::IGNORED | PROCESS::WORK_REVOKED));
     guard.Report(0);
     REQUIRE(ChainState::MiningReadiness().ready);
-    REQUIRE_FALSE(ChainState::MiningWorkCurrent(work.nMiningEpoch));
-    REQUIRE_FALSE(Testing::CompleteMiningTemplateInFlight(token, 1, reward, 42, ready.epoch));
-    REQUIRE_FALSE(Testing::StoreMiningTemplateCacheEntryForTesting(
+    REQUIRE(ChainState::MiningReadiness().epoch == ready.epoch);
+    REQUIRE(ChainState::MiningWorkCurrent(work.nMiningEpoch));
+    REQUIRE(Testing::CompleteMiningTemplateInFlight(token, 1, reward, 42, ready.epoch));
+    REQUIRE(Testing::StoreMiningTemplateCacheEntryForTesting(
         1, reward, 42, guard.tip.GetHash(), ready.epoch));
-    REQUIRE(ValidateMinedBlock(work).failure == MinedBlockFailure::WORK_REVOKED);
+    probe = work;
+    probe.nChannel = 3;
+    REQUIRE(ValidateMinedBlock(probe).reason == "invalid block channel");
 
     const auto restored = ChainState::MiningReadiness();
     ChainState::ForgetPeerHeight(&guard.peers[0]);
     guard.Report(0);
     REQUIRE(ChainState::MiningReadiness().ready);
-    REQUIRE_FALSE(ChainState::MiningWorkCurrent(restored.epoch));
+    REQUIRE(ChainState::MiningWorkCurrent(restored.epoch));
 }
 
-TEST_CASE("Same-tip mining cache rebuilds identity after an evidence interruption",
+TEST_CASE("Same-tip mining cache preserves identity after an evidence interruption",
     "[ledger][mining-readiness][template_freshness]")
 {
     using namespace TAO::Ledger;
@@ -1139,14 +1245,25 @@ TEST_CASE("Same-tip mining cache rebuilds identity after an evidence interruptio
     TritiumBlock first;
     REQUIRE(CreateBlock(user, "1234", 1, first, 42));
     REQUIRE(ChainState::MiningWorkCurrent(first.nMiningEpoch));
+    TAO::Operation::Contract coinbase = first.producer[0];
+    coinbase.Reset();
+    coinbase.Seek(41);
+    uint64_t extraNonce = 0;
+    coinbase >> extraNonce;
+    REQUIRE(extraNonce == ((first.nMiningEpoch << 32) | 42));
     ChainState::ForgetPeerHeight(&guard.peers[0]);
+    REQUIRE_FALSE(ChainState::MiningReadiness().ready);
+    TritiumBlock paused;
+    REQUIRE_FALSE(CreateBlock(user, "1234", 1, paused, 42));
     guard.Report(0);
     TritiumBlock next;
     REQUIRE(CreateBlock(user, "1234", 1, next, 42));
     REQUIRE(next.hashPrevBlock == first.hashPrevBlock);
-    REQUIRE(next.nMiningEpoch != first.nMiningEpoch);
-    REQUIRE(next.hashMerkleRoot != first.hashMerkleRoot);
-    REQUIRE_FALSE(ChainState::MiningWorkCurrent(first.nMiningEpoch));
+    REQUIRE(next.nMiningEpoch == first.nMiningEpoch);
+    /* Cache hits still refresh producer timestamps/signatures; the work
+     * namespace, not the newly returned merkle root, must remain unchanged. */
+    REQUIRE(next.producer[0].Operations() == first.producer[0].Operations());
+    REQUIRE(ChainState::MiningWorkCurrent(first.nMiningEpoch));
     REQUIRE(ChainState::MiningWorkCurrent(next.nMiningEpoch));
 }
 
@@ -1269,6 +1386,7 @@ TEST_CASE("Mining readiness counts only ancestors of the best tip",
     REQUIRE(LLD::Ledger->WriteBlock(guard.tip.GetHash(), guard.tip));
     ChainState::tStateBest.store(guard.tip);
     ChainState::hashBestChain.store(guard.tip.GetHash());
+    ChainState::CommitMiningTip(guard.tip.GetHash());
 
     const BlockState ancestor = distance == 0 ? guard.tip :
                                 distance == 1 ? parent : grandparent;
@@ -1366,7 +1484,7 @@ TEST_CASE("Mining evidence accepts paired and split tip notifications",
     REQUIRE_FALSE(ChainState::MiningReadiness().ready);
     notify(pair);
     REQUIRE(ChainState::MiningReadiness().ready);
-    REQUIRE(ChainState::MiningReadiness().epoch != ready.epoch);
+    REQUIRE(ChainState::MiningReadiness().epoch == ready.epoch);
 
     const auto readSent = [&]()
     {

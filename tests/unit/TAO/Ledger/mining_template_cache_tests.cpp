@@ -48,6 +48,7 @@ namespace
                 LLD::Legacy->EraseSpend(hashFunding, 0);
             TAO::Ledger::ChainState::tStateBest.store(state);
             TAO::Ledger::ChainState::hashBestChain.store(hashBest);
+            TAO::Ledger::ChainState::CommitMiningTip(hashBest);
             TAO::Ledger::ClearMiningTemplateCaches("test cleanup");
         }
 
@@ -55,6 +56,7 @@ namespace
         {
             TAO::Ledger::ChainState::tStateBest.store(tip);
             TAO::Ledger::ChainState::hashBestChain.store(tip.GetHash());
+            TAO::Ledger::ChainState::CommitMiningTip(tip.GetHash());
         }
     };
 

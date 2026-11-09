@@ -26,8 +26,37 @@ namespace TAO::Ledger::ChainState
 
     enum class MiningPeerEvidence { SUPPORTING, BEHIND, UNRESOLVED };
 
-    /* No consensus state is changed here. An epoch revokes work even if
-     * connectivity is restored before the next mining request. */
+    /* Only committed best-chain transitions change work identity. Keep the
+     * hash and generation together so a reader cannot stamp work for one tip
+     * with another tip's epoch, including an A -> B -> A reorganization. */
+    class MiningWorkEpoch
+    {
+    public:
+        void Commit(const uint1024_t& tip)
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            if(tip == committedTip)
+                return;
+
+            committedTip = tip;
+            ++epoch;
+            debug::log(0, "MiningWorkEpoch: work epoch advanced to ", epoch,
+                       " reason=committed-best-chain-change best=", tip.SubString());
+        }
+
+        uint64_t ForTip(const uint1024_t& tip)
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            return tip == committedTip ? epoch : 0;
+        }
+
+    private:
+        std::mutex mutex;
+        uint1024_t committedTip{0};
+        uint64_t epoch{0};
+    };
+
+    /* Peer evidence gates readiness, not the identity of existing work. */
     class MiningPeerTracker
     {
     public:
@@ -38,40 +67,20 @@ namespace TAO::Ledger::ChainState
                      const uint1024_t& hash, uint32_t height,
                      Clock::time_point now = Clock::now())
         {
-            ObserveConfirmedTip(peer, address, hash, height, [] { return false; }, now);
-        }
-
-        /* A report proven to be the current local tip can only add supporting
-         * evidence. Other changes remain revocations, including a change of IP. */
-        template<typename ConfirmTip>
-        void ObserveConfirmedTip(const void* peer, const std::string& address,
-                                 const uint1024_t& hash, uint32_t height,
-                                 ConfirmTip confirmTip, Clock::time_point now = Clock::now())
-        {
             std::lock_guard<std::mutex> lock(mutex);
             Expire(now);
             const auto it = observations.find(peer);
             if(it == observations.end() || it->second.hash != hash
             || it->second.height != height || it->second.address != address
             || it->second.uncertain)
-            {
                 cacheValid = false;
-                if((it != observations.end() && it->second.address != address)
-                || (it != observations.end() && it->second.pendingCatchUp
-                    && (it->second.pendingTip != hash
-                     || (it->second.pendingHash && it->second.partialHash != hash)
-                     || (it->second.pendingHeight && it->second.partialHeight != height)))
-                || !confirmTip())
-                    AdvanceEpoch("peer-tip-change");
-            }
             observations[peer] = {address, hash, height, now, false};
         }
 
         /* A contradictory unpaired field cannot refresh or continue to
          * support the old tip while its counterpart is outstanding. */
-        template<typename ConfirmCatchUp>
         void InvalidatePartial(const void* peer, bool hasHash, const uint1024_t& hash,
-                               bool hasHeight, uint32_t height, ConfirmCatchUp confirmCatchUp)
+                               bool hasHeight, uint32_t height)
         {
             std::lock_guard<std::mutex> lock(mutex);
             const auto it = observations.find(peer);
@@ -79,42 +88,12 @@ namespace TAO::Ledger::ChainState
                 return;
 
             auto& observation = it->second;
-            if(observation.uncertain)
-            {
-                if(observation.pendingCatchUp
-                && (confirmCatchUp() != observation.pendingTip
-                 || (hasHash && observation.pendingHash && observation.partialHash != hash)
-                 || (hasHeight && observation.pendingHeight && observation.partialHeight != height)))
-                {
-                    observation.pendingCatchUp = false;
-                    AdvanceEpoch("contradictory-partial-tip");
-                }
-                return;
-            }
-
             if((hasHash && observation.hash != hash)
             || (hasHeight && observation.height != height))
             {
                 observation.uncertain = true;
                 cacheValid = false;
-                observation.pendingTip = confirmCatchUp();
-                observation.pendingCatchUp = observation.pendingTip != 0;
-                if(observation.pendingCatchUp)
-                {
-                    observation.pendingHash = hasHash;
-                    observation.partialHash = hash;
-                    observation.pendingHeight = hasHeight;
-                    observation.partialHeight = height;
-                }
-                else
-                    AdvanceEpoch("partial-peer-tip");
             }
-        }
-
-        void InvalidatePartial(const void* peer, bool hasHash, const uint1024_t& hash,
-                               bool hasHeight, uint32_t height)
-        {
-            InvalidatePartial(peer, hasHash, hash, hasHeight, height, [] { return uint1024_t(0); });
         }
 
         void Height(const void* peer, uint32_t height)
@@ -124,7 +103,6 @@ namespace TAO::Ledger::ChainState
             if(it != observations.end() && it->second.height != height)
             {
                 cacheValid = false;
-                AdvanceEpoch("peer-height-change");
                 it->second.height = height;
             }
         }
@@ -133,10 +111,7 @@ namespace TAO::Ledger::ChainState
         {
             std::lock_guard<std::mutex> lock(mutex);
             if(observations.erase(peer))
-            {
                 cacheValid = false;
-                AdvanceEpoch("peer-disconnected");
-            }
         }
 
         template<typename Resolve>
@@ -158,8 +133,7 @@ namespace TAO::Ledger::ChainState
         {
             std::lock_guard<std::mutex> lock(mutex);
             const CacheKey key{tip, required, bypass, synchronized, reorg, shutdown};
-            if(cacheValid && cachedKey == key && cachedStatus.epoch == epoch
-            && now < refreshAt && now <= expireAt)
+            if(cacheValid && cachedKey == key && now < refreshAt && now <= expireAt)
                 return cachedStatus;
 
             cachedStatus = CheckLocked(required, bypass, synchronized, reorg, shutdown, resolve, now);
@@ -212,17 +186,11 @@ namespace TAO::Ledger::ChainState
                 status.reason = "unresolved-peer-tip";
             else if(!bypass && status.peers < required)
                 status.reason = "insufficient-fresh-peers";
-            else if(epoch > UINT32_MAX)
-                status.reason = "mining-epoch-exhausted";
             else
             {
                 status.ready = true;
                 status.reason = bypass ? "local-network" : "ready";
             }
-            if(wasReady && !status.ready)
-                AdvanceEpoch("readiness-paused");
-            wasReady = status.ready;
-            status.epoch = epoch;
             return status;
         }
 
@@ -233,19 +201,7 @@ namespace TAO::Ledger::ChainState
             uint32_t height;
             Clock::time_point observed;
             bool uncertain;
-            bool pendingCatchUp{false};
-            uint1024_t pendingTip{0};
-            bool pendingHash{false};
-            uint1024_t partialHash{0};
-            bool pendingHeight{false};
-            uint32_t partialHeight{0};
         };
-
-        void AdvanceEpoch(const char* reason)
-        {
-            ++epoch;
-            debug::log(0, "MiningPeerTracker: work epoch advanced to ", epoch, " reason=", reason);
-        }
 
         void Expire(Clock::time_point now)
         {
@@ -254,7 +210,7 @@ namespace TAO::Ledger::ChainState
                 if(now - it->second.observed > MAX_AGE)
                 {
                     it = observations.erase(it);
-                    AdvanceEpoch("peer-evidence-expired");
+                    cacheValid = false;
                 }
                 else
                     ++it;
@@ -263,8 +219,6 @@ namespace TAO::Ledger::ChainState
 
         std::mutex mutex;
         std::map<const void*, Observation> observations;
-        uint64_t epoch{1};
-        bool wasReady{false};
         using CacheKey = std::tuple<uint1024_t, uint32_t, bool, bool, bool, bool>;
         CacheKey cachedKey;
         MiningStatus cachedStatus;

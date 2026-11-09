@@ -1158,8 +1158,8 @@ namespace TAO::Ledger
         if(nChannel != 3 && !readiness.bypass && nExtraNonceIn > UINT32_MAX)
             return debug::error(FUNCTION, "Mining extra nonce exceeds the 32-bit epoch namespace");
         const uint64_t nMiningEpoch = nChannel == 3 ? 0 : readiness.epoch;
-        /* Reserve the upper word for the admission epoch so a same-tip
-         * rebuild cannot resurrect a previously issued merkle root. */
+        /* Reserve the upper word for the committed-chain epoch so returning
+         * to a previous tip cannot resurrect its previously issued work. */
         const uint64_t nExtraNonce = nChannel == 3 || readiness.bypass ? nExtraNonceIn
             : (nMiningEpoch << 32) | uint32_t(nExtraNonceIn);
         rBlockRet.nMiningEpoch = nMiningEpoch;

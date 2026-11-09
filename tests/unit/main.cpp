@@ -120,6 +120,7 @@ namespace
         TAO::Ledger::ChainState::tStateBest.store(state);
         TAO::Ledger::ChainState::hashBestChain.store(hashBest);
         TAO::Ledger::ChainState::nBestHeight.store(200);
+        TAO::Ledger::ChainState::CommitMiningTip(hashBest);
 
         //check best
         if(TAO::Ledger::ChainState::tStateBest.load().IsNull())
