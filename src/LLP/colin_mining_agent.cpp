@@ -630,17 +630,24 @@ namespace LLP
             m_global.hash_pushes  = 0;
         }
 
-        /* Timestamp — use localtime_r for thread safety on POSIX */
+        /* Use thread-safe local time conversion on each platform. */
         std::time_t now_t = std::time(nullptr);
         char tbuf[32] = {};
         struct tm tm_buf = {};
+        #ifdef WIN32
+        ::localtime_s(&tm_buf, &now_t);
+        #else
         ::localtime_r(&now_t, &tm_buf);
+        #endif
         std::strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M:%S", &tm_buf);
 
         /* Border strings */
-        const std::string top    = "╔" + std::string(BOX_WIDTH - 2, '═') + "╗";
-        const std::string sep    = "╠" + std::string(BOX_WIDTH - 2, '═') + "╣";
-        const std::string bottom = "╚" + std::string(BOX_WIDTH - 2, '═') + "╝";
+        std::string horizontal;
+        for(int i = 0; i < BOX_WIDTH - 2; ++i)
+            horizontal += "═";
+        const std::string top    = "╔" + horizontal + "╗";
+        const std::string sep    = "╠" + horizontal + "╣";
+        const std::string bottom = "╚" + horizontal + "╝";
 
         debug::log(0, top);
         debug::log(0, ColinReportBoxLine(std::string("COLIN NODE MINING REPORT  [") + tbuf + "]"));

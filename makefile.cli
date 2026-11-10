@@ -872,6 +872,7 @@ LIBS+= -l kernel32 \
 	-l advapi32 \
 	-l ws2_32 \
 	-l shlwapi \
+	-l crypt32 \
 	-l iphlpapi
 DEFS+= -DWIN32 \
 	-D_WINDOWS
