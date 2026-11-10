@@ -53,6 +53,17 @@ Example:
 ARM64=1
 ```
 
+#### `MACOS_MIN_VERSION`
+
+Sets the macOS deployment target for the CLI build. The default is `10.09`;
+set it to at least the minimum version required by the libraries being linked.
+
+Example:
+
+```
+MACOS_MIN_VERSION=10.13
+```
+
 #### `OPENSSL LIBRARY PATH`
 
 Set path to installed OpenSSL Library folder.
