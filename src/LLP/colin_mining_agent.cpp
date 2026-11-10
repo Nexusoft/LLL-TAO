@@ -642,9 +642,12 @@ namespace LLP
         std::strftime(tbuf, sizeof(tbuf), "%Y-%m-%d %H:%M:%S", &tm_buf);
 
         /* Border strings */
-        const std::string top    = "╔" + std::string(BOX_WIDTH - 2, '═') + "╗";
-        const std::string sep    = "╠" + std::string(BOX_WIDTH - 2, '═') + "╣";
-        const std::string bottom = "╚" + std::string(BOX_WIDTH - 2, '═') + "╝";
+        std::string horizontal;
+        for(int i = 0; i < BOX_WIDTH - 2; ++i)
+            horizontal += "═";
+        const std::string top    = "╔" + horizontal + "╗";
+        const std::string sep    = "╠" + horizontal + "╣";
+        const std::string bottom = "╚" + horizontal + "╝";
 
         debug::log(0, top);
         debug::log(0, ColinReportBoxLine(std::string("COLIN NODE MINING REPORT  [") + tbuf + "]"));
