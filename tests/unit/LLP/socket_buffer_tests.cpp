@@ -24,6 +24,7 @@ ________________________________________________________________________________
 #include <cerrno>
 #include <thread>
 #include <atomic>
+#include <chrono>
 
 #ifndef WIN32
 #include <sys/socket.h>
@@ -301,7 +302,7 @@ TEST_CASE("Socket::Write appends to buffer when buffer has data", "[socket][writ
     }
 }
 
-TEST_CASE("Socket::Flush prioritizes control bytes ahead of buffered work bytes", "[socket][write][priority]")
+TEST_CASE("Socket::Flush preserves packet order after a partial write", "[socket][write][priority]")
 {
     TestSocket sock;
     int fdRead = MakeTestSocket(sock);
@@ -310,12 +311,13 @@ TEST_CASE("Socket::Flush prioritizes control bytes ahead of buffered work bytes"
     SetSendBufferSize(sock.fd, 4096);
 
     std::vector<uint8_t> low(512 * 1024, 0x11);
-    sock.Write(low, low.size(), false);
+    const int32_t sent = sock.Write(low, low.size(), false);
 
+    REQUIRE(sent > 0);
+    REQUIRE(static_cast<size_t>(sent) < low.size());
     REQUIRE(sock.Buffered() > 0);
 
-    /* Drain kernel-resident bytes so the next Flush() starts from the user-space buffers. */
-    DrainReadEnd(fdRead);
+    std::vector<uint8_t> received = DrainReadEndBytes(fdRead);
 
     const std::vector<uint8_t> control(32, 0xAA);
     const std::vector<uint8_t> lowTail(64, 0x22);
@@ -323,11 +325,17 @@ TEST_CASE("Socket::Flush prioritizes control bytes ahead of buffered work bytes"
     REQUIRE(sock.Write(control, control.size(), true) == static_cast<int32_t>(control.size()));
     REQUIRE(sock.Write(lowTail, lowTail.size(), false) == static_cast<int32_t>(lowTail.size()));
 
-    REQUIRE(sock.Flush() > 0);
+    while(sock.Buffered() > 0)
+    {
+        REQUIRE(sock.Flush() > 0);
+        const auto flushed = DrainReadEndBytes(fdRead);
+        received.insert(received.end(), flushed.begin(), flushed.end());
+    }
 
-    const std::vector<uint8_t> flushed = DrainReadEndBytes(fdRead);
-    REQUIRE(flushed.size() >= control.size());
-    REQUIRE(std::equal(control.begin(), control.end(), flushed.begin()));
+    std::vector<uint8_t> expected = low;
+    expected.insert(expected.end(), control.begin(), control.end());
+    expected.insert(expected.end(), lowTail.begin(), lowTail.end());
+    REQUIRE(received == expected);
 }
 
 
@@ -700,6 +708,49 @@ TEST_CASE("Concurrent Write and Flush — no data corruption", "[socket][concurr
     /* Buffer should be empty after full drain. */
     REQUIRE(sock.Buffered() == 0);
     REQUIRE(sock.GetBufferFull() == false);
+}
+
+TEST_CASE("Concurrent flushers send buffered bytes exactly once", "[socket][concurrency]")
+{
+    TestSocket sock;
+    int fdRead = MakeTestSocket(sock);
+    FdGuard guard(fdRead);
+    SetSendBufferSize(sock.fd, 4096);
+
+    std::vector<uint8_t> data(512 * 1024);
+    for(size_t i = 0; i < data.size(); ++i)
+        data[i] = static_cast<uint8_t>(i % 251);
+    REQUIRE(sock.Write(data, data.size()) > 0);
+    REQUIRE(sock.Buffered() > 0);
+
+    std::atomic<bool> stop(false);
+    auto flush = [&]()
+    {
+        while(!stop.load())
+        {
+            if(sock.Buffered())
+                sock.Flush();
+            std::this_thread::yield();
+        }
+    };
+    std::thread first(flush);
+    std::thread second(flush);
+    std::vector<uint8_t> received;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while(received.size() < data.size() && std::chrono::steady_clock::now() < deadline)
+    {
+        auto bytes = DrainReadEndBytes(fdRead);
+        received.insert(received.end(), bytes.begin(), bytes.end());
+        std::this_thread::yield();
+    }
+    stop.store(true);
+    first.join();
+    second.join();
+    auto tail = DrainReadEndBytes(fdRead);
+    received.insert(received.end(), tail.begin(), tail.end());
+
+    REQUIRE(sock.Buffered() == 0);
+    REQUIRE(received == data);
 }
 
 

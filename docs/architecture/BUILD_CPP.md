@@ -155,7 +155,7 @@ Two different writers touch the same SessionDB sigchain links, and only one of t
 |--------|----------------------|------------------------|-------------------|
 | `BuildAndAccept` index path | no | yes, before `IndexLock` | yes, across snapshot, `Index`, restore |
 | `Indexing::IndexSigchain` (Tritium merkle receive) | yes | no — must not take it here | yes, inside `Transaction::Index` |
-| `Indexing::BuildIndexes` | no | no during the index loops | yes, before both rebuild loops; released before `BroadcastUnconfirmed` |
+| `Indexing::BuildIndexes` | no | yes, before `IndexLock` and throughout both rebuild loops | yes, before both rebuild loops; both locks released before `BroadcastUnconfirmed` |
 | `Indexing::BroadcastUnconfirmed` | no | yes, before `IndexLock`, including across `Accept` | yes, across the session read and `Broadcast()` write; dropped before `Accept` |
 | `Transaction::Broadcast` | no | no — caller must already hold the pool lock if it also holds it | yes, around the conditional SessionDB write |
 | `Notifications::SanitizeUnconfirmed` | no | yes, before hash collection through Disconnect / Delete / Remove | yes, before hash collection and again across delete; both released before the rebuild `BuildAndAccept` |
@@ -180,6 +180,10 @@ flowchart TD
 Each unconfirmed transaction is sanitized under a per-iteration `TransactionGuard` for `FLAGS::SANITIZE`. `Contract::Primitive()` throws on an empty operation. The guard aborts that overlay on the throw, so the function cannot leave the SANITIZE slot claimed and cause a later sanitize begin to be rejected. `SanitizeContract` uses the same guard around `Build` / `Execute`.
 
 `IndexSigchain` must not take `mempool.MUTEX`. It already holds `CLIENT_MUTEX`. Session-index exclusion is `IndexLock`, not the pool lock.
+
+`BuildIndexes` takes `mempool.MUTEX` before `IndexLock` because its rebuild reads
+mempool-backed transactions, including through `IndexSession`. It releases both
+locks before calling `BroadcastUnconfirmed`.
 
 `BroadcastUnconfirmed` takes `mempool.MUTEX`, then `IndexLock`, before it reads the unconfirmed tail and before `Broadcast()` writes that tail back. It drops `IndexLock` before `Accept()` and keeps the pool lock across that call. `Transaction::Broadcast()` re-reads the SessionDB record under `IndexLock` and writes that current record's `nModified` only, so a stale `hashNextTx` cannot clobber `Index()` and a deleted record is not recreated.
 

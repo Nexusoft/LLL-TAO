@@ -9,6 +9,9 @@ rapid reconnect loop.
 
 Both **stateless** (port 9323) and **legacy** (port 8323) miners receive the same
 `NODE_SHUTDOWN (0xD0FF)` packet via a single unified shutdown sequence.
+Outgoing packets are sent in FIFO order, including control packets, so a partially
+sent template is never interrupted. A queued shutdown notification can therefore
+remain behind earlier traffic when the flush window expires.
 
 ---
 

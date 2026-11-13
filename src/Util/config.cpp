@@ -91,7 +91,8 @@ namespace config
                 while(commentPos != std::string::npos)
                 {
                     /* Only treat as comment if preceded by whitespace */
-                    if(commentPos > 0 && (strVal[commentPos - 1] == ' ' || strVal[commentPos - 1] == '\t'))
+                    if((commentPos == 0 && valStart > 0) ||
+                       (commentPos > 0 && (strVal[commentPos - 1] == ' ' || strVal[commentPos - 1] == '\t')))
                     {
                         strVal = strVal.substr(0, commentPos);
                         break;
@@ -104,6 +105,8 @@ namespace config
                 size_t valEnd = strVal.find_last_not_of(" \t\r");
                 if(valEnd != std::string::npos)
                     strVal = strVal.substr(0, valEnd + 1);
+                else
+                    strVal.clear();
             }
 
             if(mapSettingsRet.count(strKey) == 0)

@@ -282,4 +282,28 @@ TEST_CASE("Config file parsing tests", "[config]")
         // Clean up
         std::remove(tempConfigPath.c_str());
     }
+
+    SECTION("Distinguish empty commented values from literal hashes")
+    {
+        config::mapArgs["-conf"] = "test_nexus_comments.conf";
+        config::mapArgs["-datadir"] = "/tmp/";
+        const std::string configPath = config::GetConfigFile();
+        std::ofstream out(configPath);
+        out << "empty= # comment\n";
+        out << "tab=\t# comment\n";
+        out << "literal=#literal\n";
+        out << "quoted= \"#literal\"\n";
+        out.close();
+
+        std::map<std::string, std::string> settings;
+        std::map<std::string, std::vector<std::string>> multiSettings;
+        config::ReadConfigFile(settings, multiSettings);
+
+        REQUIRE(settings.at("-empty").empty());
+        REQUIRE(settings.at("-tab").empty());
+        REQUIRE(settings.at("-literal") == "#literal");
+        REQUIRE(settings.at("-quoted") == "#literal");
+        REQUIRE(multiSettings.at("-empty").at(0).empty());
+        std::remove(configPath.c_str());
+    }
 }

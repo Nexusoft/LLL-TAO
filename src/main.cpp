@@ -284,6 +284,7 @@ int main(int argc, char** argv)
         /* Handle for commandline API/RPC */
         if(!convert::IsSwitchChar(argv[i][0]))
         {
+            StartSignalMonitor();
             /* As a helpful shortcut, if the method name includes a "/" then we will assume it is meant for the API. */
             const std::string strEndpoint = std::string(argv[i]);
 
@@ -299,6 +300,7 @@ int main(int argc, char** argv)
     /* Handle forensic fork analysis commands */
     if(config::GetBoolArg("-forensicforks", false) || config::GetBoolArg("-analyzeforks", false))
     {
+        StartSignalMonitor();
         /* Initialize minimal subsystems for forensic analysis */
         debug::log(0, FUNCTION, "Starting forensic fork analysis...");
         
@@ -321,6 +323,7 @@ int main(int argc, char** argv)
     /* Handle channel statistics output */
     if(config::GetBoolArg("-channelstats", false))
     {
+        StartSignalMonitor();
         /* Initialize minimal subsystems for stats */
         debug::log(0, FUNCTION, "Retrieving channel height statistics...");
         
@@ -352,6 +355,8 @@ int main(int argc, char** argv)
         debug::log(0, FUNCTION, "-daemon flag enabled. Running in background");
         Daemonize();
     }
+
+    StartSignalMonitor();
 
 
     /* Create directories if they don't exist yet. */

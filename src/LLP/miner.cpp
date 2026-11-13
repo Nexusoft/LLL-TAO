@@ -1847,9 +1847,7 @@ namespace LLP
          * drains buffered bytes when the kernel is writable.  We still avoid
          * calling Flush() inline here because that would hold SOCKET_MUTEX on
          * the notification thread and contend with inbound mining reads.
-         *
-         * Control-path replies and submit-block results are flagged high
-         * priority so they can bypass buffered template/work traffic. */
+         * Buffered packets remain in wire order, including control replies. */
         this->WritePacket(RESPONSE, IsPriorityLegacyOpcode(nHeader));
     }
 

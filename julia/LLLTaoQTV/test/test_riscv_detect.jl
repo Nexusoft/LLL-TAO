@@ -22,15 +22,17 @@
     # Timestamp must be non-empty
     @test !isempty(caps.detected_at)
 
-    # On x86/ARM CI the platform is not RISC-V
-    @test caps.is_riscv == false
-    @test caps.has_v_ext == false
-    @test caps.has_zba == false
-    @test caps.has_zbb == false
+    expected_riscv = Sys.ARCH in (:riscv32, :riscv64)
+    @test caps.is_riscv == expected_riscv
+    if !expected_riscv
+        @test caps.has_v_ext == false
+        @test caps.has_zba == false
+        @test caps.has_zbb == false
+    end
 
     # The module-level RISCV constant must also be populated after __init__
     @test RISCV isa RiscvCapabilities
-    @test RISCV.is_riscv == false
+    @test RISCV.is_riscv == expected_riscv
 
     # print_riscv_capabilities must produce non-empty output without error
     buf = IOBuffer()
