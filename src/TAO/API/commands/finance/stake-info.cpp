@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/finance.h>
 
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/include/stake_change.h>
 
@@ -34,6 +35,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/object.h>
+
+#include <Util/include/runtime.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -89,6 +92,15 @@ namespace TAO::API
             /* Flag to tell if staking genesis. */
             jRet["new"] = (bool)(!fTrustIndexed);
             jRet["staking"]     = true;
+
+            /* Watchdog: the minting thread may report started, but be stalled (deadlocked or otherwise
+             * wedged) without ever calling Stop(). Surface this so a GUI can distinguish "actively staking"
+             * from "reports enabled but not making progress" instead of assuming staking is healthy
+             * indefinitely. "lastactive" is always included while started; a value of 0 means the minting
+             * thread has not yet published its first heartbeat since starting (for example, still waiting on
+             * initial peer sync/connect), which is a normal startup state, not a stall. */
+            jRet["stalled"]    = rStakeMinter.IsStalled();
+            jRet["lastactive"] = rStakeMinter.GetLastActiveTime();
         }
         else
         {
@@ -103,6 +115,18 @@ namespace TAO::API
             /* Flag to tell if staking genesis. */
             jRet["new"] = (bool)(!fTrustIndexed);
             jRet["staking"]     = false;
+            jRet["stalled"]     = false;
+        }
+
+        /* Tip health: independent of whether this account is staking, surface how long it has been since
+         * the local chain tip last advanced. A GUI that reports "synchronized" purely based on peer height
+         * comparisons can otherwise look healthy while the tip itself has stopped moving. */
+        {
+            const uint64_t nTipTime = TAO::Ledger::ChainState::tStateBest.load().GetBlockTime();
+            const uint64_t nNow     = runtime::unifiedtimestamp();
+            const uint64_t nTipAge  = (nNow > nTipTime) ? (nNow - nTipTime) : 0;
+
+            jRet["tipage"] = nTipAge;
         }
 
         /* Check if we have any pending stake changes. */

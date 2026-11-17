@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <Util/include/debug.h>
 
+#include <openssl/evp.h>
 #include <cstring>
 
 
@@ -101,6 +102,173 @@ namespace LLC
         vPlainText.erase(vPlainText.end() - nPadBytes, vPlainText.end());
 
         /* return true */
+        return true;
+    }
+
+
+    /* Encrypts data using ChaCha20-Poly1305 AEAD cipher. */
+    bool EncryptChaCha20Poly1305(
+        const std::vector<uint8_t>& vPlaintext,
+        const std::vector<uint8_t>& vKey,
+        const std::vector<uint8_t>& vNonce,
+        std::vector<uint8_t>& vCiphertext,
+        std::vector<uint8_t>& vTag,
+        const std::vector<uint8_t>& vAAD)
+    {
+        /* Validate key size (256 bits = 32 bytes) */
+        if(vKey.size() != 32)
+            return debug::error(FUNCTION, "ChaCha20-Poly1305 key must be 32 bytes, got ", vKey.size());
+
+        /* Validate nonce size (96 bits = 12 bytes) */
+        if(vNonce.size() != 12)
+            return debug::error(FUNCTION, "ChaCha20-Poly1305 nonce must be 12 bytes, got ", vNonce.size());
+
+        /* Check plaintext is not empty */
+        if(vPlaintext.empty())
+            return debug::error(FUNCTION, "Plaintext is empty");
+
+        /* Create and initialize cipher context */
+        EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+        if(!ctx)
+            return debug::error(FUNCTION, "Failed to create cipher context");
+
+        /* Initialize encryption */
+        if(EVP_EncryptInit_ex(ctx, EVP_chacha20_poly1305(), nullptr, vKey.data(), vNonce.data()) != 1)
+        {
+            EVP_CIPHER_CTX_free(ctx);
+            return debug::error(FUNCTION, "Failed to initialize ChaCha20-Poly1305 encryption");
+        }
+
+        /* Set AAD if provided */
+        if(!vAAD.empty())
+        {
+            int nLen = 0;
+            if(EVP_EncryptUpdate(ctx, nullptr, &nLen, vAAD.data(), static_cast<int>(vAAD.size())) != 1)
+            {
+                EVP_CIPHER_CTX_free(ctx);
+                return debug::error(FUNCTION, "Failed to set AAD");
+            }
+        }
+
+        /* Prepare output buffer */
+        vCiphertext.resize(vPlaintext.size());
+        int nCiphertextLen = 0;
+
+        /* Perform encryption */
+        if(EVP_EncryptUpdate(ctx, vCiphertext.data(), &nCiphertextLen, 
+                            vPlaintext.data(), static_cast<int>(vPlaintext.size())) != 1)
+        {
+            EVP_CIPHER_CTX_free(ctx);
+            return debug::error(FUNCTION, "ChaCha20-Poly1305 encryption failed");
+        }
+
+        /* Finalize encryption */
+        int nFinalLen = 0;
+        if(EVP_EncryptFinal_ex(ctx, vCiphertext.data() + nCiphertextLen, &nFinalLen) != 1)
+        {
+            EVP_CIPHER_CTX_free(ctx);
+            return debug::error(FUNCTION, "ChaCha20-Poly1305 encryption finalization failed");
+        }
+
+        /* Resize to actual ciphertext length */
+        vCiphertext.resize(nCiphertextLen + nFinalLen);
+
+        /* Get authentication tag (16 bytes) */
+        vTag.resize(16);
+        if(EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, 16, vTag.data()) != 1)
+        {
+            EVP_CIPHER_CTX_free(ctx);
+            return debug::error(FUNCTION, "Failed to get authentication tag");
+        }
+
+        EVP_CIPHER_CTX_free(ctx);
+        return true;
+    }
+
+
+    /* Decrypts data using ChaCha20-Poly1305 AEAD cipher. */
+    bool DecryptChaCha20Poly1305(
+        const std::vector<uint8_t>& vCiphertext,
+        const std::vector<uint8_t>& vTag,
+        const std::vector<uint8_t>& vKey,
+        const std::vector<uint8_t>& vNonce,
+        std::vector<uint8_t>& vPlaintext,
+        const std::vector<uint8_t>& vAAD)
+    {
+        /* Validate key size (256 bits = 32 bytes) */
+        if(vKey.size() != 32)
+            return debug::error(FUNCTION, "ChaCha20-Poly1305 key must be 32 bytes, got ", vKey.size());
+
+        /* Validate nonce size (96 bits = 12 bytes) */
+        if(vNonce.size() != 12)
+            return debug::error(FUNCTION, "ChaCha20-Poly1305 nonce must be 12 bytes, got ", vNonce.size());
+
+        /* Validate tag size (128 bits = 16 bytes) */
+        if(vTag.size() != 16)
+            return debug::error(FUNCTION, "ChaCha20-Poly1305 tag must be 16 bytes, got ", vTag.size());
+
+        /* Check ciphertext is not empty */
+        if(vCiphertext.empty())
+            return debug::error(FUNCTION, "Ciphertext is empty");
+
+        /* Create and initialize cipher context */
+        EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+        if(!ctx)
+            return debug::error(FUNCTION, "Failed to create cipher context");
+
+        /* Initialize decryption */
+        if(EVP_DecryptInit_ex(ctx, EVP_chacha20_poly1305(), nullptr, vKey.data(), vNonce.data()) != 1)
+        {
+            EVP_CIPHER_CTX_free(ctx);
+            return debug::error(FUNCTION, "Failed to initialize ChaCha20-Poly1305 decryption");
+        }
+
+        /* Set AAD if provided */
+        if(!vAAD.empty())
+        {
+            int nLen = 0;
+            if(EVP_DecryptUpdate(ctx, nullptr, &nLen, vAAD.data(), static_cast<int>(vAAD.size())) != 1)
+            {
+                EVP_CIPHER_CTX_free(ctx);
+                return debug::error(FUNCTION, "Failed to set AAD");
+            }
+        }
+
+        /* Prepare output buffer */
+        vPlaintext.resize(vCiphertext.size());
+        int nPlaintextLen = 0;
+
+        /* Perform decryption */
+        if(EVP_DecryptUpdate(ctx, vPlaintext.data(), &nPlaintextLen, 
+                            vCiphertext.data(), static_cast<int>(vCiphertext.size())) != 1)
+        {
+            EVP_CIPHER_CTX_free(ctx);
+            return debug::error(FUNCTION, "ChaCha20-Poly1305 decryption failed");
+        }
+
+        /* Set expected authentication tag.
+         * NOTE: const_cast is required here because OpenSSL's EVP_CIPHER_CTX_ctrl API
+         * expects a void* parameter for EVP_CTRL_AEAD_SET_TAG, even though the tag
+         * is only read (not modified). This is safe as the tag data is not altered. */
+        if(EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, 16, 
+                              const_cast<uint8_t*>(vTag.data())) != 1)
+        {
+            EVP_CIPHER_CTX_free(ctx);
+            return debug::error(FUNCTION, "Failed to set authentication tag");
+        }
+
+        /* Finalize decryption - this verifies the tag */
+        int nFinalLen = 0;
+        if(EVP_DecryptFinal_ex(ctx, vPlaintext.data() + nPlaintextLen, &nFinalLen) != 1)
+        {
+            EVP_CIPHER_CTX_free(ctx);
+            return debug::error(FUNCTION, "ChaCha20-Poly1305 authentication failed - tag mismatch");
+        }
+
+        /* Resize to actual plaintext length */
+        vPlaintext.resize(nPlaintextLen + nFinalLen);
+
+        EVP_CIPHER_CTX_free(ctx);
         return true;
     }
 }

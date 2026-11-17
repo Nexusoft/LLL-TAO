@@ -142,6 +142,21 @@ namespace Legacy
         encoding::json GetMiningInfo(const encoding::json& params, const bool fHelp);
 
 
+        /** CheckForkRecovery
+         *
+         *  checkforkrecovery <genesis>
+         *  [C1] Read-only diagnostic reporting how far the best chain has
+         *  diverged from a genesis's currently-conflicted sigchain
+         *  transaction(s), without performing any rollback.
+         *
+         *  @param[in] params Parameters array passed by the caller.
+         *
+         *  @return JSON containing the computed divergence information.
+         *
+         **/
+        encoding::json CheckForkRecovery(const encoding::json& params, const bool fHelp);
+
+
         /** GetConnectionCount
          *
          *  getconnectioncount

@@ -3,15 +3,29 @@
 # is more than one seed node used, only one must use the generate statement.
 #       
 #default RPC user/pass.  PLEASE CHANGE THESE TO SUITABLE VALUES
+#WARNING: rpcremote enables remote RPC access. Keep RPC bound to localhost or a
+#strictly controlled private-network interface and keep rpcallowip limited to
+#trusted hosts only. Do not enable remote RPC on internet-facing nodes without
+#strong authentication and network access controls.
 rpcuser=username
 rpcpassword=password
 rpcremote=1
 
 #default API user/pass to blank for private network and disable authentication of API requests
+#WARNING: apiremote enables remote API access and apiauth=0 disables API
+# WARNING: Do not enable remote RPC by default in sample configs.
+# Only enable this together with strict rpcallowip and bind-address settings.
+# Never expose RPC on an internet-facing node without strong access controls.
+#rpcremote=1
+
+#default API user/pass to blank for private network and disable authentication of API requests
 apiauth=0
 apiuser=
 apipassword=
-apiremote=1
+# WARNING: Do not enable remote API by default in sample configs.
+# Only enable this together with strict API allowlisting and bind-address settings.
+# Never expose the API on an internet-facing node without strong access controls.
+#apiremote=1
 
 rpcallowip=127.0.0.1
 testnet=100

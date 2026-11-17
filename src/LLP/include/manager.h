@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <vector>
 #include <cstdint>
 #include <mutex>
+#include <functional>
+#include <string>
 
 /* forward declarations */
 namespace LLD
@@ -104,6 +106,8 @@ namespace LLP
          **/
         uint32_t Count(const uint8_t nFlags = CONNECT_FLAGS_ALL);
 
+        uint32_t EligibleCount() const;
+
 
         /** AddAddress
          *
@@ -162,6 +166,14 @@ namespace LLP
          **/
         void AddSeedAddresses(bool fTestnet = false);
 
+        using SeedResolver = std::function<bool(const std::string&, std::vector<BaseAddress>&)>;
+
+        /* Resolves seeds afresh and persists usable addresses without resetting live state. */
+        bool RefreshSeedAddresses(bool fTestnet, const SeedResolver& resolver,
+                                  const std::function<bool()>& stop = {});
+
+        bool ReadLastDNSUpdate(uint64_t& nUpdated) const;
+
 
         /** Has
          *
@@ -175,12 +187,33 @@ namespace LLP
 
         /** Get
          *
-         *  Gets a TrustAddress from the BaseAddress
+         *  Gets a TrustAddress from the BaseAddress.
+         *
+         *  @deprecated Prefer the non-throwing Get(addr, TrustAddress&) overload.
+         *  This single-arg form uses map::at() and can throw std::out_of_range
+         *  under concurrent RemoveAddress()/Ban() — the latent TOCTOU foot-gun
+         *  fixed at call sites by PR #678 (TIP-17).
          *
          *  @param[in] addr The address to find.
          *
          **/
+        [[deprecated("Use non-throwing Get(addr, TrustAddress&) instead")]]
         const LLP::TrustAddress& Get(const BaseAddress &addr) const;
+
+
+        /** Get
+         *
+         *  Atomically checks for and retrieves a TrustAddress from the BaseAddress
+         *  under a single lock, avoiding the check-then-act race between a separate
+         *  Has() and Get() call where a concurrent removal/ban could throw.
+         *
+         *  @param[in] addr The address to find.
+         *  @param[out] addrOut The TrustAddress to populate if found.
+         *
+         *  @return True if the address was found and addrOut was populated, false otherwise.
+         *
+         **/
+        bool Get(const BaseAddress &addr, TrustAddress &addrOut) const;
 
 
         /** GetState
@@ -300,7 +333,7 @@ namespace LLP
          *  @param[in] nFlags Specify which types of connections to get the info from.
          *
          **/
-        uint32_t count(const uint8_t nFlags = CONNECT_FLAGS_ALL) const;
+        uint32_t count(const uint8_t nFlags = CONNECT_FLAGS_ALL, const uint8_t nNotFlags = 0) const;
 
 
         /** total_count

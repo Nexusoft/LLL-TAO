@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/prime.h>
 #include <unit/catch2/catch.hpp>
 #include <openssl/bn.h>
+#include <cstring>
 
 
 const LLC::CBigNum bnPrimes[11] = { 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31 };
@@ -137,7 +138,238 @@ TEST_CASE( "Prime Tests", "[Ledger]")
 
         REQUIRE(TAO::Ledger::GetFractionalDifficulty(bn1) == GetFractionalDifficulty2(bn2));
 
-        REQUIRE(TAO::Ledger::GetPrimeBits(bn1) == GetPrimeBits2(bn2));
+        REQUIRE(TAO::Ledger::GetPrimeBits(bn1, {}) == GetPrimeBits2(bn2));
     }
 
+}
+
+
+TEST_CASE("PrimeCheck uses Miller-Rabin validation", "[prime][miller-rabin]")
+{
+    SECTION("Validate known prime passes all checks")
+    {
+        /* Known small primes should pass all validation checks */
+        uint1024_t prime7 = 7;
+        uint1024_t prime17 = 17;
+        uint1024_t prime97 = 97;
+        uint1024_t prime541 = 541;
+        
+        REQUIRE(TAO::Ledger::PrimeCheck(prime7) == true);
+        REQUIRE(TAO::Ledger::PrimeCheck(prime17) == true);
+        REQUIRE(TAO::Ledger::PrimeCheck(prime97) == true);
+        REQUIRE(TAO::Ledger::PrimeCheck(prime541) == true);
+    }
+    
+    SECTION("Validate Carmichael number rejected by Miller-Rabin")
+    {
+        /* Carmichael numbers pass Fermat test but fail Miller-Rabin */
+        /* 561 = 3 × 11 × 17 - smallest Carmichael number */
+        uint1024_t carmichael561 = 561;
+        
+        /* Should be rejected (caught by small divisor test for 3) */
+        REQUIRE(TAO::Ledger::PrimeCheck(carmichael561) == false);
+        
+        /* 1105 = 5 × 13 × 17 - Carmichael number */
+        uint1024_t carmichael1105 = 1105;
+        
+        /* Should be rejected (caught by small divisor test for 5) */
+        REQUIRE(TAO::Ledger::PrimeCheck(carmichael1105) == false);
+        
+        /* 1729 = 7 × 13 × 19 - Carmichael number (Ramanujan number) */
+        uint1024_t carmichael1729 = 1729;
+        
+        /* Should be rejected (caught by small divisor test for 7) */
+        REQUIRE(TAO::Ledger::PrimeCheck(carmichael1729) == false);
+    }
+    
+    SECTION("PrimeCheck matches PrimeCheck2 behavior")
+    {
+        /* Generate random test cases and verify consistency */
+        for(int i = 0; i < 100; ++i)
+        {
+            uint1024_t testValue = LLC::GetRand1024();
+            testValue |= 1;  // Make odd
+            
+            /* Both functions should agree on primality */
+            bool result1 = TAO::Ledger::PrimeCheck(testValue);
+            bool result2 = PrimeCheck2(LLC::CBigNum(testValue), 1);
+            
+            REQUIRE(result1 == result2);
+        }
+    }
+    
+    SECTION("Validate known composites are rejected")
+    {
+        /* Known composite numbers should fail validation */
+        uint1024_t comp4 = 4;
+        uint1024_t comp15 = 15;
+        uint1024_t comp100 = 100;
+        uint1024_t comp1001 = 1001;  // 7 × 11 × 13
+        
+        REQUIRE(TAO::Ledger::PrimeCheck(comp4) == false);
+        REQUIRE(TAO::Ledger::PrimeCheck(comp15) == false);
+        REQUIRE(TAO::Ledger::PrimeCheck(comp100) == false);
+        REQUIRE(TAO::Ledger::PrimeCheck(comp1001) == false);
+    }
+}
+
+
+TEST_CASE("GetPrimeDifficulty 4-byte fractional round-trip", "[prime][roundtrip]")
+{
+    SECTION("GetOffsets writes 4 bytes and GetPrimeDifficulty accepts them with fVerify=true")
+    {
+        /* 541 is prime; use it as a chain start */
+        uint1024_t knownPrime = 541;
+
+        std::vector<uint8_t> vOffsets;
+        TAO::Ledger::GetOffsets(knownPrime, vOffsets);
+
+        /* vOffsets must contain at least the 4 fractional bytes */
+        REQUIRE(vOffsets.size() >= 4);
+
+        /* GetPrimeDifficulty must accept the offsets written by GetOffsets */
+        double fDiff = TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, true);
+        REQUIRE(fDiff > 0.0);
+    }
+
+    SECTION("nFraction high byte is read correctly (4-byte read, not 3)")
+    {
+        /* Use a known prime to get a valid vOffsets skeleton */
+        uint1024_t knownPrime = 541;
+
+        std::vector<uint8_t> vOffsets;
+        TAO::Ledger::GetOffsets(knownPrime, vOffsets);
+
+        REQUIRE(vOffsets.size() >= 4);
+
+        /* Overwrite the last 4 bytes with a value whose high byte is non-zero.
+         * With the old buggy std::copy (half-open range stops 1 byte short),
+         * nFraction would read only 3 bytes -> 0x00020304 (high byte stays 0).
+         * With the fix (std::memcpy 4 bytes), nFraction = 0x01020304. */
+        uint32_t nFractionExpected = 0x01020304u;
+        std::memcpy(&vOffsets[vOffsets.size() - 4], &nFractionExpected, 4);
+
+        /* fVerify=false skips the fractional cross-check so we can isolate the read */
+        double fDiff = TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, false);
+
+        /* Expected fractional remainder: 1000000 / 0x01020304 ~= 0.0591, in [0, 1) */
+        double fExpectedRemainder = 1000000.0 / static_cast<double>(nFractionExpected);
+        REQUIRE(fExpectedRemainder > 0.0);
+        REQUIRE(fExpectedRemainder < 1.0);
+
+        /* For prime 541 the chain loop runs 0 times, so nClusterSize == 1 */
+        double fFrac = fDiff - 1.0;
+
+        /* Fractional part must match the 4-byte value we wrote */
+        REQUIRE(std::abs(fFrac - fExpectedRemainder) < 1e-6);
+    }
+}
+
+
+/* Regression: a non-empty but undersized vOffsets (< 5 bytes) must NOT
+ * unsigned-underflow `nSize - 4` in GetPrimeDifficulty, walk the loop off the
+ * end of the buffer, and OOB-read the 4-byte fractional tail.  The defensive
+ * guard returns 0.0 (treated as "not a valid prime cluster"). */
+TEST_CASE("GetPrimeDifficulty rejects undersized vOffsets without OOB", "[prime][underflow]")
+{
+    /* 541 is prime so PrimeCheck() passes; the failure mode under test is
+     * the size guard inside the !vOffsets.empty() branch, not the base
+     * primality check. */
+    uint1024_t knownPrime = 541;
+
+    SECTION("size 1 returns 0.0 (would have underflowed nSize-4)")
+    {
+        std::vector<uint8_t> vOffsets = {0x01};
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, true) == 0.0);
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, false) == 0.0);
+    }
+
+    SECTION("size 2 returns 0.0")
+    {
+        std::vector<uint8_t> vOffsets = {0x01, 0x02};
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, true) == 0.0);
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, false) == 0.0);
+    }
+
+    SECTION("size 3 returns 0.0")
+    {
+        std::vector<uint8_t> vOffsets = {0x01, 0x02, 0x03};
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, true) == 0.0);
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, false) == 0.0);
+    }
+
+    SECTION("size 4 returns 0.0 (boundary: nSize-4 == 0 with no chain bytes)")
+    {
+        std::vector<uint8_t> vOffsets = {0x01, 0x02, 0x03, 0x04};
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, true) == 0.0);
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, false) == 0.0);
+    }
+
+    SECTION("size 5 (minimum well-formed) is NOT rejected by the size guard")
+    {
+        /* One chain-offset byte (gap 2) plus a 4-byte fractional tail.  With
+         * fVerify=false the chain primality / fractional cross-check are
+         * skipped, so the function reaches the difficulty calculation rather
+         * than short-circuiting at 0.0.  We assert the guard does not fire. */
+        std::vector<uint8_t> vOffsets = {0x02, 0x00, 0x00, 0x00, 0x01};
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(knownPrime, vOffsets, false) > 0.0);
+    }
+}
+
+
+/* Security regression for the mined-block proof gate (force-proof fix).
+ *
+ * The vulnerability: while ChainState::Synchronizing()==true the mined/submit
+ * path evaluated GetPrimeBits(..., fVerify=false), which skips PrimeCheck() on
+ * the base prime and every chain offset.  A block carrying a structurally valid
+ * but non-prime offset set therefore "passed" with a fabricated cluster size.
+ *
+ * ValidateMinedBlock() now calls Check(fForceProof=true) → VerifyWork(true) →
+ * GetPrimeBits(..., fVerify=true), closing the gate.  These cases assert the
+ * underlying fVerify semantics that the fix depends on: fVerify=true rejects a
+ * non-prime base (returns 0 difficulty / 0 bits) whereas fVerify=false — the old
+ * synchronizing fast-path — would accept it. */
+TEST_CASE("Force-proof: fVerify=true rejects non-prime cluster the sync fast-path accepted", "[prime][forceproof][Ledger]")
+{
+    /* 1369 = 37 * 37.  It is NOT divisible by any of the first eleven primes
+     * (2..31), so SmallDivisors() passes and the composite is only caught by the
+     * Miller-Rabin / Fermat stage inside PrimeCheck().  This isolates the
+     * primality gate that fVerify controls. */
+    uint1024_t nComposite = 1369;
+
+    /* Sanity: the base is genuinely composite per PrimeCheck(). */
+    REQUIRE(TAO::Ledger::PrimeCheck(nComposite) == false);
+
+    /* Structurally valid offsets: one chain-offset byte (gap 2) + 4 fractional. */
+    std::vector<uint8_t> vOffsets = {0x02, 0x00, 0x00, 0x00, 0x01};
+
+    SECTION("fVerify=true (force-proof) rejects the non-prime base")
+    {
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(nComposite, vOffsets, true) == 0.0);
+        REQUIRE(TAO::Ledger::GetPrimeBits(nComposite, vOffsets, true) == 0);
+    }
+
+    SECTION("fVerify=false (old synchronizing fast-path) accepts the non-prime base")
+    {
+        /* This is the insecure behaviour the force-proof fix prevents on the
+         * mined path: with verification disabled the cluster is counted and a
+         * non-zero difficulty is reported despite the base being composite. */
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(nComposite, vOffsets, false) > 0.0);
+        REQUIRE(TAO::Ledger::GetPrimeBits(nComposite, vOffsets, false) > 0);
+    }
+
+    SECTION("property holds for a different valid offset pattern (2 chain offsets)")
+    {
+        /* Independence from the specific offset structure: two chain-offset
+         * bytes (gaps 6 and 4, both <= 12) plus a 4-byte fractional tail. */
+        std::vector<uint8_t> vOffsets2 = {0x06, 0x04, 0x00, 0x00, 0x00, 0x01};
+
+        /* Force-proof rejects the non-prime base regardless of offset layout. */
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(nComposite, vOffsets2, true) == 0.0);
+        REQUIRE(TAO::Ledger::GetPrimeBits(nComposite, vOffsets2, true) == 0);
+
+        /* The old fast-path would still have accepted it. */
+        REQUIRE(TAO::Ledger::GetPrimeDifficulty(nComposite, vOffsets2, false) > 0.0);
+        REQUIRE(TAO::Ledger::GetPrimeBits(nComposite, vOffsets2, false) > 0);
+    }
 }

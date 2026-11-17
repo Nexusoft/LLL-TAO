@@ -23,6 +23,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/mempool.h>
 
+#include <mutex>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -73,7 +75,9 @@ namespace TAO::API
                     TAO::API::Transaction tIndex =
                         TAO::API::Transaction(tx);
 
-                    /* Index the transaction to the database. */
+                    /* Index() holds Transaction::IndexLock(genesis) for the
+                     * multi-record SessionDB write. Do not take mempool.MUTEX
+                     * here: this path already holds CLIENT_MUTEX. */
                     if(!tIndex.Index(hashTx))
                         return;
                 }
@@ -85,6 +89,16 @@ namespace TAO::API
     /* Broadcast our unconfirmed transactions if there are any. */
     void Indexing::BroadcastUnconfirmed(const uint256_t& hashGenesis)
     {
+        /* Has() releases mempool.MUTEX before Broadcast() writes SessionDB, and
+         * Broadcast() used to write the caller's copy. A concurrent Index() can
+         * advance hashNextTx, or SanitizeUnconfirmed() can delete the record,
+         * in that window. Take the pool lock first, then IndexLock, and re-read
+         * under both before writing. Accept() takes mempool.MUTEX, so drop
+         * IndexLock before that path. Do not enter this function while already
+         * holding IndexLock. */
+        std::unique_lock<std::recursive_mutex> POOL_LOCK(TAO::Ledger::mempool.MUTEX);
+        std::unique_lock<std::recursive_mutex> INDEX_LOCK(Transaction::IndexLock(hashGenesis));
+
         /* Build list of transaction hashes. */
         std::vector<uint512_t> vHashes;
 
@@ -122,7 +136,8 @@ namespace TAO::API
         /* Reverse iterate our list of entries. */
         for(auto hash = vHashes.rbegin(); hash != vHashes.rend(); ++hash)
         {
-            /* Read the transaction from the ledger database. */
+            /* Re-read under both locks. The scan copy is stale if Index() or
+             * Delete() ran after it was taken. */
             TAO::API::Transaction tx;
             if(!LLD::Sessions->ReadTx(*hash, tx))
             {
@@ -130,12 +145,34 @@ namespace TAO::API
                 break;
             }
 
+            /* Skip coinbase/coinstake/hybrid — these are block-only producer transactions
+             * and are never valid in the mempool. They appear in the session DB when the
+             * autologin sigchain was used to mine a block; the producer was committed
+             * on-chain inside the block but the session DB still references it as the
+             * sigchain tip. Attempting to Accept() them just pollutes mapRejected and
+             * logs a spurious ERROR on every startup, and worse, cascades rejection to
+             * any subsequent transactions chaining off this hashPrevTx. */
+            if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
+            {
+                debug::log(1, FUNCTION, "skipping block-producer tx ", hash->SubString(),
+                    " (coinbase/coinstake/hybrid - not valid in mempool)");
+                continue;
+            }
+
             /* Broadcast our transaction if it is in the mempool already. */
             if(TAO::Ledger::mempool.Has(*hash))
+            {
                 tx.Broadcast();
+                continue;
+            }
 
-            /* Otherwise accept and execute this transaction. */
-            else if(!TAO::Ledger::mempool.Accept(tx))
+            /* Keep the pool lock so sanitize cannot delete this record before
+             * admission. Do not hold IndexLock across Accept(). */
+            INDEX_LOCK.unlock();
+            const bool fAccepted = TAO::Ledger::mempool.Accept(tx);
+            INDEX_LOCK.lock();
+
+            if(!fAccepted)
             {
                 debug::warning(FUNCTION, "accept for ", hash->SubString(), " failed");
                 continue;

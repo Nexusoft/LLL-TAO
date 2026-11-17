@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #include <LLP/templates/ddos.h>
 #include <LLP/templates/static.h>
 #include <LLP/include/network.h>
+#include <LLP/include/hosts.h>
+#include <LLP/include/peer_recovery.h>
 
 #include <LLP/types/tritium.h>
 #include <LLP/types/time.h>
@@ -24,8 +26,18 @@ ________________________________________________________________________________
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
 #include <LLP/types/lookup.h>
+#include <LLP/types/stateless_miner_connection.h>
 
 #include <LLP/include/trust_address.h>
+#include <LLP/include/auto_cooldown_manager.h>
+#include <LLP/include/node_cache.h>
+#include <LLP/include/stateless_manager.h>
+#include <LLP/include/node_session_registry.h>
+#include <LLP/include/session_store.h>
+#include <LLP/include/miner_push_dispatcher.h>
+#include <LLP/include/mining_constants.h>
+#include <LLP/include/mining_timers.h>
+#include <LLP/include/tcp_keepalive.h>
 
 #include <Util/include/args.h>
 #include <Util/include/signals.h>
@@ -34,6 +46,8 @@ ________________________________________________________________________________
 #include <LLP/include/permissions.h>
 #include <functional>
 #include <numeric>
+#include <type_traits>
+#include <chrono>
 
 #include <openssl/ssl.h>
 
@@ -47,9 +61,33 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    std::atomic<bool> fManagersStarting{false};
+
+    /* Type trait to detect if a protocol type supports channel mining notifications.
+     * This is used with if constexpr to only compile mining-specific code for types that support it. */
+    template <typename T, typename = void>
+    struct has_mining_notifications : std::false_type {};
+    
+    template <typename T>
+    struct has_mining_notifications<T, std::void_t<
+        decltype(std::declval<T>().GetContext()),
+        decltype(std::declval<T>().SendChannelNotification())
+    >> : std::true_type {};
+    
+    template <typename T>
+    inline constexpr bool has_mining_notifications_v = has_mining_notifications<T>::value;
+
+    template <typename T>
+    inline constexpr bool is_miner_protocol_v =
+        std::is_same_v<T, Miner> || std::is_same_v<T, StatelessMinerConnection>;
+}
+
+
+namespace LLP
+{
     /** Constructor **/
     template <class ProtocolType>
-    Server<ProtocolType>::Server(const Config& config)
+    Server<ProtocolType>::Server(const Config& config, AddressManager::SeedResolver resolver)
     : CONFIG            (config)
     , DDOS_MAP          (new std::map<BaseAddress, DDOS_Filter*>())
     , hListenBase       (-1, -1)
@@ -60,6 +98,7 @@ namespace LLP
     , THREAD_UPNP       ( )
     , THREAD_METER      ( )
     , THREAD_MANAGER    ( )
+    , seedResolver      (resolver ? std::move(resolver) : AddressManager::SeedResolver(LookupHostFresh))
     {
         /* -banned means do not let node connect */
         if(config::HasArg("-banned"))
@@ -97,6 +136,10 @@ namespace LLP
             pAddressManager = new AddressManager(CONFIG.PORT_BASE);
             if(!pAddressManager)
                 debug::warning(FUNCTION, "memory allocation failed for manager on port ", CONFIG.PORT_BASE);
+
+            if constexpr(std::is_same_v<ProtocolType, TimeNode>)
+                for(auto* thread : THREADS_DATA)
+                    thread->pTimeAddressManager = pAddressManager;
 
             THREAD_MANAGER = std::thread((std::bind(&Server::Manager, this)));
         }
@@ -184,8 +227,10 @@ namespace LLP
             }
         }
 
-        /* Start meters if enabled. */
-        if(CONFIG.ENABLE_METERS)
+        /* Start meters if enabled.
+         * For miner protocols, always start the Meter thread (even without -meters) because
+         * it drives periodic cleanup of expired sessions and cooldowns. */
+        if(CONFIG.ENABLE_METERS || is_miner_protocol_v<ProtocolType>)
             THREAD_METER = std::thread(std::bind(&Server::Meter, this));
     }
 
@@ -194,53 +239,102 @@ namespace LLP
     template <class ProtocolType>
     Server<ProtocolType>::~Server()
     {
-        /* Wait for address manager. */
+        debug::log(1, FUNCTION, "Shutting down ", Name(), " server - waiting for threads...");
+        RequestManagerStop();
+
+        /* Stop the producer of outgoing sockets before closing the data threads. */
+        debug::log(1, FUNCTION, "  Joining address manager thread...");
         if(THREAD_MANAGER.joinable())
             THREAD_MANAGER.join();
+        debug::log(1, FUNCTION, "  Address manager thread joined");
 
-        /* Wait for meter thread. */
-        if(THREAD_METER.joinable())
-            THREAD_METER.join();
-
-        /* Check all registered listening threads. */
-        for(auto& THREAD : THREAD_LISTEN)
-        {
-            /* Wait on listening threads. */
-            if(THREAD.joinable())
-                THREAD.join();
-        }
-
-
-        /* Check all registered upnp threads. */
-        for(auto& THREAD : THREAD_UPNP)
-        {
-            /* Wait on listening threads. */
-            if(THREAD.joinable())
-                THREAD.join();
-        }
-
-
-        /* Delete the data threads. */
+        /* ── Pre-close all connection sockets BEFORE joining threads ──────────
+         * Closing the socket fd causes the kernel to return POLLHUP/POLLERR on
+         * the next poll() call inside DataThread::Thread(). This means the data
+         * thread exits its connection-processing loop immediately (rather than
+         * waiting up to 100ms for the poll timeout), sees fDestruct/fShutdown,
+         * and returns — allowing DataThread::~DataThread() join to succeed fast.
+         *
+         * Without this, with N active miner connections, shutdown could take
+         * up to N × 100ms just for poll() to naturally time out per thread.
+         */
         for(uint16_t nIndex = 0; nIndex < CONFIG.MAX_THREADS; ++nIndex)
         {
+            if(!THREADS_DATA[nIndex])
+                continue;
+
+            const uint32_t nSize = static_cast<uint32_t>(THREADS_DATA[nIndex]->CONNECTIONS->size());
+            for(uint32_t nConn = 0; nConn < nSize; ++nConn)
+            {
+                try
+                {
+                    std::shared_ptr<ProtocolType> conn = THREADS_DATA[nIndex]->CONNECTIONS->at(nConn);
+                    if(conn && conn->Connected())
+                        conn->Disconnect();  /* closes fd, unblocks poll() */
+                }
+                catch(...) {}
+            }
+
+            /* Wake the data thread's condition so it sees fDestruct/fShutdown
+             * immediately after the socket close, without waiting for spurious
+             * wakeup or the next poll() timeout. */
+            THREADS_DATA[nIndex]->CONDITION.notify_all();
+            THREADS_DATA[nIndex]->FLUSH_CONDITION.notify_all();
+        }
+
+        /* Wait for meter thread. */
+        debug::log(1, FUNCTION, "  Joining meter thread...");
+        if(THREAD_METER.joinable())
+            THREAD_METER.join();
+        debug::log(1, FUNCTION, "  Meter thread joined");
+
+        /* Check all registered listening threads. */
+        debug::log(1, FUNCTION, "  Joining ", THREAD_LISTEN.size(), " listening threads...");
+        for(auto& THREAD : THREAD_LISTEN)
+        {
+            if(THREAD.joinable())
+                THREAD.join();
+        }
+        debug::log(1, FUNCTION, "  Listening threads joined");
+
+        /* Check all registered upnp threads. */
+        debug::log(1, FUNCTION, "  Joining ", THREAD_UPNP.size(), " UPNP threads...");
+        for(auto& THREAD : THREAD_UPNP)
+        {
+            if(THREAD.joinable())
+                THREAD.join();
+        }
+        debug::log(1, FUNCTION, "  UPNP threads joined");
+
+        /* Delete the data threads. */
+        debug::log(1, FUNCTION, "  Deleting ", CONFIG.MAX_THREADS, " data threads...");
+        for(uint16_t nIndex = 0; nIndex < CONFIG.MAX_THREADS; ++nIndex)
+        {
+            debug::log(2, FUNCTION, "    Deleting data thread ", nIndex);
             delete THREADS_DATA[nIndex];
             THREADS_DATA[nIndex] = nullptr;
         }
+        debug::log(1, FUNCTION, "  Data threads deleted");
 
         /* Delete the DDOS entries. */
+        debug::log(1, FUNCTION, "  Deleting DDOS entries...");
         for(auto it = DDOS_MAP->begin(); it != DDOS_MAP->end(); ++it)
         {
-            /* Delete each DDOS entry if they are not set to nullptr. */
             if(it->second)
                 delete it->second;
         }
+        debug::log(1, FUNCTION, "  DDOS entries deleted");
 
         /* Clear the address manager. */
         if(pAddressManager)
         {
+            debug::log(1, FUNCTION, "  Deleting address manager...");
             delete pAddressManager;
             pAddressManager = nullptr;
+            debug::log(1, FUNCTION, "  Address manager deleted");
         }
+
+        debug::log(1, FUNCTION, Name(), " server shutdown complete");
     }
 
 
@@ -265,6 +359,13 @@ namespace LLP
     AddressManager* Server<ProtocolType>::GetAddressManager() const
     {
         return pAddressManager;
+    }
+
+    template <class ProtocolType>
+    PeerRecoveryStatus Server<ProtocolType>::GetPeerRecoveryStatus() const
+    {
+        std::lock_guard<std::mutex> lock(RECOVERY_MUTEX);
+        return recoveryStatus;
     }
 
 
@@ -320,9 +421,11 @@ namespace LLP
          if(!dt->NewConnection(addrConnect, CONFIG.ENABLE_DDOS ? DDOS_MAP->at(addrConnect) : nullptr, false, pNodeRet))
              return debug::drop(FUNCTION, "connection attempt for address ", addrConnect.ToStringIP(), " failed");
 
-         /* Add the address to the address manager if it exists. */
-         if(pAddressManager)
-             pAddressManager->AddAddress(addrConnect, ConnectState::CONNECTED);
+         /* TimeNode records CONNECTED before data-thread publication, so a
+          * fast disconnect cannot be overwritten here. */
+         if constexpr(!std::is_same_v<ProtocolType, TimeNode>)
+             if(pAddressManager)
+                 pAddressManager->AddAddress(addrConnect, ConnectState::CONNECTED);
 
          return true;
     }
@@ -369,6 +472,121 @@ namespace LLP
     }
 
 
+    /*  Broadcast channel-specific notification to subscribed miners on this lane. */
+    template <class ProtocolType>
+    ChannelNotifyResult Server<ProtocolType>::NotifyChannelMiners(uint32_t nChannel)
+    {
+        /* Use compile-time check to only execute for protocols that support mining notifications */
+        if constexpr (has_mining_notifications_v<ProtocolType>)
+        {
+            /* Determine lane name at compile time for clear per-lane logging */
+            constexpr const char* strLane =
+                std::is_same_v<ProtocolType, StatelessMinerConnection> ? "Stateless" : "Legacy";
+            /* Lower-case push label for consistent format with miner_push_dispatcher logs. */
+            constexpr const char* strPushLabel =
+                std::is_same_v<ProtocolType, StatelessMinerConnection>
+                    ? "stateless_miner_push" : "legacy_miner_push";
+
+            /* Early exit if shutdown is in progress */
+            if (config::fShutdown.load())
+            {
+                debug::log(1, FUNCTION, "[", strLane, "] Shutdown in progress; skipping NotifyChannelMiners");
+                return {};
+            }
+            
+            /* Validate channel */
+            if (nChannel != 1 && nChannel != 2)
+            {
+                debug::error(FUNCTION, "[", strLane, "] Invalid channel: ", nChannel);
+                return {};
+            }
+            
+            const std::string strChannelName = (nChannel == 1) ? "Prime" : "Hash";
+            debug::log(2, FUNCTION, "[", strLane, "][", strChannelName, "] Broadcasting block notification");
+            
+            /* Get all connections */
+            std::vector<std::shared_ptr<ProtocolType>> vConnections = GetConnections();
+            
+            if (vConnections.empty())
+            {
+                debug::log(2, FUNCTION, "[", strLane, "][", strChannelName, "] No active miners (0 notified)");
+                return {};
+            }
+            
+            ChannelNotifyResult tResult;
+            
+            /* SERVER-SIDE FILTERING: Only notify miners subscribed to the matching channel */
+            for (auto pConnection : vConnections)
+            {
+                /* CRITICAL: Skip null connections WITHOUT any counting */
+                if (!pConnection)
+                    continue;
+                
+                /* Verify connection is still active before processing
+                 * Prevents ghost connection counting from stale disconnected connections */
+                if (!pConnection->Connected())
+                    continue;
+                
+                /* Check for shutdown during iteration to exit quickly if needed */
+                if (config::fShutdown.load())
+                {
+                    debug::log(1, FUNCTION, "[", strLane, "] Shutdown detected during iteration; stopping");
+                    break;
+                }
+                
+                /* Get mining context - returns by value, so use auto (not auto&) */
+                auto context = pConnection->GetContext();
+                
+                /* Check subscription */
+                if (!context.fSubscribedToNotifications)
+                {
+                    tResult.nSkippedPolling++;
+                    continue;  // Miner using GET_ROUND polling instead of push notifications
+                }
+                
+                /* Channel filter: only notify miners subscribed to this specific channel.
+                 * NOTE: wrong-channel skips are EXPECTED and normal — e.g. when all
+                 * connected stateless miners are Prime miners, the Hash channel broadcast
+                 * will skip all of them.  This is not a push failure. */
+                if (context.nSubscribedChannel != nChannel)
+                {
+                    tResult.nSkippedWrongChannel++;
+                    continue;  // Wrong channel; skip to avoid duplicate notifications
+                }
+
+                /* Session gate: verify the session is still active in the
+                 * SessionStore before sending.  A connection whose session
+                 * has been MarkDisconnected() (e.g. by RemoveMiner cross-cache
+                 * cleanup) should not receive new work even if the TCP socket
+                 * hasn't been torn down yet. */
+                if(context.nSessionId != 0
+                && !SessionStore::Get().IsActiveBySessionId(context.nSessionId))
+                {
+                    tResult.nSkippedDisconnected++;
+                    continue;
+                }
+                
+                /* Send notification — exactly once per miner per event per lane */
+                pConnection->SendChannelNotification();
+                tResult.nNotified++;
+            }
+            
+            /* Detailed per-lane per-channel result — available at high verbosity for debugging. */
+            debug::log(2, FUNCTION, "[", strPushLabel, "][", strChannelName, "] notified=", tResult.nNotified,
+                       " skipped_wrong_channel=", tResult.nSkippedWrongChannel,
+                       " skipped_polling=", tResult.nSkippedPolling,
+                       " skipped_disconnected=", tResult.nSkippedDisconnected);
+
+            return tResult;
+        }
+        else
+        {
+            /* No-op for protocol types that don't support mining notifications */
+            return {};
+        }
+    }
+
+
     /*  Select lowest latency and currently open connection. */
     template <class ProtocolType>
     std::shared_ptr<ProtocolType> Server<ProtocolType>::GetConnection()
@@ -391,7 +609,7 @@ namespace LLP
                 {
                     /* Get the current atomic_ptr. */
                     std::shared_ptr<ProtocolType> CONNECTION = THREADS_DATA[nThread]->CONNECTIONS->at(nIndex);
-                    if(!CONNECTION)
+                    if(!CONNECTION || !CONNECTION->Connected())
                         continue;
 
                     /* Push the active connection. */
@@ -419,47 +637,14 @@ namespace LLP
     template <class ProtocolType>
     std::shared_ptr<ProtocolType> Server<ProtocolType>::RandomConnection()
     {
-        /* Get the total count of connections in this server. */
-        const uint32_t nTotalConnections =
-            GetConnectionCount();
-
-        /* Check for no connections. */
-        if(nTotalConnections == 0)
-            return nullptr;
-
-        /* Get a random integer for this connection. */
-        uint32_t nConnectionIndex =
-            LLC::GetRandInt(nTotalConnections);
-
-        /* List of connections to return. */
+        std::vector<std::shared_ptr<ProtocolType>> vConnections;
         for(uint16_t nThread = 0; nThread < CONFIG.MAX_THREADS; ++nThread)
         {
-            /* Loop through connections in data thread. */
-            const uint16_t nSize =
-                static_cast<uint16_t>(THREADS_DATA[nThread]->CONNECTIONS->size());
-
-            /* Loop through all connections. */
-            for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
-            {
-                try
-                {
-                    /* Get the current atomic_ptr. */
-                    std::shared_ptr<ProtocolType> CONNECTION = THREADS_DATA[nThread]->CONNECTIONS->at(nIndex);
-                    if(!CONNECTION)
-                        continue;
-
-                    /* Push the active connection. */
-                    if(nConnectionIndex-- == 0)
-                        return CONNECTION;
-                }
-                catch(const std::exception& e)
-                {
-                    //debug::error(FUNCTION, e.what());
-                }
-            }
+            const auto vSnapshot = *THREADS_DATA[nThread]->CONNECTIONS;
+            vConnections.insert(vConnections.end(), vSnapshot.begin(), vSnapshot.end());
         }
 
-        return RandomConnection();
+        return SelectConnectedPeer(vConnections, [](size_t n) { return LLC::GetRand(n); });
     }
 
 
@@ -486,7 +671,7 @@ namespace LLP
 
                     /* Get the current atomic_ptr. */
                     std::shared_ptr<ProtocolType> CONNECTION = THREADS_DATA[nThread]->CONNECTIONS->at(nIndex);
-                    if(!CONNECTION)
+                    if(!CONNECTION || !CONNECTION->Connected())
                         continue;
 
                     /* Push the active connection. */
@@ -621,39 +806,126 @@ namespace LLP
         pAddressManager->ReadDatabase();
         pAddressManager->SetPort(CONFIG.PORT_BASE);
 
-        /* Timer to print the address manager debug info */
-        runtime::timer TIMER;
-        TIMER.Start();
+        while(fManagersStarting.load() && !config::fShutdown.load() && !fStopManager.load())
+            runtime::sleep(100);
+
+        PeerRecovery recovery;
+        uint64_t nLastSuccess = 0;
+        pAddressManager->ReadLastDNSUpdate(nLastSuccess);
+        const uint64_t nDNSInterval = static_cast<uint64_t>(
+            std::max(int64_t(1), config::GetArg("-dnsupdate", 86400)));
+        auto nextConnection = std::chrono::steady_clock::now();
+        std::thread dnsThread;
+        std::atomic<bool> fDNSDone{false};
+        bool fDNSResult = false;
 
         /* Loop connections. */
-        while(!config::fShutdown.load())
+        while(!config::fShutdown.load() && !fStopManager.load())
         {
-            /* Check if we need to loop in suspended state. */
+            const auto now = std::chrono::steady_clock::now();
+            const uint64_t nNow = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+            const uint64_t nWall = runtime::timestamp();
+            const bool fSuspended = config::fSuspended.load();
+            const bool fDNS = !config::GetBoolArg("-nodns");
+            const uint32_t nIncoming = GetConnectionCount(FLAGS::INCOMING);
+            const uint32_t nOutgoing = GetConnectionCount(FLAGS::OUTGOING);
+            const uint32_t nConnections = nIncoming + nOutgoing;
+            const uint32_t nEligible = pAddressManager->EligibleCount();
+            const bool fCapacity = CanAttemptOutgoing(nConnections, CONFIG.MAX_CONNECTIONS);
+            const bool fPeriodic = nLastSuccess == 0 || nLastSuccess > nWall || nWall - nLastSuccess >= nDNSInterval;
+            const bool fDegraded = nOutgoing == 0 || nEligible == 0;
+            recovery.Observe(nNow, nOutgoing > 0);
+
+            {
+                std::lock_guard<std::mutex> lock(RECOVERY_MUTEX);
+                recoveryStatus.enabled = fDNS;
+                recoveryStatus.suspended = fSuspended;
+                recoveryStatus.incoming = nIncoming;
+                recoveryStatus.outgoing = nOutgoing;
+                recoveryStatus.eligible = nEligible;
+                recoveryStatus.lastSuccess = nLastSuccess;
+                recoveryStatus.retryIn = recovery.NextAttempt() > nNow ? recovery.NextAttempt() - nNow : 0;
+                recoveryStatus.state = !fDNS ? "disabled" : fSuspended ? "suspended"
+                    : !fCapacity ? "at_capacity" : fDegraded ? "degraded" : "connected";
+                if(recoveryStatus.resolving)
+                    recoveryStatus.state = "resolving";
+            }
+
+            if(dnsThread.joinable() && fDNSDone.load())
+            {
+                dnsThread.join();
+                if(fDNSResult)
+                    pAddressManager->ReadLastDNSUpdate(nLastSuccess);
+                else if(!config::fShutdown.load() && !config::fSuspended.load() && !fStopManager.load())
+                    debug::warning(FUNCTION, Name(), " seed refresh failed; retrying with backoff");
+
+                recovery.Completed(nNow, LLC::GetRandInt(1001), nOutgoing > 0 && nEligible > 0, fDNSResult);
+                {
+                    std::lock_guard<std::mutex> lock(RECOVERY_MUTEX);
+                    recoveryStatus.resolving = false;
+                    recoveryStatus.lastSucceeded = fDNSResult;
+                    recoveryStatus.lastSuccess = nLastSuccess;
+                    recoveryStatus.retryIn = recovery.NextAttempt() - nNow;
+                    recoveryStatus.state = !fDNS ? "disabled" : fSuspended ? "suspended"
+                        : !fCapacity ? "at_capacity" : fDegraded ? "degraded" : "connected";
+                }
+            }
+
+            if(!dnsThread.joinable()
+               && recovery.Due(nNow, fDNS, fSuspended, fCapacity, fPeriodic, fDegraded, fRecoveryRequested.load()))
+            {
+                fRecoveryRequested.exchange(false);
+                {
+                    std::lock_guard<std::mutex> lock(RECOVERY_MUTEX);
+                    recoveryStatus.resolving = true;
+                    recoveryStatus.lastAttempt = nWall;
+                    recoveryStatus.state = "resolving";
+                }
+                debug::log(0, FUNCTION, Name(), " refreshing DNS seeds");
+                fDNSDone.store(false);
+                fDNSResult = false;
+                try
+                {
+                    dnsThread = std::thread([this, &fDNSResult, &fDNSDone] {
+                        try
+                        {
+                            fDNSResult = pAddressManager->RefreshSeedAddresses(config::fTestNet.load(), seedResolver,
+                                [this] { return fStopManager.load(); });
+                        }
+                        catch(const std::exception& e)
+                        {
+                            debug::error(FUNCTION, "seed refresh failed: ", e.what());
+                        }
+                        fDNSDone.store(true);
+                    });
+                }
+                catch(const std::system_error& e)
+                {
+                    debug::error(FUNCTION, "failed to start seed resolver: ", e.what());
+                    recovery.Completed(nNow, LLC::GetRandInt(1001), false, false);
+                    std::lock_guard<std::mutex> lock(RECOVERY_MUTEX);
+                    recoveryStatus.resolving = false;
+                    recoveryStatus.lastSucceeded = false;
+                    recoveryStatus.retryIn = recovery.NextAttempt() - nNow;
+                    recoveryStatus.state = !fDNS ? "disabled" : fSuspended ? "suspended"
+                        : !fCapacity ? "at_capacity" : fDegraded ? "degraded" : "connected";
+                }
+            }
+
+            if(config::fShutdown.load() || fStopManager.load())
+                break;
             if(config::fSuspended.load())
             {
                 runtime::sleep(100);
                 continue;
             }
 
-            /* Address to select. */
-            BaseAddress addr = BaseAddress();
-
-            /* Get the number of incoming and total connection counts */
-            uint32_t nConnections = GetConnectionCount(FLAGS::ALL);
-            uint32_t nIncoming    = GetConnectionCount(FLAGS::INCOMING);
-
-            /* Sleep between connection attempts.
-               If there are no connections then sleep for a minimum interval until a connection is established. */
-            if(nConnections == 0)
-                runtime::sleep(1000);
-            else
-                /* Sleep in 1 second intervals for easy break on shutdown. */
-                for(int i = 0; i < (CONFIG.MANAGER_SLEEP / 1000) && !config::fShutdown.load(); ++i)
-                    runtime::sleep(1000);
-
-            /* Pick a weighted random priority from a sorted list of addresses. */
-            if(nConnections < CONFIG.MAX_CONNECTIONS && nIncoming < CONFIG.MAX_INCOMING && pAddressManager->StochasticSelect(addr))
+            BaseAddress addr;
+            if(now >= nextConnection && CanAttemptOutgoing(GetConnectionCount(FLAGS::ALL), CONFIG.MAX_CONNECTIONS)
+               && pAddressManager->StochasticSelect(addr))
             {
+                nextConnection = now + std::chrono::milliseconds(
+                    nConnections == 0 ? 1000 : std::max(uint32_t(1000), CONFIG.MANAGER_SLEEP));
                 /* Check for invalid address */
                 if(!addr.IsValid())
                 {
@@ -674,18 +946,25 @@ namespace LLP
                    fConnected = AddConnection(addr.ToStringIP(), GetPort(true), true, false);
 
                 /* If SSL connection failed or was not attempted and SSL is not required, attempt on the non-SSL port */
-                if(!fConnected && !CONFIG.REQUIRE_SSL)
+                if(!fConnected && !CONFIG.REQUIRE_SSL && !config::fShutdown.load()
+                   && !config::fSuspended.load() && !fStopManager.load())
                     fConnected = AddConnection(addr.ToStringIP(), GetPort(false), false, false);
 
                 if(fConnected)
                 {
+                    nextConnection = std::chrono::steady_clock::now() + std::chrono::milliseconds(
+                        std::max(uint32_t(1000), CONFIG.MANAGER_SLEEP));
                     /* If address is DNS, log message on connection. */
                     std::string strDNS;
                     if(pAddressManager->GetDNSName(addr, strDNS))
                         debug::log(3, FUNCTION, "Connected to DNS Address: ", strDNS);
                 }
             }
+            runtime::sleep(1000);
         }
+
+        if(dnsThread.joinable())
+            dnsThread.join();
     }
 
 
@@ -764,11 +1043,30 @@ namespace LLP
                     continue;
                 }
 
-                /* Attempt to accept the socket connection */
+                /* Attempt to accept the socket connection.
+                 * accept4() with SOCK_CLOEXEC atomically prevents the fd from
+                 * leaking into child processes spawned by std::system().
+                 * Falls back to accept()+fcntl on ENOSYS (very old kernels)
+                 * or on non-Linux platforms. */
                 struct sockaddr_in sockaddr;
+#if defined(__linux__) && defined(SOCK_CLOEXEC)
+                hSocket = accept4(get_listening_socket(fIPv4, fSSL), (struct sockaddr*)&sockaddr, fIPv4 ? &len_v4 : &len_v6, SOCK_CLOEXEC);
+
+                /* Fallback if kernel doesn't support accept4 (ENOSYS). */
+                if(hSocket == INVALID_SOCKET && errno == ENOSYS)
+                    hSocket = accept(get_listening_socket(fIPv4, fSSL), (struct sockaddr*)&sockaddr, fIPv4 ? &len_v4 : &len_v6);
+#else
                 hSocket = accept(get_listening_socket(fIPv4, fSSL), (struct sockaddr*)&sockaddr, fIPv4 ? &len_v4 : &len_v6);
+#endif
                 if (hSocket != INVALID_SOCKET)
+                {
                     addr = BaseAddress(sockaddr);
+#ifndef WIN32
+                    /* Ensure close-on-exec is set via fcntl as a fallback for
+                     * platforms without accept4() or if accept4() returned ENOSYS. */
+                    fcntl(hSocket, F_SETFD, FD_CLOEXEC);
+#endif
+                }
 
 
                 if(hSocket == INVALID_SOCKET)
@@ -800,6 +1098,24 @@ namespace LLP
                     /* Establish a new socket with SSL on or off according to server. */
                     Socket sockNew(hSocket, addr, fSSL);
 
+                    /* Enable TCP keepalive on accepted connections ONLY for non-mining
+                     * protocols.  Mining connections rely exclusively on the application-
+                     * level SESSION_KEEPALIVE opcode (24-hour liveness window) and the
+                     * node-side health probe for dead-path detection.  TCP keepalive is
+                     * disabled on mining ports because:
+                     *
+                     *   1. It operates below the application layer and cannot refresh the
+                     *      session identity tracked by NodeSessionRegistry.
+                     *   2. It masks dead connections by keeping the OS path alive while
+                     *      the application-layer session has already expired.
+                     *   3. It creates confusion with the real 24-hour keepalive timer
+                     *      that governs session liveness.
+                     *
+                     * Non-mining protocols (P2P, API) still benefit from TCP keepalive
+                     * for general connection hygiene. */
+                    if constexpr (!is_miner_protocol_v<ProtocolType>)
+                        TcpKeepalive::ApplyKeepalive(hSocket);
+
                     /* Check that an address is banned. */
                     if(DDOS_MAP->count(addr))
                     {
@@ -814,6 +1130,22 @@ namespace LLP
                         if(!addr.IsLocal() && DDOS_MAP->at(addr)->Banned())
                         {
                             debug::notice(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
+                            sockNew.Close();
+
+                            continue;
+                        }
+                    }
+
+
+                    /* For mining protocols, also check auto-expiring cooldowns.
+                     * Mining violations use cooldowns instead of escalating DDOS bans,
+                     * so we must reject connections from IPs in cooldown here. */
+                    if constexpr (is_miner_protocol_v<ProtocolType>)
+                    {
+                        if(!addr.IsLocal() && AutoCooldownManager::Get().IsInCooldown(addr))
+                        {
+                            debug::notice(FUNCTION, "Incoming Connection Request ",
+                                addr.ToString(), " refused — in auto-cooldown (will auto-expire).");
                             sockNew.Close();
 
                             continue;
@@ -887,13 +1219,24 @@ namespace LLP
         int32_t nOne = 1;
 #endif
 
-        /* Create socket for listening for incoming connections */
+        /* Create socket for listening for incoming connections.
+         * SOCK_CLOEXEC prevents the fd from leaking into child processes
+         * spawned by std::system() (e.g. -blocknotify). */
+#ifdef SOCK_CLOEXEC
+        hListenBase = socket(fIPv4 ? AF_INET : AF_INET6, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
+#else
         hListenBase = socket(fIPv4 ? AF_INET : AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+#endif
         if(hListenBase == INVALID_SOCKET)
         {
             debug::error("Couldn't open socket for incoming connections (socket returned error)", WSAGetLastError());
             return false;
         }
+
+#if !defined(SOCK_CLOEXEC) && !defined(WIN32)
+        /* Fallback: set close-on-exec via fcntl when SOCK_CLOEXEC is unavailable (e.g. macOS). */
+        fcntl(hListenBase, F_SETFD, FD_CLOEXEC);
+#endif
 
         /* Different way of disabling SIGPIPE on BSD */
 #ifdef SO_NOSIGPIPE
@@ -980,19 +1323,165 @@ namespace LLP
     template <class ProtocolType>
     void Server<ProtocolType>::Meter()
     {
-        /* Exit if not enabled. */
-        if(!CONFIG.ENABLE_METERS)
+        /* For miner protocols the Meter thread always runs (even without -meters) to
+         * drive periodic cleanup of expired sessions and cooldowns.  For all other
+         * protocol types, exit early when meters are disabled. */
+        if(!CONFIG.ENABLE_METERS && !is_miner_protocol_v<ProtocolType>)
             return;
 
         /* Keep track of elapsed time. */
         runtime::timer TIMER;
-        TIMER.Start();
+        if(CONFIG.ENABLE_METERS)
+            TIMER.Start();
+        
+        /* Keep track of cleanup timer (10 minutes for session sweep/purge) */
+        runtime::timer CLEANUP_TIMER;
+        CLEANUP_TIMER.Start();
+
+        /* Separate timer for mining health probes so the probe runs at its own
+         * cadence (default 120 s) independently of the 10-minute cleanup sweep.
+         * Previously both checks shared CLEANUP_TIMER, which caused the health
+         * probe to fire on every 100 ms loop iteration from 120 s until the
+         * 600 s cleanup reset — ~4800× more often than intended. */
+        runtime::timer HEALTH_PROBE_TIMER;
+        HEALTH_PROBE_TIMER.Start();
 
         /* Loop until shutdown. */
         while(!config::fShutdown.load())
         {
             runtime::sleep(100);
-            if(TIMER.Elapsed() < 30)
+
+            /* ── Mining-connection health probe (every 2 minutes) ──────────
+             *
+             * For mining protocols, periodically check all authenticated
+             * connections for staleness.  If no data has been received from
+             * a miner for > 120 s AND the send buffer is empty (so the
+             * connection isn't simply slow to drain), the TCP path is likely
+             * dead (NAT timeout, firewall drop, etc.).  Attempt a Flush() to
+             * trigger an OS-level error on a truly dead socket, which the
+             * DataThread will then clean up via DISCONNECT::TIMEOUT_WRITE or
+             * DISCONNECT::ERRORS.
+             *
+             * This creates guaranteed bidirectional traffic that keeps NAT
+             * mappings alive even when the miner is idle between work units.
+             */
+            if constexpr (is_miner_protocol_v<ProtocolType>)
+            {
+                const int64_t nProbeInterval = config::GetArg(
+                    std::string("-mininghealthprobeinterval"),
+                    MiningTimers::HEALTH_PROBE_INTERVAL_SEC);
+
+                if(HEALTH_PROBE_TIMER.Elapsed() >= nProbeInterval)
+                {
+                    /* Get snapshot of all connections for health check. */
+                    std::vector<std::shared_ptr<ProtocolType>> vConnections = GetConnections();
+
+                    uint32_t nProbed = 0;
+                    for(auto& pConn : vConnections)
+                    {
+                        if(!pConn || !pConn->Connected())
+                            continue;
+
+                        /* Only probe authenticated (high-value) mining connections. */
+                        if(!pConn->IsTimeoutExempt())
+                            continue;
+
+                        /* Check idle-receive time: if the miner hasn't sent
+                         * anything for 2× the probe interval, the inbound path
+                         * is likely dead.  Try to flush the outbound side to
+                         * force an OS-level TCP error if the path is broken.
+                         *
+                         * Timeout(ms, READ) returns true when current_time >
+                         * nLastRecv + ms.  We use 2× probe interval in ms. */
+                        const uint32_t nStaleMs = static_cast<uint32_t>(nProbeInterval) * 2 * 1000;
+
+                        if(pConn->Timeout(nStaleMs, Socket::READ))
+                        {
+                            const int32_t nSocketError = pConn->RefreshSocketError();
+                            if(nSocketError != 0)
+                            {
+                                debug::log(0, FUNCTION, "Health probe: miner ",
+                                           pConn->GetAddress().ToStringIP(),
+                                           " recv idle > ", nStaleMs / 1000, "s",
+                                           " so_error=", nSocketError,
+                                           " — flagged for disconnect");
+
+                                ++nProbed;
+                                continue;
+                            }
+
+                            debug::log(0, FUNCTION, "Health probe: miner ",
+                                       pConn->GetAddress().ToStringIP(),
+                                       " recv idle > ", nStaleMs / 1000, "s",
+                                       " buffered=", pConn->Buffered(),
+                                       " — flushing to detect dead path");
+
+                            /* A Flush() on a dead socket will return -1 and
+                             * increment nConsecutiveErrors, eventually causing
+                             * DISCONNECT::TIMEOUT_WRITE on the DataThread. */
+                            if(pConn->Buffered() > 0)
+                                pConn->Flush();
+
+                            ++nProbed;
+                        }
+                    }
+
+                    if(nProbed > 0)
+                        debug::log(0, FUNCTION, "Health probe complete: ", nProbed, " stale miners flushed");
+
+                    /* Reset so the next probe fires after another full interval. */
+                    HEALTH_PROBE_TIMER.Reset();
+                }
+            }
+
+            /* Periodic cleanup cadence (default 10 minutes), but the sweep cadence
+             * is not the expiry threshold itself. Each pass compares entries against
+             * the much longer session/cache timeouts (e.g. SESSION_LIVENESS_TIMEOUT_SEC
+             * = 86400s), so a shorter sweep cadence simply bounds how long a stale
+             * entry can linger before being reaped. */
+            const int64_t nCleanupInterval = config::GetArg(
+                std::string("-cleanupinterval"),
+                MiningTimers::CLEANUP_SWEEP_INTERVAL_SEC);
+
+            if(CLEANUP_TIMER.Elapsed() >= nCleanupInterval)
+            {
+                AutoCooldownManager::Get().CleanupExpired();
+
+                if constexpr (is_miner_protocol_v<ProtocolType>)
+                {
+                    const uint64_t nSessionLivenessTimeoutSec =
+                        MiningConstants::GetSessionLivenessTimeoutSec();
+
+                    /* SweepExpired runs first to mark dead registry entries.
+                     * Then CleanupInactive catches any orphaned entries in
+                     * StatelessMinerManager via RemoveMiner's cross-cache
+                     * propagation. */
+                    NodeSessionRegistry::Get().SweepExpired(nSessionLivenessTimeoutSec);
+                    StatelessMinerManager::Get().CleanupInactive(nSessionLivenessTimeoutSec);
+                    StatelessMinerManager::Get().PurgeInactiveMiners();
+                    NodeSessionRegistry::Get().EnforceCacheLimit(
+                        NodeSessionRegistry::DEFAULT_MAX_INACTIVE_REGISTRY_SIZE);
+                    StatelessMinerManager::Get().EnforceCacheLimit(
+                        StatelessMinerManager::DEFAULT_MAX_INACTIVE_CACHE_SIZE);
+
+                    /* Unified SessionStore sweep: removes expired sessions
+                     * from the canonical store + all secondary indexes. */
+                    SessionStore::Get().SweepExpired(nSessionLivenessTimeoutSec);
+
+                    /* Recover sessions whose cooldown has expired.
+                     * This is the periodic cleanup path; sessions are also
+                     * recovered inline during GetActiveSessionIdsForChannel(). */
+                    SessionStore::Get().SweepCooldowns();
+                }
+
+                CLEANUP_TIMER.Reset();
+            }
+
+            /* Skip metric logging if meters are disabled */
+            if(!CONFIG.ENABLE_METERS)
+                continue;
+
+            if(TIMER.Elapsed() < MiningTimers::METER_STATS_INTERVAL_SEC)
                 continue;
 
             /* Get total connection count. */
@@ -1115,7 +1604,7 @@ namespace LLP
     #else
 
         char port[6];
-        sprintf(port, "%d", nPort);
+        snprintf(port, sizeof(port), "%d", nPort);
 
         const char * multicastif = 0;
         const char * minissdpdpath = 0;
@@ -1223,4 +1712,5 @@ namespace LLP
     template class Server<FileNode>;
     template class Server<RPCNode>;
     template class Server<Miner>;
+    template class Server<StatelessMinerConnection>;
 }

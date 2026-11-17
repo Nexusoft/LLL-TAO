@@ -12,9 +12,55 @@
 ____________________________________________________________________________________________*/
 
 #include <Util/include/signals.h>
-#include <signal.h>
 #include <Util/include/args.h>
-#include <Util/include/debug.h>
+#include <signal.h>
+#include <atomic>
+#include <chrono>
+#include <thread>
+#include <cstdlib>
+
+namespace
+{
+    static_assert(std::atomic<bool>::is_always_lock_free,
+                  "signal notification requires a lock-free atomic");
+    std::atomic<bool> fSignalReceived{false};
+
+    class SignalMonitor
+    {
+        std::atomic<bool> fStop{false};
+        std::thread thread;
+
+    public:
+        SignalMonitor() : thread([this]
+        {
+            while(!fStop.load())
+            {
+                if(fSignalReceived.load())
+                {
+                    if(config::fShutdown.load())
+                        std::_Exit(1);
+
+                    /* Arm the watchdog before shutdown notification, which
+                     * itself may block on a stalled runtime or thread. */
+                    std::thread([]()
+                    {
+                        std::this_thread::sleep_for(std::chrono::seconds(8));
+                        std::_Exit(1);
+                    }).detach();
+                    Shutdown();
+                    return;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        }) {}
+
+        ~SignalMonitor()
+        {
+            fStop.store(true);
+            thread.join();
+        }
+    };
+}
 
 std::condition_variable SHUTDOWN;
 
@@ -30,12 +76,21 @@ void Shutdown()
 void HandleSIGTERM(int signum)
 {
 #ifndef WIN32
-    if(signum != SIGPIPE)
-        Shutdown();
+    if(signum == SIGPIPE)
+        return;  /* SIGPIPE: ignore, broken pipe on closed connection */
 #else
-    if(signum != SIGINT) //catch this signal so Windoze can't terminate our process
-        Shutdown();
+    if(signum == SIGINT)
+        return;  /* Windows: Ctrl+C handled differently, ignore SIGINT */
 #endif
+
+    /* Only lock-free atomic operations and _Exit are used in this handler. */
+    if(fSignalReceived.exchange(true))
+        std::_Exit(1);
+}
+
+void StartSignalMonitor()
+{
+    static SignalMonitor monitor;
 }
 
 

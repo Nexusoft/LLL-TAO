@@ -40,6 +40,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/ambassador.h>
+#include <TAO/Ledger/include/admissibility.h>
 #include <TAO/Ledger/include/developer.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -51,12 +52,34 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/merkle.h>
 #include <TAO/Ledger/types/mempool.h>
 
+#include <Util/include/args.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 
 /* Global TAO namespace. */
 namespace TAO
 {
+    namespace
+    {
+        bool SequenceDiagnosticsEnabled()
+        {
+            return config::GetBoolArg("-nseqdiag", false);
+        }
+
+        const char* SequenceDiagFlagToString(const uint8_t nFlags)
+        {
+            switch(nFlags)
+            {
+                case TAO::Ledger::FLAGS::BLOCK:   return "BLOCK";
+                case TAO::Ledger::FLAGS::MINER:   return "MINER";
+                case TAO::Ledger::FLAGS::MEMPOOL: return "MEMPOOL";
+                case TAO::Ledger::FLAGS::LOOKUP:  return "LOOKUP";
+                case TAO::Ledger::FLAGS::ERASE:   return "ERASE";
+                default:                          return "OTHER";
+            }
+        }
+    }
+
 
     /* Ledger Layer namespace. */
     namespace Ledger
@@ -876,6 +899,12 @@ namespace TAO
         /* Connect a transaction object to the main chain. */
         bool Transaction::Connect(const uint8_t nFlags, const BlockState* pblock) const
         {
+            /* Reset the thread-local admissibility classification at entry so a
+             * DEFERRED_LOCAL_STATE left over from an earlier, unrelated Connect()
+             * call on this thread cannot be misread by a caller that checks it
+             * after this call fails for a completely different reason. */
+            SetLastConnectClass(AdmissibilityClass::UNKNOWN);
+
             /* Get the transaction's hash. */
             const uint512_t hash = GetHash();
 
@@ -935,14 +964,45 @@ namespace TAO
                 /* We want this to trigger for times not in -client mode. */
                 if(!config::fClient.load() || (TAO::API::Authentication::Active(hashGenesis) && nFlags != FLAGS::LOOKUP))
                 {
+                    const bool fSeqDiag = SequenceDiagnosticsEnabled();
+
                     /* Make sure the previous transaction is on disk or mempool. */
                     TAO::Ledger::Transaction txPrev;
                     if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
                         return debug::error(FUNCTION, "prev transaction not on disk ", hashPrevTx.SubString());
 
+                    if(fSeqDiag)
+                    {
+                        debug::log(0, FUNCTION,
+                            "[NSEQ_DIAG][Transaction::Check]"
+                            " genesis=", hashGenesis.SubString(),
+                            " context=", SequenceDiagFlagToString(nFlags),
+                            " current.hashPrevTx=", hashPrevTx.SubString(),
+                            " prev.hash=", txPrev.GetHash().SubString(),
+                            " prev.nSequence=", txPrev.nSequence,
+                            " prev.nTimestamp=", txPrev.nTimestamp,
+                            " current.nSequence=", nSequence,
+                            " current.nTimestamp=", nTimestamp,
+                            " expected.nSequence=", txPrev.nSequence + 1);
+                    }
+
                     /* Double check sequence numbers here. */
                     if(txPrev.nSequence + 1 != nSequence)
+                    {
+                        if(fSeqDiag)
+                        {
+                            debug::log(0, FUNCTION,
+                                "[NSEQ_DIAG][Transaction::Check][MISMATCH]"
+                                " genesis=", hashGenesis.SubString(),
+                                " context=", SequenceDiagFlagToString(nFlags),
+                                " prev.hash=", txPrev.GetHash().SubString(),
+                                " prev.nSequence=", txPrev.nSequence,
+                                " current.nSequence=", nSequence,
+                                " expected.nSequence=", txPrev.nSequence + 1);
+                        }
+
                         return debug::error(FUNCTION, "prev transaction incorrect sequence");
+                    }
 
                     /* Check timestamp to previous transaction. */
                     if(nTimestamp < txPrev.nTimestamp)
@@ -988,7 +1048,8 @@ namespace TAO
             for(const auto& contract : vContracts)
             {
                 /* Check for dependants. */
-                if(contract.Dependant(hashPrev, nContract) && nFlags == FLAGS::BLOCK)
+                if((nFlags == FLAGS::BLOCK || nFlags == FLAGS::MEMPOOL)
+                && contract.Dependant(hashPrev, nContract))
                 {
                     /* Read previous transaction from disk. */
                     const TAO::Operation::Contract dependant = LLD::Ledger->ReadContract(hashPrev, nContract, nFlags);
@@ -1002,16 +1063,32 @@ namespace TAO
                             if(!LLD::Ledger->ReadConfirmations(hashPrev, nConfirms, pblock))
                                 return debug::error(FUNCTION, "failed to read confirmations for coinbase");
 
-                            /* Check that the previous TX has reached sig chain maturity */
-                            if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::tStateBest.load())))
+                            /* ReadConfirmations uses the candidate height with pblock,
+                             * but the current tip otherwise. The next block adds one
+                             * confirmation, then the existing BLOCK rule adds one more:
+                             * tip confirmations + 2 == candidate confirmations + 1.
+                             * The candidate's version controls maturity during BLOCK connect. */
+                            const uint32_t nMaturity =
+                                MaturityCoinBase((pblock ? *pblock : ChainState::tStateBest.load()));
+                            const bool fImmature = (nFlags == FLAGS::MEMPOOL && !pblock)
+                                ? uint64_t(nConfirms) + 2 < nMaturity
+                                : nConfirms + 1 < nMaturity;
+                            if(fImmature)
+                            {
+                                if(nFlags == FLAGS::MEMPOOL)
+                                {
+                                    TAO::Ledger::SetLastConnectClass(
+                                        TAO::Ledger::AdmissibilityClass::DEFERRED_LOCAL_STATE);
+                                }
                                 return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
+                            }
 
                             break;
                         }
                     }
 
                     /* Check that the previous transaction is indexed. */
-                    if(!LLD::Ledger->HasIndex(hashPrev))
+                    if(nFlags == FLAGS::BLOCK && !LLD::Ledger->HasIndex(hashPrev))
                         return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
                 }
 

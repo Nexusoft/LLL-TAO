@@ -39,6 +39,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/retarget.h>
 
+#include <LLP/include/falcon_constants.h>
+
 #include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -393,9 +395,8 @@ namespace TAO
 
 
         /* Check a block state for consistency. */
-        bool ClientBlock::Check() const
-        {
-            /* Check for client mode since this method should never be called except by a client. */
+        bool ClientBlock::Check(bool fForceProof) const
+        {            /* Check for client mode since this method should never be called except by a client. */
             if(!config::fClient.load())
                 return debug::error(FUNCTION, "cannot process client block if not in -client mode");
 
@@ -447,8 +448,9 @@ namespace TAO
                 if(GetChannel() != CHANNEL::PRIME && !vOffsets.empty())
                     return debug::error(FUNCTION, "offsets included in non prime block");
 
-                /* Check the Proof of Work Claims. */
-                if(!TAO::Ledger::ChainState::Synchronizing() && !VerifyWork())
+                /* Check the Proof of Work Claims.  fForceProof bypasses the
+                 * Synchronizing() fast-path for unconditional verification. */
+                if((fForceProof || !TAO::Ledger::ChainState::Synchronizing()) && !VerifyWork(fForceProof))
                     return debug::error(FUNCTION, "invalid proof of work");
             }
 

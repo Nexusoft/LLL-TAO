@@ -15,8 +15,11 @@ ________________________________________________________________________________
 #include <LLC/types/bignum.h>
 #include <openssl/bn.h>
 
+#include <cstring>
+
 #include <Util/include/debug.h>
 #include <Util/include/softfloat.h>
+#include <Util/include/config.h>
 
 
 /* Global TAO namespace. */
@@ -40,6 +43,17 @@ namespace TAO
         }
 
 
+        /* Safely computes the number of Cunningham chain-offset bytes encoded
+         * in a serialized Prime vOffsets vector. See prime.h for rationale. */
+        size_t PrimeChainOffsetCount(const std::vector<uint8_t>& vOffsets)
+        {
+            if(vOffsets.size() < 5)
+                return 0;
+
+            return vOffsets.size() - 4;
+        }
+
+
         /* Determines the difficulty of the Given Prime Number. */
         double GetPrimeDifficulty(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets, const bool fVerify)
         {
@@ -54,9 +68,29 @@ namespace TAO
             uint1024_t hashNext = hashPrime;
             if(!vOffsets.empty())
             {
+                /* Defensive guard against malformed offsets vectors.
+                 *
+                 * A well-formed vOffsets is [gap_1 .. gap_(N-1), frac_0 .. frac_3]
+                 * with N >= 2 (chain length 2 or longer), giving size >= 5.
+                 * Any non-empty vector with size < 5 is malformed; using the
+                 * raw `size() - 4` subtraction would unsigned-underflow, walking
+                 * the loop off the end of the buffer and reading garbage from
+                 * `&vOffsets[size()-4]`. PrimeChainOffsetCount() is the single
+                 * source of truth for this computation and returns 0 for any
+                 * malformed (non-empty, size < 5) vector instead of underflowing.
+                 *
+                 * The submission path is shielded by VerifySubmittedPrimeOffsets,
+                 * but GetPrimeDifficulty is also reachable from local-derivation
+                 * paths (e.g. GetOffsets fallback in miner sign_block) where
+                 * GetOffsets() can legitimately return an empty/short vector if
+                 * the base prime fails PrimeCheck.  Returning 0.0 here matches
+                 * the "not a valid prime cluster" semantics already used above. */
+                if(vOffsets.size() < 5)
+                    return 0.0;
+
                 /* Loop through offsets pattern. */
-                uint32_t nSize = vOffsets.size();
-                for(uint32_t n = 0; n < nSize - 4; ++n)
+                const size_t nChainOffsets = PrimeChainOffsetCount(vOffsets);
+                for(size_t n = 0; n < nChainOffsets; ++n)
                 {
                     /* Get the offset. */
                     uint8_t nOffset = vOffsets[n];
@@ -76,7 +110,7 @@ namespace TAO
 
                 /* Get fractional difficulty. */
                 uint32_t nFraction = 0;
-                std::copy((uint8_t*)&vOffsets[nSize - 4], (uint8_t*)&vOffsets[nSize - 1], (uint8_t*)&nFraction);
+                std::memcpy(&nFraction, &vOffsets[nChainOffsets], 4);
 
                 /* If verifying check the fractional difficulty. */
                 if(fVerify && GetFractionalDifficulty(hashNext + 14) != nFraction)
@@ -118,11 +152,37 @@ namespace TAO
 
 
         /* Return list of offsets for use in optimized prime proof of work calculations. */
+        /* Gets the offsets of the prime numbers in the cluster. */
         void GetOffsets(const uint1024_t& hashPrime, std::vector<uint8_t> &vOffsets)
         {
-            /* Check first prime. */
+            bool fDiagnostic = (config::nVerbose >= 2);
+            
+            if(fDiagnostic)
+            {
+                debug::log(2, FUNCTION, "════════════════════════════════════════");
+                debug::log(2, FUNCTION, "   GETOFFSETS DIAGNOSTIC");
+                debug::log(2, FUNCTION, "════════════════════════════════════════");
+                debug::log(2, FUNCTION, "Input hashPrime: ", hashPrime.ToString().substr(0, 64), "...");
+            }
+            
+            /* Check first prime */
+            if(fDiagnostic)
+                debug::log(2, FUNCTION, "🔍 Validating base prime...");
+            
             if(!PrimeCheck(hashPrime))
+            {
+                if(fDiagnostic)
+                {
+                    debug::log(2, FUNCTION, "❌ BASE PRIME FAILED PrimeCheck()");
+                    debug::log(2, FUNCTION, "   This is why vOffsets is empty!");
+                    debug::log(2, FUNCTION, "   The base number is NOT prime");
+                    debug::log(2, FUNCTION, "════════════════════════════════════════");
+                }
                 return;
+            }
+            
+            if(fDiagnostic)
+                debug::log(2, FUNCTION, "✅ Base prime is VALID");
 
             /* Erase offsets if any */
             vOffsets.clear();
@@ -130,22 +190,42 @@ namespace TAO
 
             /* Set temporary variables for the checks. */
             uint1024_t hashLast = hashPrime;
+            uint32_t nChainLength = 0;
+            
             for(uint1024_t hashNext = hashPrime + 2; nOffset <= 12; hashNext += 2, nOffset += 2)
             {
                 /* Check if this interval is prime. */
                 if(PrimeCheck(hashNext))
                 {
+                    if(fDiagnostic)
+                        debug::log(2, FUNCTION, "   ✅ Offset ", static_cast<int>(nOffset), " → PRIME");
+                    
                     hashLast = hashNext;
 
                     /* Add offset to vector. */
                     vOffsets.push_back(nOffset);
                     nOffset = 0;
+                    ++nChainLength;
+                }
+                else
+                {
+                    if(fDiagnostic)
+                        debug::log(2, FUNCTION, "   ❌ Offset ", static_cast<int>(nOffset), " → not prime (chain breaks)");
                 }
             }
 
             /* Get fractional difficulty. */
             uint32_t nFraction = GetFractionalDifficulty(hashLast + nOffset);
             vOffsets.insert(vOffsets.end(), (uint8_t*)&nFraction, (uint8_t*)&nFraction + 4);
+            
+            if(fDiagnostic)
+            {
+                debug::log(2, FUNCTION, "════════════════════════════════════════");
+                debug::log(2, FUNCTION, "Result: ", PrimeChainOffsetCount(vOffsets), " offsets found");
+                debug::log(2, FUNCTION, "Cunningham chain length: ", nChainLength);
+                debug::log(2, FUNCTION, "Fractional difficulty: ", nFraction);
+                debug::log(2, FUNCTION, "════════════════════════════════════════");
+            }
         }
 
 
@@ -172,13 +252,68 @@ namespace TAO
         /* Determines if given number is Prime. */
         bool PrimeCheck(const uint1024_t& hashTest)
         {
-            /* Small Prime Divisor Tests */
-            if(!SmallDivisors(hashTest))
-                return false;
+            /* [C1] The verbose per-test diagnostic dump below is expensive (string
+             * formatting + several log calls per candidate) and is normally emitted
+             * once per candidate PER retarget-window on every single connection's
+             * hot path. At the commonly-used -verbose=2 level it competes for
+             * DataThread CPU time with real fork/orphan-storm recovery work
+             * (chain-tip convergence, template regeneration) — exactly when that
+             * time is most needed. Gate it to -verbose>=3 so level 2 keeps its
+             * normal signal-to-noise (e.g. block accept/orphan diagnostics) while
+             * still allowing full PrimeCheck tracing when explicitly requested. */
+            bool fDiagnostic = (config::nVerbose >= 3);
 
-            /* Fermat Test */
-            if(FermatTest(hashTest) != 1)
+            if(fDiagnostic)
+            {
+                debug::log(3, FUNCTION, "════════════════════════════════════════");
+                debug::log(3, FUNCTION, "   PRIMECHECK DIAGNOSTIC");
+                debug::log(3, FUNCTION, "════════════════════════════════════════");
+                debug::log(3, FUNCTION, "Input prime (first 64 bytes):");
+                debug::log(3, FUNCTION, "  ", hashTest.ToString().substr(0, 64), "...");
+            }
+            
+            /* Check A: Small Prime Divisor Tests */
+            if(!SmallDivisors(hashTest))
+            {
+                if(fDiagnostic)
+                {
+                    debug::log(3, FUNCTION, "❌ FAILED: Small divisor test");
+                    debug::log(3, FUNCTION, "   Prime is divisible by 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, or 31");
+                }
                 return false;
+            }
+            if(fDiagnostic)
+                debug::log(3, FUNCTION, "✅ PASSED: Small divisor test");
+
+            /* Check B: Miller-Rabin Test (OpenSSL probabilistic primality test) */
+            if(!Miller_Rabin(hashTest))
+            {
+                if(fDiagnostic)
+                {
+                    debug::log(3, FUNCTION, "❌ FAILED: Miller-Rabin test");
+                    debug::log(3, FUNCTION, "   Prime failed cryptographic primality test (PR #129)");
+                }
+                return false;
+            }
+            if(fDiagnostic)
+                debug::log(3, FUNCTION, "✅ PASSED: Miller-Rabin test");
+
+            /* Check C: Fermat Test */
+            if(FermatTest(hashTest) != 1)
+            {
+                if(fDiagnostic)
+                {
+                    debug::log(3, FUNCTION, "❌ FAILED: Fermat test");
+                }
+                return false;
+            }
+            if(fDiagnostic)
+            {
+                debug::log(3, FUNCTION, "✅ PASSED: Fermat test");
+                debug::log(3, FUNCTION, "════════════════════════════════════════");
+                debug::log(3, FUNCTION, "✅ PRIME IS VALID");
+                debug::log(3, FUNCTION, "════════════════════════════════════════");
+            }
 
             return true;
         }

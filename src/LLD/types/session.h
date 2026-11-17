@@ -173,6 +173,19 @@ namespace LLD
         bool HasSession(const uint256_t& hashGenesis);
 
 
+        /** HasLast
+         *
+         *  Checks if a last-index key exists. ReadLast() returns false both
+         *  when the key is absent and when an existing value is unreadable.
+         *
+         *  @param[in] hashGenesis The genesis-id we are checking.
+         *
+         *  @return true if the last-index key exists, false otherwise.
+         *
+         **/
+        bool HasLast(const uint256_t& hashGenesis);
+
+
         /** ReadLast
          *
          *  Reads the last txid that was indexed.

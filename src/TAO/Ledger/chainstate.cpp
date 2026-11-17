@@ -21,6 +21,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/genesis_block.h>
+#include <TAO/Ledger/include/peer_height.h>
+#include <TAO/Ledger/include/mining_readiness.h>
 #include <TAO/Ledger/include/timelocks.h>
 
 /* Global TAO namespace. */
@@ -33,6 +35,131 @@ namespace TAO
 
         /* The best block height in the chain. */
         std::atomic<uint32_t> ChainState::nBestHeight;
+
+
+        namespace
+        {
+            ChainState::PeerHeightTracker peerHeights;
+            ChainState::MiningPeerTracker miningPeers;
+            ChainState::MiningWorkEpoch miningWork;
+        }
+
+        void ChainState::ObservePeerHeight(const void* peer, uint32_t height)
+        {
+            peerHeights.Update(peer, height);
+        }
+
+        void ChainState::ForgetPeerHeight(const void* peer)
+        {
+            peerHeights.Remove(peer);
+            miningPeers.Remove(peer);
+        }
+
+        uint32_t ChainState::MaxPeerHeight()
+        {
+            return peerHeights.Max();
+        }
+
+        uint32_t ChainState::MaxSupportedPeerHeight(uint32_t localHeight)
+        {
+            return peerHeights.MaxSupported(localHeight);
+        }
+
+        bool ChainState::FreshPeerHeight(const void* peer, uint32_t& height)
+        {
+            return peerHeights.Get(peer, height, PeerHeightTracker::Clock::now(), MiningPeerTracker::MAX_AGE);
+        }
+
+        void ChainState::ObserveMiningPeer(const void* peer, const std::string& address,
+                                           const uint1024_t& hash, uint32_t height)
+        {
+            miningPeers.Observe(peer, address, hash, height);
+        }
+
+        void ChainState::UpdateMiningPeerHeight(const void* peer, uint32_t height)
+        {
+            miningPeers.Height(peer, height);
+        }
+
+        void ChainState::InvalidatePartialMiningPeer(const void* peer, bool hasHash,
+                                                     const uint1024_t& hash,
+                                                     bool hasHeight, uint32_t height)
+        {
+            miningPeers.InvalidatePartial(peer, hasHash, hash, hasHeight, height);
+        }
+
+        void ChainState::CommitMiningTip(const uint1024_t& tip)
+        {
+            miningWork.Commit(tip);
+        }
+
+        ChainState::MiningStatus ChainState::MiningReadiness(bool cached)
+        {
+            const auto evaluation = miningPeers.StartEvaluation();
+            const bool local = config::fTestNet.load()
+                && (!config::GetBoolArg("-dns", true) || config::fHybrid.load());
+            const int64_t required = config::GetArg("-miningminpeers", 2);
+            const BlockState best = tStateBest.load();
+            const uint1024_t bestHash = best.IsNull() ? hashBestChain.load() : best.GetHash();
+            const uint64_t epoch = miningWork.ForTip(bestHash);
+            const uint32_t quorum = required > 0 && required <= 16 ? uint32_t(required) : 0;
+            const bool synchronized = LLP::TritiumNode::fSynchronized.load();
+            const bool reorg = fChainReorg.load() || epoch == 0
+                || bestHash != hashBestChain.load() || (!local && best.IsNull());
+            const bool shutdown = config::fShutdown.load();
+            const auto resolve = [&best](const uint1024_t& hash, uint32_t height)
+                {
+                    BlockState peer;
+                    if(hash == 0 || !LLD::Ledger || !LLD::Ledger->ReadBlock(hash, peer)
+                    || peer.GetHash() != hash || peer.nHeight != height)
+                        return ChainState::MiningPeerEvidence::UNRESOLVED;
+                    if(peer.IsHeavierThan(best))
+                        return ChainState::MiningPeerEvidence::UNRESOLVED;
+                    if(best.nHeight >= peer.nHeight
+                    && uint64_t(peer.nHeight) + 2 >= best.nHeight)
+                    {
+                        BlockState ancestor = best;
+                        while(ancestor.nHeight > peer.nHeight)
+                        {
+                            const uint1024_t previousHash = ancestor.hashPrevBlock;
+                            const uint32_t previousHeight = ancestor.nHeight - 1;
+                            if(previousHeight == peer.nHeight)
+                                return previousHash == hash
+                                    ? ChainState::MiningPeerEvidence::SUPPORTING
+                                    : ChainState::MiningPeerEvidence::BEHIND;
+                            if(!LLD::Ledger->ReadBlock(previousHash, ancestor)
+                            || ancestor.GetHash() != previousHash
+                            || ancestor.nHeight != previousHeight)
+                                return ChainState::MiningPeerEvidence::UNRESOLVED;
+                        }
+                        if(ancestor.GetHash() == hash)
+                            return ChainState::MiningPeerEvidence::SUPPORTING;
+                    }
+                    return ChainState::MiningPeerEvidence::BEHIND;
+                };
+            auto status = cached
+                ? miningPeers.CheckCached(bestHash, epoch, quorum, local, synchronized, reorg, shutdown, resolve)
+                : miningPeers.Check(quorum, local, synchronized, reorg, shutdown, resolve);
+            status.epoch = epoch;
+            if(epoch > UINT32_MAX)
+            {
+                status.ready = false;
+                status.reason = "mining-epoch-exhausted";
+            }
+            miningPeers.RememberStatus(evaluation, status);
+            return status;
+        }
+
+        ChainState::MiningStatus ChainState::MiningReadinessSnapshot()
+        {
+            return miningPeers.LastStatus();
+        }
+
+        bool ChainState::MiningWorkCurrent(uint64_t epoch)
+        {
+            const auto status = MiningReadiness(true);
+            return epoch != 0 && status.ready && epoch == status.epoch;
+        }
 
 
         /* The best trust in the chain. */
@@ -212,6 +339,8 @@ namespace TAO
             if(tStateBest.load().GetHash() != hashBestChain.load())
                 return debug::error(FUNCTION, "disk index inconsistent with best chain");
 
+            CommitMiningTip(hashBestChain.load());
+
             /* Reverse iterator to find the most recent common ancestor. Skip if not on mainnet*/
             if(!config::fHybrid.load() && !config::fTestNet.load() && !config::fClient.load())
             {
@@ -238,10 +367,27 @@ namespace TAO
                             debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "WARNING: ", ANSI_COLOR_RESET,
                                 " REVERTING TO HARDCODED Ancestor ", iAncestor->first, " Hash ", iAncestor->second.SubString());
 
-                            /* Set the best to older block. */
-                            LLD::TxnBegin();
-                            stateAncestor.SetBest();
-                            LLD::TxnCommit();
+                            /* Set the best to older block. A begin failure is not "no more
+                             * checkpoints": the missing record was not reverted, so
+                             * initialization must fail instead of continuing. */
+                            LLD::TransactionGuard txn;
+                            if(!txn)
+                                return debug::error(FUNCTION, "failed to begin block transaction");
+
+                            /* A failed SetBest() can release the slot before returning.
+                             * TransactionGuard aborts only if this thread still owns it. */
+                            if(!stateAncestor.SetBest())
+                            {
+                                debug::error(FUNCTION, "failed to revert to hardcoded ancestor checkpoint");
+                                return false;
+                            }
+                            /* SetBest() commits the transaction internally when it succeeds.
+                             * Guard with HasOpenTransaction() so that the now-closed outer
+                             * transaction is not misreported as a commit failure. */
+                            else if(!LLD::HasOpenTransaction() || LLD::TxnCommit())
+                                txn.Release();
+                            else
+                                return debug::error(FUNCTION, "disk commit failed after reverting to hardcoded ancestor checkpoint");
 
                             break;
                         }
@@ -268,20 +414,29 @@ namespace TAO
                 }
 
                 /* Set the best to older block. */
-                LLD::TxnBegin();
+                LLD::TransactionGuard txn;
+                if(!txn)
+                    return debug::error(FUNCTION, "failed to begin block transaction");
 
-                /* Abort our transaction if we fail to rollback. */
+                /* TransactionGuard aborts if SetBest() fails while this thread
+                 * still owns the transaction slot. */
                 if(!state.SetBest())
                 {
                     /* Debug Output. */
                     debug::log(0, FUNCTION, "-revertblocks=XXX failed to remove ", nRevertBlocks, " blocks");
-                    LLD::TxnAbort();
+                    return false;
                 }
                 else
                 {
                     /* Debug Output. */
                     debug::log(0, FUNCTION, "-revertblocks=XXX requested removal of ", nRevertBlocks, " blocks");
-                    LLD::TxnCommit();
+                    /* SetBest() commits the transaction internally when it succeeds.
+                     * Guard with HasOpenTransaction() so that the now-closed outer
+                     * transaction is not misreported as a commit failure. */
+                    if(!LLD::HasOpenTransaction() || LLD::TxnCommit())
+                        txn.Release();
+                    else
+                        return debug::error(FUNCTION, "disk commit failed after -revertblocks rewind");
                 }
             }
 
@@ -471,6 +626,68 @@ namespace TAO
         uint1024_t ChainState::Genesis()
         {
             return (config::fHybrid.load() ? TAO::Ledger::hashGenesisHybrid : config::fTestNet.load() ? TAO::Ledger::hashGenesisTestnet : (config::fClient.load() ? TAO::Ledger::hashTritium : TAO::Ledger::hashGenesis));
+        }
+
+
+        /* Repair in-memory checkpoint state when it drifts from the on-disk best-chain state. */
+        bool ChainState::RepairCheckpointIfStale()
+        {
+            /* In-memory gate: compare tStateBest.hashCheckpoint (the checkpoint embedded
+             * in the best block state struct) against the standalone hashCheckpoint atomic.
+             * If they are consistent there is nothing to repair — avoid disk I/O entirely.
+             * This eliminates the I/O amplification DoS vector where a remote peer could
+             * trigger repeated ReadBlock() calls by spamming blocks with bad checkpoints. */
+            const uint1024_t hashMemCheckpoint  = ChainState::hashCheckpoint.load();
+            const uint1024_t hashBestCheckpoint = ChainState::tStateBest.load().hashCheckpoint;
+
+            if(hashMemCheckpoint == hashBestCheckpoint)
+            {
+                /* In-memory state is consistent — no repair needed. */
+                return false;
+            }
+
+            /* In-memory mismatch detected: repair from on-disk best state. */
+            debug::error(FUNCTION, "CHECKPOINT STALE: in-memory=", hashMemCheckpoint.SubString(),
+                " tStateBest.hashCheckpoint=", hashBestCheckpoint.SubString(),
+                " — repairing");
+
+            /* Read the on-disk best-chain block to get the authoritative checkpoint hash. */
+            BlockState stateBestDisk;
+            if(!LLD::Ledger->ReadBlock(ChainState::hashBestChain.load(), stateBestDisk))
+            {
+                debug::error(FUNCTION, "repair failed: could not read best block from disk");
+                return false;
+            }
+
+            /* Double-check disk matches in-memory tStateBest expectation. */
+            if(stateBestDisk.hashCheckpoint != hashBestCheckpoint)
+            {
+                debug::error(FUNCTION, "repair aborted: disk checkpoint=",
+                    stateBestDisk.hashCheckpoint.SubString(),
+                    " does not match tStateBest.hashCheckpoint=", hashBestCheckpoint.SubString());
+                return false;
+            }
+
+            /* Read the checkpoint block so we can update nCheckpointHeight. */
+            const uint1024_t hashCheckpointOld = hashMemCheckpoint;
+            ChainState::hashCheckpoint = stateBestDisk.hashCheckpoint;
+
+            BlockState stateCheckpoint;
+            if(!LLD::Ledger->ReadBlock(stateBestDisk.hashCheckpoint, stateCheckpoint))
+            {
+                /* Restore old checkpoint to avoid a partial update. */
+                ChainState::hashCheckpoint = hashCheckpointOld;
+                debug::error(FUNCTION, "repair failed: could not read checkpoint block");
+                return false;
+            }
+
+            ChainState::nCheckpointHeight = stateCheckpoint.nHeight;
+
+            debug::log(0, FUNCTION, "Checkpoint repair SUCCESS: hash=",
+                ChainState::hashCheckpoint.load().SubString(),
+                " height=", ChainState::nCheckpointHeight.load());
+
+            return true;
         }
     }
 }

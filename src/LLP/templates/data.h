@@ -33,6 +33,16 @@ ________________________________________________________________________________
 #include <cstdint>
 #include <queue>
 #include <condition_variable>
+#include <type_traits>
+
+#ifdef __linux__
+#include <sys/epoll.h>
+#include <unistd.h>
+#endif
+
+/* Forward declarations for protocol-specific data-thread handling. */
+namespace LLP { class Miner; class StatelessMinerConnection; class TimeNode; }
+
 
 namespace LLP
 {
@@ -40,6 +50,14 @@ namespace LLP
     class Socket;
     class DDOS_Filter;
     class BaseAddress;
+    class AddressManager;
+
+
+    /** Compile-time trait: true for mining protocol types (Miner, StatelessMinerConnection).
+     *  Used to select epoll-based I/O on Linux for mining DataThreads. */
+    template <typename T>
+    inline constexpr bool is_mining_data_thread_v =
+        std::is_same_v<T, Miner> || std::is_same_v<T, StatelessMinerConnection>;
 
 
     /* Flags for connection count. */
@@ -58,6 +76,11 @@ namespace LLP
      *
      *  Base Template Thread Class for Server base. Used for Core LLP Packet Functionality.
      *  Not to be inherited, only for use by the LLP Server Base Class.
+     *
+     *  On Linux, mining protocol DataThreads (Miner / StatelessMinerConnection) use epoll
+     *  instead of poll() for dedicated, high-priority I/O processing. This prevents
+     *  P2P traffic starvation from killing miner sessions. Non-mining DataThreads and
+     *  all non-Linux platforms continue to use the portable poll() path.
      *
      **/
     template <class ProtocolType>
@@ -78,6 +101,9 @@ namespace LLP
         uint32_t TIMEOUT;
         uint32_t DDOS_rSCORE;
         uint32_t DDOS_cSCORE;
+        /* Set before connections are created; the owning server destroys its
+         * data threads before the address manager. */
+        AddressManager* pTimeAddressManager{nullptr};
 
 
         /* Vector to store Connections. */
@@ -104,13 +130,26 @@ namespace LLP
         std::thread FLUSH_THREAD;
 
 
+#ifdef __linux__
+        /** Epoll file descriptor for mining DataThreads.
+         *  Created via epoll_create1(0) in the constructor for mining protocols.
+         *  Set to -1 for non-mining protocols (poll() used instead).
+         *  Each mining connection's socket fd is registered with EPOLL_CTL_ADD
+         *  in AddConnection/NewConnection and deregistered in remove_connection. */
+        int m_nEpollFd;
+#endif
+
+        std::mutex DATA_CONDITION_MUTEX;
+        std::mutex FLUSH_CONDITION_MUTEX;
+
+
         /** Default Constructor. **/
-        DataThread<ProtocolType>(const uint32_t nID, const bool ffDDOSIn, const uint32_t rScore, const uint32_t cScore,
+        DataThread(const uint32_t nID, const bool ffDDOSIn, const uint32_t rScore, const uint32_t cScore,
                                  const uint32_t nTimeout, const bool fMeter = false);
 
 
         /** Default Destructor. **/
-        virtual ~DataThread<ProtocolType>();
+        virtual ~DataThread();
 
 
         /** AddConnection
@@ -129,25 +168,35 @@ namespace LLP
             {
                 /* Create a new pointer on the heap. */
                 ProtocolType* pnode = new ProtocolType(SOCKET, DDOS, fDDOS, std::forward<Args>(args)...);
+                if constexpr(std::is_same_v<ProtocolType, TimeNode>)
+                    pnode->pAddressManager = pTimeAddressManager;
                 pnode->fCONNECTED.store(true);
 
                 /* Update the indexes. */
                 pnode->nDataThread     = ID;
 
                 pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
+                pnode->FLUSH_CONDITION_MUTEX = &FLUSH_CONDITION_MUTEX;
 
-                /* Check for inbound socket. */
+                /* Check for inbound socket. Hold the condition mutex across the
+                 * counter transition so a waiter cannot observe zero and then
+                 * miss the notification before it blocks. */
                 if(pnode->Incoming())
                 {
-                    /* Increment internal incoming counter. */
-                    ++nIncoming;
+                    {
+                        std::scoped_lock lock(DATA_CONDITION_MUTEX);
+                        ++nIncoming;
+                    }
 
                     /* Increment meters value. */
                     if(fMETER)
                         ++pnode->CONNECTIONS;
                 }
                 else
+                {
+                    std::scoped_lock lock(DATA_CONDITION_MUTEX);
                     ++nOutbound;
+                }
 
                 /* Find an avilable data thread slot. */
                 const uint32_t nSlot = find_slot();
@@ -162,8 +211,17 @@ namespace LLP
                 else
                     CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
+                 /* Register the socket fd with epoll for mining DataThreads on Linux.
+                  * epoll_ctl is thread-safe: ListeningThread calls AddConnection while
+                  * the DataThread is running epoll_wait concurrently. */
+                epoll_register(pnode->fd, nSlot);
+                epoll_sync_write_interest(pnode->fd, nSlot, pnode->NeedsWriteService());
+
                 /* Notify data thread to wake up. */
-                CONDITION.notify_all();
+                {
+                    std::scoped_lock lock(DATA_CONDITION_MUTEX);
+                    CONDITION.notify_all();
+                }
             }
             catch(const std::runtime_error& e)
             {
@@ -191,6 +249,8 @@ namespace LLP
             {
                 /* Create a new pointer on the heap. */
                 ProtocolType* pnode = new ProtocolType(nullptr, false, std::forward<Args>(args)...); //turn off DDOS for outgoing connections
+                if constexpr(std::is_same_v<ProtocolType, TimeNode>)
+                    pnode->pAddressManager = pTimeAddressManager;
 
                 /* Set the SSL flag */
                 pnode->SetSSL(fSSL);
@@ -205,12 +265,20 @@ namespace LLP
                 /* Update the indexes. */
                 pnode->nDataThread     = ID;
                 pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
+                pnode->FLUSH_CONDITION_MUTEX = &FLUSH_CONDITION_MUTEX;
 
-                /* Check for inbound socket. */
+                /* Check for inbound socket. The condition mutex must cover this
+                 * counter transition so the data-thread wait cannot miss it. */
                 if(pnode->Incoming())
+                {
+                    std::scoped_lock lock(DATA_CONDITION_MUTEX);
                     ++nIncoming;
+                }
                 else
+                {
+                    std::scoped_lock lock(DATA_CONDITION_MUTEX);
                     ++nOutbound;
+                }
 
                 /* Find an avilable data thread slot. */
                 const uint32_t nSlot = find_slot();
@@ -225,8 +293,15 @@ namespace LLP
                 else
                     CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
+                /* Register the socket fd with epoll for mining DataThreads on Linux. */
+                epoll_register(pnode->fd, nSlot);
+                epoll_sync_write_interest(pnode->fd, nSlot, pnode->NeedsWriteService());
+
                 /* Notify data thread to wake up. */
-                CONDITION.notify_all();
+                {
+                    std::scoped_lock lock(DATA_CONDITION_MUTEX);
+                    CONDITION.notify_all();
+                }
 
             }
             catch(const std::runtime_error& e)
@@ -301,11 +376,14 @@ namespace LLP
             DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
             ((ssData << args), ...);
 
-            /* Push the relay message to outbound queue. */
-            RELAY->push(std::make_pair(message, ssData));
-
-            /* Wake up the flush thread. */
-            FLUSH_CONDITION.notify_all();
+            /* Push and notify under the same mutex the flush thread waits on.
+             * Otherwise the waiter can observe an empty queue and then sleep
+             * through this notification. */
+            {
+                std::scoped_lock lock(FLUSH_CONDITION_MUTEX);
+                RELAY->push(std::make_pair(message, ssData));
+                FLUSH_CONDITION.notify_all();
+            }
         }
 
 
@@ -317,11 +395,12 @@ namespace LLP
         template<typename MessageType>
         void _Relay(const MessageType& message, const DataStream& ssData)
         {
-            /* Push the relay message to outbound queue. */
-            RELAY->push(std::make_pair(message, ssData));
-
-            /* Wake up the flush thread. */
-            FLUSH_CONDITION.notify_all();
+            /* Push and notify under the same mutex the flush thread waits on. */
+            {
+                std::scoped_lock lock(FLUSH_CONDITION_MUTEX);
+                RELAY->push(std::make_pair(message, ssData));
+                FLUSH_CONDITION.notify_all();
+            }
         }
 
 
@@ -354,6 +433,103 @@ namespace LLP
       private:
 
 
+        /** epoll_register
+         *
+         *  Register a socket fd with the epoll instance for mining DataThreads.
+         *  No-op for non-mining protocols or non-Linux platforms.
+         *
+         *  @param[in] nFd    The socket file descriptor to register.
+         *  @param[in] nSlot  The CONNECTIONS vector index (stored in epoll_event.data.u32).
+         *
+         **/
+        void epoll_register(SOCKET nFd, uint32_t nSlot)
+        {
+#ifdef __linux__
+            if constexpr (is_mining_data_thread_v<ProtocolType>)
+            {
+                if(m_nEpollFd >= 0 && nFd != static_cast<SOCKET>(INVALID_SOCKET))
+                {
+                    struct epoll_event ev;
+                    ev.events  = EPOLLIN | EPOLLHUP | EPOLLERR;
+                    ev.data.u32 = nSlot;
+                    if(::epoll_ctl(m_nEpollFd, EPOLL_CTL_ADD, static_cast<int>(nFd), &ev) < 0)
+                        debug::error(FUNCTION, "epoll_ctl ADD failed for fd=", nFd, " slot=", nSlot, " errno=", errno);
+                }
+            }
+#else
+            /* Suppress unused parameter warnings on non-Linux. */
+            (void)nFd;
+            (void)nSlot;
+#endif
+        }
+
+
+        /** epoll_sync_write_interest
+         *
+         *  Update Linux mining epoll interest for a connection's write-service
+         *  state.  Read readiness is always armed; EPOLLOUT is toggled
+         *  dynamically based on whether the connection still has queued or
+         *  buffered outbound work.
+         *
+         *  @param[in] nFd                  The socket file descriptor.
+         *  @param[in] nSlot                The CONNECTIONS vector index.
+         *  @param[in] fNeedsWriteService   True when EPOLLOUT should stay armed.
+         *
+         **/
+        void epoll_sync_write_interest(SOCKET nFd, uint32_t nSlot, bool fNeedsWriteService)
+        {
+#ifdef __linux__
+            if constexpr (is_mining_data_thread_v<ProtocolType>)
+            {
+                if(m_nEpollFd >= 0 && nFd != static_cast<SOCKET>(INVALID_SOCKET))
+                {
+                    struct epoll_event ev;
+                    ev.events  = EPOLLIN | EPOLLHUP | EPOLLERR;
+                    if(fNeedsWriteService)
+                        ev.events |= EPOLLOUT;
+
+                    ev.data.u32 = nSlot;
+
+                    if(::epoll_ctl(m_nEpollFd, EPOLL_CTL_MOD, static_cast<int>(nFd), &ev) < 0 && errno != ENOENT)
+                        debug::error(FUNCTION, "epoll_ctl MOD failed for fd=", nFd,
+                                     " slot=", nSlot, " write_interest=", fNeedsWriteService,
+                                     " errno=", errno);
+                }
+            }
+#else
+            (void)nFd;
+            (void)nSlot;
+            (void)fNeedsWriteService;
+#endif
+        }
+
+
+        /** epoll_deregister
+         *
+         *  Remove a socket fd from the epoll instance for mining DataThreads.
+         *  No-op for non-mining protocols or non-Linux platforms.
+         *  Safe to call even if fd was already closed (epoll auto-removes closed fds).
+         *
+         *  @param[in] nFd  The socket file descriptor to deregister.
+         *
+         **/
+        void epoll_deregister(SOCKET nFd)
+        {
+#ifdef __linux__
+            if constexpr (is_mining_data_thread_v<ProtocolType>)
+            {
+                if(m_nEpollFd >= 0 && nFd != static_cast<SOCKET>(INVALID_SOCKET))
+                {
+                    if(::epoll_ctl(m_nEpollFd, EPOLL_CTL_DEL, static_cast<int>(nFd), nullptr) < 0 && errno != ENOENT)
+                        debug::error(FUNCTION, "epoll_ctl DEL failed for fd=", nFd, " errno=", errno);
+                }
+            }
+#else
+            (void)nFd;
+#endif
+        }
+
+
         /** remove_connection_with_event
          *
          *  Fires off a Disconnect event with the given disconnect reason
@@ -384,6 +560,39 @@ namespace LLP
          *
          **/
         uint32_t find_slot();
+
+
+        /** check_connection_health
+         *
+         *  Runs time-based health checks on a single connection:
+         *  read-idle timeout, write stall, buffer overflow, partial-packet stall,
+         *  and EVENTS::GENERIC dispatch.
+         *
+         *  Shared between the poll()-based Thread() and the epoll-based ThreadEpoll()
+         *  to avoid duplicating ~80 lines of identical logic.
+         *
+         *  @param[in] nIndex    CONNECTIONS vector index.
+         *  @param[in] CONNECTION Shared pointer to the protocol connection.
+         *
+         *  @return true if the connection was disconnected (caller should skip further processing).
+         *
+         **/
+        bool check_connection_health(const uint32_t nIndex, std::shared_ptr<ProtocolType>& CONNECTION);
+
+
+#ifdef __linux__
+        /** ThreadEpoll
+         *
+         *  Epoll-based I/O loop for mining DataThreads on Linux.
+         *  Uses epoll_wait() with configurable timeout for maximum responsiveness.
+         *  Only processes connections with pending events (EPOLLIN/EPOLLOUT/EPOLLERR/EPOLLHUP),
+         *  with periodic health sweeps for timeout-based checks.
+         *
+         *  Called from Thread() via if-constexpr for mining protocols.
+         *
+         **/
+        void ThreadEpoll();
+#endif
 
     };
 }

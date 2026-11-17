@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexus Mining Staleness Detection — Interactive Training</title>
+  <style>
+    /* ── RESET & TOKENS ──────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --surface2:  #1c2128;
+      --border:    #30363d;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --accent:    #58a6ff;
+      --green:     #3fb950;
+      --red:       #f85149;
+      --yellow:    #d29922;
+      --purple:    #a371f7;
+      --orange:    #f0883e;
+      --teal:      #39d3bb;
+      --radius:    8px;
+      --mono:      'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────────── */
+    .shell {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    header h1 { font-size: 16px; font-weight: 600; color: var(--accent); }
+    header .subtitle { color: var(--muted); font-size: 12px; flex: 1; }
+
+    .score-box {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+    }
+    .score-box span { color: var(--muted); }
+    .score-box strong { color: var(--text); }
+    #scoreCorrect { color: var(--green); font-weight: 700; }
+    #scoreWrong   { color: var(--red);   font-weight: 700; }
+
+    .progress-bar {
+      height: 3px;
+      background: var(--border);
+      position: relative;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      transition: width .3s ease;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      overflow: hidden;
+    }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────────── */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 12px 0;
+    }
+    .sidebar-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      padding: 4px 16px 8px;
+    }
+    .scenario-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background .15s, border-color .15s;
+      user-select: none;
+    }
+    .scenario-item:hover { background: var(--surface2); }
+    .scenario-item.active {
+      background: var(--surface2);
+      border-left-color: var(--accent);
+    }
+    .scenario-item .num {
+      font-size: 11px;
+      color: var(--muted);
+      width: 18px;
+      flex-shrink: 0;
+      font-family: var(--mono);
+    }
+    .scenario-item .label {
+      font-size: 12px;
+      color: var(--text);
+      flex: 1;
+    }
+    .scenario-item .badge {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+    }
+    .badge-correct { background: var(--green);  color: #0d1117; }
+    .badge-wrong   { background: var(--red);    color: #ffffff; }
+    .badge-pending { background: var(--border); }
+
+    /* ── CONTENT PANEL ───────────────────────────────────────────────────────── */
+    .content {
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ── CARD ────────────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .lane-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .lane-stateless { background: #1f3463; color: var(--accent); border: 1px solid #264a82; }
+    .lane-legacy    { background: #2d1f00; color: var(--orange); border: 1px solid #5a3d00; }
+    .lane-both      { background: #1f2d1f; color: var(--green);  border: 1px solid #2d5a2d; }
+
+    .card h2 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .card .desc {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── SVG DIAGRAM ─────────────────────────────────────────────────────────── */
+    .diagram-wrap {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      overflow-x: auto;
+    }
+    .diagram-wrap svg { display: block; max-width: 100%; margin: 0 auto; }
+
+    /* ── STATE TABLE ─────────────────────────────────────────────────────────── */
+    .state-table {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      width: 100%;
+    }
+    .state-table table { width: 100%; border-collapse: collapse; }
+    .state-table th {
+      text-align: left;
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      padding: 6px 12px;
+    }
+    .state-table td {
+      padding: 6px 12px;
+      border-top: 1px solid var(--border);
+      color: var(--text);
+    }
+    .state-table tr:hover td { background: #ffffff06; }
+    .val-ok   { color: var(--green);  font-weight: 600; }
+    .val-bad  { color: var(--red);    font-weight: 600; }
+    .val-warn { color: var(--yellow); font-weight: 600; }
+    .val-info { color: var(--accent); }
+
+    /* ── QUESTION ────────────────────────────────────────────────────────────── */
+    .question-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .question-box .q-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .question-box p {
+      font-size: 14px;
+      color: var(--text);
+      margin-bottom: 16px;
+      line-height: 1.6;
+    }
+
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .opt-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg);
+      color: var(--text);
+      cursor: pointer;
+      text-align: left;
+      font-size: 13px;
+      transition: border-color .15s, background .15s;
+    }
+    .opt-btn:hover:not(:disabled) { border-color: var(--accent); background: #1d2d44; }
+    .opt-btn:disabled { cursor: default; }
+    .opt-btn .opt-key {
+      font-family: var(--mono);
+      font-size: 11px;
+      width: 22px;
+      height: 22px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .opt-btn.correct { border-color: var(--green); background: #1a3a1a; color: var(--green); }
+    .opt-btn.correct .opt-key { border-color: var(--green); color: var(--green); }
+    .opt-btn.wrong   { border-color: var(--red);   background: #3a1a1a; color: var(--red);   }
+    .opt-btn.wrong .opt-key   { border-color: var(--red);   color: var(--red);   }
+
+    /* ── FEEDBACK ────────────────────────────────────────────────────────────── */
+    .feedback {
+      display: none;
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .feedback.show { display: block; }
+    .feedback.correct { background: #1a3a1a; border: 1px solid #3fb95060; color: var(--green); }
+    .feedback.wrong   { background: #3a1a1a; border: 1px solid #f8514960; color: #ff9494; }
+    .feedback strong  { display: block; margin-bottom: 6px; font-size: 14px; }
+    .feedback code {
+      background: #00000040;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    /* ── NAV BUTTONS ─────────────────────────────────────────────────────────── */
+    .nav-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .btn {
+      padding: 7px 16px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      transition: background .15s, border-color .15s;
+    }
+    .btn:hover { background: var(--surface); border-color: var(--accent); }
+    .btn.primary { background: #1d3557; border-color: var(--accent); color: var(--accent); }
+    .btn.primary:hover { background: #264a7a; }
+    .btn-icon { font-size: 15px; }
+    .hint-text { font-size: 11px; color: var(--muted); margin-left: auto; }
+
+    /* ── FOOTER ──────────────────────────────────────────────────────────────── */
+    footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 8px 20px;
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    footer kbd {
+      display: inline-block;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0 4px;
+      font-family: var(--mono);
+      font-size: 10px;
+    }
+
+    /* ── RESULT SCREEN ───────────────────────────────────────────────────────── */
+    .result-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 40px;
+      text-align: center;
+    }
+    .result-screen.show { display: flex; }
+    .result-screen .trophy { font-size: 64px; }
+    .result-screen h2 { font-size: 24px; font-weight: 700; color: var(--text); }
+    .result-screen .final-score { font-size: 48px; font-weight: 800; color: var(--accent); }
+    .result-screen .breakdown { color: var(--muted); font-size: 14px; }
+    .result-screen .breakdown span { margin: 0 8px; }
+    .result-screen .breakdown .ok  { color: var(--green); }
+    .result-screen .breakdown .bad { color: var(--red);   }
+
+    /* ── RESPONSIVE ──────────────────────────────────────────────────────────── */
+    @media (max-width: 700px) {
+      main { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── HEADER ─────────────────────────────────────────────────────────────── -->
+  <header>
+    <h1>⛏ Nexus Staleness Detection</h1>
+    <span class="subtitle">Interactive Training · 12 Scenarios</span>
+    <div class="score-box">
+      <span>Correct: <strong id="scoreCorrect">0</strong></span>
+      <span>Wrong: <strong id="scoreWrong">0</strong></span>
+      <span>Scenario: <strong id="scoreCurrent">1</strong>/<strong>12</strong></span>
+    </div>
+  </header>
+  <div class="progress-bar"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+
+  <main>
+    <!-- ── SIDEBAR ──────────────────────────────────────────────────────────── -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-title">Scenarios</div>
+      <!-- Items injected by JS -->
+    </nav>
+
+    <!-- ── CONTENT ──────────────────────────────────────────────────────────── -->
+    <div class="content" id="content">
+      <!-- Scenario cards injected by JS -->
+    </div>
+  </main>
+
+  <!-- ── FOOTER ─────────────────────────────────────────────────────────────── -->
+  <footer>
+    <span><kbd>←</kbd> <kbd>→</kbd> Navigate</span>
+    <span><kbd>A</kbd>–<kbd>D</kbd> Answer options</span>
+    <span><kbd>R</kbd> Restart</span>
+    <span>Source: <code>src/LLP/stateless_miner.cpp · src/LLP/miner.cpp</code></span>
+  </footer>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════════
+   DATA — 12 TRAINING SCENARIOS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+const SCENARIOS = [
+  /* ── 1 ── FRESH TEMPLATE ──────────────────────────────────────────────── */
+  {
+    title: "Fresh Template — All Checks Pass",
+    lane: "stateless",
+    desc: "A newly issued mining template passes every staleness guard. Understand the order of checks performed by <code>TemplateMetadata::IsStale()</code>.",
+    diagram: `<svg viewBox="0 0 520 320" width="520" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#58a6ff"/>
+        </marker>
+      </defs>
+      <!-- Start -->
+      <rect x="185" y="10" width="150" height="34" rx="17" fill="#1d3557" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="260" y="32" text-anchor="middle" fill="#58a6ff" font-size="12" font-family="sans-serif">IsStale() called</text>
+      <line x1="260" y1="44" x2="260" y2="68" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- Check 1 -->
+      <rect x="145" y="68" width="230" height="34" rx="5" fill="#1c2128" stroke="#30363d" stroke-width="1"/>
+      <text x="260" y="80" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">CHECK 1: Timestamp valid?</text>
+      <text x="260" y="95" text-anchor="middle" fill="#e6edf3" font-size="11" font-family="monospace">nCreationTime &gt; 0 ✓   age &lt; 600s ✓</text>
+      <line x1="260" y1="102" x2="260" y2="126" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- Check 2 -->
+      <rect x="145" y="126" width="230" height="34" rx="5" fill="#1c2128" stroke="#30363d" stroke-width="1"/>
+      <text x="260" y="138" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">CHECK 2: Channel height valid?</text>
+      <text x="260" y="153" text-anchor="middle" fill="#e6edf3" font-size="11" font-family="monospace">nChannelHeight != 0 ✓</text>
+      <line x1="260" y1="160" x2="260" y2="184" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- Check 3 -->
+      <rect x="145" y="184" width="230" height="46" rx="5" fill="#1c2128" stroke="#30363d" stroke-width="1"/>
+      <text x="260" y="198" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">CHECK 3: Channel height match?</text>
+      <text x="260" y="213" text-anchor="middle" fill="#e6edf3" font-size="11" font-family="monospace">chain.nChannelHeight == tmpl.nChannelHeight - 1</text>
+      <text x="260" y="226" text-anchor="middle" fill="#3fb950" font-size="11" font-family="monospace">2165442 == 2165443 - 1 ✓</text>
+      <line x1="260" y1="230" x2="260" y2="254" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <!-- Result -->
+      <rect x="170" y="254" width="180" height="42" rx="8" fill="#1a3a1a" stroke="#3fb950" stroke-width="2"/>
+      <text x="260" y="271" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="bold" font-family="sans-serif">return false</text>
+      <text x="260" y="287" text-anchor="middle" fill="#3fb950" font-size="11" font-family="sans-serif">✅ FRESH — Mine this block</text>
+    </svg>`,
+    state: [
+      ["nCreationTime", "now - 30s", "ok", "Template is 30 seconds old"],
+      ["nAge", "30", "ok", "Well under 600 s limit"],
+      ["nChannelHeight (template)", "2165443", "info", "Mining block 2 165 443"],
+      ["chain.nChannelHeight", "2165442", "ok", "Chain is at N-1 — correct"],
+      ["GetLastState result", "true", "ok", "Channel state found"],
+    ],
+    question: "What value does <code>IsStale()</code> return for this template?",
+    options: [
+      { text: "true — the template is stale", correct: false },
+      { text: "false — the template is fresh", correct: true },
+      { text: "It throws an exception", correct: false },
+      { text: "It depends on channel difficulty", correct: false },
+    ],
+    feedback: {
+      correct: "Correct! All three guards pass: valid timestamp, non-zero channel height, and <code>chain.nChannelHeight == nChannelHeight - 1</code>. <code>IsStale()</code> returns <code>false</code>.",
+      wrong:   "Incorrect. Every check passes: age &lt; 600 s, channel height is non-zero, and the blockchain sits exactly one behind the template. <code>IsStale()</code> returns <code>false</code>."
+    }
+  },
+
+  /* ── 2 ── AGE TIMEOUT ─────────────────────────────────────────────────── */
+  {
+    title: "Age Timeout — 600 s Safety Net",
+    lane: "stateless",
+    desc: "Templates older than <strong>MAX_TEMPLATE_AGE_SECONDS (600 s)</strong> are always stale regardless of chain state. This is the secondary (first-evaluated) guard.",
+    diagram: `<svg viewBox="0 0 520 280" width="520" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#58a6ff"/>
+        </marker>
+        <marker id="arr-r" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#f85149"/>
+        </marker>
+      </defs>
+      <rect x="185" y="10" width="150" height="34" rx="17" fill="#1d3557" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="260" y="32" text-anchor="middle" fill="#58a6ff" font-size="12" font-family="sans-serif">IsStale() called</text>
+      <line x1="260" y1="44" x2="260" y2="68" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <rect x="145" y="68" width="230" height="46" rx="5" fill="#1c2128" stroke="#30363d"/>
+      <text x="260" y="83" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">CHECK 1: Age timeout</text>
+      <text x="260" y="99" text-anchor="middle" fill="#e6edf3" font-size="11" font-family="monospace">nAge = 847s</text>
+      <text x="260" y="112" text-anchor="middle" fill="#f85149" font-size="11" font-family="monospace">847 &gt; 600 → STALE ✗</text>
+      <line x1="260" y1="114" x2="260" y2="138" stroke="#f85149" stroke-width="1.5" marker-end="url(#arr-r)"/>
+
+      <!-- Skipped -->
+      <rect x="145" y="138" width="230" height="34" rx="5" fill="#0d1117" stroke="#30363d" stroke-dasharray="4"/>
+      <text x="260" y="156" text-anchor="middle" fill="#444c56" font-size="11" font-family="sans-serif">CHECK 2 &amp; 3: skipped</text>
+      <line x1="260" y1="172" x2="260" y2="196" stroke="#f85149" stroke-width="1.5" marker-end="url(#arr-r)"/>
+
+      <rect x="170" y="196" width="180" height="42" rx="8" fill="#3a1a1a" stroke="#f85149" stroke-width="2"/>
+      <text x="260" y="213" text-anchor="middle" fill="#f85149" font-size="13" font-weight="bold" font-family="sans-serif">return true</text>
+      <text x="260" y="229" text-anchor="middle" fill="#ff9494" font-size="11" font-family="sans-serif">🚫 STALE — Discard template</text>
+    </svg>`,
+    state: [
+      ["nCreationTime", "now - 847s", "bad", "Template is 847 seconds old"],
+      ["MAX_TEMPLATE_AGE_SECONDS", "600", "info", "Constant in falcon_constants.h"],
+      ["nAge > 600", "true", "bad", "Triggers immediate stale return"],
+      ["Channel height checks", "SKIPPED", "warn", "Short-circuit: age check fires first"],
+    ],
+    question: "Why does the age check fire before the channel height check?",
+    options: [
+      { text: "Channel height is more expensive to compute", correct: false },
+      { text: "Age check is listed first in the source code and returns early", correct: true },
+      { text: "600 s is the block target time", correct: false },
+      { text: "Channel height is only checked on submission", correct: false },
+    ],
+    feedback: {
+      correct: "Correct! <code>IsStale()</code> checks age first (<code>nAge &gt; MAX_TEMPLATE_AGE_SECONDS</code>) and returns <code>true</code> immediately, so channel height is never evaluated.",
+      wrong:   "Incorrect. The age check appears first in the function and uses an early <code>return true</code> when the template exceeds 600 s. Channel height is never reached in this code path."
+    }
+  },
+
+  /* ── 3 ── INVALID TIMESTAMP ───────────────────────────────────────────── */
+  {
+    title: "Invalid Timestamp — Zero nCreationTime",
+    lane: "stateless",
+    desc: "An uninitialized or corrupted <code>nCreationTime == 0</code> is treated as stale immediately. The guard also fires when the clock appears to run backward (<code>nNow &lt; nCreationTime</code>).",
+    diagram: `<svg viewBox="0 0 520 260" width="520" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr-r" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#f85149"/>
+        </marker>
+      </defs>
+      <rect x="185" y="10" width="150" height="34" rx="17" fill="#1d3557" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="260" y="32" text-anchor="middle" fill="#58a6ff" font-size="12" font-family="sans-serif">IsStale() called</text>
+      <line x1="260" y1="44" x2="260" y2="68" stroke="#f85149" stroke-width="1.5" marker-end="url(#arr-r)"/>
+
+      <rect x="120" y="68" width="280" height="56" rx="5" fill="#1c2128" stroke="#f85149"/>
+      <text x="260" y="83" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">GUARD: Timestamp validity</text>
+      <text x="260" y="100" text-anchor="middle" fill="#e6edf3" font-size="11" font-family="monospace">nCreationTime == 0 → true</text>
+      <text x="260" y="116" text-anchor="middle" fill="#f85149" font-size="11" font-family="monospace">OR nNow &lt; nCreationTime → clock skew</text>
+      <line x1="260" y1="124" x2="260" y2="148" stroke="#f85149" stroke-width="1.5" marker-end="url(#arr-r)"/>
+
+      <rect x="170" y="148" width="180" height="42" rx="8" fill="#3a1a1a" stroke="#f85149" stroke-width="2"/>
+      <text x="260" y="165" text-anchor="middle" fill="#f85149" font-size="13" font-weight="bold" font-family="sans-serif">return true</text>
+      <text x="260" y="181" text-anchor="middle" fill="#ff9494" font-size="11" font-family="sans-serif">🚫 STALE — Invalid timestamp</text>
+    </svg>`,
+    state: [
+      ["nCreationTime", "0", "bad", "Uninitialized TemplateMetadata"],
+      ["nNow", "1708740000", "ok", "Valid unified timestamp"],
+      ["nNow < nCreationTime", "false", "info", "Second trigger: clock skew"],
+      ["Result", "return true", "bad", "Immediate early return"],
+    ],
+    question: "What condition also triggers this same early return besides <code>nCreationTime == 0</code>?",
+    options: [
+      { text: "nChannelHeight == 0", correct: false },
+      { text: "nNow < nCreationTime (clock skew or future timestamp)", correct: true },
+      { text: "GetLastState() returning false", correct: false },
+      { text: "nAge == MAX_TEMPLATE_AGE_SECONDS", correct: false },
+    ],
+    feedback: {
+      correct: "Correct! The guard is: <code>if(nCreationTime == 0 || nNow &lt; nCreationTime) return true;</code>. Both cases indicate a broken timestamp.",
+      wrong:   "Incorrect. The second trigger in the same guard is <code>nNow &lt; nCreationTime</code> — the current time appears to be before the template was created, indicating clock skew or a future timestamp."
+    }
+  },
+
+  /* ── 4 ── ZERO CHANNEL HEIGHT ─────────────────────────────────────────── */
+  {
+    title: "Zero Channel Height — Uninitialized Metadata",
+    lane: "stateless",
+    desc: "<code>nChannelHeight == 0</code> means the <code>TemplateMetadata</code> was never properly populated. The node marks it stale to force a fresh template request.",
+    diagram: `<svg viewBox="0 0 520 300" width="520" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#58a6ff"/>
+        </marker>
+        <marker id="arr-r" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#f85149"/>
+        </marker>
+      </defs>
+      <rect x="185" y="10" width="150" height="34" rx="17" fill="#1d3557" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="260" y="32" text-anchor="middle" fill="#58a6ff" font-size="12" font-family="sans-serif">IsStale() called</text>
+      <line x1="260" y1="44" x2="260" y2="68" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <rect x="145" y="68" width="230" height="34" rx="5" fill="#1c2128" stroke="#30363d"/>
+      <text x="260" y="83" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">Age check: nAge = 12s ✓</text>
+      <text x="260" y="98" text-anchor="middle" fill="#3fb950" font-size="11" font-family="monospace">12 &lt; 600 — passes</text>
+      <line x1="260" y1="102" x2="260" y2="126" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <rect x="120" y="126" width="280" height="44" rx="5" fill="#1c2128" stroke="#f85149"/>
+      <text x="260" y="141" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">Channel height guard</text>
+      <text x="260" y="157" text-anchor="middle" fill="#f85149" font-size="11" font-family="monospace">nChannelHeight == 0 → STALE ✗</text>
+      <line x1="260" y1="170" x2="260" y2="194" stroke="#f85149" stroke-width="1.5" marker-end="url(#arr-r)"/>
+
+      <rect x="170" y="194" width="180" height="42" rx="8" fill="#3a1a1a" stroke="#f85149" stroke-width="2"/>
+      <text x="260" y="211" text-anchor="middle" fill="#f85149" font-size="13" font-weight="bold" font-family="sans-serif">return true</text>
+      <text x="260" y="227" text-anchor="middle" fill="#ff9494" font-size="11" font-family="sans-serif">🚫 STALE — Invalid height</text>
+    </svg>`,
+    state: [
+      ["nCreationTime", "now - 12s", "ok", "Valid timestamp"],
+      ["nChannelHeight (template)", "0", "bad", "Never populated — default value"],
+      ["Comment in source", "\"mark as stale for safety\"", "warn", "Better to refresh than mine invalid data"],
+    ],
+    question: "Why is <code>nChannelHeight == 0</code> treated as stale rather than fresh?",
+    options: [
+      { text: "Zero height means the genesis block, which is always valid", correct: false },
+      { text: "The value was never set — mining block 0 would produce an invalid block", correct: true },
+      { text: "Channel heights always start at 1 in testnet", correct: false },
+      { text: "The node reserves 0 for proof-of-stake templates", correct: false },
+    ],
+    feedback: {
+      correct: "Correct! A zero channel height is the default value of an uninitialized <code>TemplateMetadata</code>. Treating it as stale forces the miner to request a properly populated template.",
+      wrong:   "Incorrect. <code>nChannelHeight == 0</code> means the metadata was never properly initialized. Rather than risk mining an invalid block, the code marks it stale so the miner will request a fresh template."
+    }
+  },
+
+  /* ── 5 ── CHANNEL HEIGHT MISMATCH ─────────────────────────────────────── */
+  {
+    title: "Channel Height Mismatch — Another Miner Found a Block",
+    lane: "stateless",
+    desc: "The chain's channel height has advanced past the template's anchor. This is the primary staleness signal: a new block was found in this channel, so the template is obsolete.",
+    diagram: `<svg viewBox="0 0 560 340" width="560" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#58a6ff"/>
+        </marker>
+        <marker id="arr-r" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#f85149"/>
+        </marker>
+      </defs>
+
+      <!-- Chain timeline -->
+      <text x="20" y="24" fill="#8b949e" font-size="10" font-family="sans-serif">CHAIN STATE</text>
+      <rect x="20" y="30" width="90" height="30" rx="4" fill="#1c2128" stroke="#30363d"/>
+      <text x="65" y="50" text-anchor="middle" fill="#e6edf3" font-size="10" font-family="monospace">H=2165442</text>
+      <line x1="110" y1="45" x2="140" y2="45" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="140" y="30" width="90" height="30" rx="4" fill="#1a3a1a" stroke="#3fb950"/>
+      <text x="185" y="50" text-anchor="middle" fill="#3fb950" font-size="10" font-family="monospace">H=2165443</text>
+      <text x="185" y="18" text-anchor="middle" fill="#3fb950" font-size="9" font-family="sans-serif">new block!</text>
+      <line x1="230" y1="45" x2="260" y2="45" stroke="#30363d" stroke-width="1.5" stroke-dasharray="4"/>
+
+      <!-- Template box -->
+      <text x="290" y="24" fill="#8b949e" font-size="10" font-family="sans-serif">TEMPLATE</text>
+      <rect x="290" y="30" width="140" height="30" rx="4" fill="#2d1f00" stroke="#f0883e"/>
+      <text x="360" y="45" text-anchor="middle" fill="#f0883e" font-size="10" font-family="monospace">nChannelHeight = 2165443</text>
+
+      <!-- Comparison -->
+      <rect x="130" y="100" width="300" height="50" rx="5" fill="#1c2128" stroke="#30363d"/>
+      <text x="280" y="117" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">Channel height comparison</text>
+      <text x="280" y="135" text-anchor="middle" fill="#e6edf3" font-size="11" font-family="monospace">chain(2165443) != tmpl(2165443) - 1</text>
+      <text x="280" y="148" text-anchor="middle" fill="#f85149" font-size="11" font-family="monospace">2165443 != 2165442 → MISMATCH ✗</text>
+      <line x1="280" y1="150" x2="280" y2="174" stroke="#f85149" stroke-width="1.5" marker-end="url(#arr-r)"/>
+
+      <rect x="195" y="174" width="170" height="42" rx="8" fill="#3a1a1a" stroke="#f85149" stroke-width="2"/>
+      <text x="280" y="191" text-anchor="middle" fill="#f85149" font-size="13" font-weight="bold" font-family="sans-serif">return true</text>
+      <text x="280" y="207" text-anchor="middle" fill="#ff9494" font-size="11" font-family="sans-serif">🚫 STALE — Chain advanced</text>
+    </svg>`,
+    state: [
+      ["template.nChannelHeight", "2165443", "info", "Template was mining block 2165443"],
+      ["chain.nChannelHeight (now)", "2165443", "bad", "Another miner found this block!"],
+      ["Expected chain height", "2165442", "warn", "Should be tmpl-1 if fresh"],
+      ["Mismatch", "2165443 != 2165442", "bad", "Triggers stale return"],
+    ],
+    question: "The template has <code>nChannelHeight=100</code>. What chain channel height makes it FRESH?",
+    options: [
+      { text: "chain.nChannelHeight == 100", correct: false },
+      { text: "chain.nChannelHeight == 99", correct: true },
+      { text: "chain.nChannelHeight == 101", correct: false },
+      { text: "chain.nChannelHeight == 98", correct: false },
+    ],
+    feedback: {
+      correct: "Correct! The template mines block 100, so the blockchain must be at block 99 (N-1). The check is: <code>stateCurrent.nChannelHeight != nChannelHeight - 1</code>.",
+      wrong:   "Incorrect. The template mines block N=100, so the chain must be at N-1=99. If the chain is at 100, that means the block was already found. The check is <code>chain.nChannelHeight == nChannelHeight - 1</code>."
+    }
+  },
+
+  /* ── 6 ── GET_LAST_STATE FAILURE ──────────────────────────────────────── */
+  {
+    title: "GetLastState Failure — Safe Stale",
+    lane: "stateless",
+    desc: "<code>TAO::Ledger::GetLastState(stateCurrent, nChannel)</code> returns <code>false</code> when the channel has no history (genesis, pruned data, or invalid channel id). The node fails safe: return stale.",
+    diagram: `<svg viewBox="0 0 520 290" width="520" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#58a6ff"/>
+        </marker>
+        <marker id="arr-r" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#f85149"/>
+        </marker>
+      </defs>
+      <rect x="185" y="10" width="150" height="34" rx="17" fill="#1d3557" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="260" y="32" text-anchor="middle" fill="#58a6ff" font-size="12" font-family="sans-serif">IsStale() called</text>
+      <line x1="260" y1="44" x2="260" y2="68" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <rect x="130" y="68" width="260" height="34" rx="5" fill="#1c2128" stroke="#30363d"/>
+      <text x="260" y="83" text-anchor="middle" fill="#3fb950" font-size="11" font-family="monospace">Age OK, nChannelHeight OK</text>
+      <text x="260" y="98" text-anchor="middle" fill="#3fb950" font-size="10" font-family="sans-serif">Both pass ✓</text>
+      <line x1="260" y1="102" x2="260" y2="126" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <rect x="110" y="126" width="300" height="44" rx="5" fill="#1c2128" stroke="#f85149"/>
+      <text x="260" y="142" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">GetLastState(stateCurrent, nChannel)</text>
+      <text x="260" y="158" text-anchor="middle" fill="#f85149" font-size="11" font-family="monospace">returns false → no channel history</text>
+      <line x1="260" y1="170" x2="260" y2="194" stroke="#f85149" stroke-width="1.5" marker-end="url(#arr-r)"/>
+
+      <rect x="170" y="194" width="180" height="52" rx="8" fill="#3a1a1a" stroke="#f85149" stroke-width="2"/>
+      <text x="260" y="211" text-anchor="middle" fill="#f85149" font-size="13" font-weight="bold" font-family="sans-serif">return true</text>
+      <text x="260" y="227" text-anchor="middle" fill="#ff9494" font-size="11" font-family="sans-serif">🚫 STALE — Fail safe</text>
+      <text x="260" y="240" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">Better refresh than mine invalid data</text>
+    </svg>`,
+    state: [
+      ["Age check", "passes", "ok", "Template is 45 seconds old"],
+      ["nChannelHeight", "2165443", "ok", "Non-zero, valid"],
+      ["GetLastState()", "false", "bad", "No chain history for this channel"],
+      ["Possible causes", "genesis / pruned / bad channel id", "warn", ""],
+      ["Fail-safe policy", "return true (stale)", "bad", "Safer than attempting to use bad state"],
+    ],
+    question: "Why does the code return <code>true</code> (stale) when <code>GetLastState()</code> fails, instead of returning <code>false</code> (fresh)?",
+    options: [
+      { text: "The comment says 'better to refresh than mine invalid data'", correct: true },
+      { text: "GetLastState is only called for legacy miners", correct: false },
+      { text: "A false return from GetLastState means the chain is at genesis, which is always fresh", correct: false },
+      { text: "The difficulty cannot be computed without channel history", correct: false },
+    ],
+    feedback: {
+      correct: "Correct! The source comment says explicitly: <em>\"better to refresh than mine invalid data.\"</em> If channel state cannot be retrieved, any submission would likely be invalid.",
+      wrong:   "Incorrect. Returning stale forces a template refresh. The code comment reads: <em>\"Mark as stale for safety — better to refresh than mine invalid data.\"</em>"
+    }
+  },
+
+  /* ── 7 ── LEGACY LANE: HEIGHT CHANGE ──────────────────────────────────── */
+  {
+    title: "Legacy Lane — Height Change Detection",
+    lane: "legacy",
+    desc: "The legacy miner (port 8323) uses <code>check_best_height()</code>. When <code>ChainState::nBestHeight</code> differs from <code>nBestHeight</code>, it clears the block map and notifies connected miners with height 0 → correct height.",
+    diagram: `<svg viewBox="0 0 560 340" width="560" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#f0883e"/>
+        </marker>
+        <marker id="arr-g" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#3fb950"/>
+        </marker>
+      </defs>
+      <rect x="185" y="10" width="190" height="34" rx="17" fill="#2d1f00" stroke="#f0883e" stroke-width="1.5"/>
+      <text x="280" y="32" text-anchor="middle" fill="#f0883e" font-size="12" font-family="sans-serif">check_best_height() [port 8323]</text>
+      <line x1="280" y1="44" x2="280" y2="68" stroke="#f0883e" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <rect x="110" y="68" width="340" height="44" rx="5" fill="#1c2128" stroke="#30363d"/>
+      <text x="280" y="85" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">Compare nBestHeight vs ChainState::nBestHeight</text>
+      <text x="280" y="101" text-anchor="middle" fill="#e6edf3" font-size="11" font-family="monospace">local=4501322  chain=4501323  → changed!</text>
+
+      <!-- Left branch: height same (check_round) -->
+      <line x1="180" y1="112" x2="90" y2="148" stroke="#30363d" stroke-width="1.5" stroke-dasharray="4"/>
+      <text x="90" y="165" text-anchor="middle" fill="#444c56" font-size="10" font-family="sans-serif">(same height →</text>
+      <text x="90" y="178" text-anchor="middle" fill="#444c56" font-size="10" font-family="sans-serif">check_round())</text>
+
+      <!-- Right branch: height changed -->
+      <line x1="280" y1="112" x2="280" y2="136" stroke="#f0883e" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="140" y="136" width="280" height="44" rx="5" fill="#1c2128" stroke="#f0883e"/>
+      <text x="280" y="153" text-anchor="middle" fill="#f0883e" font-size="10" font-family="sans-serif">Height changed → clear_map()</text>
+      <text x="280" y="168" text-anchor="middle" fill="#e6edf3" font-size="11" font-family="monospace">mapBlocks.clear()   nBestHeight = 4501323</text>
+      <line x1="280" y1="180" x2="280" y2="204" stroke="#f0883e" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <rect x="110" y="204" width="340" height="34" rx="5" fill="#1c2128" stroke="#30363d"/>
+      <text x="280" y="219" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">NotifyNewRound(nBestHeight)</text>
+      <text x="280" y="234" text-anchor="middle" fill="#e6edf3" font-size="11" font-family="monospace">→ StatelessMinerManager::Get().NotifyNewRound(4501323)</text>
+      <line x1="280" y1="238" x2="280" y2="262" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arr-g)"/>
+
+      <rect x="175" y="262" width="210" height="34" rx="8" fill="#1a3a1a" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="280" y="284" text-anchor="middle" fill="#3fb950" font-size="12" font-family="sans-serif">return true — miners notified</text>
+    </svg>`,
+    state: [
+      ["nBestHeight (local)", "4501322", "warn", "Cached value in Miner object"],
+      ["ChainState::nBestHeight", "4501323", "ok", "Atomic global — new block accepted"],
+      ["Action", "clear_map()", "info", "All stale block templates purged"],
+      ["Result", "return true", "ok", "Triggers miner round update"],
+      ["Side effect", "NotifyNewRound(4501323)", "info", "Stateless miners also notified"],
+    ],
+    question: "What does <code>check_best_height()</code> return when the height has NOT changed and <code>check_round()</code> returns <em>true</em> (round is still valid)?",
+    options: [
+      { text: "true — always notifies miners", correct: false },
+      { text: "false — no update needed", correct: true },
+      { text: "It calls clear_map() anyway", correct: false },
+      { text: "It calls NotifyNewRound(0)", correct: false },
+    ],
+    feedback: {
+      correct: "Correct! The code path reads: <code>if(nBestHeight == nChainStateHeight) return false;</code> — if height is unchanged and <code>check_round()</code> confirms the round is still valid, no update is needed.",
+      wrong:   "Incorrect. When height matches and <code>check_round()</code> returns <code>true</code> (round is valid), the first guard (<code>&amp;&amp; !check_round()</code>) is skipped, and the second check <code>if(nBestHeight == nChainStateHeight) return false;</code> fires — miner state is up to date."
+    }
+  },
+
+  /* ── 8 ── LEGACY LANE: SAME-HEIGHT REORG ──────────────────────────────── */
+  {
+    title: "Legacy Lane — Same-Height Reorg Detection",
+    lane: "legacy",
+    desc: "When height doesn't change but a different chain tip wins (reorg at the same height), <code>check_round()</code> iterates <code>mapBlockHashes</code> comparing stored <code>hashBestChain</code> snapshots against the live chain tip.",
+    diagram: `<svg viewBox="0 0 560 320" width="560" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#f0883e"/>
+        </marker>
+        <marker id="arr-r" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#f85149"/>
+        </marker>
+      </defs>
+      <!-- mapBlockHashes -->
+      <text x="20" y="20" fill="#8b949e" font-size="10" font-family="sans-serif">mapBlockHashes snapshot (at GET_BLOCK time)</text>
+      <rect x="20" y="28" width="200" height="60" rx="5" fill="#1c2128" stroke="#30363d"/>
+      <text x="30" y="46" fill="#8b949e" font-size="9" font-family="monospace">merkle_A → hashBestChain_OLD</text>
+      <text x="30" y="61" fill="#8b949e" font-size="9" font-family="monospace">merkle_B → hashBestChain_OLD</text>
+      <text x="30" y="76" fill="#8b949e" font-size="9" font-family="monospace">merkle_C → hashBestChain_OLD</text>
+
+      <!-- Current chain tip -->
+      <text x="340" y="20" fill="#8b949e" font-size="10" font-family="sans-serif">Live chain tip</text>
+      <rect x="340" y="28" width="180" height="60" rx="5" fill="#2d1f00" stroke="#f0883e"/>
+      <text x="430" y="55" text-anchor="middle" fill="#f0883e" font-size="10" font-family="monospace">hashBestChain_NEW</text>
+      <text x="430" y="72" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">(reorg — different hash)</text>
+
+      <!-- check_round logic -->
+      <rect x="100" y="120" width="360" height="60" rx="5" fill="#1c2128" stroke="#f85149"/>
+      <text x="280" y="138" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">check_round(): iterate mapBlockHashes</text>
+      <text x="280" y="155" text-anchor="middle" fill="#e6edf3" font-size="11" font-family="monospace">stored_hash != ChainState::hashBestChain.load()</text>
+      <text x="280" y="170" text-anchor="middle" fill="#f85149" font-size="11" font-family="monospace">hashBestChain_OLD != hashBestChain_NEW → REORG!</text>
+      <line x1="280" y1="180" x2="280" y2="204" stroke="#f85149" stroke-width="1.5" marker-end="url(#arr-r)"/>
+
+      <!-- Force height 0 -->
+      <rect x="110" y="204" width="340" height="40" rx="5" fill="#1c2128" stroke="#f0883e"/>
+      <text x="280" y="219" text-anchor="middle" fill="#f0883e" font-size="10" font-family="sans-serif">Force height to 0 → trigger round reset</text>
+      <text x="280" y="234" text-anchor="middle" fill="#e6edf3" font-size="11" font-family="monospace">nBestHeight = 0 → miners request new block</text>
+      <line x1="280" y1="244" x2="280" y2="268" stroke="#f0883e" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <rect x="175" y="268" width="210" height="32" rx="8" fill="#2d1f00" stroke="#f0883e"/>
+      <text x="280" y="288" text-anchor="middle" fill="#f0883e" font-size="12" font-family="sans-serif">return true — reorg handled</text>
+    </svg>`,
+    state: [
+      ["nBestHeight", "4501323 (unchanged)", "warn", "Height same — but chain tip changed!"],
+      ["mapBlockHashes[merkle]", "OLD hashBestChain", "bad", "Snapshot taken at GET_BLOCK time"],
+      ["ChainState::hashBestChain", "NEW hashBestChain", "bad", "Reorg replaced chain tip"],
+      ["check_round() returns", "true", "bad", "Reorg detected — set height to 0"],
+    ],
+    question: "When is the <code>hashBestChain</code> snapshot stored in <code>mapBlockHashes</code>?",
+    options: [
+      { text: "When the miner connects to the node", correct: false },
+      { text: "When the miner calls GET_BLOCK to request a template", correct: true },
+      { text: "When the miner submits a SUBMIT_BLOCK", correct: false },
+      { text: "Periodically every 30 seconds", correct: false },
+    ],
+    feedback: {
+      correct: "Correct! In <code>miner.cpp</code>, the snapshot is taken at <code>GET_BLOCK</code> handling: <code>mapBlockHashes[hashMerkle] = ChainState::hashBestChain.load()</code>.",
+      wrong:   "Incorrect. The snapshot is stored when the miner requests a template via <code>GET_BLOCK</code>. This captures the chain tip at the moment the template was issued."
+    }
+  },
+
+  /* ── 9 ── UNIVERSAL TIP PUSH ──────────────────────────────────────────── */
+  {
+    title: "Universal Tip Push — Any Channel Notifies All Miners",
+    lane: "both",
+    desc: "<code>BlockState::SetBest()</code> notifies <strong>both</strong> Prime (channel 1) and Hash (channel 2) miners on every unified tip advance — regardless of which channel produced the winning block.",
+    diagram: `<svg viewBox="0 0 580 320" width="580" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr-g" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#3fb950"/>
+        </marker>
+      </defs>
+      <!-- Trigger -->
+      <rect x="190" y="10" width="200" height="34" rx="17" fill="#1f2d1f" stroke="#3fb950" stroke-width="1.5"/>
+      <text x="290" y="26" text-anchor="middle" fill="#3fb950" font-size="11" font-family="sans-serif">SetBest() — any channel wins</text>
+      <text x="290" y="40" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">(Stake / Prime / Hash)</text>
+      <line x1="290" y1="44" x2="290" y2="68" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arr-g)"/>
+
+      <!-- Loop -->
+      <rect x="130" y="68" width="320" height="44" rx="5" fill="#1c2128" stroke="#30363d"/>
+      <text x="290" y="85" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">Loop over channels {1, 2} — universal notification</text>
+      <text x="290" y="101" text-anchor="middle" fill="#e6edf3" font-size="11" font-family="monospace">for(nChan : {1, 2}) NotifyChannelMiners(nChan)</text>
+
+      <!-- Prime arrow -->
+      <line x1="210" y1="112" x2="120" y2="160" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arr-g)"/>
+      <rect x="20" y="160" width="200" height="50" rx="6" fill="#1a3a1a" stroke="#3fb950"/>
+      <text x="120" y="179" text-anchor="middle" fill="#3fb950" font-size="11" font-family="sans-serif">PRIME_BLOCK_AVAILABLE</text>
+      <text x="120" y="196" text-anchor="middle" fill="#8b949e" font-size="10" font-family="monospace">opcode 0xD0D9 (stateless)</text>
+      <text x="120" y="209" text-anchor="middle" fill="#8b949e" font-size="10" font-family="monospace">opcode 0xD9   (legacy)</text>
+
+      <!-- Hash arrow -->
+      <line x1="370" y1="112" x2="460" y2="160" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arr-g)"/>
+      <rect x="360" y="160" width="200" height="50" rx="6" fill="#1a3a1a" stroke="#3fb950"/>
+      <text x="460" y="179" text-anchor="middle" fill="#3fb950" font-size="11" font-family="sans-serif">HASH_BLOCK_AVAILABLE</text>
+      <text x="460" y="196" text-anchor="middle" fill="#8b949e" font-size="10" font-family="monospace">opcode 0xD0DA (stateless)</text>
+      <text x="460" y="209" text-anchor="middle" fill="#8b949e" font-size="10" font-family="monospace">opcode 0xDA   (legacy)</text>
+
+      <!-- Server filter note -->
+      <rect x="110" y="240" width="360" height="38" rx="5" fill="#1c2128" stroke="#30363d"/>
+      <text x="290" y="255" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">Server-side filtering in NotifyChannelMiners()</text>
+      <text x="290" y="270" text-anchor="middle" fill="#e6edf3" font-size="11" font-family="sans-serif">Only miners subscribed to that channel receive the push</text>
+    </svg>`,
+    state: [
+      ["Trigger event", "Any new block accepted (any channel)", "info", "SetBest() in state.cpp"],
+      ["Channels notified", "1 (Prime) AND 2 (Hash)", "ok", "Universal — regardless of block source"],
+      ["Prime opcode (stateless)", "0xD0D9", "info", "Port 9323"],
+      ["Hash opcode (stateless)", "0xD0DA", "info", "Port 9323"],
+      ["Server-side filter", "NotifyChannelMiners(nChan)", "info", "Delivers only to subscribed miners"],
+    ],
+    question: "If a Stake channel block advances the chain, which mining channels receive a push notification?",
+    options: [
+      { text: "No channels — Stake doesn't mine Prime or Hash", correct: false },
+      { text: "Only the Prime channel (channel 1)", correct: false },
+      { text: "Both Prime (1) AND Hash (2) channels", correct: true },
+      { text: "Only miners that are currently waiting for a block", correct: false },
+    ],
+    feedback: {
+      correct: "Correct! The universal tip push in <code>SetBest()</code> notifies both Prime AND Hash miners on every unified chain advance — even Stake blocks advance the best chain and reset both mining channels.",
+      wrong:   "Incorrect. The universal tip push loops over <code>{1, 2}</code> unconditionally. Both Prime and Hash miners are always notified when the unified chain tip advances, regardless of which channel produced the block."
+    }
+  },
+
+  /* ── 10 ── PUSH NOTIFICATION PAYLOAD ─────────────────────────────────── */
+  {
+    title: "Push Notification Payload Format",
+    lane: "both",
+    desc: "Each <code>PRIME_BLOCK_AVAILABLE</code> / <code>HASH_BLOCK_AVAILABLE</code> push carries a 12-byte big-endian payload: unified height, channel height, and difficulty.",
+    diagram: `<svg viewBox="0 0 560 220" width="560" xmlns="http://www.w3.org/2000/svg">
+      <!-- Byte ruler -->
+      <text x="20" y="24" fill="#8b949e" font-size="10" font-family="sans-serif">Payload bytes (12 total, big-endian)</text>
+      <!-- Byte blocks -->
+      <rect x="20"  y="32" width="120" height="50" rx="4" fill="#1d3557" stroke="#58a6ff"/>
+      <text x="80"  y="52" text-anchor="middle" fill="#58a6ff" font-size="10" font-family="sans-serif">Bytes 0-3</text>
+      <text x="80"  y="67" text-anchor="middle" fill="#e6edf3" font-size="11" font-family="monospace">nUnifiedHeight</text>
+      <text x="80"  y="80" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">uint32 BE</text>
+
+      <rect x="150" y="32" width="120" height="50" rx="4" fill="#2d1f00" stroke="#f0883e"/>
+      <text x="210" y="52" text-anchor="middle" fill="#f0883e" font-size="10" font-family="sans-serif">Bytes 4-7</text>
+      <text x="210" y="67" text-anchor="middle" fill="#e6edf3" font-size="11" font-family="monospace">nChannelHeight</text>
+      <text x="210" y="80" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">uint32 BE</text>
+
+      <rect x="280" y="32" width="120" height="50" rx="4" fill="#1f2d1f" stroke="#3fb950"/>
+      <text x="340" y="52" text-anchor="middle" fill="#3fb950" font-size="10" font-family="sans-serif">Bytes 8-11</text>
+      <text x="340" y="67" text-anchor="middle" fill="#e6edf3" font-size="11" font-family="monospace">nDifficulty</text>
+      <text x="340" y="80" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">uint32 BE</text>
+
+      <!-- Example payload -->
+      <text x="20" y="118" fill="#8b949e" font-size="10" font-family="sans-serif">Example (Prime block, unified height 4501323, channel height 2165443, difficulty 0x1FFFFFFF):</text>
+      <rect x="20" y="128" width="500" height="32" rx="4" fill="#0d1117" stroke="#30363d"/>
+      <text x="270" y="148" text-anchor="middle" fill="#e6edf3" font-size="12" font-family="monospace">00 44 AF 4B  00 21 0A C3  1F FF FF FF</text>
+
+      <!-- Labels -->
+      <text x="80"  y="175" text-anchor="middle" fill="#58a6ff" font-size="9" font-family="monospace">4,501,323</text>
+      <text x="210" y="175" text-anchor="middle" fill="#f0883e" font-size="9" font-family="monospace">2,165,443</text>
+      <text x="340" y="175" text-anchor="middle" fill="#3fb950" font-size="9" font-family="monospace">536,870,911</text>
+      <line x1="80"  y1="160" x2="80"  y2="170" stroke="#30363d" stroke-width="1"/>
+      <line x1="210" y1="160" x2="210" y2="170" stroke="#30363d" stroke-width="1"/>
+      <line x1="340" y1="160" x2="340" y2="170" stroke="#30363d" stroke-width="1"/>
+
+      <text x="20" y="200" fill="#8b949e" font-size="9" font-family="sans-serif">Source: src/LLP/push_notification.cpp — BuildPayload()</text>
+    </svg>`,
+    state: [
+      ["Total payload size", "12 bytes", "info", "Fixed — no variable fields"],
+      ["Byte order", "Big-endian (network byte order)", "info", "Each uint32 written MSB first"],
+      ["Bytes 0-3", "nUnifiedHeight", "info", "Full blockchain height (all channels)"],
+      ["Bytes 4-7", "nChannelHeight", "info", "Channel-specific height"],
+      ["Bytes 8-11", "nDifficulty", "info", "Packed difficulty bits"],
+    ],
+    question: "How many bytes does a <code>PRIME_BLOCK_AVAILABLE</code> or <code>HASH_BLOCK_AVAILABLE</code> push notification payload contain?",
+    options: [
+      { text: "4 bytes (just unified height)", correct: false },
+      { text: "8 bytes (unified + channel height)", correct: false },
+      { text: "12 bytes (unified height + channel height + difficulty)", correct: true },
+      { text: "16 bytes (includes hashBestChain prefix)", correct: false },
+    ],
+    feedback: {
+      correct: "Correct! <code>BuildPayload()</code> in <code>push_notification.cpp</code> writes exactly 12 bytes: 4 for unified height, 4 for channel height, 4 for difficulty — all big-endian.",
+      wrong:   "Incorrect. The payload is exactly 12 bytes: <code>nUnifiedHeight</code> (4 B) + <code>nChannelHeight</code> (4 B) + <code>nDifficulty</code> (4 B), all written big-endian."
+    }
+  },
+
+  /* ── 11 ── SUBMISSION GUARD ───────────────────────────────────────────── */
+  {
+    title: "Submission Guard — hashPrevBlock vs hashBestChain",
+    lane: "both",
+    desc: "Before <code>ValidateMinedBlock()</code> the node checks: does the submitted block's <code>hashPrevBlock</code> equal the current <code>hashBestChain</code>? This catches reorgs that happen between template issue and submission.",
+    diagram: `<svg viewBox="0 0 560 320" width="560" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#58a6ff"/>
+        </marker>
+        <marker id="arr-r" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#f85149"/>
+        </marker>
+        <marker id="arr-g" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#3fb950"/>
+        </marker>
+      </defs>
+      <rect x="175" y="10" width="210" height="34" rx="17" fill="#1d3557" stroke="#58a6ff" stroke-width="1.5"/>
+      <text x="280" y="32" text-anchor="middle" fill="#58a6ff" font-size="12" font-family="sans-serif">SUBMIT_BLOCK received</text>
+      <line x1="280" y1="44" x2="280" y2="68" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+      <rect x="90" y="68" width="380" height="44" rx="5" fill="#1c2128" stroke="#30363d"/>
+      <text x="280" y="85" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">Submission guard (mirrors StakeMinter line 674)</text>
+      <text x="280" y="101" text-anchor="middle" fill="#e6edf3" font-size="11" font-family="monospace">pBlock-&gt;hashPrevBlock != ChainState::hashBestChain</text>
+
+      <!-- Mismatch branch -->
+      <line x1="180" y1="112" x2="100" y2="156" stroke="#f85149" stroke-width="1.5" marker-end="url(#arr-r)"/>
+      <rect x="10" y="156" width="180" height="50" rx="6" fill="#3a1a1a" stroke="#f85149"/>
+      <text x="100" y="174" text-anchor="middle" fill="#f85149" font-size="11" font-family="sans-serif">MISMATCH → REJECT</text>
+      <text x="100" y="190" text-anchor="middle" fill="#8b949e" font-size="10" font-family="monospace">respond(BLOCK_REJECTED)</text>
+      <text x="100" y="204" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">reorg detected at submit time</text>
+
+      <!-- Match branch -->
+      <line x1="380" y1="112" x2="460" y2="156" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arr-g)"/>
+      <rect x="370" y="156" width="180" height="50" rx="6" fill="#1a3a1a" stroke="#3fb950"/>
+      <text x="460" y="174" text-anchor="middle" fill="#3fb950" font-size="11" font-family="sans-serif">MATCH → continue</text>
+      <text x="460" y="190" text-anchor="middle" fill="#8b949e" font-size="10" font-family="monospace">ValidateMinedBlock()</text>
+      <text x="460" y="204" text-anchor="middle" fill="#8b949e" font-size="9" font-family="sans-serif">AcceptMinedBlock()</text>
+
+      <!-- Port labels -->
+      <text x="100" y="240" text-anchor="middle" fill="#f0883e" font-size="10" font-family="sans-serif">Port 8323 → BLOCK_REJECTED (8-bit)</text>
+      <text x="460" y="240" text-anchor="middle" fill="#58a6ff" font-size="10" font-family="sans-serif">Port 9323 → STATELESS_BLOCK_REJECTED (16-bit)</text>
+    </svg>`,
+    state: [
+      ["Guard location (stateless)", "stateless_miner_connection.cpp:1682", "info", "Port 9323"],
+      ["Guard location (legacy)", "miner.cpp:1703", "info", "Port 8323"],
+      ["Reference pattern", "StakeMinter line 674", "info", "Same hash guard pattern"],
+      ["hashPrevBlock source", "Set at template creation time (create.cpp:348)", "info", "Immutable in 216-byte template"],
+      ["hashBestChain source", "ChainState::hashBestChain.load()", "info", "Live atomic read at submit time"],
+    ],
+    question: "Where is <code>hashPrevBlock</code> first assigned in the mining template?",
+    options: [
+      { text: "In the SUBMIT_BLOCK handler just before validation", correct: false },
+      { text: "In create.cpp at template creation time", correct: true },
+      { text: "By the miner client when it starts hashing", correct: false },
+      { text: "In check_round() after each round", correct: false },
+    ],
+    feedback: {
+      correct: "Correct! <code>hashPrevBlock</code> is set in <code>src/TAO/Ledger/create.cpp:348</code> during template creation and is immutable once serialized into the 216-byte template sent to the miner.",
+      wrong:   "Incorrect. <code>hashPrevBlock</code> is assigned in <code>create.cpp:348</code> during template creation. It cannot change after the template is issued — making it a reliable anchor for staleness detection."
+    }
+  },
+
+  /* ── 12 ── TEMPLATE HEIGHT SEMANTICS ──────────────────────────────────── */
+  {
+    title: "Template Height Semantics — Channel vs Unified Height",
+    lane: "stateless",
+    desc: "<code>TemplateMetadata::nHeight</code> stores the <strong>unified</strong> blockchain height (all channels). The block template's <code>pBlock-&gt;nHeight</code> stores the <strong>channel-specific</strong> height. Mixing them causes ~40% false positives.",
+    diagram: `<svg viewBox="0 0 580 300" width="580" xmlns="http://www.w3.org/2000/svg">
+      <!-- Correct box -->
+      <rect x="20" y="10" width="250" height="130" rx="6" fill="#1a3a1a" stroke="#3fb950"/>
+      <text x="145" y="28" text-anchor="middle" fill="#3fb950" font-size="11" font-weight="bold" font-family="sans-serif">✅ CORRECT</text>
+      <text x="30" y="48" fill="#8b949e" font-size="10" font-family="sans-serif">TemplateMetadata::nHeight</text>
+      <text x="30" y="64" fill="#e6edf3" font-size="11" font-family="monospace">= info.nUnifiedHeight</text>
+      <text x="30" y="80" fill="#8b949e" font-size="9" font-family="sans-serif">= ChainState::nBestHeight (all channels)</text>
+      <line x1="30" y1="90" x2="250" y2="90" stroke="#30363d" stroke-width="1"/>
+      <text x="30" y="106" fill="#8b949e" font-size="10" font-family="sans-serif">TemplateMetadata::nChannelHeight</text>
+      <text x="30" y="122" fill="#e6edf3" font-size="11" font-family="monospace">= pBlock-&gt;nHeight</text>
+      <text x="30" y="136" fill="#8b949e" font-size="9" font-family="sans-serif">= stateChannel.nChannelHeight + 1</text>
+
+      <!-- Wrong box -->
+      <rect x="310" y="10" width="250" height="130" rx="6" fill="#3a1a1a" stroke="#f85149"/>
+      <text x="435" y="28" text-anchor="middle" fill="#f85149" font-size="11" font-weight="bold" font-family="sans-serif">🚫 BUGGY (pre-PR #134)</text>
+      <text x="320" y="48" fill="#8b949e" font-size="10" font-family="sans-serif">TemplateMetadata::nHeight</text>
+      <text x="320" y="64" fill="#f85149" font-size="11" font-family="monospace">= pBlock-&gt;nHeight  ← WRONG!</text>
+      <text x="320" y="80" fill="#8b949e" font-size="9" font-family="sans-serif">= channel height, not unified height</text>
+      <line x1="320" y1="90" x2="530" y2="90" stroke="#30363d" stroke-width="1"/>
+      <text x="320" y="106" fill="#8b949e" font-size="10" font-family="sans-serif">IsStale() used nHeight for unified</text>
+      <text x="320" y="122" fill="#f85149" font-size="11" font-family="monospace">comparison → wrong channel!</text>
+      <text x="320" y="136" fill="#8b949e" font-size="9" font-family="sans-serif">≈ 40% false positives</text>
+
+      <!-- Impact note -->
+      <rect x="20" y="160" width="540" height="50" rx="5" fill="#1c2128" stroke="#30363d"/>
+      <text x="290" y="179" text-anchor="middle" fill="#8b949e" font-size="10" font-family="sans-serif">Cross-channel scenario where bug fires</text>
+      <text x="290" y="197" text-anchor="middle" fill="#e6edf3" font-size="11" font-family="monospace">Prime mines block → unified height +1 → Hash template nHeight wrong → false stale</text>
+
+      <text x="20" y="230" fill="#8b949e" font-size="9" font-family="sans-serif">Fixed in PR #134 · Source: src/LLP/stateless_miner_connection.cpp:2849, src/LLP/include/stateless_miner.h:179-180</text>
+    </svg>`,
+    state: [
+      ["TemplateMetadata::nHeight", "= info.nUnifiedHeight (CORRECT)", "ok", "Unified blockchain height — all channels"],
+      ["pBlock->nHeight", "= stateChannel.nChannelHeight + 1", "info", "Channel-specific — set in create.cpp:380"],
+      ["Pre-PR #134 bug", "nHeight = pBlock->nHeight (channel height)", "bad", "Used channel height as unified — cross-channel false positives"],
+      ["False positive rate", "~40%", "bad", "Hash templates killed by Prime blocks and vice versa"],
+    ],
+    question: "What value should <code>TemplateMetadata::nHeight</code> store?",
+    options: [
+      { text: "pBlock->nHeight (the channel-specific target height)", correct: false },
+      { text: "info.nUnifiedHeight (ChainState::nBestHeight — all channels)", correct: true },
+      { text: "stateChannel.nChannelHeight (the last channel block height)", correct: false },
+      { text: "The height of the previous block in the same channel", correct: false },
+    ],
+    feedback: {
+      correct: "Correct! <code>TemplateMetadata::nHeight</code> must be set to <code>info.nUnifiedHeight</code> — the unified blockchain height. This allows the node to track which round a template belongs to across all channels. <code>pBlock->nHeight</code> is the channel-specific target and should be stored in <code>nChannelHeight</code>.",
+      wrong:   "Incorrect. <code>TemplateMetadata::nHeight</code> stores the unified height from <code>info.nUnifiedHeight</code> (equivalent to <code>ChainState::nBestHeight</code>). <code>pBlock->nHeight</code> is the channel-specific target and belongs in <code>nChannelHeight</code>."
+    }
+  },
+];
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════════════════════════════════════════════ */
+let current     = 0;
+let answered    = new Array(SCENARIOS.length).fill(null); // null | true | false
+let correct     = 0;
+let wrong       = 0;
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   RENDER HELPERS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+function laneBadge(lane) {
+  const map = {
+    stateless: ['lane-stateless', 'Stateless · Port 9323'],
+    legacy:    ['lane-legacy',    'Legacy · Port 8323'],
+    both:      ['lane-both',      'Both Lanes'],
+  };
+  const [cls, label] = map[lane] || map.both;
+  return `<span class="lane-badge ${cls}">${label}</span>`;
+}
+
+function stateClass(v) {
+  if (v === 'ok')   return 'val-ok';
+  if (v === 'bad')  return 'val-bad';
+  if (v === 'warn') return 'val-warn';
+  return 'val-info';
+}
+
+function renderSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = '<div class="sidebar-title">Scenarios</div>' +
+    SCENARIOS.map((s, i) => {
+      const res = answered[i];
+      let badge = `<span class="badge badge-pending"></span>`;
+      if (res === true)  badge = `<span class="badge badge-correct">✓</span>`;
+      if (res === false) badge = `<span class="badge badge-wrong">✗</span>`;
+      return `<div class="scenario-item${i===current?' active':''}" data-i="${i}">
+        <span class="num">${i+1}</span>
+        <span class="label">${s.title}</span>
+        ${badge}
+      </div>`;
+    }).join('');
+
+  sidebar.querySelectorAll('.scenario-item').forEach(el => {
+    el.addEventListener('click', () => { current = +el.dataset.i; renderAll(); });
+  });
+}
+
+function renderContent() {
+  const s   = SCENARIOS[current];
+  const ans = answered[current];
+
+  /* state table rows */
+  const rows = (s.state || []).map(([k,v,cls,note]) =>
+    `<tr>
+      <td><code>${escHtml(k)}</code></td>
+      <td class="${stateClass(cls)}">${escHtml(v)}</td>
+      <td style="color:var(--muted)">${escHtml(note)}</td>
+    </tr>`
+  ).join('');
+
+  /* options */
+  const opts = s.options.map((o, oi) => {
+    let extra = '';
+    if (ans !== null) {
+      if (o.correct)           extra = ' correct';
+      else if (oi === ans && !o.correct) extra = ' wrong';
+    }
+    return `<button class="opt-btn${extra}" data-oi="${oi}"${ans!==null?' disabled':''}>
+      <span class="opt-key">${'ABCD'[oi]}</span>
+      <span>${escHtml(o.text)}</span>
+    </button>`;
+  }).join('');
+
+  /* feedback */
+  let fbClass = '', fbContent = '';
+  if (ans !== null) {
+    const isCorrect = s.options[ans].correct;
+    fbClass = isCorrect ? 'correct' : 'wrong';
+    const fb = isCorrect ? s.feedback.correct : s.feedback.wrong;
+    fbContent = `<strong>${isCorrect ? '✅ Correct!' : '❌ Incorrect'}</strong>${fb}`;
+  }
+
+  /* nav buttons */
+  const prevDisabled = current === 0 ? ' disabled' : '';
+  const nextDisabled = current === SCENARIOS.length - 1 ? ' disabled' : '';
+
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        ${laneBadge(s.lane)}
+        <div>
+          <h2>${escHtml(s.title)}</h2>
+          <p class="desc">${s.desc}</p>
+        </div>
+      </div>
+
+      <div class="diagram-wrap">${s.diagram}</div>
+    </div>
+
+    ${rows ? `<div class="state-table">
+      <table>
+        <thead><tr><th>Variable</th><th>Value</th><th>Note</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>` : ''}
+
+    <div class="question-box">
+      <div class="q-label">Question ${current+1} of ${SCENARIOS.length}</div>
+      <p>${s.question}</p>
+      <div class="options" id="optionsBox">${opts}</div>
+    </div>
+
+    <div class="feedback ${fbClass}${ans!==null?' show':''}" id="feedbackBox">
+      ${fbContent}
+    </div>
+
+    <div class="nav-row">
+      <button class="btn btn-icon"${prevDisabled} id="btnPrev">← Prev</button>
+      <button class="btn primary btn-icon"${nextDisabled} id="btnNext">Next →</button>
+      <span class="hint-text">Keyboard: <kbd>←</kbd><kbd>→</kbd> navigate · <kbd>A</kbd>–<kbd>D</kbd> answer</span>
+    </div>
+  `;
+
+  /* bind option clicks */
+  document.querySelectorAll('.opt-btn').forEach(btn => {
+    btn.addEventListener('click', () => chooseOption(+btn.dataset.oi));
+  });
+  document.getElementById('btnPrev').addEventListener('click', () => { if(current>0){current--;renderAll();} });
+  document.getElementById('btnNext').addEventListener('click', () => { if(current<SCENARIOS.length-1){current++;renderAll();} });
+}
+
+function renderScores() {
+  document.getElementById('scoreCorrect').textContent = correct;
+  document.getElementById('scoreWrong').textContent   = wrong;
+  document.getElementById('scoreCurrent').textContent = current + 1;
+  const done = answered.filter(a => a !== null).length;
+  document.getElementById('progressFill').style.width = (done / SCENARIOS.length * 100) + '%';
+}
+
+function renderAll() {
+  renderSidebar();
+  renderContent();
+  renderScores();
+  document.getElementById('content').scrollTop = 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ACTIONS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+function chooseOption(oi) {
+  if (answered[current] !== null) return;
+  answered[current] = oi;
+  const isCorrect = SCENARIOS[current].options[oi].correct;
+  if (isCorrect) correct++; else wrong++;
+  renderAll();
+}
+
+function restart() {
+  current  = 0;
+  answered = new Array(SCENARIOS.length).fill(null);
+  correct  = 0;
+  wrong    = 0;
+  renderAll();
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   KEYBOARD
+   ═══════════════════════════════════════════════════════════════════════════════ */
+document.addEventListener('keydown', e => {
+  if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+  switch (e.key) {
+    case 'ArrowLeft':  if (current > 0) { current--; renderAll(); } break;
+    case 'ArrowRight': if (current < SCENARIOS.length-1) { current++; renderAll(); } break;
+    case 'a': case 'A': chooseOption(0); break;
+    case 'b': case 'B': chooseOption(1); break;
+    case 'c': case 'C': chooseOption(2); break;
+    case 'd': case 'D': chooseOption(3); break;
+    case 'r': case 'R': restart(); break;
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   UTILITIES
+   ═══════════════════════════════════════════════════════════════════════════════ */
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════════════════════════════ */
+renderAll();
+</script>
+</body>
+</html>

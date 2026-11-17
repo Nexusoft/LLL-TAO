@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 
 #include <LLP/packets/packet.h>
+#include <LLP/packets/stateless_packet.h>
 #include <LLP/packets/http.h>
 #include <LLP/packets/message.h>
 
@@ -61,9 +62,11 @@ namespace LLP
     , fDDOS           (false)
     , fOUTGOING       (false)
     , fCONNECTED      (false)
+    , nConsecutivePollEmptyStrikes(0)
     , nDataThread     (-1)
     , nDataIndex      (-1)
     , FLUSH_CONDITION (nullptr)
+    , FLUSH_CONDITION_MUTEX(nullptr)
     , fEVENT          (false)
     , EVENT_MUTEX     ( )
     , EVENT_CONDITION ( )
@@ -83,9 +86,11 @@ namespace LLP
     , fDDOS           (fDDOSIn)
     , fOUTGOING       (fOutgoing)
     , fCONNECTED      (false)
+    , nConsecutivePollEmptyStrikes(0)
     , nDataThread     (-1)
     , nDataIndex      (-1)
     , FLUSH_CONDITION (nullptr)
+    , FLUSH_CONDITION_MUTEX(nullptr)
     , fEVENT          (false)
     , EVENT_MUTEX     ( )
     , EVENT_CONDITION ( )
@@ -105,9 +110,11 @@ namespace LLP
     , fDDOS           (fDDOSIn)
     , fOUTGOING       (fOutgoing)
     , fCONNECTED      (false)
+    , nConsecutivePollEmptyStrikes(0)
     , nDataThread     (-1)
     , nDataIndex      (-1)
     , FLUSH_CONDITION (nullptr)
+    , FLUSH_CONDITION_MUTEX(nullptr)
     , fEVENT          (false)
     , EVENT_MUTEX     ( )
     , EVENT_CONDITION ( )
@@ -183,9 +190,11 @@ namespace LLP
         nError          = 0;
         DDOS            = nullptr;
         FLUSH_CONDITION = nullptr;
+        FLUSH_CONDITION_MUTEX = nullptr;
         fDDOS           = false;
         fOUTGOING       = false;
         fCONNECTED      = false;
+        nConsecutivePollEmptyStrikes = 0;
         nDataThread     = -1;
         nDataIndex      = -1;
 
@@ -228,20 +237,68 @@ namespace LLP
 
     /*  Write a single packet to the TCP stream. */
     template <class PacketType>
-    void BaseConnection<PacketType>::WritePacket(const PacketType& PACKET)
+    bool BaseConnection<PacketType>::WritePacket(const PacketType& PACKET)
     {
+        return WritePacket(PACKET, false);
+    }
 
-        /* Only get this value one time so we don't need to keep accessing the args map. */
-        static const uint64_t nMaxSendBuffer =
-            config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER);
+
+    template <class PacketType>
+    bool BaseConnection<PacketType>::WritePacket(const PacketType& PACKET, bool fPriority)
+    {
+        return WritePacket(PACKET, fPriority, {});
+    }
+
+
+    template <class PacketType>
+    bool BaseConnection<PacketType>::WritePacket(const PacketType& PACKET, bool fPriority,
+                                                  const std::function<bool()>& fnMaySend,
+                                                  const std::function<void()>& fnSent)
+    {
+        LOCK(DELIVERY_MUTEX);
+        if(!WritePacket(PACKET, fPriority, fnMaySend))
+            return false;
+
+        /* Publish before the next guarded write, but outside the flush/socket locks. */
+        if(fnSent)
+            fnSent();
+        return true;
+    }
+
+
+    template <class PacketType>
+    bool BaseConnection<PacketType>::WritePacket(const PacketType& PACKET, bool fPriority,
+                                                  const std::function<bool()>& fnMaySend)
+    {
+        /* Pair buffered-state changes and notification with the flush wait. */
+        std::unique_lock<std::mutex> FLUSH_LOCK;
+        if(FLUSH_CONDITION_MUTEX)
+            FLUSH_LOCK = std::unique_lock<std::mutex>(*FLUSH_CONDITION_MUTEX);
+
+        bool fQueued = false;
+
+        /* Per-connection buffer limit — mining connections return a larger value
+         * (5 MB by default) so push notifications are not dropped under normal
+         * mining pressure.
+         * Virtual dispatch; no mutex, minimal overhead on the hot path. */
+        const uint64_t nMaxSendBuffer = GetMaxSendBuffer();
 
         /* Get the bytes of the packet. */
         const std::vector<uint8_t> vBytes = PACKET.GetBytes();
 
+        /* Reserve space for critical control messages (keepalive ACK, session
+         * status, round state).  Proportional to buffer size: 1% of max,
+         * minimum 1 KB.  For 3 MB P2P: ~30 KB.  For 5 MB mining: ~50 KB.
+         * The old hardcoded 1 KB was meaningless for large mining buffers. */
+        const uint64_t nReserve = std::max(uint64_t(1024), nMaxSendBuffer / 100);
+
         /* Stop sending packets if send buffer is full. */
-        if(Buffered() + vBytes.size() + 1024 < nMaxSendBuffer //reserve 1Kb of buffer for critical messages
-        || (fBufferFull.load() && Buffered() + vBytes.size() < nMaxSendBuffer)) //catch for critical messages (< 1 Kb)
+        if(Buffered() + vBytes.size() + nReserve < nMaxSendBuffer
+        || (fBufferFull.load() && Buffered() + vBytes.size() < nMaxSendBuffer)) //catch for critical messages (< reserve)
         {
+            if(fnMaySend && !fnMaySend())
+                return false;
+
             /* Debug dump of message type. */
             debug::log(4, NODE, "sent packet (", vBytes.size(), " bytes)");
 
@@ -249,15 +306,32 @@ namespace LLP
             if(config::nVerbose >= 5)
                 PrintHex(vBytes);
 
-            /* Write the packet to socket buffer. */
-            Write(vBytes, vBytes.size());
-
-            /* Update packet count. */
-            ++PACKETS;
+            /* A fatal socket error means no payload was queued. Partial writes
+             * and temporary backpressure are buffered by Socket::Write. */
+            if(Write(vBytes, vBytes.size(), fPriority) < 0)
+                debug::log(1, NODE, "packet could not be sent or buffered");
+            else
+            {
+                ++PACKETS;
+                fQueued = true;
+            }
         }
         else
         {
-            debug::log(4, NODE, "Socket buffer full. Packet size: ", vBytes.size(), " bytes.  Buffered: ", Buffered(), " bytes");
+            /* For authenticated mining connections, packet drops are critical — push
+             * notifications are the primary mechanism for delivering fresh work.
+             * Log at level 0 so operators can see buffer pressure issues.
+             * For P2P connections, keep the existing level 4 to avoid log spam. */
+            if(IsTimeoutExempt())
+            {
+                debug::log(0, NODE, "WARNING: Socket buffer full — packet DROPPED for authenticated miner."
+                    " Packet size: ", vBytes.size(), " bytes.  Buffered: ", Buffered(),
+                    " bytes.  MaxSendBuffer: ", nMaxSendBuffer, " bytes");
+            }
+            else
+            {
+                debug::log(4, NODE, "Socket buffer full. Packet size: ", vBytes.size(), " bytes.  Buffered: ", Buffered(), " bytes");
+            }
 
             /* set buffer to full */
             fBufferFull.store(true);
@@ -266,6 +340,8 @@ namespace LLP
         /* Notify condition if available. */
         if(FLUSH_CONDITION && Buffered())
             FLUSH_CONDITION->notify_all();
+
+        return fQueued;
     }
 
 
@@ -339,5 +415,6 @@ namespace LLP
     template class BaseConnection<Packet>;
     template class BaseConnection<MessagePacket>;
     template class BaseConnection<HTTPPacket>;
+    template class BaseConnection<StatelessPacket>;
 
 }

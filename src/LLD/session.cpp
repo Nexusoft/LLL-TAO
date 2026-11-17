@@ -163,6 +163,13 @@ namespace LLD
     }
 
 
+    /* Checks if a last-index key exists, including an unreadable value. */
+    bool SessionDB::HasLast(const uint256_t& hashGenesis)
+    {
+        return Exists(std::make_pair(std::string("indexing.last"), hashGenesis));
+    }
+
+
     /* Reads the last txid that was indexed. */
     bool SessionDB::ReadLast(const uint256_t& hashGenesis, uint512_t &hashTx)
     {

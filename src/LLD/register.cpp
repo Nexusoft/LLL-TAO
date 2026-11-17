@@ -640,6 +640,10 @@ namespace LLD
     {
         LOCK(MEMORY);
 
+        /* Allocate before replacing the overlay. A failed allocation must not
+         * leave a deleted pointer for the begin rollback to release. */
+        RegisterTransaction* pNext = new RegisterTransaction();
+
         /* Check for miner. */
         if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
@@ -647,7 +651,7 @@ namespace LLD
             if(pMiner)
                 delete pMiner;
 
-            pMiner = new RegisterTransaction();
+            pMiner = pNext;
 
             return;
         }
@@ -659,7 +663,7 @@ namespace LLD
             if(pSanitize)
                 delete pSanitize;
 
-            pSanitize = new RegisterTransaction();
+            pSanitize = pNext;
 
             return;
         }
@@ -668,7 +672,7 @@ namespace LLD
         if(pMemory)
             delete pMemory;
 
-        pMemory = new RegisterTransaction();
+        pMemory = pNext;
     }
 
 

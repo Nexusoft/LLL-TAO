@@ -1,0 +1,179 @@
+#
+# Nexus Node Configuration with Falcon-1024 Support
+# This is an example nexus.conf for nodes with stateless mining enabled.
+#
+# This configuration file is for the 'master' branch.
+#
+
+# Basic RPC/API Configuration
+rpcuser=username
+rpcpassword=password
+apiuser=username
+apipassword=password
+daemon=1
+
+# Mining Configuration
+#mining=1
+#stake=1
+
+#==============================================================================
+# FALCON POST-QUANTUM SIGNATURE CONFIGURATION
+#==============================================================================
+
+# NOTE: Falcon signature acceptance is HARDCODED in the node software.
+# No configuration parameters are needed or available.
+#
+# The node ALWAYS accepts (cannot be disabled):
+#   1. Disposable Falcon signatures: Falcon-512 OR Falcon-1024 (auto-detected)
+#      - Session-based, NOT stored on blockchain
+#      - Miner chooses version
+#
+#   2. Physical Falcon signatures: Falcon-512 OR Falcon-1024 (auto-detected)
+#      - Permanently stored ON blockchain
+#      - Variable size: 809 bytes (Falcon-512) or 1577 bytes (Falcon-1024)
+#
+# KEY BONDING ARCHITECTURE:
+# - Miner uses the SAME Falcon key pair for BOTH signatures
+# - If miner uses Falcon-512 keys: Both Disposable AND Physical use Falcon-512
+# - If miner uses Falcon-1024 keys: Both Disposable AND Physical use Falcon-1024
+# - Cannot mix Falcon-512 and Falcon-1024 keys on same miner/alias
+#
+# Both signature types are present in the SAME Submit Block Structure:
+#   - Disposable Falcon: For real-time mining protocol authentication
+#   - Physical Falcon: For permanent block authorship proof (bonded to same key)
+#
+# Node auto-detects version from public key size and accepts both versions.
+# This provides maximum compatibility and security without requiring
+# any configuration from node operators.
+
+#==============================================================================
+# FALCON DUAL SIGNATURE ARCHITECTURE
+#==============================================================================
+#
+# Nexus uses TWO types of Falcon signatures with KEY BONDING:
+#
+# 1. DISPOSABLE FALCON (Session-based, NOT stored on blockchain)
+#    - Used for: Real-time mining protocol authentication
+#    - Lifetime: Single mining session only
+#    - Storage: NOT stored on blockchain (zero overhead)
+#    - Version support: Falcon-512 OR Falcon-1024 (miner's choice)
+#    - Purpose: Prove work submission authenticity in real-time
+#
+# 2. PHYSICAL FALCON (Permanent, STORED on blockchain) - OPTIONAL
+#    - Used for: Emergency backup block authorship proof
+#    - Lifetime: Permanent (stored forever on blockchain)
+#    - Storage: STORED on blockchain (signature overhead)
+#    - Version support: Falcon-512 OR Falcon-1024 (SAME as disposable)
+#    - Purpose: Long-term proof of block authorship when needed
+#    - Variable size: 809 bytes (512) or 1577 bytes (1024)
+#    - **OPTIONAL**: Can be disabled on miner (physicalsigner=0)
+#    - **Backward Compatible**: Blocks without Physical Falcon are still valid
+#
+# KEY BONDING REQUIREMENT:
+# Both signatures MUST use the SAME Falcon key pair:
+#   - If miner uses Falcon-512: Disposable=512, Physical=512
+#   - If miner uses Falcon-1024: Disposable=1024, Physical=1024
+#   - Cannot have Falcon-512 and Falcon-1024 keys on same miner/alias
+#   - This is because miner can only have ONE Falcon key pair configured
+#
+# Rationale:
+# - Single key pair simplifies miner configuration
+# - Node auto-detects version from public key size
+# - Both signatures bonded to same ChaCha20 session
+#
+# BACKWARD COMPATIBILITY:
+# Physical Falcon signatures are OPTIONAL. Miners can disable them by setting
+# physicalsigner=0 in miner configuration. When disabled:
+#   - Blocks are submitted WITHOUT Physical Falcon signature
+#   - Node still accepts these blocks as valid (backward compatible)
+#   - Only Disposable Falcon signature is required (always present)
+#   - Permanent blockchain authorship proof is not stored
+#
+# This ensures full backward compatibility with existing mining setups.
+# - Variable blockchain overhead: 809 or 1577 bytes (miner's choice)
+#
+#==============================================================================
+
+#==============================================================================
+# FALCON SIGNATURE DETAILS
+#==============================================================================
+#
+# Falcon-512 (Option 1 - Smaller signatures):
+#   - NIST Level 1 security (128-bit quantum resistance)
+#   - RSA-2048 equivalent classical security
+#   - Public key: 897 bytes
+#   - Private key: 1281 bytes
+#   - Signature: 809 bytes (constant-time, ct=1)
+#   - Signing time: <1ms
+#   - Disposable: Zero blockchain overhead
+#   - Physical: 809 bytes permanent blockchain overhead
+#
+# Falcon-1024 (Option 2 - Maximum quantum security):
+#   - NIST Level 5 security (256-bit quantum resistance)
+#   - RSA-4096 equivalent classical security
+#   - Public key: 1793 bytes
+#   - Private key: 2305 bytes
+#   - Signature: 1577 bytes (constant-time, ct=1)
+#   - Signing time: <1.5ms
+#   - Disposable: Zero blockchain overhead
+#   - Physical: 1577 bytes permanent blockchain overhead
+#   - 2^64 × stronger quantum attack resistance than Falcon-512
+#
+# Network Impact:
+#   - Disposable signatures: NOT stored on blockchain (zero overhead)
+#   - Physical signatures: Stored on blockchain (variable size)
+#     - Falcon-512: +809 bytes per block
+#     - Falcon-1024: +1577 bytes per block (+768 bytes vs 512)
+#   - Yearly blockchain growth (if all miners use Falcon-1024 physical):
+#     - Additional: +280 MB/year compared to Falcon-512
+#   - Choice is miner's preference: security vs blockchain overhead
+#
+#==============================================================================
+
+#==============================================================================
+# STEALTH MODE OPERATION
+#==============================================================================
+#
+# With falcon1024=1 (default), the node operates in "stealth mode":
+#
+# 1. MINER_AUTH packet received:
+#    - Node reads public key from packet
+#    - Auto-detects Falcon version from public key size:
+#      * 897 bytes  → Falcon-512
+#      * 1793 bytes → Falcon-1024
+#    - Stores detected version in miner's session context
+#    - Verifies authentication signature using correct version
+#
+# 2. SUBMIT_BLOCK packet received:
+#    - Node retrieves miner's Falcon version from session
+#    - Uses version-specific verification for block signature
+#    - Accepts block if signature is valid
+#
+# This design allows:
+#   ✓ Zero configuration for node operators
+#   ✓ Seamless coexistence of Falcon-512 and Falcon-1024 miners
+#   ✓ No network fork required
+#   ✓ Miners can upgrade at their own pace
+#
+#==============================================================================
+
+#==============================================================================
+# SECURITY NOTES
+#==============================================================================
+#
+# - Falcon is a NIST-standardized post-quantum signature scheme
+# - Both Falcon-512 and Falcon-1024 are quantum-resistant
+# - Falcon-1024 provides 2^64 times more quantum attack resistance
+# - No known vulnerabilities in either variant
+# - Production-tested: Falcon-512 in use since 2023
+# - Falcon-1024: New in 2026, undergoing extended testing
+#
+# Recommendation for node operators:
+#   - Keep falcon1024=1 (default) to support all miners
+#   - Monitor logs for Falcon version distribution
+#   - Keep node software updated
+#
+#==============================================================================
+
+# Additional node configuration options below...
+# (Add your other nexus configuration settings here)

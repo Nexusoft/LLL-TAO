@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLP/include/legacy_address.h>
 #include <LLP/include/manager.h>
 #include <LLP/include/config.h>
+#include <LLP/include/channel_notify_result.h>
 
 #include <Util/types/lock_unique_ptr.h>
 
@@ -33,6 +34,23 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    extern std::atomic<bool> fManagersStarting;
+
+    struct PeerRecoveryStatus
+    {
+        bool enabled = false;
+        bool suspended = false;
+        bool resolving = false;
+        bool lastSucceeded = false;
+        uint32_t incoming = 0;
+        uint32_t outgoing = 0;
+        uint32_t eligible = 0;
+        uint64_t lastAttempt = 0;
+        uint64_t lastSuccess = 0;
+        uint64_t retryIn = 0;
+        std::string state = "disabled";
+    };
+
     /* forward declarations */
     class AddressManager;
     class DDOS_Filter;
@@ -95,16 +113,22 @@ namespace LLP
         /** Connection Manager thread. **/
         std::thread THREAD_MANAGER;
 
+        std::atomic<bool> fStopManager{false};
+        std::atomic<bool> fRecoveryRequested{false};
+        mutable std::mutex RECOVERY_MUTEX;
+        PeerRecoveryStatus recoveryStatus;
+        AddressManager::SeedResolver seedResolver;
+
 
     public:
 
 
         /** Constructor **/
-        Server<ProtocolType>(const Config& config);
+        Server(const Config& config, AddressManager::SeedResolver resolver = {});
 
 
         /** Default Destructor **/
-        virtual ~Server<ProtocolType>();
+        virtual ~Server();
 
 
         /** Name
@@ -131,6 +155,10 @@ namespace LLP
          *
          **/
         AddressManager* GetAddressManager() const;
+
+        void RequestPeerRecovery() { fRecoveryRequested.store(true); }
+        void RequestManagerStop() { fStopManager.store(true); }
+        PeerRecoveryStatus GetPeerRecoveryStatus() const;
 
 
         /** AddNode
@@ -222,9 +250,11 @@ namespace LLP
                 return false;
             }
 
-            /* Add the address to the address manager if it exists. */
-            if(pAddressManager)
-                pAddressManager->AddAddress(addrConnect, ConnectState::CONNECTED);
+            /* TimeNode records CONNECTED before data-thread publication, so a
+             * fast disconnect cannot be overwritten here. */
+            if constexpr(!std::is_same_v<ProtocolType, TimeNode>)
+                if(pAddressManager)
+                    pAddressManager->AddAddress(addrConnect, ConnectState::CONNECTED);
 
             return true;
         }
@@ -237,6 +267,29 @@ namespace LLP
          *  @return Returns a vector of active connections
          **/
         std::vector<std::shared_ptr<ProtocolType>> GetConnections() const;
+
+
+        /** NotifyChannelMiners
+         *
+         *  Broadcast channel-specific notification to subscribed miners on this server lane.
+         *  Called from MinerPushDispatcher::BroadcastChannel() for each lane separately.
+         *
+         *  Server-side filtering ensures only miners subscribed to the specific channel
+         *  receive notifications.  Logs include channel, lane, and miner count for
+         *  de-duplication verification.
+         *
+         *  @param[in] nChannel    Channel that advanced (1=Prime, 2=Hash)
+         *
+         *  @return ChannelNotifyResult with notified and per-reason skip counts.
+         *          nSkippedWrongChannel is expected to be non-zero when miners on the
+         *          other channel are connected (e.g. all miners are Prime, so the Hash
+         *          broadcast skips them — this is normal, not a failure).
+         *
+         *  @note This method is only meaningful for StatelessMinerConnection and Miner servers.
+         *        For other protocol types, it will be a no-op that returns {0,0,0,0}.
+         *
+         **/
+        ChannelNotifyResult NotifyChannelMiners(uint32_t nChannel);
 
 
         /** GetConnectionCount

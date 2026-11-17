@@ -27,6 +27,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/transaction.h>
 
+#include <Util/include/debug.h>
+
 #include <unit/catch2/catch.hpp>
 
 TEST_CASE( "Trust Creation Tests", "[operation]")
@@ -204,6 +206,22 @@ TEST_CASE( "Solo Stake Operation Tests", "[operation][stake][solostake]")
     /* Generate trust address deterministically */
     uint256_t hashTrust = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
+    REQUIRE_FALSE(LLD::Register->HasTrust(hashGenesis));
+    REQUIRE_FALSE(LLD::Register->HasState(hashTrust));
+    struct TrustRecordGuard
+    {
+        uint256_t genesis;
+        uint256_t address;
+
+        ~TrustRecordGuard()
+        {
+            if(LLD::Register->HasTrust(genesis) && !LLD::Register->EraseTrust(genesis))
+                debug::error(FUNCTION, "failed to erase test trust index");
+            if(LLD::Register->HasState(address) && !LLD::Register->EraseState(address))
+                debug::error(FUNCTION, "failed to erase test trust state");
+        }
+    } trustGuard{hashGenesis, hashTrust};
+
     uint512_t hashLastTrust;
 
     /* Create trust account register to use for remaining tests */
@@ -294,9 +312,12 @@ TEST_CASE( "Solo Stake Operation Tests", "[operation][stake][solostake]")
         //check trust not indexed
         REQUIRE_FALSE(LLD::Register->HasTrust(hashGenesis));
 
-        //check trust index not written
+        //the unindexed trust register is still readable by its deterministic address
         TAO::Register::Object trust;
-        REQUIRE_FALSE(LLD::Register->ReadTrust(hashGenesis, trust));
+        REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
+        REQUIRE(trust.Parse());
+        REQUIRE(trust.get<uint64_t>("balance") == 5000);
+        REQUIRE(trust.get<uint64_t>("stake") == 0);
     }
 
 
@@ -858,4 +879,7 @@ TEST_CASE( "Solo Stake Operation Tests", "[operation][stake][solostake]")
             REQUIRE(trust.get<uint256_t>("token")  == 0);
         }
     }
+
+    REQUIRE(LLD::Register->EraseTrust(hashGenesis));
+    REQUIRE(LLD::Register->EraseState(hashTrust));
 }

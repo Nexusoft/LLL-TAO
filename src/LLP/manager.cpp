@@ -104,6 +104,13 @@ namespace LLP
         return count(nFlags);
     }
 
+    uint32_t AddressManager::EligibleCount() const
+    {
+        LOCK(MUTEX);
+        return count(ConnectState::NEW | ConnectState::FAILED | ConnectState::DROPPED,
+                     ConnectState::CONNECTED);
+    }
+
 
     /*  Adds the address to the manager and sets it's connect nState. */
     void AddressManager::AddAddress(const BaseAddress &addr, const uint8_t nState, const uint32_t nSession)
@@ -192,6 +199,72 @@ namespace LLP
             AddAddresses(DNS_SeedNodes);
     }
 
+    bool AddressManager::RefreshSeedAddresses(bool fTestnet, const SeedResolver& resolver,
+                                              const std::function<bool()>& stop)
+    {
+        const auto& seeds = fTestnet ? DNS_SeedNodes_Testnet : DNS_SeedNodes;
+        const auto interrupted = [&] {
+            return config::fShutdown.load() || config::fSuspended.load() || (stop && stop());
+        };
+        bool fStored = false;
+        for(const auto& seed : seeds)
+        {
+            if(interrupted())
+                break;
+
+            std::vector<BaseAddress> resolved;
+            const bool fResolved = resolver(seed, resolved);
+            if(interrupted())
+                break;
+
+            if(!fResolved)
+            {
+                debug::warning(FUNCTION, "DNS lookup failed for ", seed);
+                continue;
+            }
+
+            for(auto& addr : resolved)
+            {
+                if(interrupted())
+                    break;
+                addr.SetPort(nPort);
+                if(!addr.IsValid())
+                    continue;
+
+                const uint64_t hash = addr.GetHash();
+                LOCK(MUTEX);
+                if(is_banned(hash))
+                    continue;
+
+                const auto it = mapTrustAddress.find(hash);
+                const TrustAddress candidate = it == mapTrustAddress.end() ? TrustAddress(addr) : it->second;
+                if(!pDatabase->WriteTrustAddress(hash, candidate))
+                {
+                    debug::error(FUNCTION, "failed to persist seed address ", addr.ToString());
+                    continue;
+                }
+
+                if(it == mapTrustAddress.end())
+                    mapTrustAddress.emplace(hash, candidate);
+                mapDNS[hash] = seed;
+                fStored = true;
+            }
+        }
+
+        if(!fStored || interrupted())
+            return false;
+
+        if(!pDatabase->WriteLastUpdate())
+            return debug::error(FUNCTION, "failed to update DNS timer");
+
+        return true;
+    }
+
+    bool AddressManager::ReadLastDNSUpdate(uint64_t& nUpdated) const
+    {
+        return pDatabase->ReadLastUpdate(nUpdated);
+    }
+
 
     /*  Determines if the address manager has the address or not. */
     bool AddressManager::Has(const BaseAddress &addr) const
@@ -206,7 +279,8 @@ namespace LLP
         return false;
     }
 
-    /* Gets a TrustAddress from the BaseAddress */
+    /* Gets a TrustAddress from the BaseAddress.
+     * Deprecated: throws via map::at(); use Get(addr, TrustAddress&) instead. */
     const LLP::TrustAddress& AddressManager::Get(const BaseAddress &addr) const
     {
         const uint64_t hash = addr.GetHash();
@@ -216,6 +290,21 @@ namespace LLP
             std::ref(mapTrustAddress.at(hash));
 
         return rRet;
+    }
+
+
+    /* Atomically checks for and retrieves a TrustAddress from the BaseAddress. */
+    bool AddressManager::Get(const BaseAddress &addr, TrustAddress &addrOut) const
+    {
+        const uint64_t hash = addr.GetHash();
+        LOCK(MUTEX);
+
+        auto it = mapTrustAddress.find(hash);
+        if(it == mapTrustAddress.end())
+            return false;
+
+        addrOut = it->second;
+        return true;
     }
 
 
@@ -383,10 +472,6 @@ namespace LLP
         {
             LOCK(MUTEX);
 
-            /* Make sure the map is empty. */
-            mapTrustAddress.clear();
-            mapBanned.clear();
-
             /* Make sure the database exists. */
             if(!pDatabase)
             {
@@ -407,7 +492,10 @@ namespace LLP
                     {
                         /* Get the hash and load it into the map. */
                         const uint64_t hash = addr.GetHash();
-                        mapTrustAddress[hash] = addr;
+                        TrustAddress loaded(addr);
+                        /* Connection state is not serialized and belongs to this process. */
+                        loaded.nState = ConnectState::NEW;
+                        mapTrustAddress.emplace(hash, loaded);
 
                         hashLast = hash;
                     }
@@ -422,32 +510,6 @@ namespace LLP
             debug::log(0, FUNCTION, "Loaded ", mapTrustAddress.size(), " Addresses for port ", nPort);
         }
 
-        /* Check if the DNS needs update. */
-        uint64_t nLastUpdate = 0;
-        if(!config::GetBoolArg("-nodns")
-            && (!pDatabase->ReadLastUpdate(nLastUpdate) ||
-                nLastUpdate + config::GetArg("-dnsupdate", 86400) <= runtime::timestamp()))
-        {
-            /* Log out that DNS is updating. */
-            debug::log(0, "DNS cache is out of date by ",
-                (runtime::timestamp() - (nLastUpdate + config::GetArg("-dnsupdate", 86400))),
-                " seconds for port ", nPort, "... refreshing");
-
-            /* Add the DNS seeds for this server. */
-            runtime::timer timer;
-            timer.Start();
-
-            /* Update the Seed addresses. */
-            AddSeedAddresses(config::fTestNet.load());
-
-            /* Write that DNS was updated. */
-            if(!pDatabase->WriteLastUpdate())
-                debug::error(FUNCTION, "failed to update DNS timer");
-
-            /* Log the time it took to resolve DNS items. */
-            debug::log(0, "DNS cache updated in ",
-                timer.ElapsedMilliseconds(), " ms");
-        }
     }
 
 
@@ -469,7 +531,7 @@ namespace LLP
 
 
     /*  Gets the number of addresses specified by the nState nFlags. */
-    uint32_t AddressManager::count(const uint8_t nFlags) const
+    uint32_t AddressManager::count(const uint8_t nFlags, const uint8_t nNotFlags) const
     {
         uint32_t c = 0;
         for(const auto &it : mapTrustAddress)
@@ -479,7 +541,7 @@ namespace LLP
                 continue;
 
             /* If the address matches the flag, increment the count */
-            if(it.second.nState & nFlags)
+            if((it.second.nState & nFlags) && !(it.second.nState & nNotFlags))
                 ++c;
         }
         return c;

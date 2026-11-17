@@ -169,6 +169,8 @@ namespace TAO::API
         /** BroadcastUnconfirmed
          *
          *  Broadcast our unconfirmed transactions if there are any.
+         *  Takes mempool.MUTEX, then IndexLock, and drops IndexLock before Accept().
+         *  Callers must not already hold IndexLock.
          *
          *  @param[in] hashGenesis The sigchain genesis that we are downloading for.
          *

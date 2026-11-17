@@ -13,13 +13,18 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/genesis_constants.h>
+
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/coinbase.h>
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/types/object.h>
+
+#include <Util/include/runtime.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -260,12 +265,15 @@ namespace TAO
                         uint256_t hashGenesis;
                         contract >> hashGenesis;
 
-                        /* Seek to end. */
+                        /* Seek to end (skip amount + nExtraNonce). */
                         contract.Seek(16);
 
-                        /* Commit to disk. */
-                        if(nFlags == TAO::Ledger::FLAGS::BLOCK && contract.Caller() != hashGenesis && !LLD::Ledger->EraseEvent(hashGenesis))
-                            return false;
+                        /* Erase the event (legacy event-only mode). */
+                        if(nFlags == TAO::Ledger::FLAGS::BLOCK && contract.Caller() != hashGenesis)
+                        {
+                            if(!LLD::Ledger->EraseEvent(hashGenesis))
+                                return false;
+                        }
 
                         break;
                     }

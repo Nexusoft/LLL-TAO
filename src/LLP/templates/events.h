@@ -48,6 +48,7 @@ namespace LLP
             PEER          = 13,
             BUFFER        = 14,
             TIMEOUT_WRITE = 15,
+            PARTIAL_STALL = 16,
         };
     };
 }

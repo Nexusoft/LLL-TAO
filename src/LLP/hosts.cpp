@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <vector>
 #include <mutex>
 #include <map>
+#include <tuple>
 
 namespace LLP
 {
@@ -33,13 +34,15 @@ namespace LLP
         for(uint32_t nSeed = 0; nSeed < nSeeds; ++nSeed)
         {
             debug::log(0, nSeed, " Host: ",  DNS_Seed[nSeed]);
-            if(LookupHost(DNS_Seed[nSeed].c_str(), vNodes))
+            std::vector<BaseAddress> vResolved;
+            if(LookupHost(DNS_Seed[nSeed].c_str(), vResolved))
             {
                 /* Set the port for each lookup address to the default port. */
-                for(BaseAddress& ip : vNodes)
+                for(BaseAddress& ip : vResolved)
                 {
                     ip.SetPort(GetDefaultPort());
                     debug::log(0, "DNS Seed: ", ip.ToStringIP());
+                    vNodes.push_back(ip);
                 }
             }
         }
@@ -49,13 +52,14 @@ namespace LLP
 
 
     /* Standard Wrapper Function to Interact with cstdlib DNS functions. */
-    bool LookupIntern(const std::string &strName, std::vector<BaseAddress> &vAddr, uint32_t nMaxSolutions, bool fAllowLookup)
+    bool LookupIntern(const std::string &strName, std::vector<BaseAddress> &vAddr, uint32_t nMaxSolutions, bool fAllowLookup, bool fUseCache = true)
     {
         /* Mutex to handle internal locking of lookup. */
         static std::mutex LOOKUP_MUTEX;
 
         /* Internal static map to track resolved DNS entries. */
-        static std::map<std::string, std::vector<BaseAddress>> mapResolved;
+        static std::map<std::tuple<std::string, uint32_t, bool>, std::vector<BaseAddress>> mapResolved;
+        const auto key = std::make_tuple(strName, nMaxSolutions, fAllowLookup);
 
         /* Do a bounds check on the lookup name. */
         size_t s = strName.size();
@@ -79,66 +83,70 @@ namespace LLP
         /* This will contain the list of results after the lookup is performed. */
         struct addrinfo *aiRes = nullptr;
 
-        /* Lock the lookup mutex. */
+        /* Do not hold the cache lock while the system resolver is running.
+         * LOOKUP_MUTEX is not recursive, so release it before getaddrinfo and
+         * the later cache insertion. */
+        if(fUseCache)
         {
-            LOCK(LOOKUP_MUTEX);
-
-            /* Check our map of resolved values first. */
-            if(mapResolved.count(strName))
+            std::unique_lock<std::mutex> lookupLock(LOOKUP_MUTEX);
+            const auto it = mapResolved.find(key);
+            if(it != mapResolved.end())
             {
-                /* Copy over our cached value. */
-                vAddr = mapResolved[strName];
-
+                vAddr = it->second;
                 return true;
             }
+            lookupLock.unlock();
+        }
 
-            /* Attempt to obtain address info for the lookup address. */
-            if(getaddrinfo(strName.c_str(), nullptr, &aiHint, &aiRes) != 0)
-                return false;
+        /* Attempt to obtain address info for the lookup address. */
+        if(getaddrinfo(strName.c_str(), nullptr, &aiHint, &aiRes) != 0)
+            return false;
 
-            /* Loop through the list of address info */
-            struct addrinfo *aiNext = aiRes;
-            while(aiNext != nullptr && (nMaxSolutions == 0 || vAddr.size() < nMaxSolutions))
+        /* Loop through the list of address info */
+        struct addrinfo *aiNext = aiRes;
+        while(aiNext != nullptr && (nMaxSolutions == 0 || vAddr.size() < nMaxSolutions))
+        {
+            /* Check if it is a IPv4 address. */
+            if(aiNext->ai_family == AF_INET)
             {
-                /* Check if it is a IPv4 address. */
-                if(aiNext->ai_family == AF_INET)
+                /* Check for address length consistency. */
+                if(aiNext->ai_addrlen < sizeof(sockaddr_in))
                 {
-                    /* Check for address length consistency. */
-                    if(aiNext->ai_addrlen < sizeof(sockaddr_in))
-                    {
-                        debug::error(FUNCTION, "invalid ai_addrlen: < sizeof(sockaddr_in)");
-                        aiNext = aiNext->ai_next;
-                        continue;
-                    }
-
-                    /* Add the address to the list of addresses. */
-                    vAddr.push_back(BaseAddress(((struct sockaddr_in*)(aiNext->ai_addr))->sin_addr));
-                }
-                /* Check if it is a IPv6 address. */
-                else if(aiNext->ai_family == AF_INET6)
-                {
-                    /* Check for address length consistency. */
-                    if(aiNext->ai_addrlen < sizeof(sockaddr_in6))
-                    {
-                        debug::error(FUNCTION, "invalid ai_addrlen: < sizeof(sockaddr_in6)");
-                        aiNext = aiNext->ai_next;
-                        continue;
-                    }
-
-                    /* Add the address to the list of addresses. */
-                    vAddr.push_back(BaseAddress(((struct sockaddr_in6*)(aiNext->ai_addr))->sin6_addr));
+                    debug::error(FUNCTION, "invalid ai_addrlen: < sizeof(sockaddr_in)");
+                    aiNext = aiNext->ai_next;
+                    continue;
                 }
 
-                /* Set the next pointer. */
-                aiNext = aiNext->ai_next;
+                /* Add the address to the list of addresses. */
+                vAddr.push_back(BaseAddress(((struct sockaddr_in*)(aiNext->ai_addr))->sin_addr));
+            }
+            /* Check if it is a IPv6 address. */
+            else if(aiNext->ai_family == AF_INET6)
+            {
+                /* Check for address length consistency. */
+                if(aiNext->ai_addrlen < sizeof(sockaddr_in6))
+                {
+                    debug::error(FUNCTION, "invalid ai_addrlen: < sizeof(sockaddr_in6)");
+                    aiNext = aiNext->ai_next;
+                    continue;
+                }
+
+                /* Add the address to the list of addresses. */
+                vAddr.push_back(BaseAddress(((struct sockaddr_in6*)(aiNext->ai_addr))->sin6_addr));
             }
 
-            /* Free the memory associated with the address info. */
-            freeaddrinfo(aiRes);
+            /* Set the next pointer. */
+            aiNext = aiNext->ai_next;
+        }
 
-            /* Check if we need to cache this. */
-            if(vAddr.size() > 0)
-                mapResolved[strName] = vAddr;
+        /* Free the memory associated with the address info. */
+        freeaddrinfo(aiRes);
+
+        /* Check if we need to cache this. */
+        if(fUseCache && !vAddr.empty())
+        {
+            LOCK(LOOKUP_MUTEX);
+            mapResolved[key] = vAddr;
         }
 
         /* If there are any addresses added, return true. */
@@ -155,6 +163,11 @@ namespace LLP
             return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
 
         return LookupIntern(strName, vAddr, nMaxSolutions, fAllowLookup);
+    }
+
+    bool LookupHostFresh(const std::string &strName, std::vector<BaseAddress>& vAddr)
+    {
+        return LookupIntern(strName, vAddr, 0, true, false);
     }
 
 

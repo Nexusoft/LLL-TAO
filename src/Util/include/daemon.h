@@ -16,8 +16,11 @@ ________________________________________________________________________________
 #define NEXUS_UTIL_INCLUDE_DAEMON_H
 
 #if !defined(WIN32) && !defined(QT_GUI) && !defined(NO_DAEMON)
+#include <cerrno>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 #endif
 
 
@@ -49,7 +52,7 @@ void Daemonize()
     pid_t sid = setsid();
     if(sid < 0)
     {
-        debug::error(FUNCTION, "setsid() returned ", sid, " errno %d", errno);
+        debug::error(FUNCTION, "setsid() returned ", sid, " errno ", errno);
         exit(EXIT_FAILURE);
     }
 
@@ -58,13 +61,27 @@ void Daemonize()
     /* Set new file permissions */
     umask(077);
 
-    /* close stdin, stderr, stdout so that the tty no longer receives output */
-    if(int fdnull = open("/dev/null", O_RDWR))
+    /* Redirect the standard streams away from the tty. */
+    if(int fdnull = open("/dev/null", O_RDWR | O_CLOEXEC); fdnull >= 0)
     {
-        dup2 (fdnull, STDIN_FILENO);
-        dup2 (fdnull, STDOUT_FILENO);
-        dup2 (fdnull, STDERR_FILENO);
-        close(fdnull);
+        for(int fd = STDIN_FILENO; fd <= STDERR_FILENO; ++fd)
+        {
+            if(fd == fdnull)
+            {
+                if(fcntl(fd, F_SETFD, 0) < 0)
+                {
+                    debug::error(FUNCTION, "Failed to clear FD_CLOEXEC for standard descriptor ", fd, " errno ", errno);
+                    _exit(EXIT_FAILURE);
+                }
+            }
+            else if(dup2(fdnull, fd) < 0)
+            {
+                debug::error(FUNCTION, "Failed to redirect standard descriptor ", fd, " errno ", errno);
+                _exit(EXIT_FAILURE);
+            }
+        }
+        if(fdnull > STDERR_FILENO)
+            close(fdnull);
     }
     else
     {

@@ -41,6 +41,17 @@ namespace TAO
             extern std::atomic<uint32_t> nBestHeight;
 
 
+            /** Track recent BESTHEIGHT advertisements by connection. These
+             *  are sync/deferral hints, not consensus or mining-readiness proof. **/
+            void ObservePeerHeight(const void* peer, uint32_t height);
+            void ForgetPeerHeight(const void* peer);
+            uint32_t MaxPeerHeight();
+            /* Supported (locally consistent or corroborated) watermark.
+             * Unvalidated outliers do not contribute. */
+            uint32_t MaxSupportedPeerHeight(uint32_t localHeight);
+            bool FreshPeerHeight(const void* peer, uint32_t& height);
+
+
             /** The best trust in the chain. **/
             extern std::atomic<uint64_t> nBestChainTrust;
 
@@ -55,6 +66,10 @@ namespace TAO
 
             /** The best hash in the chain. */
             extern memory::atomic<uint1024_t> hashBestChain;
+
+            /** Publish mining work identity only after committing the best
+             *  chain, before cache invalidation and miner notifications. **/
+            void CommitMiningTip(const uint1024_t& tip);
 
 
             /** Hardened Checkpoint. **/
@@ -107,6 +122,24 @@ namespace TAO
 
             /** The best block in the chain. **/
             extern BlockState tStateGenesis;
+
+
+            /** RepairCheckpointIfStale
+             *
+             *  Attempt to repair the in-memory checkpoint state when it has drifted from
+             *  the on-disk best-chain state.  The in-memory gate (tStateBest.hashCheckpoint
+             *  vs hashCheckpoint) is checked first to avoid disk I/O when no repair is
+             *  needed; only a confirmed mismatch triggers the ReadBlock() disk read.
+             *
+             *  On success the in-memory hashCheckpoint and nCheckpointHeight are updated
+             *  to match the on-disk best state, and the caller should retry IsDescendant().
+             *
+             *  @return true  if the checkpoint was successfully repaired
+             *  @return false if the in-memory state was already consistent (no repair
+             *                needed), or if the repair could not be completed
+             *
+             **/
+            bool RepairCheckpointIfStale();
 
         }
     }

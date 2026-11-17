@@ -116,6 +116,31 @@ void Shutdown()
 }
 
 
+std::string SanitizeCommandLineArgument(const std::string& strArg)
+{
+    std::string strKey = strArg;
+    if(strKey.compare(0, 2, "--") == 0)
+        strKey.erase(0, 1);
+
+    if(strKey.compare(0, 12, "-rpcpassword") == 0)
+        return "-rpcpassword=XXXXXXXX";
+    if(strKey.compare(0, 12, "-apipassword") == 0)
+        return "-apipassword=XXXXXXXX";
+    if(strKey.compare(0, 10, "-autologin") == 0)
+        return "-autologin=XXXXXXXX";
+    if(strKey.compare(0, 9, "-username") == 0)
+        return "-username=XXXXXXXX";
+    if(strKey.compare(0, 9, "-password") == 0)
+        return "-password=XXXXXXXX";
+    if(strKey.compare(0, 4, "-pin") == 0)
+        return "-pin=XXXXXXXX";
+    if(strKey.compare(0, 9, "-generate") == 0)
+        return "-generate=XXXXXXXX";
+
+    return strArg;
+}
+
+
 /*  Log startup information. */
 void LogStartup(int argc, char** argv)
 {
@@ -172,6 +197,7 @@ void LogStartup(int argc, char** argv)
                 /* Check for password/autologin parameters and hide them in the debug output. */
                 if(argItem.first.compare(0, 12, "-rpcpassword") == 0
                 || argItem.first.compare(0, 12, "-apipassword") == 0
+                || argItem.first.compare(0, 10, "-autologin") == 0
                 || argItem.first.compare(0, 9, "-username") == 0
                 || argItem.first.compare(0, 9, "-password") == 0
                 || argItem.first.compare(0, 4, "-pin") == 0
@@ -197,29 +223,7 @@ void LogStartup(int argc, char** argv)
     /* Log command line parameters (which can override conf file settings) */
     std::string cmdLineParms = "";
     for(int i = 1; i < argc; i++)
-    {
-        /* Check for password parameters and hide them in the debug output. */
-        if(std::string(argv[i]).compare(0, 12, "-rpcpassword") == 0)
-            cmdLineParms += "-rpcpassword=XXXXXXXX ";
-
-        else if(std::string(argv[i]).compare(0, 12, "-apipassword") == 0)
-            cmdLineParms += "-apipassword=XXXXXXXX ";
-
-        else if(std::string(argv[i]).compare(0, 9, "-username") == 0)
-            cmdLineParms += "-username=XXXXXXXX ";
-
-        else if(std::string(argv[i]).compare(0, 9, "-password") == 0)
-            cmdLineParms += "-password=XXXXXXXX ";
-
-        else if(std::string(argv[i]).compare(0, 4, "-pin") == 0)
-            cmdLineParms += "-pin=XXXXXXXX ";
-
-        else if(std::string(argv[i]).compare(0, 9, "-generate") == 0)
-            cmdLineParms += "-generate=XXXXXXXX ";
-
-        else
-            cmdLineParms += std::string(argv[i]) + " ";
-    }
+        cmdLineParms += SanitizeCommandLineArgument(argv[i]) + " ";
 
     if(cmdLineParms == "")
         cmdLineParms = "(none)";

@@ -157,6 +157,31 @@ namespace TAO
         uint64_t GetWaitTime() const;
 
 
+        /** GetLastActiveTime
+         *
+         * Retrieves the unix timestamp of the last watchdog heartbeat/progress update from the stake minter.
+         *
+         * This is used as a watchdog signal. If a stake minter reports IsStarted() true but this timestamp
+         * stops advancing, the minting thread has stalled (deadlocked, or otherwise wedged) even though
+         * staking has not been explicitly stopped.
+         *
+         * @return unix timestamp of last minting heartbeat, or 0 if no heartbeat has been recorded yet
+         *
+         **/
+        uint64_t GetLastActiveTime() const;
+
+
+        /** IsStalled
+         *
+         * Checks whether the stake minter thread appears to be stalled: started, but no watchdog heartbeat
+         * has been recorded within the stall threshold.
+         *
+         * @return true if minter is started but appears stalled, false otherwise
+         *
+         **/
+        bool IsStalled() const;
+
+
         /** Start
          *
          * Starts the stake minter.
@@ -190,6 +215,21 @@ namespace TAO
 
         /** Flag to tell the stake minter thread to stop processing and exit. **/
         static std::atomic<bool> fStop;
+
+
+        /** Unix timestamp of the last stake-minter heartbeat/progress update. Used as a watchdog signal
+         *  so external callers (API, GUI) can detect a stalled minting thread even while IsStarted() is
+         *  still true. Updated via UpdateLastActive(). **/
+        static std::atomic<uint64_t> nLastActive;
+
+
+        /** UpdateLastActive
+         *
+         * Records the current time as the stake minter watchdog heartbeat/progress timestamp. Should be
+         * called periodically while the minter thread is alive so IsStalled() reflects real progress.
+         *
+         **/
+        void UpdateLastActive();
 
 
         /** Hash of the best chain when the minter began attempting to mine its current candidate.

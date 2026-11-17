@@ -20,9 +20,15 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    class AddressManager;
+    template <class ProtocolType> class DataThread;
 
     class TimeNode : public Connection
     {
+        friend class DataThread<TimeNode>;
+
+        AddressManager* pAddressManager{nullptr};
+
         /* Protocol messages based on Default Packet. */
         enum : Packet::message_t
         {

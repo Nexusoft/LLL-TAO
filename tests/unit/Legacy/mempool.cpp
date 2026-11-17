@@ -232,7 +232,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
 
 
         //start a memory transaction
-        LLD::TxnBegin(TAO::Ledger::FLAGS::MEMPOOL);
+        REQUIRE(LLD::TxnBegin(TAO::Ledger::FLAGS::MEMPOOL));
 
 
         //test success for legacy opeation

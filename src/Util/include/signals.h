@@ -46,4 +46,7 @@ void HandleSIGTERM(int signum);
  **/
 void SetupSignals();
 
+/** Start signal processing after any daemon fork. */
+void StartSignalMonitor();
+
 #endif

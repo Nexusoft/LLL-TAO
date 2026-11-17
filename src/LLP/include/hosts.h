@@ -50,6 +50,9 @@ namespace LLP
     bool LookupHost(const std::string &strName, std::vector<BaseAddress>& vAddr, uint32_t nMaxSolutions = 0,
                     bool fAllowLookup = true);
 
+    /* Resolve without the process cache, for DNS refresh after network changes. */
+    bool LookupHostFresh(const std::string &strName, std::vector<BaseAddress>& vAddr);
+
 
     /** LookupHostNumeric
      *

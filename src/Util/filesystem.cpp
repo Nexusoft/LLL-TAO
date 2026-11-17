@@ -218,14 +218,16 @@ namespace filesystem
             destFile.close();
 
 #ifndef WIN32
-            /* Set destination file permissions (read/write by owner only for data files) */
+            /* Set destination file permissions (read/write by owner only for data files).
+             * O_CLOEXEC prevents the fd from leaking into child processes. */
             mode_t m = S_IRUSR | S_IWUSR;
-            int file_des = open(strPathDest.c_str(), O_RDWR);
+            int file_des = open(strPathDest.c_str(), O_RDWR | O_CLOEXEC);
 
             if(file_des < 0)
                 return false;
 
             fchmod(file_des, m);
+            close(file_des);
 #endif
 
         }

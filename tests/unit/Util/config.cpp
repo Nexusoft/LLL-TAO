@@ -1,0 +1,354 @@
+/*__________________________________________________________________________________________
+
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
+
+            (c) Copyright The Nexus Developers 2014 - 2025
+
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+            "ad vocem populi" - To the Voice of the People
+
+____________________________________________________________________________________________*/
+
+#include <Util/include/config.h>
+#include <Util/include/args.h>
+#include <Util/include/debug.h>
+#include <unit/catch2/catch.hpp>
+#include <fstream>
+#include <cstdio>
+
+TEST_CASE("Boolean arguments require complete numeric values", "[review258]")
+{
+    const std::string strKey = "-review258-bool";
+    struct Cleanup
+    {
+        const std::string& strKey;
+        ~Cleanup()
+        {
+            config::mapArgs.erase(strKey);
+            config::mapMultiArgs.erase(strKey);
+        }
+    } cleanup{strKey};
+
+    const char* argv[] = {"nexus", "--review258-bool=0miner:password:1234"};
+    config::ParseParameters(2, argv);
+    REQUIRE(config::GetBoolArg(strKey, false));
+
+    for(const auto& item : std::vector<std::pair<std::string, bool>>{
+        {"", true}, {"true", true}, {"false", false}, {"0", false},
+        {"-0", false}, {"1", true}, {"-2", true},
+        {"0miner:password:1234", true}, {"0:password:1234", true},
+        {"0suffix", true}, {"999999999999999999999999", true}})
+    {
+        config::mapArgs[strKey] = item.first;
+        INFO("value: " << item.first);
+        REQUIRE(config::GetBoolArg(strKey, false) == item.second);
+    }
+}
+
+TEST_CASE("Startup argument redaction supports both option spellings", "[review258]")
+{
+    for(const auto& strKey : {"-rpcpassword", "-apipassword", "-autologin",
+                              "-username", "-password", "-pin", "-generate"})
+    {
+        const std::string strOption(strKey);
+        const std::string strExpected = strOption + "=XXXXXXXX";
+        REQUIRE(debug::SanitizeCommandLineArgument(strOption + "=secret") == strExpected);
+        REQUIRE(debug::SanitizeCommandLineArgument("-" + strOption + "=secret") == strExpected);
+    }
+
+    REQUIRE(debug::SanitizeCommandLineArgument("--verbose=1") == "--verbose=1");
+    REQUIRE(debug::SanitizeCommandLineArgument("plain") == "plain");
+}
+
+TEST_CASE("Config file parsing tests", "[config]")
+{
+    // Create a temporary config file for testing
+    const std::string tempConfigPath = "/tmp/test_nexus.conf";
+    
+    SECTION("Parse simple alphanumeric value")
+    {
+        // Write test config
+        std::ofstream out(tempConfigPath);
+        out << "password=Test123\n";
+        out.close();
+        
+        // Set up for reading
+        config::mapArgs["-conf"] = tempConfigPath;
+        config::mapArgs["-datadir"] = "/tmp/";
+        
+        std::map<std::string, std::string> mapSettings;
+        std::map<std::string, std::vector<std::string>> mapMultiSettings;
+        
+        config::ReadConfigFile(mapSettings, mapMultiSettings);
+        
+        REQUIRE(mapSettings.count("-password") > 0);
+        REQUIRE(mapSettings["-password"] == "Test123");
+        
+        // Clean up
+        std::remove(tempConfigPath.c_str());
+    }
+    
+    SECTION("Parse value with hash in middle")
+    {
+        // Write test config
+        std::ofstream out(tempConfigPath);
+        out << "password=Test#123\n";
+        out.close();
+        
+        // Set up for reading
+        config::mapArgs["-conf"] = tempConfigPath;
+        config::mapArgs["-datadir"] = "/tmp/";
+        
+        std::map<std::string, std::string> mapSettings;
+        std::map<std::string, std::vector<std::string>> mapMultiSettings;
+        
+        config::ReadConfigFile(mapSettings, mapMultiSettings);
+        
+        REQUIRE(mapSettings.count("-password") > 0);
+        REQUIRE(mapSettings["-password"] == "Test#123");
+        
+        // Clean up
+        std::remove(tempConfigPath.c_str());
+    }
+    
+    SECTION("Parse value with special characters")
+    {
+        // Write test config
+        std::ofstream out(tempConfigPath);
+        out << "password=Test!@$%^&*()\n";
+        out.close();
+        
+        // Set up for reading
+        config::mapArgs["-conf"] = tempConfigPath;
+        config::mapArgs["-datadir"] = "/tmp/";
+        
+        std::map<std::string, std::string> mapSettings;
+        std::map<std::string, std::vector<std::string>> mapMultiSettings;
+        
+        config::ReadConfigFile(mapSettings, mapMultiSettings);
+        
+        REQUIRE(mapSettings.count("-password") > 0);
+        REQUIRE(mapSettings["-password"] == "Test!@$%^&*()");
+        
+        // Clean up
+        std::remove(tempConfigPath.c_str());
+    }
+    
+    SECTION("Parse double-quoted value with hash")
+    {
+        // Write test config
+        std::ofstream out(tempConfigPath);
+        out << "password=\"!@#$^&*()\"\n";
+        out.close();
+        
+        // Set up for reading
+        config::mapArgs["-conf"] = tempConfigPath;
+        config::mapArgs["-datadir"] = "/tmp/";
+        
+        std::map<std::string, std::string> mapSettings;
+        std::map<std::string, std::vector<std::string>> mapMultiSettings;
+        
+        config::ReadConfigFile(mapSettings, mapMultiSettings);
+        
+        REQUIRE(mapSettings.count("-password") > 0);
+        REQUIRE(mapSettings["-password"] == "!@#$^&*()");
+        
+        // Clean up
+        std::remove(tempConfigPath.c_str());
+    }
+    
+    SECTION("Parse single-quoted value with hash")
+    {
+        // Write test config
+        std::ofstream out(tempConfigPath);
+        out << "password='Test#123'\n";
+        out.close();
+        
+        // Set up for reading
+        config::mapArgs["-conf"] = tempConfigPath;
+        config::mapArgs["-datadir"] = "/tmp/";
+        
+        std::map<std::string, std::string> mapSettings;
+        std::map<std::string, std::vector<std::string>> mapMultiSettings;
+        
+        config::ReadConfigFile(mapSettings, mapMultiSettings);
+        
+        REQUIRE(mapSettings.count("-password") > 0);
+        REQUIRE(mapSettings["-password"] == "Test#123");
+        
+        // Clean up
+        std::remove(tempConfigPath.c_str());
+    }
+    
+    SECTION("Parse quoted value with spaces")
+    {
+        // Write test config
+        std::ofstream out(tempConfigPath);
+        out << "password=\"My Pass 123\"\n";
+        out.close();
+        
+        // Set up for reading
+        config::mapArgs["-conf"] = tempConfigPath;
+        config::mapArgs["-datadir"] = "/tmp/";
+        
+        std::map<std::string, std::string> mapSettings;
+        std::map<std::string, std::vector<std::string>> mapMultiSettings;
+        
+        config::ReadConfigFile(mapSettings, mapMultiSettings);
+        
+        REQUIRE(mapSettings.count("-password") > 0);
+        REQUIRE(mapSettings["-password"] == "My Pass 123");
+        
+        // Clean up
+        std::remove(tempConfigPath.c_str());
+    }
+    
+    SECTION("Parse value with inline comment")
+    {
+        // Write test config
+        std::ofstream out(tempConfigPath);
+        out << "verbose=3 # this is my verbosity\n";
+        out.close();
+        
+        // Set up for reading
+        config::mapArgs["-conf"] = tempConfigPath;
+        config::mapArgs["-datadir"] = "/tmp/";
+        
+        std::map<std::string, std::string> mapSettings;
+        std::map<std::string, std::vector<std::string>> mapMultiSettings;
+        
+        config::ReadConfigFile(mapSettings, mapMultiSettings);
+        
+        REQUIRE(mapSettings.count("-verbose") > 0);
+        REQUIRE(mapSettings["-verbose"] == "3");
+        
+        // Clean up
+        std::remove(tempConfigPath.c_str());
+    }
+    
+    SECTION("Skip comment line")
+    {
+        // Write test config
+        std::ofstream out(tempConfigPath);
+        out << "# password=ignored\n";
+        out << "username=validuser\n";
+        out.close();
+        
+        // Set up for reading
+        config::mapArgs["-conf"] = tempConfigPath;
+        config::mapArgs["-datadir"] = "/tmp/";
+        
+        std::map<std::string, std::string> mapSettings;
+        std::map<std::string, std::vector<std::string>> mapMultiSettings;
+        
+        config::ReadConfigFile(mapSettings, mapMultiSettings);
+        
+        REQUIRE(mapSettings.count("-password") == 0);
+        REQUIRE(mapSettings.count("-username") > 0);
+        REQUIRE(mapSettings["-username"] == "validuser");
+        
+        // Clean up
+        std::remove(tempConfigPath.c_str());
+    }
+    
+    SECTION("Parse multiple values including hash characters")
+    {
+        // Write test config
+        std::ofstream out(tempConfigPath);
+        out << "username=FLUFFER\n";
+        out << "password=!@#$^&*()\n";
+        out << "pin=!@#$^&*()\n";
+        out.close();
+        
+        // Set up for reading
+        config::mapArgs["-conf"] = tempConfigPath;
+        config::mapArgs["-datadir"] = "/tmp/";
+        
+        std::map<std::string, std::string> mapSettings;
+        std::map<std::string, std::vector<std::string>> mapMultiSettings;
+        
+        config::ReadConfigFile(mapSettings, mapMultiSettings);
+        
+        REQUIRE(mapSettings.count("-username") > 0);
+        REQUIRE(mapSettings["-username"] == "FLUFFER");
+        REQUIRE(mapSettings.count("-password") > 0);
+        REQUIRE(mapSettings["-password"] == "!@#$^&*()");
+        REQUIRE(mapSettings.count("-pin") > 0);
+        REQUIRE(mapSettings["-pin"] == "!@#$^&*()");
+        
+        // Clean up
+        std::remove(tempConfigPath.c_str());
+    }
+    
+    SECTION("Trim whitespace from keys and values")
+    {
+        // Write test config
+        std::ofstream out(tempConfigPath);
+        out << "  password  = Test123  \n";
+        out.close();
+        
+        // Set up for reading
+        config::mapArgs["-conf"] = tempConfigPath;
+        config::mapArgs["-datadir"] = "/tmp/";
+        
+        std::map<std::string, std::string> mapSettings;
+        std::map<std::string, std::vector<std::string>> mapMultiSettings;
+        
+        config::ReadConfigFile(mapSettings, mapMultiSettings);
+        
+        REQUIRE(mapSettings.count("-password") > 0);
+        REQUIRE(mapSettings["-password"] == "Test123");
+        
+        // Clean up
+        std::remove(tempConfigPath.c_str());
+    }
+    
+    SECTION("Parse value starting with hash character")
+    {
+        // Write test config - hash at start of unquoted value should be preserved
+        std::ofstream out(tempConfigPath);
+        out << "hashtag=#trending\n";
+        out.close();
+        
+        // Set up for reading
+        config::mapArgs["-conf"] = tempConfigPath;
+        config::mapArgs["-datadir"] = "/tmp/";
+        
+        std::map<std::string, std::string> mapSettings;
+        std::map<std::string, std::vector<std::string>> mapMultiSettings;
+        
+        config::ReadConfigFile(mapSettings, mapMultiSettings);
+        
+        REQUIRE(mapSettings.count("-hashtag") > 0);
+        REQUIRE(mapSettings["-hashtag"] == "#trending");
+        
+        // Clean up
+        std::remove(tempConfigPath.c_str());
+    }
+
+    SECTION("Distinguish empty commented values from literal hashes")
+    {
+        config::mapArgs["-conf"] = "test_nexus_comments.conf";
+        config::mapArgs["-datadir"] = "/tmp/";
+        const std::string configPath = config::GetConfigFile();
+        std::ofstream out(configPath);
+        out << "empty= # comment\n";
+        out << "tab=\t# comment\n";
+        out << "literal=#literal\n";
+        out << "quoted= \"#literal\"\n";
+        out.close();
+
+        std::map<std::string, std::string> settings;
+        std::map<std::string, std::vector<std::string>> multiSettings;
+        config::ReadConfigFile(settings, multiSettings);
+
+        REQUIRE(settings.at("-empty").empty());
+        REQUIRE(settings.at("-tab").empty());
+        REQUIRE(settings.at("-literal") == "#literal");
+        REQUIRE(settings.at("-quoted") == "#literal");
+        REQUIRE(multiSettings.at("-empty").at(0).empty());
+        std::remove(configPath.c_str());
+    }
+}

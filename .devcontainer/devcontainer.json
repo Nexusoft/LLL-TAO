@@ -1,0 +1,71 @@
+{
+  "name": "Nexus LLL-TAO Development",
+  "image": "ubuntu:22.04",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": false,
+      "username": "vscode",
+      "userUid": "1000",
+      "userGid": "1000"
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "version": "latest"
+    }
+  },
+  "postCreateCommand": "sudo bash .devcontainer/setup.sh",
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "ms-vscode.cpptools-extension-pack"
+      ],
+      "settings": {
+        "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+        "cmake.buildDirectory": "${workspaceFolder}/build",
+        "files.associations": {
+          "*.h": "cpp",
+          "*.cpp": "cpp"
+        }
+      }
+    },
+    "codespaces": {
+      "openFiles": [
+        "README.md"
+      ]
+    }
+  },
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+  ],
+  "workspaceFolder": "/workspace",
+  "updateContentCommand": "echo 'Dependencies installed. Run make to build.'",
+  "forwardPorts": [8080, 8323, 9323, 9324, 9325, 9336],
+  "portsAttributes": {
+    "8080": {
+      "label": "Nexus HTTP API",
+      "onAutoForward": "notify"
+    },
+    "8323": {
+      "label": "Nexus Legacy Mining",
+      "onAutoForward": "notify"
+    },
+    "9323": {
+      "label": "Nexus Stateless Mining",
+      "onAutoForward": "notify"
+    },
+    "9324": {
+      "label": "Nexus Unified Time",
+      "onAutoForward": "notify"
+    },
+    "9325": {
+      "label": "Nexus Stateless Mining TLS",
+      "onAutoForward": "notify"
+    },
+    "9336": {
+      "label": "Nexus RPC",
+      "onAutoForward": "notify"
+    }
+  }
+}

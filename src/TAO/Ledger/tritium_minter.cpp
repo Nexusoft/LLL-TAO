@@ -24,6 +24,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/mining_readiness.h>
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -95,6 +96,10 @@ namespace TAO::Ledger
         /* If still in process of stopping a previous thread, wait */
         while(StakeMinter::fStop.load())
             runtime::sleep(100);
+
+        /* Reset the watchdog timestamp so a stale value from a prior run can't be mistaken for a stall
+         * while this new thread is still working through its initial sync/connect wait. */
+        StakeMinter::nLastActive.store(0);
 
         TritiumMinter::stakeMinterThread = std::thread(TritiumMinter::StakeMinterThread, this);
 
@@ -359,12 +364,11 @@ namespace TAO::Ledger
 
         debug::log(0, FUNCTION, "Stake Minter Started");
         pTritiumMinter->nSleepTime = 5000;
-        bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
 
         /* If the system is still syncing/connecting on startup, wait to run minter.
          * Local testnet does not wait for connections.
          */
-        while((TAO::Ledger::ChainState::Synchronizing() || (LLP::TRITIUM_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))
+        while(!TAO::Ledger::ChainState::MiningReadiness().ready
                 && !StakeMinter::fStop.load() && !config::fShutdown.load())
         {
             runtime::sleep(pTritiumMinter->nSleepTime);
@@ -384,6 +388,17 @@ namespace TAO::Ledger
 
         pTritiumMinter->nSleepTime = 1000;
 
+        /* Mark the watchdog active as soon as the initial sync/connect wait completes, so a long sync
+         * doesn't get misreported as a stall before the main loop below has a chance to run. */
+        pTritiumMinter->UpdateLastActive();
+
+        /* Throttle counters so transient failures don't spam the log, but also don't go silent forever. */
+        uint32_t nUserRetryCounter  = 0;
+        uint32_t nTrustRetryCounter = 0;
+
+        /* How often (in loop iterations) to re-log a persistent retry condition below. */
+        static const uint32_t nRetryLogThrottle = 10;
+
         /* Minting thread will continue repeating this loop until stop minter or shutdown */
         while(!StakeMinter::fStop.load() && !config::fShutdown.load())
         {
@@ -394,20 +409,49 @@ namespace TAO::Ledger
             if(StakeMinter::fStop.load() || config::fShutdown.load())
                 break;
 
+            /* Record that the minting loop is still alive and making progress, for external stall detection. */
+            pTritiumMinter->UpdateLastActive();
+            if(!TAO::Ledger::ChainState::MiningReadiness().ready)
+                continue;
+
             /* Save the current best block hash immediately in case it changes while we do setup */
             pTritiumMinter->hashLastBlock = TAO::Ledger::ChainState::hashBestChain.load();
 
-            /* Check that user account still unlocked for minting (locking should stop minter, but still verify) */
+            /* Check that user account still unlocked for minting (locking should stop minter, but still verify).
+             * This can also fail transiently (for example a momentary authentication/session race), so retry
+             * rather than permanently exiting the loop. If the account is genuinely locked, Stop() will be
+             * invoked externally (by the unlock/lock handling) to end this thread. */
             if(!pTritiumMinter->CheckUser())
-                break;
+            {
+                /* Slow down retries while blocked, but keep trying instead of exiting the loop for good. */
+                pTritiumMinter->nSleepTime = 5000;
+
+                /* Throttle the log so a persistent lock doesn't spam it, but still surface it periodically. */
+                if((nUserRetryCounter % nRetryLogThrottle) == 0)
+                    debug::log(0, FUNCTION, "Account not unlocked for staking, will retry.");
+
+                ++nUserRetryCounter;
+                continue;
+            }
+            nUserRetryCounter = 0;
 
             /* Get our current genesis-id. */
             const uint256_t hashGenesis =
                 TAO::API::Authentication::Caller();
 
-            /* Retrieve the latest trust account data */
+            /* Retrieve the latest trust account data. A transient read failure here (for example a register
+             * lookup racing a reorg/disconnect) should not permanently kill the staking thread; retry instead. */
             if(!pTritiumMinter->FindTrustAccount(hashGenesis))
-                break;
+            {
+                pTritiumMinter->nSleepTime = 5000;
+
+                if((nTrustRetryCounter % nRetryLogThrottle) == 0)
+                    debug::log(0, FUNCTION, "Failed to retrieve trust account, will retry.");
+
+                ++nTrustRetryCounter;
+                continue;
+            }
+            nTrustRetryCounter = 0;
 
             /* Set up the candidate block the minter is attempting to mine */
             if(!pTritiumMinter->CreateCandidateBlock())

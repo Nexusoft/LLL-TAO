@@ -26,9 +26,17 @@ bool CheckPermissions(const std::string& strAddress, const uint16_t nPort)
     /* Make a const copy of our IP filters for easy access. */
     static const std::map<uint16_t, std::vector<std::string>> mapFilters = config::mapIPFilters;
 
-    /* Build some constants if we need them. */
-    static const uint16_t TRITIUM_MAINNET_PORT_CHECK     = config::GetArg(std::string("-port"),    TRITIUM_MAINNET_PORT);
-    static const uint16_t TRITIUM_MAINNET_SSL_PORT_CHECK = config::GetArg(std::string("-sslport"), TRITIUM_MAINNET_SSL_PORT);
+    /* Build some constants if we need them. GetDefaultPort() is already testnet-aware (it
+     * applies the -testnet sub-network offset), so a single pair of checks covers the Tritium
+     * message port and its SSL variant on either network. */
+    static const uint16_t TRITIUM_PORT_CHECK     = LLP::GetDefaultPort();
+    static const uint16_t TRITIUM_SSL_PORT_CHECK = static_cast<uint16_t>
+    (
+        config::GetArg(std::string("-sslport"),
+            config::fTestNet.load()
+                ? static_cast<int64_t>(TRITIUM_TESTNET_SSL_PORT) + (config::GetArg("-testnet", 0) - 1)
+                : static_cast<int64_t>(TRITIUM_MAINNET_SSL_PORT))
+    );
 
     /* Bypass localhost addresses first. */
     if(strAddress == "127.0.0.1" || strAddress == "::1") //XXX: we may not want this rule, assess security
@@ -43,10 +51,26 @@ bool CheckPermissions(const std::string& strAddress, const uint16_t nPort)
         return debug::error("Address size not at least 4 bytes.");
 
     /* Determine whether or not the current port is open by default, or closed requiring an llpallowip whitelist.
-     * Ports open by default can also use a whitelist, and will no longer be treated as open for other addresses */
+     * Ports open by default can also use a whitelist, and will no longer be treated as open for other addresses.
+     *
+     * NOTE: this must mirror mainnet's port-scoped model on testnet too. Do NOT default this to
+     * true for testnet -- that would bypass the -llpallowip whitelist entirely for every port
+     * (mining, lookup, RPC, API included), not just the standard Tritium/time ports. */
     bool fStandardPort = false;
     if(config::fTestNet.load()) //XXX: icky, this should be cleaned up here
-        fStandardPort = true;
+    {
+        /* Handle the hard coded testnet port here. */
+        switch(nPort)
+        {
+            case TESTNET_TIME_LLP_PORT:
+                fStandardPort = true;
+                break;
+
+            default:
+                fStandardPort = false;
+                break;
+        }
+    }
     else
     {
         /* Use a switch statement to check each of our ports. */
@@ -67,11 +91,13 @@ bool CheckPermissions(const std::string& strAddress, const uint16_t nPort)
                 fStandardPort = false;
                 break;
         }
-
-        /* We need to use this because we can't evaluate a constexpr in the switch statement from our static const variables. */
-        if(nPort == TRITIUM_MAINNET_PORT_CHECK || nPort == TRITIUM_MAINNET_SSL_PORT_CHECK)
-            fStandardPort = true;
     }
+
+    /* We need to use this because we can't evaluate a constexpr in the switch statement from our
+     * static const variables. These checks are testnet-aware already, so they apply regardless of
+     * which network branch was taken above. */
+    if(nPort == TRITIUM_PORT_CHECK || nPort == TRITIUM_SSL_PORT_CHECK)
+        fStandardPort = true;
 
     /* Check for lookup ports. */
     if(nPort == LLP::GetLookupPort())

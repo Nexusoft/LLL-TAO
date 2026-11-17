@@ -168,6 +168,158 @@ namespace TAO::API
     }
 
 
+    namespace
+    {
+        /* Records SessionDB links that Index() may update. Index() writes the previous
+         * or first link, then the tx record, then the last link, and returns false after
+         * any individual write. Transaction::Delete() uses the same non-atomic sequence,
+         * so a failed Index() is undone by restoring this snapshot instead. */
+        struct SessionIndexSnapshot
+        {
+            /* True when a record existed but could not be read. Restoring would guess. */
+            bool        fIncomplete = false;
+
+            bool        fHavePrev   = false;
+            Transaction txPrev;
+
+            bool        fHaveFirst  = false;
+            uint512_t   hashFirst   = 0;
+
+            /* Confirmed absent, as opposed to an unreadable first index. */
+            bool        fAbsentFirst = false;
+
+            bool        fHaveLast   = false;
+            uint512_t   hashLast    = 0;
+
+            /* Confirmed absent, as opposed to an unreadable last index. */
+            bool        fAbsentLast = false;
+
+            bool        fHaveTx     = false;
+            Transaction txStored;
+
+            /* Confirmed absent, as opposed to an unreadable tx record. */
+            bool        fAbsentTx   = false;
+        };
+
+
+        /* Read the SessionDB records Index() can mutate. Confirmed absence is not an error. */
+        bool CaptureSessionIndex(const Transaction& tIndex, const uint512_t& hashTx, SessionIndexSnapshot& snap)
+        {
+            if(!LLD::Sessions)
+                return false;
+
+            if(!tIndex.IsFirst())
+            {
+                if(LLD::Sessions->HasTx(tIndex.hashPrevTx))
+                {
+                    snap.fHavePrev = LLD::Sessions->ReadTx(tIndex.hashPrevTx, snap.txPrev);
+                    if(!snap.fHavePrev)
+                        snap.fIncomplete = true;
+                }
+            }
+            else if(LLD::Sessions->HasFirst(tIndex.hashGenesis))
+            {
+                snap.fHaveFirst = LLD::Sessions->ReadFirst(tIndex.hashGenesis, snap.hashFirst);
+                if(!snap.fHaveFirst)
+                    snap.fIncomplete = true;
+            }
+            else
+                snap.fAbsentFirst = true;
+
+            /* ReadLast() is false for both absence and an unreadable value.
+             * HasLast() is the existence check, matching HasFirst()/HasTx(). */
+            if(LLD::Sessions->HasLast(tIndex.hashGenesis))
+            {
+                snap.fHaveLast = LLD::Sessions->ReadLast(tIndex.hashGenesis, snap.hashLast);
+                if(!snap.fHaveLast)
+                    snap.fIncomplete = true;
+            }
+            else
+                snap.fAbsentLast = true;
+
+            if(LLD::Sessions->HasTx(hashTx))
+            {
+                snap.fHaveTx = LLD::Sessions->ReadTx(hashTx, snap.txStored);
+                if(!snap.fHaveTx)
+                    snap.fIncomplete = true;
+            }
+            else
+                snap.fAbsentTx = true;
+
+            return true;
+        }
+
+
+        /* Restore records captured before Index(). Only erase a link that was confirmed
+         * absent and now points at this tx. An incomplete snapshot cannot be restored.
+         * A failed read of a key that still exists is unverifiable (Read returns false
+         * for both absence and an unreadable value) and must not be reported as success. */
+        bool RestoreSessionIndex(const Transaction& tIndex, const uint512_t& hashTx, const SessionIndexSnapshot& snap)
+        {
+            if(!LLD::Sessions)
+                return debug::error(FUNCTION, "session database unavailable");
+
+            if(snap.fIncomplete)
+                return debug::error(FUNCTION, "incomplete session index snapshot for ", VARIABLE(hashTx.SubString()));
+
+            if(!tIndex.IsFirst())
+            {
+                if(snap.fHavePrev && !LLD::Sessions->WriteTx(tIndex.hashPrevTx, snap.txPrev))
+                    return debug::error(FUNCTION, "failed to restore previous ", VARIABLE(tIndex.hashPrevTx.SubString()));
+            }
+            else if(snap.fHaveFirst)
+            {
+                if(!LLD::Sessions->WriteFirst(tIndex.hashGenesis, snap.hashFirst))
+                    return debug::error(FUNCTION, "failed to restore first index for ", VARIABLE(tIndex.hashGenesis.SubString()));
+            }
+            else if(snap.fAbsentFirst)
+            {
+                uint512_t hashNow = 0;
+                const bool fReadFirst = LLD::Sessions->ReadFirst(tIndex.hashGenesis, hashNow);
+                if(!fReadFirst)
+                {
+                    /* HasFirst is true when the key exists even if the value cannot
+                     * be deserialized. That is not confirmed absence. */
+                    if(LLD::Sessions->HasFirst(tIndex.hashGenesis))
+                        return debug::error(FUNCTION, "unreadable first index for ", VARIABLE(tIndex.hashGenesis.SubString()));
+                }
+                else if(hashNow == hashTx && !LLD::Sessions->EraseFirst(tIndex.hashGenesis))
+                    return debug::error(FUNCTION, "failed to erase partial first index for ", VARIABLE(tIndex.hashGenesis.SubString()));
+            }
+
+            /* Index() does not publish the last link when it returns false. Restore a
+             * captured value, but do not treat an existing unreadable last link as
+             * absence — that would report success and drop the accepted chain. */
+            if(snap.fHaveLast)
+            {
+                if(!LLD::Sessions->WriteLast(tIndex.hashGenesis, snap.hashLast))
+                    return debug::error(FUNCTION, "failed to restore last index for ", VARIABLE(tIndex.hashGenesis.SubString()));
+            }
+            else if(!snap.fAbsentLast || LLD::Sessions->HasLast(tIndex.hashGenesis))
+                return debug::error(FUNCTION, "unreadable last index for ", VARIABLE(tIndex.hashGenesis.SubString()));
+
+            if(snap.fHaveTx)
+            {
+                if(!LLD::Sessions->WriteTx(hashTx, snap.txStored))
+                    return debug::error(FUNCTION, "failed to restore ", VARIABLE(hashTx.SubString()));
+            }
+            else if(snap.fAbsentTx && LLD::Sessions->HasTx(hashTx))
+            {
+                /* HasTx alone is not a readable restore. An existing record that
+                 * cannot be read must fail closed so the accepted tx is kept. */
+                Transaction txNow;
+                if(!LLD::Sessions->ReadTx(hashTx, txNow))
+                    return debug::error(FUNCTION, "unreadable partial ", VARIABLE(hashTx.SubString()));
+
+                if(!LLD::Sessions->EraseTx(hashTx))
+                    return debug::error(FUNCTION, "failed to erase partial ", VARIABLE(hashTx.SubString()));
+            }
+
+            return true;
+        }
+    }
+
+
     /* Builds a transaction based on a list of contracts, to be deployed as a single tx or batched. */
     std::vector<uint512_t> BuildAndAccept(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts,
                                           const uint8_t nUnlockedActions)
@@ -263,7 +415,11 @@ namespace TAO::API
                 continue;
             }
 
-            /* Build our transactions in batches of 99 contracts at a time. */
+            /* Build in batches of at most 99 user contracts. AddFee may append
+             * one OP::FEE. If AddFee adds nothing and this batch already holds
+             * 99 contracts, one more user contract is appended below, so a
+             * fee-free batch may hold 100. See docs/architecture/BUILD_CPP.md. */
+            const uint64_t nBatchStart = nIndex;
             std::vector<TAO::Operation::Contract> vBuild;
             for( ; vBuild.size() < nLimits && nIndex < vContracts.size(); ++nIndex)
                 vBuild.emplace_back(std::move(vContracts[nIndex]));
@@ -282,11 +438,11 @@ namespace TAO::API
                 tx << rContract;
 
             /* Add the contract fees. */
-            if(!AddFee(tx) && nIndex < vContracts.size() && tx.Size() == 99) //we check +1 so we know we have an available index
-                tx << vContracts[nIndex++]; //add additional contract and iterate our index
-
-            /* Track our total contracts. */
-            nTotal += tx.Size();
+            /* Fee-free only: a 99-contract batch with more user contracts
+             * waiting grows to 100. Fee-bearing batches stop at 99 user
+             * contracts plus the fee. */
+            if(!AddFee(tx) && nIndex < vContracts.size() && tx.Size() == 99)
+                tx << vContracts[nIndex++];
 
             /* Execute the operations layer. */
             if(!tx.Build())
@@ -312,26 +468,173 @@ namespace TAO::API
             if(!Authentication::Unlocked(nUnlockedActions, jParams) && !CheckParameter(jParams, "pin", "string, number"))
                 break;
 
+            const bool fActiveSession = Authentication::Active(tx.hashGenesis);
+            const uint512_t hashTx = tx.GetHash();
+
+            /* Check() and Notifications::SanitizeUnconfirmed() can disconnect
+             * this tx and delete its API indexes as soon as Accept() drops the
+             * mempool mutex. Hold that lock across accept, snapshot, index, and
+             * rollback so those steps cannot interleave. SanitizeUnconfirmed()
+             * takes the same mutex before collecting its unconfirmed tail and
+             * holds it through Disconnect/Delete/Remove. */
+            std::unique_lock<std::recursive_mutex> POOL_LOCK(TAO::Ledger::mempool.MUTEX, std::defer_lock);
+            if(fActiveSession)
+                POOL_LOCK.lock();
+
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
                 throw Exception(-32, "Failed to accept");
 
             /* Check that we have an active session to index for. */
-            const uint512_t hashTx = tx.GetHash();
-            if(Authentication::Active(tx.hashGenesis))
+            if(fActiveSession)
             {
+                /* Accept() can return true without inserting mapLedger (orphan
+                 * predecessor). Do not index or snapshot a tx Check() can already
+                 * have removed, and do not index one that was never live. */
+                if(!TAO::Ledger::mempool.InPool(hashTx))
+                    throw Exception(-32, "Transaction was not admitted to the live mempool");
+
                 /* Build an API transaction. */
                 TAO::API::Transaction tIndex =
                     TAO::API::Transaction(tx);
 
+                /* IndexSigchain() and BuildIndexes() mutate the same SessionDB
+                 * links without mempool.MUTEX. Hold the per-genesis index lock
+                 * across snapshot, Index(), and restore. mempool.MUTEX is
+                 * already held; never take these locks in the other order.
+                 *
+                 * The snapshot is taken after Accept() returns. IndexSigchain()
+                 * (CLIENT_MUTEX, no pool lock) can write this genesis in that
+                 * gap, so a later Index() can overwrite a confirmed tail, and a
+                 * failed Index() restores the post-race snapshot rather than
+                 * the pre-accept links. Do not move IndexLock ahead of
+                 * mempool.MUTEX to close it. Window W1 in
+                 * docs/architecture/BUILD_CPP.md. */
+                std::unique_lock<std::recursive_mutex> INDEX_LOCK(TAO::API::Transaction::IndexLock(tx.hashGenesis));
+
+                /* Capture links before Index() so a partial write can be restored. */
+                SessionIndexSnapshot snapIndex;
+                const bool fCapturedIndex = CaptureSessionIndex(tIndex, hashTx, snapIndex);
+
                 /* Index the transaction to the database. */
                 if(!tIndex.Index(hashTx))
-                    debug::warning(FUNCTION, "failed to index ", VARIABLE(hashTx.SubString()));
+                {
+                    const std::string strIndexError = debug::GetLastError();
+
+                    /* Delete() commits each SessionDB write as it goes and returns
+                     * false after any one of them fails. Restore the pre-index
+                     * snapshot instead, and retry that restore. If it still fails,
+                     * keep the accepted mempool entry rather than dropping a tx
+                     * whose session links may be only partly undone. */
+                    bool fRestored = false;
+                    std::string strRestoreError;
+                    if(!fCapturedIndex)
+                        strRestoreError = "failed to capture session index";
+                    else if(snapIndex.fIncomplete)
+                        strRestoreError = "incomplete session index snapshot";
+                    else
+                    {
+                        for(uint32_t nTry = 0; nTry < 3 && !fRestored; ++nTry)
+                            fRestored = RestoreSessionIndex(tIndex, hashTx, snapIndex);
+
+                        if(!fRestored)
+                            strRestoreError = debug::GetLastError();
+                    }
+
+                    if(!fRestored)
+                    {
+                        throw Exception(-32, "Failed to roll back session index for ", hashTx.SubString(),
+                                        "; leaving accepted mempool entry in place: ", strRestoreError,
+                                        " (index error: ", strIndexError, ")");
+                    }
+
+                    /* A failed restore attempt must not leak into the index error below. */
+                    debug::strLastError.clear();
+
+                    /* Accept() already committed Connect(FLAGS::MEMPOOL) for this tx
+                     * and for any orphan/conflict tail it admitted. Remove() only
+                     * erases pool maps, so roll the whole claimed chain back under
+                     * one MEMPOOL memory transaction before dropping the entries.
+                     * Disconnect descendants first so their predecessor is still live. */
+                    std::vector<TAO::Ledger::Transaction> vDescendants;
+                    TAO::Ledger::mempool.ClaimedDescendants(hashTx, vDescendants);
+
+                    if(!LLD::TxnBegin(TAO::Ledger::FLAGS::MEMPOOL, LLD::INSTANCES::MEMORY))
+                        throw Exception(-32, "Failed to begin mempool rollback for ", hashTx.SubString());
+
+                    bool fRolledBack = false;
+                    uint512_t hashFailed = hashTx;
+                    try
+                    {
+                        fRolledBack = true;
+                        for(auto it = vDescendants.rbegin(); it != vDescendants.rend(); ++it)
+                        {
+                            hashFailed = it->GetHash();
+                            if(!it->Disconnect(TAO::Ledger::FLAGS::MEMPOOL))
+                            {
+                                fRolledBack = false;
+                                break;
+                            }
+                        }
+
+                        if(fRolledBack)
+                        {
+                            hashFailed = hashTx;
+                            fRolledBack = tx.Disconnect(TAO::Ledger::FLAGS::MEMPOOL);
+                        }
+                    }
+                    catch(const std::exception& e)
+                    {
+                        debug::error(FUNCTION, "mempool rollback threw for ", hashFailed.SubString(), ": ", e.what());
+                        fRolledBack = false;
+                    }
+                    catch(...)
+                    {
+                        debug::error(FUNCTION, "mempool rollback threw for ", hashFailed.SubString());
+                        fRolledBack = false;
+                    }
+
+                    if(!fRolledBack)
+                    {
+                        const std::string strRollbackError = debug::GetLastError();
+                        LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL, LLD::INSTANCES::MEMORY);
+
+                        /* Leave the pool entries in place: the overlay is still live. */
+                        throw Exception(-32, "Failed to roll back mempool transaction ", hashFailed.SubString(),
+                                        " after index failure: ", strRollbackError,
+                                        " (index error: ", strIndexError, ")");
+                    }
+
+                    if(!LLD::TxnCommit(TAO::Ledger::FLAGS::MEMPOOL, LLD::INSTANCES::MEMORY))
+                    {
+                        LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL, LLD::INSTANCES::MEMORY);
+                        debug::error(FUNCTION, "failed to commit mempool rollback ", hashTx.SubString());
+                        throw Exception(-32, "Failed to commit mempool rollback for ", hashTx.SubString(),
+                                        " after index failure: ", strIndexError);
+                    }
+
+                    for(auto it = vDescendants.rbegin(); it != vDescendants.rend(); ++it)
+                    {
+                        const uint512_t hashDesc = it->GetHash();
+                        if(!TAO::Ledger::mempool.Remove(hashDesc))
+                            debug::warning(FUNCTION, "failed to remove rolled-back descendant ", VARIABLE(hashDesc.SubString()));
+                    }
+
+                    if(!TAO::Ledger::mempool.Remove(hashTx))
+                        debug::warning(FUNCTION, "failed to remove rolled-back tx ", VARIABLE(hashTx.SubString()));
+
+                    throw Exception(-32, "Failed to index accepted transaction: ", strIndexError);
+                }
 
                 /* Debug output for notifications. */
                 if(nUnlockedActions & TAO::Ledger::PinUnlock::NOTIFICATIONS)
-                    debug::log(0, FUNCTION, "Indexed ", hashTx.SubString(), " completed ", nTotal, "/", vContracts.size(), " (", (nTotal * 100.0) / vContracts.size(), "%) contracts");
+                {
+                    const uint64_t nCompleted = nTotal + (nIndex - nBatchStart);
+                    debug::log(0, FUNCTION, "Indexed ", hashTx.SubString(), " completed ", nCompleted, "/", vContracts.size(), " (", (nCompleted * 100.0) / vContracts.size(), "%) contracts");
+                }
             }
+
+            nTotal += (nIndex - nBatchStart);
 
             /* Add our hashes to a return vector. */
             vHashes.push_back(hashTx);

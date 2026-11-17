@@ -26,6 +26,10 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/mempool.h>
 
+#include <Util/include/mutex.h>
+
+#include <array>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -285,38 +289,81 @@ namespace TAO::API
             return;
 
         /* Check our re-broadcast time. */
-        if(nModified + 60 < runtime::unifiedtimestamp())
+        if(nModified + 60 >= runtime::unifiedtimestamp())
+            return;
+
+        /* Get a copy of our hash. */
+        const uint512_t hashTx = GetHash();
+        bool fRelay = false;
+
         {
-            /* Get a copy of our hash. */
-            const uint512_t hashTx = GetHash();
+            /* Same lock as Index()/Delete(). A copy read before this lock can
+             * have a stale hashNextTx. WriteTx of that copy clobbers the link
+             * Index() just stored, or recreates a record Delete() removed.
+             * Re-read under the lock and persist only the current record. */
+            RECURSIVE(IndexLock(hashGenesis));
 
-            /* Adjust our modified timestamp. */
-            nModified = runtime::unifiedtimestamp();
+            TAO::API::Transaction txCurrent;
+            if(!LLD::Sessions->ReadTx(hashTx, txCurrent))
+                return;
 
-            /* Relay tx if creating ourselves. */
-            if(LLP::TRITIUM_SERVER)
+            if(txCurrent.Confirmed() || txCurrent.nModified + 60 >= runtime::unifiedtimestamp())
             {
-                /* Relay the transaction notification. */
-                LLP::TRITIUM_SERVER->Relay
-                (
-                    LLP::TritiumNode::ACTION::NOTIFY,
-                    uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
-                    hashTx
-                );
-
-                /* Log that tx was rebroadcast. */
-                debug::log(1, FUNCTION, "Re-Broadcasted ", hashTx.SubString(), " to network");
+                nModified  = txCurrent.nModified;
+                hashNextTx = txCurrent.hashNextTx;
+                nStatus    = txCurrent.nStatus;
+                return;
             }
 
+            /* Adjust our modified timestamp on the current record only. */
+            txCurrent.nModified = runtime::unifiedtimestamp();
+
             /* Write our transaction update to disk. */
-            if(!LLD::Sessions->WriteTx(hashTx, *this))
+            if(!LLD::Sessions->WriteTx(hashTx, txCurrent))
+            {
                 debug::error(FUNCTION, "failed to write ", VARIABLE(hashTx.SubString()));
+                return;
+            }
+
+            nModified  = txCurrent.nModified;
+            hashNextTx = txCurrent.hashNextTx;
+            nStatus    = txCurrent.nStatus;
+            fRelay = true;
+        }
+
+        /* Relay only after the session record is known to still exist. Do not
+         * hold IndexLock across the network write. */
+        if(fRelay && LLP::TRITIUM_SERVER)
+        {
+            /* Relay the transaction notification. */
+            LLP::TRITIUM_SERVER->Relay
+            (
+                LLP::TritiumNode::ACTION::NOTIFY,
+                uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
+                hashTx
+            );
+
+            /* Log that tx was rebroadcast. */
+            debug::log(1, FUNCTION, "Re-Broadcasted ", hashTx.SubString(), " to network");
         }
     }
+
+    /* Stripe multi-record session index mutations by genesis. */
+    std::recursive_mutex& Transaction::IndexLock(const uint256_t& hashGenesis)
+    {
+        static std::array<std::recursive_mutex, 256> INDEX_LOCKS;
+        return INDEX_LOCKS[hashGenesis.Get64(0) % INDEX_LOCKS.size()];
+    }
+
 
     /* Index a transaction into the ledger database. */
     bool Transaction::Index(const uint512_t& hash)
     {
+        /* Same lock as snapshot/restore and Delete(). Tritium IndexSigchain()
+         * reaches this without mempool.MUTEX, so the session lock — not the
+         * pool lock — is what keeps a failed Index() from restoring over a
+         * concurrent successful index of this genesis. */
+        RECURSIVE(IndexLock(hashGenesis));
         /* Set our status to acceoted if transaction has been connected to a block. */
         if(LLD::Ledger->HasIndex(hash))
         {
@@ -368,6 +415,11 @@ namespace TAO::API
     /* Delete this transaction from the logical database. */
     bool Transaction::Delete(const uint512_t& hash)
     {
+        /* Serialize with Index() and snapshot restore. This does not cover a
+         * caller's preceding Disconnect/Remove: that sequence must already
+         * hold IndexLock, after mempool.MUTEX. Do not acquire the pool lock
+         * here. */
+        RECURSIVE(IndexLock(hashGenesis));
         /* Read our previous transaction. */
         if(!IsFirst())
         {

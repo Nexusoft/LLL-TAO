@@ -325,7 +325,7 @@ namespace convert
      *  @return the converted unsigned integer
      *
      **/
-    inline uint32_t bytes2uint(std::vector<uint8_t> BYTES, int nOffset = 0)
+    inline uint32_t bytes2uint(const std::vector<uint8_t>& BYTES, int nOffset = 0)
     {
         return (BYTES[0 + nOffset] << 24) + (BYTES[1 + nOffset] << 16) + (BYTES[2 + nOffset] << 8) + BYTES[3 + nOffset];
     }

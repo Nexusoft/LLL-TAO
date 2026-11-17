@@ -39,7 +39,7 @@ TEST_CASE( "OP::CREATE  Benchmarks", "[operation]")
         runtime::timer bench;
         bench.Reset();
         {
-            LLD::TxnBegin();
+            REQUIRE(LLD::TxnBegin());
             for(int i = 0; i < vTx.size(); ++i)
             {
                 REQUIRE(vTx[i].Connect(TAO::Ledger::FLAGS::MEMPOOL));

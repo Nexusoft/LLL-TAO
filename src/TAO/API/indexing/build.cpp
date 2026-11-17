@@ -18,6 +18,10 @@ ________________________________________________________________________________
 #include <TAO/API/types/indexing.h>
 #include <TAO/API/types/transaction.h>
 
+#include <TAO/Ledger/types/mempool.h>
+
+#include <mutex>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -87,6 +91,17 @@ namespace TAO::API
             hashLast = hashEvent;
         }
 
+        /* Hold the pool lock before the session index lock: the rebuild reads
+         * mempool-backed transactions, including inside IndexSession().
+         * Hold the session index lock before the first indexing mutation and
+         * through both rebuild loops. IndexSession()/IndexSigchain() and the
+         * later Index() loop both write indexing.last. Ledger-loaded API
+         * transactions have hashNextTx == 0, so an interleaved Index() can
+         * otherwise rewrite indexing.last to an older transaction. Each Index()
+         * takes the lock again. Release both before BroadcastUnconfirmed(). */
+        std::unique_lock<std::recursive_mutex> POOL_LOCK(TAO::Ledger::mempool.MUTEX);
+        std::unique_lock<std::recursive_mutex> INDEX_LOCK(Transaction::IndexLock(hashGenesis));
+
         /* Check that our ledger indexes are up-to-date with our logical indexes. */
         uint512_t hashLedger = 0;
         if(LLD::Ledger->ReadLast(hashGenesis, hashLedger, TAO::Ledger::FLAGS::MEMPOOL))
@@ -94,31 +109,56 @@ namespace TAO::API
             /* Build list of transaction hashes. */
             std::vector<uint512_t> vBuild;
 
-            /* Read all transactions from our last index. */
+            /* Read all transactions from our last index. A failed read must
+             * not fall through to a default-zero predecessor: that spins until
+             * shutdown while this thread holds mempool.MUTEX. */
             hashLast = hashLedger;
+            bool fLedgerWalkComplete = false;
             while(!config::fShutdown.load())
             {
                 /* Read the transaction from the ledger database. */
                 TAO::Ledger::Transaction tx;
-                if(LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
                 {
-                    /* Check for valid logical indexes. */
-                    if(!LLD::Sessions->HasTx(hashLast))
-                        vBuild.push_back(hashLast);
-                    else
-                        break;
-
-                    /* Break on first after we have checked indexes. */
-                    if(tx.IsFirst())
-                        break;
+                    debug::warning(FUNCTION, "incomplete index rebuild for genesis=",
+                        hashGenesis.SubString(), ": failed to read ", hashLast.SubString());
+                    break;
                 }
 
-                /* Set hash to previous hash. */
-                hashLast = tx.hashPrevTx;
+                /* Check for valid logical indexes. */
+                if(!LLD::Sessions->HasTx(hashLast))
+                    vBuild.push_back(hashLast);
+                else
+                {
+                    fLedgerWalkComplete = true;
+                    break;
+                }
+
+                /* Break on first after we have checked indexes. */
+                if(tx.IsFirst())
+                {
+                    fLedgerWalkComplete = true;
+                    break;
+                }
+
+                /* A repeated or zero predecessor must not spin under the pool lock. */
+                const uint512_t hashPrev = tx.hashPrevTx;
+                if(hashPrev == hashLast)
+                {
+                    debug::warning(FUNCTION, "incomplete index rebuild for genesis=",
+                        hashGenesis.SubString(), ": predecessor did not advance at ",
+                        hashLast.SubString());
+                    break;
+                }
+                hashLast = hashPrev;
             }
 
+            /* Do not apply a partial predecessor chain. The next rebuild retries. */
+            if(!fLedgerWalkComplete)
+                vBuild.clear();
+
             /* Only output our data when we have indexes to build. */
-            if(!vBuild.empty())
+            if(fLedgerWalkComplete && !vBuild.empty())
             {
                 debug::log(1, FUNCTION, "Building ", vBuild.size(), " indexes for genesis=", hashGenesis.SubString());
 
@@ -135,33 +175,57 @@ namespace TAO::API
             /* Build list of transaction hashes. */
             std::vector<uint512_t> vIndex;
 
-            /* Read all transactions from our last index. */
+            /* Read all transactions from our last index. Same failure rule as
+             * the ledger walk above: stop, report, and do not use a partial chain. */
             uint512_t hashTx = hashLogical;
+            bool fLogicalWalkComplete = false;
             while(!config::fShutdown.load())
             {
                 /* Read the transaction from the ledger database. */
                 TAO::API::Transaction tx;
-                if(LLD::Sessions->ReadTx(hashTx, tx))
+                if(!LLD::Sessions->ReadTx(hashTx, tx))
                 {
-                    /* Break on our first confirmed tx. */
-                    if(tx.Confirmed())
-                        break;
-
-                    /* Check that we have an index here. */
-                    if(LLD::Ledger->HasIndex(hashTx) && !tx.Confirmed())
-                        vIndex.push_back(hashTx); //this will warm up the LLD cache if available, or remain low footprint if not
-
-                    /* Break on first after we have checked indexes. */
-                    if(tx.IsFirst())
-                        break;
+                    debug::warning(FUNCTION, "incomplete index rebuild for genesis=",
+                        hashGenesis.SubString(), ": failed to read ", hashTx.SubString());
+                    break;
                 }
 
-                /* Set hash to previous hash. */
-                hashTx = tx.hashPrevTx;
+                /* Break on our first confirmed tx. */
+                if(tx.Confirmed())
+                {
+                    fLogicalWalkComplete = true;
+                    break;
+                }
+
+                /* Check that we have an index here. */
+                if(LLD::Ledger->HasIndex(hashTx) && !tx.Confirmed())
+                    vIndex.push_back(hashTx); //this will warm up the LLD cache if available, or remain low footprint if not
+
+                /* Break on first after we have checked indexes. */
+                if(tx.IsFirst())
+                {
+                    fLogicalWalkComplete = true;
+                    break;
+                }
+
+                /* A repeated or zero predecessor must not spin under the pool lock. */
+                const uint512_t hashPrev = tx.hashPrevTx;
+                if(hashPrev == hashTx)
+                {
+                    debug::warning(FUNCTION, "incomplete index rebuild for genesis=",
+                        hashGenesis.SubString(), ": predecessor did not advance at ",
+                        hashTx.SubString());
+                    break;
+                }
+                hashTx = hashPrev;
             }
 
+            /* Do not apply a partial predecessor chain. The next rebuild retries. */
+            if(!fLogicalWalkComplete)
+                vIndex.clear();
+
             /* Only output our data when we have indexes to build. */
-            if(!vIndex.empty())
+            if(fLogicalWalkComplete && !vIndex.empty())
                 debug::log(1, FUNCTION, "Updating ", vIndex.size(), " indexes for genesis=", hashGenesis.SubString());
 
             /* Reverse iterate our list of entries and index. */
@@ -179,6 +243,9 @@ namespace TAO::API
                     debug::log(1, FUNCTION, "Updated Indexes for ", hashTx->SubString(), " to logical db");
                 }
             }
+
+            INDEX_LOCK.unlock();
+            POOL_LOCK.unlock();
 
             /* Check if we need to re-broadcast anything. */
             BroadcastUnconfirmed(hashGenesis);

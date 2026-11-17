@@ -1,0 +1,10 @@
+04. Local Julia Toolchain and Binary Flow
+
+Julia source
+   │
+   ├── run locally as scripts
+   ├── package as local app
+   └── package as local library
+           │
+           ▼
+     documented smoke test

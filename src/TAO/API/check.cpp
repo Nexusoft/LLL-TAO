@@ -150,8 +150,12 @@ namespace TAO::API
         /* Dummy value used for build. */
         std::map<uint256_t, TAO::Register::State> mapStates;
 
-        /* Start a ACID transaction. */
-        LLD::TxnBegin(TAO::Ledger::FLAGS::MINER); //we use miner flag here so we don't conflict with mempool
+        /* Miner overlay so this check does not conflict with mempool. The guard
+         * aborts on every exit, including an exception that is not std::exception,
+         * so a later miner begin is not rejected. */
+        LLD::TransactionGuard txn(TAO::Ledger::FLAGS::MINER);
+        if(!txn)
+            return false;
 
         /* Return flag */
         bool fSanitized = false;
@@ -176,9 +180,6 @@ namespace TAO::API
         {
             debug::error(FUNCTION, e.what());
         }
-
-        /* Abort the mempool ACID transaction */
-        LLD::TxnAbort(TAO::Ledger::FLAGS::MINER);
 
         return fSanitized;
     }

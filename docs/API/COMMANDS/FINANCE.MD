@@ -776,6 +776,8 @@ finance/get/balances
 
 This will retrieve account values and staking metrics for the trust account belonging to the currently logged in signature chain. If called when the stake minter is not running, this method only returns trust account values. Staking metrics will return 0.
 
+When staking is running, stake minter watchdog fields (`stalled`, `lastactive`) are included so clients can detect whether the minter is making progress. Tip-health field `tipage` is always returned. The minter also applies a local wall-clock self-restraint between stake blocks, configurable via `-minstakeintervalseconds` (values `<= 0` disable this local floor).
+
 Endpoint:
 
 ```
@@ -803,6 +805,9 @@ finance/get/stakeinfo
     "trustweight": 53.440432749937834,
     "blockweight": 15.358176013767272,
     "stakeweight": 49.63220707632078,
+    "stalled": false,
+    "lastactive": 1752076800,
+    "tipage": 3,
     "staking": true,
     "change": false
 }
@@ -828,6 +833,12 @@ finance/get/stakeinfo
 `blockweight` : The current block weight applied to staking as a percent of maximum.
 
 `stakeweight` : The current stake weight (trust weight and block weight combined) as a percent of maximum.
+
+`stalled` : Watchdog flag. `true` means staking is started but no minter heartbeat/progress update has been seen within the stall threshold.
+
+`lastactive` : Unix timestamp of the latest minter heartbeat/progress update. Included while staking is started. Value `0` means staking has started but no heartbeat has been published yet.
+
+`tipage` : Number of seconds since the local chain tip block time. This is independent of whether staking is enabled.
 
 `staking` : Indicates whether staking is actively running for user account (when false, weight metrics will be 0).
 
@@ -965,4 +976,3 @@ finance/migrate/accounts
 `error` : If the legacy send failed, this field includes the legacy send error message.
 
 -----------------------------------
-

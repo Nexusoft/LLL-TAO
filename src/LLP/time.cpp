@@ -126,6 +126,9 @@ namespace LLP
             /* Only send time seed when outgoing connection. */
             if(!Incoming())
             {
+                if(pAddressManager)
+                    pAddressManager->AddAddress(GetAddress(), ConnectState::CONNECTED);
+
                 /* Request for a new sample. */
                 GetSample();
             }
@@ -147,9 +150,8 @@ namespace LLP
         /* On Disconnect Event, Reduce the Connection Count for Daemon */
         if(EVENT == EVENTS::DISCONNECT)
         {
-            /* Add address to time server as dropped. */
-            if(!Incoming() && TIME_SERVER->GetAddressManager())
-                TIME_SERVER->GetAddressManager()->AddAddress(GetAddress(), ConnectState::DROPPED);
+            if(!Incoming() && pAddressManager)
+                pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
             return;
         }

@@ -44,7 +44,15 @@ const std::vector<TestIpInput> ipInputV6 =
     {"feff:FFFF:Ffff:fFff:ffFf:fffF:ffff:ffff",
      {0xFe, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}}
 };
-const std::vector<TestIpInput> ipInputInvalidV4 = {{"0.0", {0, 0}}};
+/* Strings that are not valid numeric IPv4 (or IPv6) addresses.  With
+ * BaseAddress's default `fAllowLookup=false` these route through
+ * getaddrinfo() with AI_NUMERICHOST, which rejects non-numeric input on
+ * every libc.  Note: the previous fixture used "0.0", which glibc's
+ * inet_aton-style fallback accepts as the legacy short form for 0.0.0.0
+ * even with AI_NUMERICHOST, leaving this section asserting on
+ * libc-implementation-defined behaviour.  A purely non-numeric string is
+ * portable across glibc and musl. */
+const std::vector<TestIpInput> ipInputInvalidV4 = {{"not.an.ip", {0, 0}}};
 
 const std::vector<TestIpInput> ipMulticastInputV4 = 
 {
@@ -224,7 +232,7 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
     {
         for (auto const& ip : ipInputV4)
         {
-            sockaddr_in* pSockAddr;
+            sockaddr_in* pSockAddr = nullptr;
             LLP::BaseAddress address;
 
             REQUIRE(address.GetSockAddr(pSockAddr) == false);  
@@ -266,7 +274,7 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
     {
         for (auto const& ip : ipInputV6)
         {
-            sockaddr_in6* pSockAddr;
+            sockaddr_in6* pSockAddr = nullptr;
             LLP::BaseAddress address;
 
             REQUIRE(address.GetSockAddr6(pSockAddr) == false);  

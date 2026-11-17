@@ -201,8 +201,11 @@ namespace TAO
              *
              *  Check a client block for consistency.
              *
+             *  @param[in] fForceProof When true, evaluate the proof-of-work gate
+             *             unconditionally (ignore the Synchronizing() fast-path).
+             *
              **/
-            bool Check() const override;
+            bool Check(bool fForceProof = false) const override;
 
 
             /** Accept
