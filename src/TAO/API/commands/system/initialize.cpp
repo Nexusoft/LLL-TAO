@@ -356,7 +356,7 @@ namespace TAO
             /* Flag indicating whether this node is currently syncrhonizing */
             jRet["synchronized"]    = !TAO::Ledger::ChainState::Synchronizing();
             jRet["syncing"]         = false; // default sync value
-            const auto mining = TAO::Ledger::ChainState::MiningReadiness();
+            const auto mining = TAO::Ledger::ChainState::MiningReadinessSnapshot();
             jRet["mining_readiness"] = {
                 {"ready", mining.ready}, {"reason", mining.reason},
                 {"epoch", mining.epoch}, {"fresh_peers", mining.peers},

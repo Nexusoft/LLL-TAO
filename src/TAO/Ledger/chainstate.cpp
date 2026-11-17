@@ -90,6 +90,7 @@ namespace TAO
 
         ChainState::MiningStatus ChainState::MiningReadiness(bool cached)
         {
+            const auto evaluation = miningPeers.StartEvaluation();
             const bool local = config::fTestNet.load()
                 && (!config::GetBoolArg("-dns", true) || config::fHybrid.load());
             const int64_t required = config::GetArg("-miningminpeers", 2);
@@ -132,7 +133,7 @@ namespace TAO
                     return ChainState::MiningPeerEvidence::BEHIND;
                 };
             auto status = cached
-                ? miningPeers.CheckCached(bestHash, quorum, local, synchronized, reorg, shutdown, resolve)
+                ? miningPeers.CheckCached(bestHash, epoch, quorum, local, synchronized, reorg, shutdown, resolve)
                 : miningPeers.Check(quorum, local, synchronized, reorg, shutdown, resolve);
             status.epoch = epoch;
             if(epoch > UINT32_MAX)
@@ -140,7 +141,13 @@ namespace TAO
                 status.ready = false;
                 status.reason = "mining-epoch-exhausted";
             }
+            miningPeers.RememberStatus(evaluation, status);
             return status;
+        }
+
+        ChainState::MiningStatus ChainState::MiningReadinessSnapshot()
+        {
+            return miningPeers.LastStatus();
         }
 
         bool ChainState::MiningWorkCurrent(uint64_t epoch)
