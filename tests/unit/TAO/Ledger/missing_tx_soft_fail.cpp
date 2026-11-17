@@ -867,6 +867,160 @@ TEST_CASE("An unresolvable peer tip cannot veto readiness indefinitely",
     REQUIRE(check(later).reason == "unresolved-peer-tip");
 }
 
+TEST_CASE("Disconnect and reconnect does not restart an unresolved peer veto",
+    "[ledger][mining-readiness]")
+{
+    using namespace TAO::Ledger::ChainState;
+    MiningPeerTracker tracker;
+    const auto now = MiningPeerTracker::Clock::now();
+    const auto bound = MiningPeerTracker::UNRESOLVED_VETO_MAX;
+    int supporters[2];
+    int connections[16] = {};
+    int slot = 0;
+    auto evidence = [](const uint1024_t& hash, uint32_t)
+    {
+        return hash == 1 ? MiningPeerEvidence::SUPPORTING : MiningPeerEvidence::UNRESOLVED;
+    };
+    auto check = [&](auto time)
+    {
+        tracker.Observe(&supporters[0], "one", 1, 100, time);
+        tracker.Observe(&supporters[1], "two", 1, 100, time);
+        return tracker.Check(2, false, true, false, false, evidence, time);
+    };
+    auto connect = [&](const char* address, const uint1024_t& hash, uint32_t height, auto time)
+    {
+        REQUIRE(slot + 1 < int(sizeof(connections) / sizeof(connections[0])));
+        ++slot;
+        tracker.Observe(&connections[slot], address, hash, height, time);
+        return static_cast<const void*>(&connections[slot]);
+    };
+    auto replace = [&](const void* peer, const char* address, const uint1024_t& hash,
+                       uint32_t height, auto time)
+    {
+        tracker.Remove(peer);
+        return connect(address, hash, height, time);
+    };
+
+    tracker.Observe(&supporters[0], "one", 1, 100, now);
+    tracker.Observe(&supporters[1], "two", 1, 100, now);
+    const void* churn = connect("three", 0xDEAD, 99, now);
+    REQUIRE(check(now).reason == "unresolved-peer-tip");
+
+    /* A new connection pointer must continue the same address window. */
+    const auto churned = now + bound / 2;
+    churn = replace(churn, "three", 0xBEEF, 99, churned);
+    REQUIRE(check(churned).reason == "unresolved-peer-tip");
+
+    /* A different address starts its own window and must not inherit three's. */
+    const void* other = connect("four", 0xBEEF, 98, churned);
+    const auto threeExpired = now + bound;
+    tracker.Remove(churn);
+    REQUIRE(check(threeExpired).reason == "unresolved-peer-tip");
+    tracker.Remove(other);
+
+    /* three's original window has expired, so reconnecting it no longer vetoes. */
+    churn = connect("three", 0xDEAD, 99, threeExpired);
+    const auto ignored = check(threeExpired);
+    REQUIRE(ignored.ready);
+    REQUIRE(ignored.peers == 2);
+    REQUIRE(ignored.ignored == 1);
+
+    for(int step = 2; step <= 5; ++step)
+    {
+        const auto time = now + std::chrono::seconds(60 * step);
+        churn = replace(churn, "three", step % 2 == 0 ? 0xDEAD : 0xBEEF, 99, time);
+        const auto status = check(time);
+        REQUIRE(status.ready);
+        REQUIRE(status.peers == 2);
+        REQUIRE(status.ignored == 1);
+    }
+
+    /* Resolution on the reconnected pointer clears the strike. */
+    const auto resolved = now + std::chrono::seconds(60 * 5) + std::chrono::seconds(1);
+    churn = replace(churn, "three", 1, 100, resolved);
+    const auto ready = check(resolved);
+    REQUIRE(ready.ready);
+    REQUIRE(ready.ignored == 0);
+    REQUIRE(ready.peers == 3);
+
+    const auto again = resolved + std::chrono::seconds(1);
+    churn = replace(churn, "three", 0xDEAD, 101, again);
+    REQUIRE(check(again).reason == "unresolved-peer-tip");
+    REQUIRE(check(again + bound - std::chrono::seconds(1)).reason == "unresolved-peer-tip");
+    const auto expiredAgain = check(again + bound);
+    REQUIRE(expiredAgain.ready);
+    REQUIRE(expiredAgain.ignored == 1);
+    REQUIRE(expiredAgain.peers == 2);
+}
+
+TEST_CASE("Reconnect logs an expired unresolved veto once per address window",
+    "[ledger][mining-readiness]")
+{
+    using namespace TAO::Ledger::ChainState;
+    MiningPeerTracker tracker;
+    const auto now = MiningPeerTracker::Clock::now();
+    const auto bound = MiningPeerTracker::UNRESOLVED_VETO_MAX;
+    int connections[8] = {};
+    int slot = 0;
+    const auto resolve = [](const uint1024_t& hash, uint32_t)
+    {
+        return hash == 1 ? MiningPeerEvidence::SUPPORTING : MiningPeerEvidence::UNRESOLVED;
+    };
+    const auto check = [&](auto time)
+    {
+        return tracker.Check(1, false, true, false, false, resolve, time);
+    };
+    const auto reconnect = [&](const uint1024_t& hash, auto time)
+    {
+        if(slot > 0)
+            tracker.Remove(&connections[slot]);
+        ++slot;
+        tracker.Observe(&connections[slot], "expiry-reconnect", hash, 100, time);
+    };
+    std::ostringstream output;
+    struct OutputCapture
+    {
+        std::streambuf* previous;
+        explicit OutputCapture(std::ostream& out)
+        {
+            std::lock_guard<std::mutex> lock(debug::DEBUG_MUTEX);
+            previous = std::cout.rdbuf(out.rdbuf());
+        }
+        ~OutputCapture()
+        {
+            std::lock_guard<std::mutex> lock(debug::DEBUG_MUTEX);
+            std::cout.rdbuf(previous);
+        }
+    };
+
+    {
+        OutputCapture capture(output);
+        reconnect(2, now);
+        check(now);
+        reconnect(3, now + bound / 2);
+        check(now + bound / 2);
+        reconnect(2, now + bound);
+        check(now + bound);
+        reconnect(4, now + bound + std::chrono::seconds(1));
+        check(now + bound + std::chrono::seconds(1));
+        const auto resolved = now + bound + std::chrono::seconds(2);
+        reconnect(1, resolved);
+        check(resolved);
+        reconnect(2, resolved);
+        check(resolved);
+        reconnect(2, resolved + bound);
+        check(resolved + bound);
+    }
+
+    const std::string message = "MiningPeerTracker: ignoring unresolved tip from expiry-reconnect";
+    const std::string logs = output.str();
+    const auto first = logs.find(message);
+    REQUIRE(first != std::string::npos);
+    const auto second = logs.find(message, first + message.size());
+    REQUIRE(second != std::string::npos);
+    REQUIRE(logs.find(message, second + message.size()) == std::string::npos);
+}
+
 TEST_CASE("Unresolved peer veto expiry is logged once per unresolved period",
     "[ledger][mining-readiness]")
 {

@@ -240,7 +240,9 @@ Relevant regression tags are ``[llp][peer-recovery]``,
 Focused regressions are not a deployment acceptance test. Controlled multi-node
 partition, peer-churn, reorganization and prolonged-recovery testing remains
 necessary. Distinct IPs do not prove independent peers; unresolved minority
-reports can pause mining, but each peer's continuously unresolved evidence
-stops vetoing after 90 seconds (``MiningPeerTracker::UNRESOLVED_VETO_MAX``)
-and never supports the quorum. Do not infer crash safety from staged publication or
+reports can pause mining, but each peer address's continuously unresolved
+evidence stops vetoing after 90 seconds
+(``MiningPeerTracker::UNRESOLVED_VETO_MAX``). Disconnect, reconnect, and a
+changed unresolved hash do not restart that window. Expired evidence never
+supports the quorum. Do not infer crash safety from staged publication or
 live-deployment readiness from the earlier PRs' selected-suite results.
