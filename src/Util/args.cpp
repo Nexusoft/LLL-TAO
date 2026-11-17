@@ -173,7 +173,12 @@ namespace config
 
             /* Non-numeric, non-boolean value (e.g. autologin=user:pass) —
              * treat as truthy since the arg is explicitly set to a value. */
-            try { return (std::stoll(strValue) != 0); }
+            try
+            {
+                std::size_t nParsed = 0;
+                const int64_t nValue = std::stoll(strValue, &nParsed);
+                return nParsed != strValue.size() || nValue != 0;
+            }
             catch(const std::invalid_argument&) { return true; }
             catch(const std::out_of_range&)     { return true; }
         }

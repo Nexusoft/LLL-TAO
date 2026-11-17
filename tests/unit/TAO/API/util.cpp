@@ -1,4 +1,5 @@
 #include <LLP/types/apinode.h>
+#include <LLP/include/port.h>
 
 #include <LLC/include/random.h>
 
@@ -163,7 +164,7 @@ encoding::json APICall(const std::string& strMethod, const encoding::json& jsonP
     /* Make the connection to the API server. */
     LLP::APINode apiNode;
 
-    LLP::BaseAddress addr("127.0.0.1", 8080);
+    LLP::BaseAddress addr("127.0.0.1", LLP::GetAPIPort());
 
     if(!apiNode.Connect(addr))
         throw "Couldn't Connect to API";

@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/node_cache.h>
+#include <LLP/include/network.h>
 
 #include <Util/include/string.h>
 
@@ -28,34 +29,34 @@ namespace NodeCache
      **/
     bool IsLocalhost(const std::string& strAddress)
     {
-        /* Extract IP from address string (format could be "ip:port") */
         std::string strIP = strAddress;
-        size_t nColonPos = strAddress.find(':');
-        if(nColonPos != std::string::npos)
-            strIP = strAddress.substr(0, nColonPos);
+        if(!strIP.empty() && strIP.front() == '[')
+        {
+            const size_t nEnd = strIP.find(']');
+            if(nEnd == std::string::npos || (nEnd + 1 < strIP.size() && strIP[nEnd + 1] != ':'))
+                return false;
+            strIP = strIP.substr(1, nEnd - 1);
+        }
+        else
+        {
+            const size_t nColon = strIP.find(':');
+            if(nColon != std::string::npos && nColon == strIP.rfind(':'))
+                strIP = strIP.substr(0, nColon);
+        }
 
-        /* Convert to lowercase for comparison */
         strIP = ToLower(strIP);
-
-        /* Check against known localhost patterns */
-        if(strIP == LOCALHOST_IPV4)
-            return true;
-
-        if(strIP == LOCALHOST_IPV6)
-            return true;
-
         if(strIP == LOCALHOST_NAME)
             return true;
 
-        /* Check for 127.x.x.x range */
-        if(strIP.substr(0, 4) == "127.")
-            return true;
+        in_addr ipv4{};
+        if(inet_pton(AF_INET, strIP.c_str(), &ipv4) == 1)
+            return (ntohl(ipv4.s_addr) >> 24) == 127;
 
-        /* Check for ::1 variants */
-        if(strIP == "::1" || strIP == "0:0:0:0:0:0:0:1")
-            return true;
-
-        return false;
+        in6_addr ipv6{};
+        const uint8_t loopback[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
+        return inet_pton(AF_INET6, strIP.c_str(), &ipv6) == 1
+            && std::equal(std::begin(loopback), std::end(loopback),
+                          reinterpret_cast<const uint8_t*>(&ipv6));
     }
 
 
@@ -64,13 +65,20 @@ namespace NodeCache
      *  Get the appropriate purge timeout for a given address.
      *
      **/
-    uint64_t GetPurgeTimeout(const std::string& strAddress)
+    uint64_t GetPurgeTimeout(const std::string& strAddress, bool fAddressHasPort)
     {
-        /* Localhost miners get extended timeout */
         if(IsLocalhost(strAddress))
             return LOCALHOST_CACHE_PURGE_TIMEOUT;
 
-        /* Standard timeout for remote miners */
+        /* IPv6 endpoints are stored without brackets, so their final colon
+         * can only be interpreted as a port when the caller knows the format. */
+        if(fAddressHasPort && !strAddress.empty() && strAddress.front() != '[')
+        {
+            const size_t nPort = strAddress.rfind(':');
+            if(nPort != std::string::npos && IsLocalhost(strAddress.substr(0, nPort)))
+                return LOCALHOST_CACHE_PURGE_TIMEOUT;
+        }
+
         return DEFAULT_CACHE_PURGE_TIMEOUT;
     }
 
