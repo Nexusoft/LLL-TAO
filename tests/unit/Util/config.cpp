@@ -13,9 +13,54 @@ ________________________________________________________________________________
 
 #include <Util/include/config.h>
 #include <Util/include/args.h>
+#include <Util/include/debug.h>
 #include <unit/catch2/catch.hpp>
 #include <fstream>
 #include <cstdio>
+
+TEST_CASE("Boolean arguments require complete numeric values", "[review258]")
+{
+    const std::string strKey = "-review258-bool";
+    struct Cleanup
+    {
+        const std::string& strKey;
+        ~Cleanup()
+        {
+            config::mapArgs.erase(strKey);
+            config::mapMultiArgs.erase(strKey);
+        }
+    } cleanup{strKey};
+
+    const char* argv[] = {"nexus", "--review258-bool=0miner:password:1234"};
+    config::ParseParameters(2, argv);
+    REQUIRE(config::GetBoolArg(strKey, false));
+
+    for(const auto& item : std::vector<std::pair<std::string, bool>>{
+        {"", true}, {"true", true}, {"false", false}, {"0", false},
+        {"-0", false}, {"1", true}, {"-2", true},
+        {"0miner:password:1234", true}, {"0:password:1234", true},
+        {"0suffix", true}, {"999999999999999999999999", true}})
+    {
+        config::mapArgs[strKey] = item.first;
+        INFO("value: " << item.first);
+        REQUIRE(config::GetBoolArg(strKey, false) == item.second);
+    }
+}
+
+TEST_CASE("Startup argument redaction supports both option spellings", "[review258]")
+{
+    for(const auto& strKey : {"-rpcpassword", "-apipassword", "-autologin",
+                              "-username", "-password", "-pin", "-generate"})
+    {
+        const std::string strOption(strKey);
+        const std::string strExpected = strOption + "=XXXXXXXX";
+        REQUIRE(debug::SanitizeCommandLineArgument(strOption + "=secret") == strExpected);
+        REQUIRE(debug::SanitizeCommandLineArgument("-" + strOption + "=secret") == strExpected);
+    }
+
+    REQUIRE(debug::SanitizeCommandLineArgument("--verbose=1") == "--verbose=1");
+    REQUIRE(debug::SanitizeCommandLineArgument("plain") == "plain");
+}
 
 TEST_CASE("Config file parsing tests", "[config]")
 {

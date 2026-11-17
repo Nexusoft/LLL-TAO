@@ -58,6 +58,8 @@ TEST_CASE("NodeCache Localhost Detection Tests", "[node_cache]")
     {
         REQUIRE(NodeCache::IsLocalhost("::1"));
         REQUIRE(NodeCache::IsLocalhost("0:0:0:0:0:0:0:1"));
+        REQUIRE(NodeCache::IsLocalhost("[::1]:8336"));
+        REQUIRE(NodeCache::IsLocalhost("0:0:0:0:0:0:0:0001"));
     }
 
     SECTION("Detects localhost name")
@@ -72,6 +74,9 @@ TEST_CASE("NodeCache Localhost Detection Tests", "[node_cache]")
         REQUIRE_FALSE(NodeCache::IsLocalhost("10.0.0.1"));
         REQUIRE_FALSE(NodeCache::IsLocalhost("8.8.8.8"));
         REQUIRE_FALSE(NodeCache::IsLocalhost("2001:0db8:85a3::1"));
+        REQUIRE_FALSE(NodeCache::IsLocalhost("::1:8336"));
+        REQUIRE_FALSE(NodeCache::IsLocalhost("[2001:db8::1]:8336"));
+        REQUIRE_FALSE(NodeCache::IsLocalhost("127.evil"));
     }
 }
 
@@ -82,6 +87,8 @@ TEST_CASE("Purge Timeout Selection Tests", "[node_cache]")
     {
         REQUIRE(NodeCache::GetPurgeTimeout("127.0.0.1") == NodeCache::LOCALHOST_CACHE_PURGE_TIMEOUT);
         REQUIRE(NodeCache::GetPurgeTimeout("::1") == NodeCache::LOCALHOST_CACHE_PURGE_TIMEOUT);
+        REQUIRE(NodeCache::GetPurgeTimeout("::1:8336", true) == NodeCache::LOCALHOST_CACHE_PURGE_TIMEOUT);
+        REQUIRE(NodeCache::GetPurgeTimeout("[::1]:8336", true) == NodeCache::LOCALHOST_CACHE_PURGE_TIMEOUT);
         REQUIRE(NodeCache::GetPurgeTimeout("localhost") == NodeCache::LOCALHOST_CACHE_PURGE_TIMEOUT);
     }
 
@@ -89,6 +96,8 @@ TEST_CASE("Purge Timeout Selection Tests", "[node_cache]")
     {
         REQUIRE(NodeCache::GetPurgeTimeout("192.168.1.1") == NodeCache::DEFAULT_CACHE_PURGE_TIMEOUT);
         REQUIRE(NodeCache::GetPurgeTimeout("8.8.8.8") == NodeCache::DEFAULT_CACHE_PURGE_TIMEOUT);
+        REQUIRE(NodeCache::GetPurgeTimeout("::1:8336") == NodeCache::DEFAULT_CACHE_PURGE_TIMEOUT);
+        REQUIRE(NodeCache::GetPurgeTimeout("::1:8336:9323", true) == NodeCache::DEFAULT_CACHE_PURGE_TIMEOUT);
     }
 }
 
@@ -200,6 +209,26 @@ TEST_CASE("Cache Size Limit Enforcement Tests", "[node_cache]")
 TEST_CASE("Purge Inactive Miners Tests", "[node_cache]")
 {
     StatelessMinerManager& manager = StatelessMinerManager::Get();
+
+    SECTION("IPv6 endpoints use their actual peer IP for cache retention")
+    {
+        const std::string strLocal = "::1:8336";
+        const std::string strRemote = "::1:8336:9323";
+        MiningContext local = MiningContext().WithTimestamp(runtime::unifiedtimestamp() - (8 * 86400));
+        local.strAddress = strLocal;
+        MiningContext remote = local;
+        remote.strAddress = strRemote;
+        manager.UpdateMiner(strLocal, local, 0);
+        manager.UpdateMiner(strRemote, remote, 0);
+
+        manager.PurgeInactiveMiners();
+        const bool fLocalRetained = manager.GetMinerContext(strLocal).has_value();
+        const bool fRemoteRetained = manager.GetMinerContext(strRemote).has_value();
+        manager.RemoveMiner(strLocal);
+        manager.RemoveMiner(strRemote);
+        REQUIRE(fLocalRetained);
+        REQUIRE_FALSE(fRemoteRetained);
+    }
 
     SECTION("Purge removes miners exceeding timeout")
     {

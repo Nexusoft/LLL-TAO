@@ -115,11 +115,12 @@ namespace NodeCache
      *  Returns extended timeout for localhost, standard timeout otherwise.
      *
      *  @param[in] strAddress The miner's network address
+     *  @param[in] fAddressHasPort The address is an unbracketed IP:port endpoint
      *
      *  @return Purge timeout in seconds
      *
      **/
-    uint64_t GetPurgeTimeout(const std::string& strAddress);
+    uint64_t GetPurgeTimeout(const std::string& strAddress, bool fAddressHasPort = false);
 
     /** GetSessionLivenessTimeout
      *

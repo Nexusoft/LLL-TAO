@@ -419,6 +419,7 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_API_crypto.o \
 		   build/Tests_TAO_API_finance.o \
 		   build/Tests_TAO_API_names.o \
+		   build/Tests_TAO_API_system.o \
 		   build/Tests_TAO_API_supply.o \
 		   build/Tests_TAO_API_tokens.o \
 		   build/Tests_TAO_API_users.o \

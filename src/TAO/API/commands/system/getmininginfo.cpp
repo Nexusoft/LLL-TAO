@@ -37,10 +37,10 @@ namespace TAO::API
      * 
      * This is a minimal implementation that can be expanded with additional metrics.
      */
-    encoding::json System::GetMiningInfo(const encoding::json& params, const bool fHelp)
+    encoding::json System::GetMiningInfo(const encoding::json&, const bool fHelp)
     {
         /* Check for help flag. */
-        if(fHelp || params.size() != 0)
+        if(fHelp)
             return std::string(
                 "getmininginfo - Returns an object containing mining-related information.");
 

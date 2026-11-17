@@ -790,7 +790,7 @@ namespace LLP
             const MiningContext& ctx = pair.second;
             
             /* Get appropriate timeout based on address (localhost vs remote) */
-            uint64_t nPurgeTimeout = NodeCache::GetPurgeTimeout(ctx.strAddress);
+            uint64_t nPurgeTimeout = NodeCache::GetPurgeTimeout(ctx.strAddress, true);
             
             /* Check if miner has been inactive for longer than purge timeout.
              * Uses IsConsideredInactive() to respect keepalive grace — a miner

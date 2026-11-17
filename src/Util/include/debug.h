@@ -140,6 +140,9 @@ namespace debug
      **/
     void LogStartup(int argc, char** argv);
 
+    /** Redact sensitive command-line arguments before logging them. */
+    std::string SanitizeCommandLineArgument(const std::string& strArg);
+
 
     /** safe_printstr
      *
