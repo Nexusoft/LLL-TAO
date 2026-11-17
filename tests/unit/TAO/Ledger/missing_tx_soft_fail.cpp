@@ -593,7 +593,7 @@ TEST_CASE("Mining work readiness caches evidence without delaying invalidation",
                            bool bypass = false, bool synchronized = true,
                            bool reorg = false, bool shutdown = false)
     {
-        return tracker.CheckCached(tip, required, bypass, synchronized, reorg, shutdown, resolve, time);
+        return tracker.CheckCached(tip, 1, required, bypass, synchronized, reorg, shutdown, resolve, time);
     };
     tracker.Observe(&peer, "one", 1, 100, now);
     const auto ready = check(now);
@@ -678,6 +678,42 @@ TEST_CASE("Mining work epochs follow committed hashes including unsampled reorgs
     REQUIRE(work.ForTip(1) == first + 4);
 }
 
+TEST_CASE("Cached mining evidence is refreshed after an unsampled reorg",
+    "[ledger][mining-readiness][template_freshness]")
+{
+    using namespace TAO::Ledger::ChainState;
+    MiningWorkEpoch work;
+    MiningPeerTracker tracker;
+    const auto now = MiningPeerTracker::Clock::now();
+    int peer;
+    tracker.Observe(&peer, "one", 1, 100, now);
+    work.Commit(1);
+    const auto oldEpoch = work.ForTip(1);
+    unsigned reads = 0;
+    auto evidence = MiningPeerEvidence::SUPPORTING;
+    const auto resolve = [&](const uint1024_t&, uint32_t)
+    {
+        ++reads;
+        return evidence;
+    };
+    const auto check = [&]()
+    {
+        return tracker.CheckCached(1, work.ForTip(1), 1, false, true, false, false, resolve, now);
+    };
+    REQUIRE(check().ready);
+    REQUIRE(check().ready);
+    REQUIRE(reads == 1);
+
+    work.Commit(2);
+    work.Commit(1);
+    REQUIRE(work.ForTip(1) == oldEpoch + 2);
+    evidence = MiningPeerEvidence::BEHIND;
+    REQUIRE_FALSE(check().ready);
+    REQUIRE(reads == 2);
+    REQUIRE_FALSE(check().ready);
+    REQUIRE(reads == 2);
+}
+
 TEST_CASE("Mining readiness cannot stamp work across a committed tip publication",
     "[ledger][mining-readiness][template_freshness]")
 {
@@ -704,10 +740,13 @@ TEST_CASE("Mining readiness cannot stamp work across a committed tip publication
     REQUIRE(replaced.ready);
     REQUIRE(replaced.epoch == initial.epoch + 1);
     REQUIRE_FALSE(ChainState::MiningWorkCurrent(initial.epoch));
+    REQUIRE(ChainState::MiningReadiness(true).ready);
 
     /* No readiness sample between these committed transitions. */
     ChainState::CommitMiningTip(first.GetHash());
     ChainState::CommitMiningTip(guard.tip.GetHash());
+    REQUIRE_FALSE(ChainState::MiningWorkCurrent(replaced.epoch));
+    REQUIRE(ChainState::MiningWorkCurrent(replaced.epoch + 2));
     REQUIRE(ChainState::MiningReadiness().epoch == replaced.epoch + 2);
     REQUIRE_FALSE(ChainState::MiningWorkCurrent(replaced.epoch));
 }
@@ -737,7 +776,7 @@ TEST_CASE("Split peer tip reports refresh only complete timely evidence",
     };
     const auto check = [&](auto time)
     {
-        return tracker.CheckCached(1, 1, false, true, false, false, resolve, time);
+        return tracker.CheckCached(1, 1, 1, false, true, false, false, resolve, time);
     };
 
     send(false, 0, true, 100, now);
@@ -796,7 +835,7 @@ TEST_CASE("Contradictory partial peer reports pause readiness even with a quorum
     const auto resolve = [](const uint1024_t&, uint32_t) { return MiningPeerEvidence::SUPPORTING; };
     const auto check = [&]
     {
-        return tracker.CheckCached(1, 2, false, true, false, false, resolve, now);
+        return tracker.CheckCached(1, 1, 2, false, true, false, false, resolve, now);
     };
     const auto ready = check();
     REQUIRE(ready.ready);
@@ -828,7 +867,7 @@ TEST_CASE("An unresolvable peer tip cannot veto readiness indefinitely",
     };
     auto check = [&](auto time)
     {
-        return tracker.CheckCached(1, 2, false, true, false, false, evidence, time);
+        return tracker.CheckCached(1, 1, 2, false, true, false, false, evidence, time);
     };
 
     /* Peer evidence is refreshed periodically (e.g. by SUBSCRIBE retries). */
@@ -1041,7 +1080,7 @@ TEST_CASE("A readiness snapshot does not resolve peer tips",
         return MiningPeerEvidence::SUPPORTING;
     };
     const auto status = tracker.Check(1, false, true, false, false, evidence, now);
-    tracker.RememberStatus(status);
+    tracker.RememberStatus(tracker.StartEvaluation(), status);
     REQUIRE(resolved);
     resolved = false;
     const auto snapshot = tracker.LastStatus();
@@ -1062,7 +1101,7 @@ TEST_CASE("A readiness snapshot does not wait for peer tip resolution",
         MiningPeerTracker tracker;
         MiningStatus previous;
         previous.reason = "previous";
-        tracker.RememberStatus(previous);
+        tracker.RememberStatus(tracker.StartEvaluation(), previous);
 
         int peer;
         tracker.Observe(&peer, "one", 1, 100);
@@ -1078,7 +1117,7 @@ TEST_CASE("A readiness snapshot does not wait for peer tip resolution",
         auto admission = std::async(std::launch::async, [&]()
         {
             return cached
-                ? tracker.CheckCached(1, 1, false, true, false, false, resolve)
+                ? tracker.CheckCached(1, 1, 1, false, true, false, false, resolve)
                 : tracker.Check(1, false, true, false, false, resolve);
         });
 
@@ -1088,6 +1127,7 @@ TEST_CASE("A readiness snapshot does not wait for peer tip resolution",
             releaseResolver.set_value();
             admission.get();
             REQUIRE(enteredStatus == std::future_status::ready);
+            return;
         }
 
         auto snapshot = std::async(std::launch::async, [&]()
@@ -1097,7 +1137,7 @@ TEST_CASE("A readiness snapshot does not wait for peer tip resolution",
             published.ready = true;
             published.reason = "published";
             published.peers = 2;
-            tracker.RememberStatus(published);
+            tracker.RememberStatus(tracker.StartEvaluation(), published);
             return std::make_pair(before, tracker.LastStatus());
         });
         const auto snapshotStatus = snapshot.wait_for(std::chrono::seconds(2));
@@ -1112,6 +1152,53 @@ TEST_CASE("A readiness snapshot does not wait for peer tip resolution",
         REQUIRE(snapshots.second.peers == 2);
         REQUIRE(result.ready);
     }
+}
+
+TEST_CASE("A late readiness evaluation cannot overwrite a newer snapshot",
+    "[ledger][mining-readiness]")
+{
+    using namespace TAO::Ledger::ChainState;
+    MiningPeerTracker tracker;
+    const auto oldGeneration = tracker.StartEvaluation();
+    std::promise<void> oldChecked, releaseOld;
+    auto checked = oldChecked.get_future();
+    auto release = releaseOld.get_future();
+    const auto resolve = [](const uint1024_t&, uint32_t)
+    {
+        return MiningPeerEvidence::SUPPORTING;
+    };
+    auto old = std::async(std::launch::async, [&]()
+    {
+        auto status = tracker.Check(1, true, true, false, false, resolve);
+        status.epoch = 1;
+        oldChecked.set_value();
+        release.wait();
+        tracker.RememberStatus(oldGeneration, status);
+    });
+
+    const auto checkedStatus = checked.wait_for(std::chrono::seconds(5));
+    if(checkedStatus != std::future_status::ready)
+    {
+        releaseOld.set_value();
+        old.get();
+        REQUIRE(checkedStatus == std::future_status::ready);
+        return;
+    }
+
+    const auto newGeneration = tracker.StartEvaluation();
+    auto newer = tracker.Check(1, true, true, false, true, resolve);
+    newer.epoch = 2;
+    tracker.RememberStatus(newGeneration, newer);
+    const auto before = tracker.LastStatus();
+    releaseOld.set_value();
+    old.get();
+    const auto after = tracker.LastStatus();
+
+    REQUIRE(before.epoch == 2);
+    REQUIRE(before.reason == "shutdown");
+    REQUIRE(after.epoch == 2);
+    REQUIRE_FALSE(after.ready);
+    REQUIRE(after.reason == "shutdown");
 }
 
 TEST_CASE("Unresolved peer veto expiry is logged once per unresolved period",
@@ -1203,7 +1290,7 @@ TEST_CASE("Split peer catch-up gates readiness without changing committed work",
     };
     const auto check = [&](auto time)
     {
-        auto status = tracker.CheckCached(2, 1, false, true, false, false, resolve, time);
+        auto status = tracker.CheckCached(2, 1, 1, false, true, false, false, resolve, time);
         status.epoch = work.ForTip(2);
         return status;
     };

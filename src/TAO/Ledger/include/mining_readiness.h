@@ -144,14 +144,14 @@ namespace TAO::Ledger::ChainState
         }
 
         /* Work checks reuse evidence for at most one second. Peer changes,
-         * policy changes, tip changes and MAX_AGE expiry invalidate it sooner. */
+         * policy changes, work epoch changes and MAX_AGE expiry invalidate it sooner. */
         template<typename Resolve>
-        MiningStatus CheckCached(const uint1024_t& tip, uint32_t required, bool bypass,
+        MiningStatus CheckCached(const uint1024_t& tip, uint64_t epoch, uint32_t required, bool bypass,
                                  bool synchronized, bool reorg, bool shutdown, Resolve resolve,
                                  Clock::time_point now = Clock::now())
         {
             std::lock_guard<std::mutex> lock(mutex);
-            const CacheKey key{tip, required, bypass, synchronized, reorg, shutdown};
+            const CacheKey key{tip, epoch, required, bypass, synchronized, reorg, shutdown};
             if(cacheValid && cachedKey == key && now < refreshAt && now <= expireAt)
                 return cachedStatus;
 
@@ -169,12 +169,24 @@ namespace TAO::Ledger::ChainState
             return cachedStatus;
         }
 
-        /* Status copies use a separate lock so polls cannot wait for peer
-         * evidence resolution under the tracker lock. */
-        void RememberStatus(const MiningStatus& status)
+        /* Assign before sampling admission inputs; a later-started evaluation
+         * must not be overwritten when an older evaluation finishes late. */
+        uint64_t StartEvaluation()
         {
             std::lock_guard<std::mutex> lock(statusMutex);
+            return ++evaluationGeneration;
+        }
+
+        /* Status copies use a separate lock so polls cannot wait for peer
+         * evidence resolution under the tracker lock. */
+        void RememberStatus(uint64_t generation, const MiningStatus& status)
+        {
+            std::lock_guard<std::mutex> lock(statusMutex);
+            if(hasLastStatus && generation <= publishedGeneration)
+                return;
+
             lastStatus = status;
+            publishedGeneration = generation;
             hasLastStatus = true;
         }
 
@@ -359,7 +371,7 @@ namespace TAO::Ledger::ChainState
         std::mutex mutex;
         std::map<const void*, Observation> observations;
         std::map<std::string, AddressVeto> addressVetoes;
-        using CacheKey = std::tuple<uint1024_t, uint32_t, bool, bool, bool, bool>;
+        using CacheKey = std::tuple<uint1024_t, uint64_t, uint32_t, bool, bool, bool, bool>;
         CacheKey cachedKey;
         MiningStatus cachedStatus;
         Clock::time_point refreshAt{}, expireAt{};
@@ -367,6 +379,8 @@ namespace TAO::Ledger::ChainState
 
         std::mutex statusMutex;
         MiningStatus lastStatus;
+        uint64_t evaluationGeneration{0};
+        uint64_t publishedGeneration{0};
         bool hasLastStatus{false};
     };
 
