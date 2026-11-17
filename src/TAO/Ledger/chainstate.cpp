@@ -60,6 +60,11 @@ namespace TAO
             return peerHeights.Max();
         }
 
+        uint32_t ChainState::MaxSupportedPeerHeight(uint32_t localHeight)
+        {
+            return peerHeights.MaxSupported(localHeight);
+        }
+
         bool ChainState::FreshPeerHeight(const void* peer, uint32_t& height)
         {
             return peerHeights.Get(peer, height, PeerHeightTracker::Clock::now(), MiningPeerTracker::MAX_AGE);

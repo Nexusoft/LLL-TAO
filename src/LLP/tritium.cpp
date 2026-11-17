@@ -111,9 +111,10 @@ namespace LLP
 
     static bool CanFinalizeSyncFromPeer(const uint32_t nPeerHeight)
     {
+        const uint32_t nLocalHeight = TAO::Ledger::ChainState::nBestHeight.load();
         return TAO::Ledger::ChainState::CanFinalizeSyncFromPeer(
-            TAO::Ledger::ChainState::nBestHeight.load(), nPeerHeight,
-            TAO::Ledger::ChainState::MaxPeerHeight());
+            nLocalHeight, nPeerHeight,
+            TAO::Ledger::ChainState::MaxSupportedPeerHeight(nLocalHeight));
     }
 
 

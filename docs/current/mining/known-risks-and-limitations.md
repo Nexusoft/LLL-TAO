@@ -166,20 +166,24 @@ veto after an exception. A post-commit exception may leave persisted and publish
 chain state inconsistent and requires investigation and recovery. Existing
 best-chain failure and recovery behavior is unchanged by this timeout.
 
-Sync completion uses the greatest recent `BESTHEIGHT` advertised by connected
-peers. Observations are removed on disconnect and
-expire 30 minutes after their last height notification. Periodic report
-requests allow responsive idle peers to refresh their observations. Sync
-completion is re-evaluated by generic events, not just block notifications,
-so removal/expiry of an obstructing height does not require another block.
-Completion requires the selected session's recently observed best hash to
-match the active tip and a matching height report no older than 90 seconds.
-Selection and completion coordinate session ownership so a stale attempt cannot reopen
-completed sync or clear another selected session. A connected peer can
-still advertise an erroneous height; repeated excessive advertisements can
-still delay sync completion. No peer height or peer agreement proves that a
-chain is best. Fork activation remains subject to local validation and chain
-weight.
+Sync completion's hard gate uses a supported `BESTHEIGHT`, not the raw
+maximum advertisement. A height is supported when it is within two blocks of
+the committed local tip, or when at least two connected peers advertise
+heights within two of each other. Unreachable outliers such as `UINT32_MAX`
+are quarantined even if repeated or corroborated, so one peer cannot veto
+completion indefinitely by refreshing an unsupported height. Observations are
+removed on disconnect and expire 30 minutes after their last height
+notification. Periodic report requests allow responsive idle peers to refresh
+their observations. Sync completion is re-evaluated by generic events, not
+just block notifications, so removal of an obstructing corroborated height
+does not require another block. Completion requires the selected session's
+recently observed best hash to match the active tip and a matching height
+report no older than 90 seconds. Selection and completion coordinate session
+ownership so a stale attempt cannot reopen completed sync or clear another
+selected session. A connected peer can still advertise an erroneous height,
+but that advertisement alone cannot delay sync completion. No peer height or
+peer agreement proves that a chain is best. Fork activation remains subject
+to local validation and chain weight.
 
 When `-peerbestchainrecovery` is enabled, a connected peer's unresolved best
 tip is retried at most once per 30 seconds, including an unknown shorter tip.

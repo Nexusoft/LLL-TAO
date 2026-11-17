@@ -2086,6 +2086,11 @@ TEST_CASE("Idle sync finalizes when a disconnected peer's high watermark disappe
                  | LLP::TritiumNode::SUBSCRIPTION::BESTHEIGHT);
     LLP::TritiumNode::fSynchronized.store(false);
     nSyncSession.store(node.nCurrentSession);
+    /* A lone UINT32_MAX advertisement is an unsupported outlier and must not
+     * be what blocks completion. Two corroborated ahead heights still do. */
+    const uint32_t nAhead = guard.tip.nHeight + 1000;
+    ChainState::ObservePeerHeight(&guard.peers[0], nAhead);
+    ChainState::ObservePeerHeight(&guard.peers[1], nAhead);
     ChainState::ObservePeerHeight(&guard.peers[2], UINT32_MAX);
     DataStream payload(SER_NETWORK, LLP::PROTOCOL_VERSION);
     payload << uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN) << guard.tip.GetHash()
@@ -2095,6 +2100,8 @@ TEST_CASE("Idle sync finalizes when a disconnected peer's high watermark disappe
     REQUIRE(node.ProcessPacket());
     REQUIRE_FALSE(LLP::TritiumNode::fSynchronized.load());
     REQUIRE(nSyncSession.load() == node.nCurrentSession);
+    ChainState::ForgetPeerHeight(&guard.peers[0]);
+    ChainState::ForgetPeerHeight(&guard.peers[1]);
     ChainState::ForgetPeerHeight(&guard.peers[2]);
     nSyncSession.store(9876);
     node.Event(LLP::EVENTS::GENERIC, 0);
@@ -4581,7 +4588,7 @@ TEST_CASE("Post-sync state: nSyncSession==0 and fSynchronized==true after Sync()
 }
 
 
-TEST_CASE("Sync completion height guard prevents stale half-chain finalization", "[ledger][process]")
+TEST_CASE("Sync completion height guard ignores uncorroborated outliers", "[ledger][process]")
 {
     using namespace TAO::Ledger::ChainState;
     PeerHeightTracker heights;
@@ -4589,14 +4596,26 @@ TEST_CASE("Sync completion height guard prevents stale half-chain finalization",
     int otherPeer = 0;
     heights.Update(&syncPeer, 500000);
     heights.Update(&otherPeer, 900000);
-    REQUIRE_FALSE(CanFinalizeSyncFromPeer(500000, 500000, heights.Max()));
+    /* One unvalidated advertisement, however often refreshed, is not a veto. */
+    REQUIRE(CanFinalizeSyncFromPeer(500000, 500000, heights.MaxSupported(500000)));
+    heights.Update(&otherPeer, 900000, PeerHeightTracker::Clock::now() + std::chrono::hours(1));
+    REQUIRE(CanFinalizeSyncFromPeer(500000, 500000,
+        heights.MaxSupported(500000, PeerHeightTracker::Clock::now() + std::chrono::hours(1))));
+    REQUIRE(CanFinalizeSyncFromPeer(500000, 500000, UINT32_MAX));
+
+    int corroborating = 0;
+    heights.Update(&corroborating, 900001);
+    REQUIRE_FALSE(CanFinalizeSyncFromPeer(500000, 500000, heights.MaxSupported(500000)));
     heights.Remove(&otherPeer);
-    REQUIRE(CanFinalizeSyncFromPeer(500000, 500000, heights.Max()));
+    heights.Remove(&corroborating);
+    REQUIRE(CanFinalizeSyncFromPeer(500000, 500000, heights.MaxSupported(500000)));
     heights.Update(&otherPeer, 500002);
-    REQUIRE(CanFinalizeSyncFromPeer(500000, 500000, heights.Max()));
+    REQUIRE(CanFinalizeSyncFromPeer(500000, 500000, heights.MaxSupported(500000)));
     heights.Update(&otherPeer, 500003);
-    REQUIRE_FALSE(CanFinalizeSyncFromPeer(500000, 500000, heights.Max()));
-    REQUIRE_FALSE(CanFinalizeSyncFromPeer(499999, 500000, heights.Max()));
+    REQUIRE(CanFinalizeSyncFromPeer(500000, 500000, heights.MaxSupported(500000)));
+    heights.Update(&corroborating, 500004);
+    REQUIRE_FALSE(CanFinalizeSyncFromPeer(500000, 500000, heights.MaxSupported(500000)));
+    REQUIRE_FALSE(CanFinalizeSyncFromPeer(499999, 500000, heights.MaxSupported(500000)));
     REQUIRE(CanFinalizeSyncFromPeer(100, 100, 0));
     REQUIRE_FALSE(CanFinalizeSyncFromPeer(100, 101, 0));
     REQUIRE(CanFinalizeSyncFromPeer(UINT32_MAX, UINT32_MAX, UINT32_MAX));

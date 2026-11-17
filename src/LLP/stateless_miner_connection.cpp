@@ -431,6 +431,7 @@ namespace LLP
     /** Default Destructor **/
     StatelessMinerConnection::~StatelessMinerConnection()
     {
+        ReleaseFailoverSlot();
         StopTemplateWorker();
 
         /* Clear session keys */
@@ -1051,6 +1052,15 @@ namespace LLP
 
 
     /** Handle custom message events. */
+    void StatelessMinerConnection::ReleaseFailoverSlot()
+    {
+        if(!m_fFailoverPending.exchange(false, std::memory_order_acq_rel))
+            return;
+
+        FailoverConnectionTracker::Get().ReleaseConnection(m_strFailoverIP, m_nFailoverGeneration);
+    }
+
+
     void StatelessMinerConnection::Event(uint8_t EVENT, uint32_t LENGTH)
     {
         /* Handle any DDOS Packet Filters. */
@@ -1178,6 +1188,7 @@ namespace LLP
                 std::string strEndpoint = strIP + ":" + std::to_string(address.GetPort());
                 fAuthenticatedAtomic.store(false, std::memory_order_relaxed);
                 fHandshakeInProgressAtomic.store(false, std::memory_order_relaxed);
+                ReleaseFailoverSlot();
                 context = MiningContext()
                     .WithTimestamp(runtime::unifiedtimestamp())
                     .WithAuth(false); // Not authenticated yet
@@ -1211,9 +1222,19 @@ namespace LLP
                     auto optExistingCtx = StatelessMinerManager::Get().GetMinerContextByIP(strIP);
                     if(!optExistingCtx.has_value())
                     {
-                        FailoverConnectionTracker::Get().RecordConnection(strIP);
-                        debug::log(0, FUNCTION, "No prior session for ", strIP,
-                                   " — recording as potential failover connection");
+                        uint64_t nGeneration = 0;
+                        if(FailoverConnectionTracker::Get().RecordConnection(strIP, nGeneration))
+                        {
+                            m_strFailoverIP = strIP;
+                            m_nFailoverGeneration = nGeneration;
+                            m_fFailoverPending.store(true, std::memory_order_release);
+                            debug::log(0, FUNCTION, "No prior session for ", strIP,
+                                       " — recording as potential failover connection");
+                        }
+                        else
+                        {
+                            debug::log(1, FUNCTION, "Failover tracker full; not recording ", strIP);
+                        }
                     }
                 }
 
@@ -1228,6 +1249,7 @@ namespace LLP
             {
                 fAuthenticatedAtomic.store(false, std::memory_order_relaxed);
                 fHandshakeInProgressAtomic.store(false, std::memory_order_relaxed);
+                ReleaseFailoverSlot();
 
                 /* Classify disconnect reason as network or software */
                 uint32_t reason = LENGTH;
@@ -3037,12 +3059,14 @@ namespace LLP
                      * event found no recoverable session for this IP, indicating the miner
                      * has failed over to this node and performed a full fresh handshake. */
                     const std::string strFailoverIP = GetAddress().ToStringIP();
-                    if(FailoverConnectionTracker::Get().IsFailover(strFailoverIP))
+                    if(m_fFailoverPending.load(std::memory_order_acquire)
+                    && FailoverConnectionTracker::Get().IsFailover(strFailoverIP))
                     {
                         ChannelStateManager::NotifyFailoverConnection(context.hashKeyID, context.strAddress);
-                        /* Clear the pending failover flag now that auth has completed */
-                        FailoverConnectionTracker::Get().ClearConnection(strFailoverIP);
                     }
+                    /* Auth consumed this connection's slot. A sibling connection
+                     * from the same IP keeps its own slot and generation. */
+                    ReleaseFailoverSlot();
                 }
                 
                 /* Send response if present */

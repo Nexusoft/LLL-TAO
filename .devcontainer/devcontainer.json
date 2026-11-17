@@ -41,22 +41,30 @@
   ],
   "workspaceFolder": "/workspace",
   "updateContentCommand": "echo 'Dependencies installed. Run make to build.'",
-  "forwardPorts": [9323, 9324, 9325, 9336],
+  "forwardPorts": [8080, 8323, 9323, 9324, 9325, 9336],
   "portsAttributes": {
+    "8080": {
+      "label": "Nexus HTTP API",
+      "onAutoForward": "notify"
+    },
+    "8323": {
+      "label": "Nexus Legacy Mining",
+      "onAutoForward": "notify"
+    },
     "9323": {
-      "label": "Nexus Tritium Port",
+      "label": "Nexus Stateless Mining",
       "onAutoForward": "notify"
     },
     "9324": {
-      "label": "Nexus Mining Port",
+      "label": "Nexus Unified Time",
       "onAutoForward": "notify"
     },
     "9325": {
-      "label": "Nexus Testnet Port",
+      "label": "Nexus Stateless Mining TLS",
       "onAutoForward": "notify"
     },
     "9336": {
-      "label": "Nexus API Port",
+      "label": "Nexus RPC",
       "onAutoForward": "notify"
     }
   }

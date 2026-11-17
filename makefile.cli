@@ -351,6 +351,7 @@ ifdef UNIT_TESTS
 		   build/Tests_LLP_dual_identity_comprehensive.o \
 		   build/Tests_LLP_encryption_context_test.o \
 		   build/Tests_LLP_error_handling_comprehensive.o \
+		   build/Tests_LLP_failover_connection_tracker_test.o \
 		   build/Tests_LLP_falcon_1024_auth_test.o \
 		   build/Tests_LLP_falcon_1024_detection_test.o \
 		   build/Tests_LLP_falcon_auth_stress.o \

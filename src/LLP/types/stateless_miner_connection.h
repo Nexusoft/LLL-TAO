@@ -29,10 +29,12 @@ ________________________________________________________________________________
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdint>
 #include <deque>
 #include <mutex>
 #include <map>
 #include <memory>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -106,6 +108,16 @@ namespace LLP
          *  DataThread would otherwise treat it like an ordinary unauthenticated
          *  connection and aggressively disconnect on spurious POLLIN/POLL_EMPTY. **/
         std::atomic<bool> fHandshakeInProgressAtomic{false};
+
+        /** One pending FailoverConnectionTracker slot owned by this connection.
+         *  Released on disconnect and on successful auth so a dropped handshake
+         *  does not pin the IP for the process lifetime. Generation keeps a
+         *  stale release from clearing a newer connection from the same IP. **/
+        std::atomic<bool> m_fFailoverPending{false};
+        std::string m_strFailoverIP;
+        uint64_t m_nFailoverGeneration{0};
+
+        void ReleaseFailoverSlot();
 
         /** The map to hold the list of blocks that are being mined with metadata. 
          *  Updated in PR #131 to track template metadata for staleness detection. **/

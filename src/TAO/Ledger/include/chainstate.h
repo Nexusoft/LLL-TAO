@@ -46,6 +46,9 @@ namespace TAO
             void ObservePeerHeight(const void* peer, uint32_t height);
             void ForgetPeerHeight(const void* peer);
             uint32_t MaxPeerHeight();
+            /* Supported (locally consistent or corroborated) watermark.
+             * Unvalidated outliers do not contribute. */
+            uint32_t MaxSupportedPeerHeight(uint32_t localHeight);
             bool FreshPeerHeight(const void* peer, uint32_t& height);
 
 
