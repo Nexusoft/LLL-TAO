@@ -106,7 +106,7 @@ namespace LLP
         TAO::Ledger::Block* pBlock, std::string_view strLaneLabel)
     {
         SharedTemplatePayloadResult result;
-        const auto readiness = TAO::Ledger::ChainState::MiningReadiness();
+        const auto readiness = TAO::Ledger::ChainState::MiningReadiness(true);
         const auto* tritium = dynamic_cast<const TAO::Ledger::TritiumBlock*>(pBlock);
         const uint64_t epoch = tritium ? tritium->nMiningEpoch : readiness.epoch;
         if(!readiness.ready || epoch == 0 || epoch != readiness.epoch
@@ -204,7 +204,7 @@ namespace LLP
     inline SharedTemplatePayloadResult BuildSharedTemplatePayloadWithRetry(
         CreateBlockFn&& fnCreateBlock, std::string_view strLaneLabel)
     {
-        const auto readiness = TAO::Ledger::ChainState::MiningReadiness();
+        const auto readiness = TAO::Ledger::ChainState::MiningReadiness(true);
         if(!readiness.ready)
         {
             debug::log(0, FUNCTION, strLaneLabel, ": GET_BLOCK waiting for mining readiness",

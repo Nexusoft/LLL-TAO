@@ -169,6 +169,27 @@ namespace TAO::Ledger::ChainState
             return cachedStatus;
         }
 
+        /* Status polls must not resolve peer tips. Mining admission updates this
+         * after each evaluation; a poll returns that result without ledger I/O. */
+        void RememberStatus(const MiningStatus& status)
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            lastStatus = status;
+            hasLastStatus = true;
+        }
+
+        MiningStatus LastStatus()
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            if(!hasLastStatus)
+            {
+                MiningStatus status;
+                status.reason = "not-yet-evaluated";
+                return status;
+            }
+            return lastStatus;
+        }
+
     private:
         template<typename Resolve>
         MiningStatus CheckLocked(uint32_t required, bool bypass, bool synchronized,
@@ -341,8 +362,10 @@ namespace TAO::Ledger::ChainState
         using CacheKey = std::tuple<uint1024_t, uint32_t, bool, bool, bool, bool>;
         CacheKey cachedKey;
         MiningStatus cachedStatus;
+        MiningStatus lastStatus;
         Clock::time_point refreshAt{}, expireAt{};
         bool cacheValid{false};
+        bool hasLastStatus{false};
     };
 
     void ObserveMiningPeer(const void* peer, const std::string& address,
@@ -351,5 +374,7 @@ namespace TAO::Ledger::ChainState
     void InvalidatePartialMiningPeer(const void* peer, bool hasHash, const uint1024_t& hash,
                                      bool hasHeight, uint32_t height);
     MiningStatus MiningReadiness(bool cached = false);
+    /* Last admission result. Does not resolve peer tips or read the ledger. */
+    MiningStatus MiningReadinessSnapshot();
     bool MiningWorkCurrent(uint64_t epoch);
 }

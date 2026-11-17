@@ -1021,6 +1021,35 @@ TEST_CASE("Reconnect logs an expired unresolved veto once per address window",
     REQUIRE(logs.find(message, second + message.size()) == std::string::npos);
 }
 
+TEST_CASE("A readiness snapshot does not resolve peer tips",
+    "[ledger][mining-readiness]")
+{
+    using namespace TAO::Ledger::ChainState;
+    MiningPeerTracker tracker;
+    const auto before = tracker.LastStatus();
+    REQUIRE_FALSE(before.ready);
+    REQUIRE(before.reason == "not-yet-evaluated");
+
+    int peer;
+    const auto now = MiningPeerTracker::Clock::now();
+    tracker.Observe(&peer, "one", 1, 100, now);
+    bool resolved = false;
+    const auto evidence = [&](const uint1024_t&, uint32_t)
+    {
+        resolved = true;
+        return MiningPeerEvidence::SUPPORTING;
+    };
+    const auto status = tracker.Check(1, false, true, false, false, evidence, now);
+    tracker.RememberStatus(status);
+    REQUIRE(resolved);
+    resolved = false;
+    const auto snapshot = tracker.LastStatus();
+    REQUIRE_FALSE(resolved);
+    REQUIRE(snapshot.ready);
+    REQUIRE(snapshot.reason == "ready");
+    REQUIRE(snapshot.peers == 1);
+}
+
 TEST_CASE("Unresolved peer veto expiry is logged once per unresolved period",
     "[ledger][mining-readiness]")
 {

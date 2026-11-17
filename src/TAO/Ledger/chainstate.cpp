@@ -140,7 +140,13 @@ namespace TAO
                 status.ready = false;
                 status.reason = "mining-epoch-exhausted";
             }
+            miningPeers.RememberStatus(status);
             return status;
+        }
+
+        ChainState::MiningStatus ChainState::MiningReadinessSnapshot()
+        {
+            return miningPeers.LastStatus();
         }
 
         bool ChainState::MiningWorkCurrent(uint64_t epoch)
