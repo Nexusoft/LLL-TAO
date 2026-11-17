@@ -137,7 +137,9 @@ use the same guarded queue. A revocation
 after that point can still race with a write, and bytes already sent or buffered
 cannot be recalled. There
 is no miner-side cancellation message, so a template issued while current may
-later be rejected if its epoch is revoked. `system/get/info` reports the last mining-admission result and does not resolve peer tips, so a slow ledger read cannot make that status poll drop the Interface connection. It includes `mining_readiness` with `ready`,
+later be rejected if its epoch is revoked. `system/get/info` reports the last
+mining-admission result under a separate status lock; it neither resolves peer
+tips nor waits for a concurrent evidence resolution. It includes `mining_readiness` with `ready`,
 `reason`, `epoch`, `fresh_peers` (supporting distinct IPs), `required_peers`,
 `local_bypass`, and `ignored_unresolved_peers`. Existing `synchronized`/`syncing` fields are unchanged and need
 not agree with mining readiness; no Interface display change is included.

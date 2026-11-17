@@ -69,6 +69,7 @@ ________________________________________________________________________________
 #include <chrono>
 #include <future>
 #include <thread>
+#include <utility>
 
 #include <unit/catch2/catch.hpp>
 
@@ -1048,6 +1049,69 @@ TEST_CASE("A readiness snapshot does not resolve peer tips",
     REQUIRE(snapshot.ready);
     REQUIRE(snapshot.reason == "ready");
     REQUIRE(snapshot.peers == 1);
+}
+
+TEST_CASE("A readiness snapshot does not wait for peer tip resolution",
+    "[ledger][mining-readiness]")
+{
+    using namespace TAO::Ledger::ChainState;
+
+    for(const bool cached : {false, true})
+    {
+        INFO("cached=" << cached);
+        MiningPeerTracker tracker;
+        MiningStatus previous;
+        previous.reason = "previous";
+        tracker.RememberStatus(previous);
+
+        int peer;
+        tracker.Observe(&peer, "one", 1, 100);
+        std::promise<void> resolverEntered, releaseResolver;
+        auto entered = resolverEntered.get_future();
+        auto release = releaseResolver.get_future();
+        const auto resolve = [&](const uint1024_t&, uint32_t)
+        {
+            resolverEntered.set_value();
+            release.wait();
+            return MiningPeerEvidence::SUPPORTING;
+        };
+        auto admission = std::async(std::launch::async, [&]()
+        {
+            return cached
+                ? tracker.CheckCached(1, 1, false, true, false, false, resolve)
+                : tracker.Check(1, false, true, false, false, resolve);
+        });
+
+        const auto enteredStatus = entered.wait_for(std::chrono::seconds(5));
+        if(enteredStatus != std::future_status::ready)
+        {
+            releaseResolver.set_value();
+            admission.get();
+            REQUIRE(enteredStatus == std::future_status::ready);
+        }
+
+        auto snapshot = std::async(std::launch::async, [&]()
+        {
+            auto before = tracker.LastStatus();
+            MiningStatus published;
+            published.ready = true;
+            published.reason = "published";
+            published.peers = 2;
+            tracker.RememberStatus(published);
+            return std::make_pair(before, tracker.LastStatus());
+        });
+        const auto snapshotStatus = snapshot.wait_for(std::chrono::seconds(2));
+        releaseResolver.set_value();
+        const auto result = admission.get();
+        const auto snapshots = snapshot.get();
+
+        REQUIRE(snapshotStatus == std::future_status::ready);
+        REQUIRE(snapshots.first.reason == "previous");
+        REQUIRE(snapshots.second.ready);
+        REQUIRE(snapshots.second.reason == "published");
+        REQUIRE(snapshots.second.peers == 2);
+        REQUIRE(result.ready);
+    }
 }
 
 TEST_CASE("Unresolved peer veto expiry is logged once per unresolved period",
