@@ -5,6 +5,7 @@
 #include <Util/include/debug.h>
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <mutex>
@@ -82,14 +83,16 @@ namespace TAO::Ledger::ChainState
             || it->second.uncertain)
                 cacheValid = false;
 
-            /* Re-announcing (or churning) an unresolved tip must not restart
-             * the veto bound; only resolved evidence clears it. */
+            /* Re-announcing, changing, or reconnecting an unresolved tip must
+             * not restart the veto bound. Disconnect removes the connection
+             * pointer, so the bound is kept by address until evidence resolves. */
             Observation observation{address, hash, height, now, false};
             if(it != observations.end() && it->second.address == address)
             {
                 observation.unresolvedSince = it->second.unresolvedSince;
                 observation.vetoExpiredLogged = it->second.vetoExpiredLogged;
             }
+            ApplyAddressVeto(observation);
             observations[peer] = observation;
         }
 
@@ -177,6 +180,8 @@ namespace TAO::Ledger::ChainState
             status.required = required;
             bool unresolved = false;
             std::set<std::string> supporting;
+            std::set<std::string> unresolvedAddresses;
+            std::set<std::string> resolvedAddresses;
             if(!bypass)
             {
                 for(auto& item : observations)
@@ -188,13 +193,20 @@ namespace TAO::Ledger::ChainState
                     {
                         observation.unresolvedSince = Clock::time_point{};
                         observation.vetoExpiredLogged = false;
+                        resolvedAddresses.insert(observation.address);
                         if(evidence == MiningPeerEvidence::SUPPORTING)
                             supporting.insert(observation.address);
                         continue;
                     }
 
+                    /* A new connection for an address already inside its veto
+                     * window continues that window. Only a fully resolved
+                     * address may start another one. */
+                    ApplyAddressVeto(observation);
                     if(observation.unresolvedSince == Clock::time_point{})
                         observation.unresolvedSince = now;
+                    unresolvedAddresses.insert(observation.address);
+                    RememberAddressVeto(observation, now);
                     if(now - observation.unresolvedSince < UNRESOLVED_VETO_MAX)
                     {
                         unresolved = true;
@@ -205,11 +217,17 @@ namespace TAO::Ledger::ChainState
                     if(!observation.vetoExpiredLogged)
                     {
                         observation.vetoExpiredLogged = true;
+                        RememberAddressVeto(observation, now);
                         debug::log(0, "MiningPeerTracker: ignoring unresolved tip from ",
                                    observation.address, " height=", observation.height,
                                    " hash=", observation.hash.SubString(),
                                    " after veto bound expired");
                     }
+                }
+                for(const auto& address : resolvedAddresses)
+                {
+                    if(unresolvedAddresses.count(address) == 0)
+                        addressVetoes.erase(address);
                 }
             }
             status.peers = supporting.size();
@@ -244,6 +262,63 @@ namespace TAO::Ledger::ChainState
             bool vetoExpiredLogged{false};
         };
 
+        struct AddressVeto
+        {
+            Clock::time_point since{};
+            bool logged{false};
+        };
+
+        /* Disconnect replaces the connection pointer and would otherwise
+         * restart the veto. Keep one window per address until that address
+         * has no unresolved observation left. */
+        void ApplyAddressVeto(Observation& observation) const
+        {
+            const auto it = addressVetoes.find(observation.address);
+            if(it == addressVetoes.end())
+                return;
+
+            if(observation.unresolvedSince == Clock::time_point{}
+            || it->second.since < observation.unresolvedSince)
+                observation.unresolvedSince = it->second.since;
+            observation.vetoExpiredLogged = observation.vetoExpiredLogged || it->second.logged;
+        }
+
+        void RememberAddressVeto(const Observation& observation, Clock::time_point now)
+        {
+            auto it = addressVetoes.find(observation.address);
+            if(it != addressVetoes.end())
+            {
+                it->second.since = observation.unresolvedSince;
+                it->second.logged = observation.vetoExpiredLogged;
+                return;
+            }
+
+            if(addressVetoes.size() >= MAX_ADDRESS_VETOES)
+                DropExpiredAbsentVetoes(now);
+            if(addressVetoes.size() >= MAX_ADDRESS_VETOES)
+                return;
+
+            addressVetoes.emplace(observation.address,
+                                  AddressVeto{observation.unresolvedSince, observation.vetoExpiredLogged});
+        }
+
+        void DropExpiredAbsentVetoes(Clock::time_point now)
+        {
+            std::set<std::string> live;
+            for(const auto& item : observations)
+                live.insert(item.second.address);
+
+            for(auto it = addressVetoes.begin(); it != addressVetoes.end();)
+            {
+                const bool expired = it->second.since != Clock::time_point{}
+                    && now - it->second.since >= UNRESOLVED_VETO_MAX;
+                if(expired && live.count(it->first) == 0)
+                    it = addressVetoes.erase(it);
+                else
+                    ++it;
+            }
+        }
+
         void Expire(Clock::time_point now)
         {
             for(auto it = observations.begin(); it != observations.end();)
@@ -258,8 +333,11 @@ namespace TAO::Ledger::ChainState
             }
         }
 
+        static constexpr std::size_t MAX_ADDRESS_VETOES = 4096;
+
         std::mutex mutex;
         std::map<const void*, Observation> observations;
+        std::map<std::string, AddressVeto> addressVetoes;
         using CacheKey = std::tuple<uint1024_t, uint32_t, bool, bool, bool, bool>;
         CacheKey cachedKey;
         MiningStatus cachedStatus;
