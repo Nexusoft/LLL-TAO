@@ -20,11 +20,8 @@ Nexus LLL-TAO is a blockchain node implementation written in C++20. It requires 
 #### Required Libraries
 | Library | Version | Package | Purpose |
 |---------|---------|---------|---------|
-| Berkeley DB | 5.3.x | `libdb5.3++-dev` | Blockchain database storage |
+| Berkeley DB | 5.3.x | `libdb5.3++-dev` | Legacy wallet database storage |
 | OpenSSL | 1.1.1+ | `libssl-dev` | Cryptographic operations (hashing, signatures) |
-| Boost | 1.71+ | `libboost-all-dev` | Utilities, threading, filesystem |
-| MiniUPnP | 2.1+ | `libminiupnpc-dev` | NAT traversal for P2P networking |
-| libevent | 2.1+ | `libevent-dev` | Asynchronous I/O and event handling |
 
 #### Optional Dependencies
 - `libgmp-dev` - Multi-precision arithmetic
@@ -65,7 +62,8 @@ make -f makefile.cli -j$(nproc)
 
 ### Debug Build
 ```bash
-make -f makefile.cli DEBUG=1 -j$(nproc)
+make -f makefile.cli clean
+make -f makefile.cli ENABLE_DEBUG=1 -j$(nproc)
 ```
 
 ### Verbose Build (see all commands)
@@ -86,27 +84,31 @@ make -f makefile.cli VERBOSE=1 -j$(nproc)
 - `config/` - Configuration files
 
 ### Important Files
-- `Makefile` - Main build configuration
 - `makefile.cli` - Command-line build targets
 - `.devcontainer/` - DevContainer configuration for consistent builds
 
 ## Testing
 
 ### Run All Tests
+On Unix, use a fresh isolated HOME for each test process; bootstrap clears its data directory before processing Catch arguments.
+
 ```bash
+make -f makefile.cli clean
 make -f makefile.cli UNIT_TESTS=1 -j$(nproc)
+test_home="$(mktemp -d)" && HOME="$test_home" ./nexus
 ```
 
 ### Run Specific Test Suite
 ```bash
 # Build unit-test binary
+make -f makefile.cli clean
 make -f makefile.cli UNIT_TESTS=1 -j$(nproc)
 
 # Run LLP-focused tests from the produced nexus binary
-./nexus "[llp]"
+test_home="$(mktemp -d)" && HOME="$test_home" ./nexus "[llp]"
 
 # Run ledger-focused tests
-./nexus "[ledger]"
+test_home="$(mktemp -d)" && HOME="$test_home" ./nexus "[ledger]"
 ```
 
 ## Common Build Issues
@@ -121,15 +123,6 @@ sudo apt-get install libdb5.3++-dev
 bash .devcontainer/setup.sh
 ```
 
-### Boost Version Mismatch
-**Error:** `Boost version too old`
-
-**Solution:**
-```bash
-sudo apt-get install libboost-all-dev
-# Minimum version: 1.71
-```
-
 ### OpenSSL Linking Error
 **Error:** `undefined reference to EVP_*`
 
@@ -142,13 +135,13 @@ sudo apt-get install libssl-dev
 ## Code Modification Guidelines
 
 ### When Adding New Dependencies
-1. Update `.devcontainer/setup.sh` with new package
+1. Update `contrib/devtools/install-build-deps.sh` with new package
 2. Update this document's dependency table
 3. Update README.md installation instructions
 4. Test in clean DevContainer environment
 
 ### When Modifying Build Process
-1. Update `Makefile` or relevant makefile.* files
+1. Update relevant makefile.* files
 2. Update build instructions in this document
 3. Verify changes in DevContainer
 4. Document any new build flags or options
@@ -156,17 +149,14 @@ sudo apt-get install libssl-dev
 ## Continuous Integration
 
 ### GitHub Actions
-Build and test workflows run automatically on:
+Build and test workflows run automatically for changes matching their path filters on:
 - Push to main branches
 - Pull request creation
 - Pull request updates
 
-### DevContainer Testing
+### Copilot Setup
 Copilot Coding Agent uses the Copilot setup workflow plus the shared devcontainer bootstrap to:
-- Verify PRs compile successfully
-- Run automated tests
 - Check for dependency issues
-- Validate code changes before merge
 
 Copilot code review uses `.github/workflows/copilot-code-review.yml` for its
 runner and build dependency setup. This configures its environment, not
@@ -181,7 +171,6 @@ automatic review requests.
 
 ### Optimization Flags
 - Production: `-O3` (maximum optimization)
-- Debug: `-g -O0` (no optimization, full debug symbols)
 - Profile: `-O2 -g` (optimized with debug info)
 
 ## Architecture-Specific Notes
@@ -190,16 +179,13 @@ automatic review requests.
 - Located in `src/LLP/` directory
 - Uses Falcon post-quantum cryptography
 - Requires OpenSSL 1.1.1+ for ChaCha20-Poly1305
-- Network protocol on ports 9323-9325
 
 ### Tritium Protocol
 - Core blockchain logic in `src/TAO/Ledger/`
 - Three mining channels: Proof-of-Stake (0), Prime (1), Hash (2)
-- Uses Berkeley DB for block storage
 
 ### Lower Level Protocol (LLP)
 - Custom P2P networking stack
-- Event-driven architecture using libevent
 - Supports both legacy (8-bit) and stateless (16-bit) opcodes
 
 ## Support
@@ -207,7 +193,6 @@ automatic review requests.
 ### Documentation
 - Project README: `/README.md`
 - API documentation: `/docs/`
-- Protocol specification: `/docs/PROTOCOL.md`
 
 ### Common Commands
 ```bash
@@ -215,13 +200,13 @@ automatic review requests.
 ./nexus
 
 # Run with testnet
-./nexus -testnet
+./nexus -testnet=1
 
 # Enable verbose logging
 ./nexus -verbose=3
 
-# Run API server
-./nexus -api
+# Run API server (set apiuser and apipassword in nexus.conf first)
+./nexus
 
 # Mining configuration
 ./nexus -mining -generate=
